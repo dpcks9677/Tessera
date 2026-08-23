@@ -10,9 +10,10 @@ namespace Tessera.Tabletop
     /// - 정원형(Circular) 바닥 베이스를 가진 테이블 직교 고정 짐벌 스탠드 (Upright Gimbal Stand)
     /// - 피벗 힌지 중심(Y=1.30f)에서 40도 기본 각도로 거치된 독립 틸트 모래시계 본체 (Hourglass_RotatingBody)
     /// - 계단식 단차로 Z-fighting이 완벽히 방지된 앤틱 브론즈 캡 & 짐벌 베이스 플레이트
-    /// - 유리 내부의 물방울 곡면 형상과 완벽히 일치하는 부드러운 곡면 돔(Sphere) 모래 지오메트리
+    /// - 상하 벌브와 중앙 목이 이어진 일체형 유리 및 안식각 기반 절차적 모래 지오메트리
     /// - 턴 시작 시 부드러운 180도 플립(Flip) 애니메이션 (0.55초 SmoothStep) 및 상/하단 모래 자동 스왑
     /// </summary>
+    [ExecuteAlways]
     public sealed class HourglassTimer : MonoBehaviour
     {
         private const int DecorationLayer = 11;
@@ -28,6 +29,8 @@ namespace Tessera.Tabletop
         private Transform upperSandTransform;
         private Transform lowerSandTransform;
         private Transform sandStreamTransform;
+        private HourglassSandMesh upperSand;
+        private HourglassSandMesh lowerSand;
         private Material sandMaterial;
         private Material sandStreamMaterial;
         private Material glassMaterial;
@@ -41,11 +44,6 @@ namespace Tessera.Tabletop
         // 피벗 높이 및 기본 카메라 대면 틸트 각도 (40도 기본 거치)
         private const float PivotHeight = 1.30f;
         private const float DefaultBodyPitch = 40.0f;
-
-        // 곡면 모래 기본 스케일 및 오프셋 기준치 (유리 내벽 곡선에 꽉 차는 볼륨)
-        private const float UpperSandBaseY = 0.50f;
-        private const float LowerSandBaseY = -0.50f;
-        private const float SandStreamBaseHeight = 1.15f;
 
         // 컬러 팔레트 (레퍼런스 이미지 기반)
         private readonly Color bronzeBaseColor = new(0.48f, 0.34f, 0.17f);
@@ -86,10 +84,64 @@ namespace Tessera.Tabletop
 
         private void Awake()
         {
-            if (bodyRoot == null)
+            EnsureGeometry();
+        }
+
+        private void OnEnable()
+        {
+            EnsureGeometry();
+        }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (!Application.isPlaying)
+            {
+                UnityEditor.EditorApplication.delayCall -= DelayEnsureGeometry;
+                UnityEditor.EditorApplication.delayCall += DelayEnsureGeometry;
+            }
+        }
+
+        private void DelayEnsureGeometry()
+        {
+            if (this == null || gameObject == null) return;
+            EnsureGeometry();
+        }
+#endif
+
+        public void EnsureGeometry()
+        {
+            if (!TryBindExistingGeometry())
             {
                 BuildGeometry();
             }
+        }
+
+        private bool TryBindExistingGeometry()
+        {
+            bodyRoot = transform.Find("Hourglass_RotatingBody");
+            if (bodyRoot == null || transform.Find("Gimbal_StationaryStand") == null) return false;
+
+            upperSandTransform = bodyRoot.Find("Sand_Upper");
+            lowerSandTransform = bodyRoot.Find("Sand_Lower");
+            sandStreamTransform = bodyRoot.Find("Sand_Stream");
+            Transform unifiedGlass = bodyRoot.Find("Glass_UnifiedBulb");
+            if (upperSandTransform == null || lowerSandTransform == null || sandStreamTransform == null || unifiedGlass == null)
+            {
+                return false;
+            }
+
+            Mesh upperMesh = upperSandTransform.GetComponent<MeshFilter>()?.sharedMesh;
+            Mesh lowerMesh = lowerSandTransform.GetComponent<MeshFilter>()?.sharedMesh;
+            Mesh glassMesh = unifiedGlass.GetComponent<MeshFilter>()?.sharedMesh;
+            if (upperMesh == null || lowerMesh == null || glassMesh == null) return false;
+
+            upperSand = HourglassMeshBuilder.BindSandMesh(upperMesh);
+            lowerSand = HourglassMeshBuilder.BindSandMesh(lowerMesh);
+            sandMaterial = upperSandTransform.GetComponent<MeshRenderer>()?.sharedMaterial;
+            sandStreamMaterial = sandStreamTransform.GetComponent<MeshRenderer>()?.sharedMaterial;
+            glassMaterial = unifiedGlass.GetComponent<MeshRenderer>()?.sharedMaterial;
+            return upperSand != null && lowerSand != null;
         }
 
         private void Update()
@@ -225,7 +277,7 @@ namespace Tessera.Tabletop
         }
 
         /// <summary>
-        /// 남은 시간 비율 (1.0 -> 0.0)에 따라 유리 내벽 형상에 맞춘 곡면 모래 레벨을 실시간 업데이트합니다.
+        /// 남은 시간 비율 (1.0 -> 0.0)에 따라 유리 내벽 형상에 맞춘 모래 표면을 실시간 업데이트합니다.
         /// (홀수/짝수 플립에 따라 상/하단 모래 역할을 자동 스왑)
         /// </summary>
         private void UpdateSandVisuals(float progress)
@@ -237,31 +289,24 @@ namespace Tessera.Tabletop
             Transform sourceSand = isEvenFlip ? upperSandTransform : lowerSandTransform;
             Transform targetSand = isEvenFlip ? lowerSandTransform : upperSandTransform;
 
-            float sourceBaseY = isEvenFlip ? UpperSandBaseY : LowerSandBaseY;
-            float targetBaseY = isEvenFlip ? LowerSandBaseY : UpperSandBaseY;
+            HourglassSandMesh sourceMesh = isEvenFlip ? upperSand : lowerSand;
+            HourglassSandMesh targetMesh = isEvenFlip ? lowerSand : upperSand;
+            float sourceSign = isEvenFlip ? 1f : -1f;
+            float targetSign = -sourceSign;
 
-            // 1. 배출되는 모래 (위쪽): 유리 내벽 곡면을 따라 부드러운 돔 형태로 아래로 수축
+            // 1. 배출되는 모래: 중앙 목으로 파인 깔때기형 자유 표면
             if (sourceSand != null)
             {
-                float radiusFactor = Mathf.Pow(clamped, 0.40f); // 유리 내벽 곡률에 맞춘 비선형 반경 보간
-                float sourceHeight = Mathf.Max(0.01f, clamped * 0.84f);
-                sourceSand.localScale = new Vector3(0.78f * radiusFactor, sourceHeight, 0.78f * radiusFactor);
-                
-                float yOffset = isEvenFlip ? -((1f - clamped) * 0.28f) : ((1f - clamped) * 0.28f);
-                sourceSand.localPosition = new Vector3(0f, sourceBaseY + yOffset, 0f);
+                HourglassMeshBuilder.UpdateSourceSand(sourceMesh, sourceSign, clamped);
                 sourceSand.gameObject.SetActive(clamped > 0.005f);
             }
 
-            // 2. 쌓이는 모래 (아래쪽): 유리 바닥 돔을 메우며 부드러운 곡면 돔(Sphere)으로 솟아오름
+            // 2. 쌓이는 모래: 실제 모래의 안식각을 유지하는 원뿔형 더미
+            float pileApex = targetSign * 0.90f;
             if (targetSand != null)
             {
                 float fill = 1.0f - clamped;
-                float radiusFactor = Mathf.Pow(fill, 0.40f);
-                float targetHeight = Mathf.Max(0.01f, fill * 0.84f);
-                targetSand.localScale = new Vector3(0.80f * radiusFactor, targetHeight, 0.80f * radiusFactor);
-                
-                float yOffset = isEvenFlip ? -((1f - fill) * 0.12f) : ((1f - fill) * 0.12f);
-                targetSand.localPosition = new Vector3(0f, targetBaseY + yOffset, 0f);
+                pileApex = HourglassMeshBuilder.UpdateAccumulatedSand(targetMesh, -targetSign, fill);
                 targetSand.gameObject.SetActive(fill > 0.005f);
             }
 
@@ -273,7 +318,9 @@ namespace Tessera.Tabletop
                 if (showStream)
                 {
                     float streamPulse = 1.0f + Mathf.Sin(Time.time * 16f) * 0.15f;
-                    sandStreamTransform.localScale = new Vector3(0.022f * streamPulse, SandStreamBaseHeight * 0.5f, 0.022f * streamPulse);
+                    float streamLength = Mathf.Max(0.04f, Mathf.Abs(pileApex));
+                    sandStreamTransform.localPosition = new Vector3(0f, pileApex * 0.5f, 0f);
+                    sandStreamTransform.localScale = new Vector3(0.022f * streamPulse, streamLength * 0.5f, 0.022f * streamPulse);
                 }
             }
         }
@@ -310,10 +357,12 @@ namespace Tessera.Tabletop
             sandMaterial = CreateMaterial("Hourglass_CreamSand", litShader, sandBaseColor, 0.05f, 0.22f);
             sandMaterial.EnableKeyword("_EMISSION");
             sandMaterial.SetColor("_EmissionColor", sandEmissionNormal);
+            SetDoubleSided(sandMaterial);
 
             sandStreamMaterial = CreateMaterial("Hourglass_SandStream", litShader, sandBaseColor * 1.12f, 0.05f, 0.20f);
             sandStreamMaterial.EnableKeyword("_EMISSION");
             sandStreamMaterial.SetColor("_EmissionColor", sandEmissionNormal * 1.4f);
+            SetDoubleSided(sandStreamMaterial);
 
             // 2. 바닥면과 완벽히 직교/수평을 이루는 정원형(Circular) 고정 짐벌 스탠드
             CreateGimbalStand(litShader);
@@ -336,49 +385,31 @@ namespace Tessera.Tabletop
             CreateSlenderWing(bodyRoot, -0.52f, 1f);  // 좌측 윙
             CreateSlenderWing(bodyRoot, 0.52f, -1f); // 우측 윙
 
-            // 3-4. 프레임에 꽉 차는 세로형 페일 프로스트 크리스탈 글래스 (Elongated Frost Glass Bulbs)
-            // 상단 메인 유리구 (Upper Bulb)
-            GameObject upperGlass = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            upperGlass.name = "Glass_UpperBulb";
-            SetupPart(upperGlass, bodyRoot, new Vector3(0f, 0.50f, 0f), Vector3.zero, new Vector3(0.82f, 0.88f, 0.82f), glassMaterial);
-
-            // 상단 캡 소켓 밀착 넥 링 (Upper Cap Seal)
-            GameObject upperNeck = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            upperNeck.name = "Glass_UpperNeck";
-            SetupPart(upperNeck, bodyRoot, new Vector3(0f, 0.96f, 0f), Vector3.zero, new Vector3(0.72f, 0.16f, 0.72f), glassMaterial);
-
-            // 하단 메인 유리구 (Lower Bulb)
-            GameObject lowerGlass = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            lowerGlass.name = "Glass_LowerBulb";
-            SetupPart(lowerGlass, bodyRoot, new Vector3(0f, -0.50f, 0f), Vector3.zero, new Vector3(0.82f, 0.88f, 0.82f), glassMaterial);
-
-            // 하단 캡 소켓 밀착 넥 링 (Lower Cap Seal)
-            GameObject lowerNeck = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            lowerNeck.name = "Glass_LowerNeck";
-            SetupPart(lowerNeck, bodyRoot, new Vector3(0f, -0.96f, 0f), Vector3.zero, new Vector3(0.72f, 0.16f, 0.72f), glassMaterial);
+            // 3-4. 상단 벌브부터 하단 벌브까지 끊기지 않는 일체형 유리
+            GameObject unifiedGlass = CreateMeshPart(
+                "Glass_UnifiedBulb", bodyRoot, HourglassMeshBuilder.CreateUnifiedGlassMesh(), glassMaterial);
+            MeshRenderer glassRenderer = unifiedGlass.GetComponent<MeshRenderer>();
+            glassRenderer.shadowCastingMode = ShadowCastingMode.Off;
+            glassRenderer.receiveShadows = false;
 
             // 중앙 잘록한 목 골드 링 (Narrow Neck / Waist)
             GameObject waistRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             waistRing.name = "Glass_WaistRing";
             SetupPart(waistRing, bodyRoot, Vector3.zero, Vector3.zero, new Vector3(0.18f, 0.025f, 0.18f), goldTrimMaterial);
 
-            // 3-5. 유리 내벽 형상과 일치하는 맞춤형 곡면 돔(Sphere) 모래 지오메트리
-            // 상단 모래 (Upper Sand - 둥근 돔 형상으로 유리 상단 내벽에 꼭 맞게 안착)
-            GameObject upperSand = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            upperSand.name = "Sand_Upper";
-            SetupPart(upperSand, bodyRoot, new Vector3(0f, UpperSandBaseY, 0f), Vector3.zero, new Vector3(0.78f, 0.84f, 0.78f), sandMaterial);
-            upperSandTransform = upperSand.transform;
+            // 3-5. 유리 내벽과 안식각을 반영하는 절차적 모래 지오메트리
+            upperSand = HourglassMeshBuilder.CreateSandMesh("Hourglass_UpperSandMesh");
+            GameObject upperSandObject = CreateMeshPart("Sand_Upper", bodyRoot, upperSand.Mesh, sandMaterial);
+            upperSandTransform = upperSandObject.transform;
 
-            // 하단 모래 (Lower Sand - 둥근 돔 형상으로 유리 바닥 내벽을 꽉 채우며 솟아오름)
-            GameObject lowerSand = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            lowerSand.name = "Sand_Lower";
-            SetupPart(lowerSand, bodyRoot, new Vector3(0f, LowerSandBaseY, 0f), Vector3.zero, new Vector3(0.80f, 0.02f, 0.80f), sandMaterial);
-            lowerSandTransform = lowerSand.transform;
+            lowerSand = HourglassMeshBuilder.CreateSandMesh("Hourglass_LowerSandMesh");
+            GameObject lowerSandObject = CreateMeshPart("Sand_Lower", bodyRoot, lowerSand.Mesh, sandMaterial);
+            lowerSandTransform = lowerSandObject.transform;
 
             // 중앙 낙하 스트림 (Sand Stream)
             GameObject stream = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             stream.name = "Sand_Stream";
-            SetupPart(stream, bodyRoot, Vector3.zero, Vector3.zero, new Vector3(0.022f, SandStreamBaseHeight * 0.5f, 0.022f), sandStreamMaterial);
+            SetupPart(stream, bodyRoot, Vector3.zero, Vector3.zero, new Vector3(0.022f, 0.55f, 0.022f), sandStreamMaterial);
             sandStreamTransform = stream.transform;
             sandStreamTransform.gameObject.SetActive(false);
 
@@ -551,6 +582,21 @@ namespace Tessera.Tabletop
             SetupPart(pivotSocket, wingRoot.transform, new Vector3(scrollSign * -0.02f, 0f, 0f), new Vector3(0f, 0f, 90f), new Vector3(0.16f, 0.08f, 0.16f), goldTrimMaterial);
         }
 
+        private static GameObject CreateMeshPart(string name, Transform parent, Mesh mesh, Material material)
+        {
+            GameObject obj = new(name) { layer = DecorationLayer };
+            obj.transform.SetParent(parent, false);
+
+            MeshFilter filter = obj.AddComponent<MeshFilter>();
+            filter.sharedMesh = mesh;
+
+            MeshRenderer renderer = obj.AddComponent<MeshRenderer>();
+            renderer.material = material;
+            renderer.shadowCastingMode = ShadowCastingMode.TwoSided;
+            renderer.receiveShadows = true;
+            return obj;
+        }
+
         private static void SetupPart(GameObject obj, Transform parent, Vector3 localPos, Vector3 localRot, Vector3 localScale, Material mat)
         {
             obj.layer = DecorationLayer;
@@ -610,6 +656,12 @@ namespace Tessera.Tabletop
             mat.renderQueue = (int)RenderQueue.Transparent;
 
             return mat;
+        }
+
+        private static void SetDoubleSided(Material material)
+        {
+            if (material.HasProperty("_Cull")) material.SetFloat("_Cull", (float)CullMode.Off);
+            material.doubleSidedGI = true;
         }
     }
 }

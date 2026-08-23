@@ -58,18 +58,22 @@ namespace Tessera.Games.AugmentedYacht
         private ParchmentScoreSheet parchmentScoreSheet;
         private AugmentCardTray augmentCardTray;
         private RollOrb rollOrb;
+        private RollCosmicCube rollCosmicCube;
         private RerollCounterBar rerollCounterBar;
         private HourglassTimer hourglassTimer;
         private CozyCandleStand candleStand;
         private RunicSlateMatrix runicSlateMatrix;
+        private TabletopTrinketCluster trinketCluster;
 
         public ParchmentScoreSheet ScoreSheet => parchmentScoreSheet;
         public AugmentCardTray CardTray => augmentCardTray;
         public RollOrb RollOrb => rollOrb;
+        public RollCosmicCube RollCosmicCube => rollCosmicCube;
         public RerollCounterBar RerollCounter => rerollCounterBar;
         public HourglassTimer Hourglass => hourglassTimer;
         public CozyCandleStand CandleStand => candleStand;
         public RunicSlateMatrix RunicMatrix => runicSlateMatrix;
+        public TabletopTrinketCluster TrinketCluster => trinketCluster;
 
         private Coroutine rollRoutine;
         private Coroutine keepRoutine;
@@ -217,23 +221,25 @@ namespace Tessera.Games.AugmentedYacht
                 parchmentScoreSheet.RefreshAllScores();
             }
 
+            EnsureSingleRollCosmicCube();
+
             if (rollOrb == null) rollOrb = FindFirstObjectByType<RollOrb>();
             if (rollOrb != null)
             {
-                rollOrb.BuildGeometry();
+                rollOrb.EnsureGeometry();
             }
 
             if (rerollCounterBar == null) rerollCounterBar = FindFirstObjectByType<RerollCounterBar>();
             if (rerollCounterBar != null)
             {
-                rerollCounterBar.BuildGeometry();
+                rerollCounterBar.EnsureGeometry();
                 rerollCounterBar.SetRollsRemaining(3, 3);
             }
 
             if (hourglassTimer == null) hourglassTimer = FindFirstObjectByType<HourglassTimer>();
             if (hourglassTimer != null)
             {
-                hourglassTimer.BuildGeometry();
+                hourglassTimer.EnsureGeometry();
             }
         }
 
@@ -685,7 +691,11 @@ namespace Tessera.Games.AugmentedYacht
                 hourglassTimer.StartTimer(60f);
             }
 
-            // 수정구 황도 12궁 다음 별자리로 순차 전환 (부드러운 크로스페이드)
+            // 코스믹 큐브 / 수정구 황도 12궁 다음 별자리로 순차 전환 (부드러운 크로스페이드)
+            if (rollCosmicCube != null)
+            {
+                rollCosmicCube.AdvanceZodiac();
+            }
             if (rollOrb != null)
             {
                 rollOrb.AdvanceZodiac();
@@ -924,10 +934,27 @@ namespace Tessera.Games.AugmentedYacht
                 DiceKeepTarget target = hit.collider.GetComponentInParent<DiceKeepTarget>();
                 if (target != null) hitIndex = target.Index;
 
+                RollCosmicCube cube = hit.collider.GetComponentInParent<RollCosmicCube>();
                 RollOrb orb = hit.collider.GetComponentInParent<RollOrb>();
-                if (orb != null) hitOrb = true;
+                if (cube != null || orb != null) hitOrb = true;
+
+                if (mouse.leftButton.wasPressedThisFrame)
+                {
+                    TabletopTrinketRing ringHit = hit.collider.GetComponentInParent<TabletopTrinketRing>();
+                    if (ringHit != null) ringHit.TriggerRattle();
+
+                    TabletopTrinketBrooch broochHit = hit.collider.GetComponentInParent<TabletopTrinketBrooch>();
+                    if (broochHit != null) broochHit.TriggerRattle();
+
+                    TabletopTrinketManaCrystal crystalHit = hit.collider.GetComponentInParent<TabletopTrinketManaCrystal>();
+                    if (crystalHit != null) crystalHit.TriggerGlow();
+                }
             }
 
+            if (rollCosmicCube != null)
+            {
+                rollCosmicCube.SetHovered(hitOrb);
+            }
             if (rollOrb != null)
             {
                 rollOrb.SetHovered(hitOrb);
@@ -959,6 +986,10 @@ namespace Tessera.Games.AugmentedYacht
                 return;
             }
 
+            if (rollCosmicCube != null)
+            {
+                rollCosmicCube.TriggerClickFeedback();
+            }
             if (rollOrb != null)
             {
                 rollOrb.TriggerClickFeedback();
@@ -969,6 +1000,10 @@ namespace Tessera.Games.AugmentedYacht
 
         private void SetRollInteraction(bool interactable)
         {
+            if (rollCosmicCube != null)
+            {
+                rollCosmicCube.SetInteractable(interactable);
+            }
             if (rollOrb != null)
             {
                 rollOrb.SetInteractable(interactable);
@@ -984,10 +1019,11 @@ namespace Tessera.Games.AugmentedYacht
                 : $"KEEP {keptCount}/{diceCount}";
 
             string valuesSummary = hasCompletedRoll ? $" [ {string.Join(", ", diceValues)} ]" : "";
-            string zodiacInfo = rollOrb != null ? $"  |  ★ {rollOrb.CurrentZodiacName}" : "";
+            string currentZodiac = rollCosmicCube != null ? rollCosmicCube.CurrentZodiacName : (rollOrb != null ? rollOrb.CurrentZodiacName : "");
+            string zodiacInfo = !string.IsNullOrEmpty(currentZodiac) ? $"  |  ★ {currentZodiac}" : "";
 
             statusText.text = string.IsNullOrEmpty(message)
-                ? $"{internalResolution.x} x {internalResolution.y}  |  {interaction}{valuesSummary}{zodiacInfo}  |  ORB / SPACE: ROLL"
+                ? $"{internalResolution.x} x {internalResolution.y}  |  {interaction}{valuesSummary}{zodiacInfo}  |  CUBE / SPACE: ROLL"
                 : $"{message}  |  {interaction}{valuesSummary}{zodiacInfo}";
         }
 
@@ -1325,22 +1361,19 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             }
             else
             {
-                rerollCounterBar.BuildGeometry();
+                rerollCounterBar.EnsureGeometry();
                 rerollCounterBar.SetRollsRemaining(3, 3);
             }
 
-            // 9. Roll Orb
-            if (rollOrb == null)
+            // 9. 3D Roll Cosmic Cube (코스믹 큐브)
+            EnsureSingleRollCosmicCube();
+            if (rollCosmicCube == null)
             {
-                rollOrb = layoutRoot.GetComponentInChildren<RollOrb>() ?? FindFirstObjectByType<RollOrb>();
-            }
-            if (rollOrb == null)
-            {
-                CreateRollOrb();
+                CreateRollCosmicCube();
             }
             else
             {
-                rollOrb.BuildGeometry();
+                rollCosmicCube.EnsureGeometry();
             }
 
             // 10. Hourglass Timer
@@ -1354,7 +1387,7 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             }
             else
             {
-                hourglassTimer.BuildGeometry();
+                hourglassTimer.EnsureGeometry();
             }
 
             // 11. Cozy Candle Stand
@@ -1368,7 +1401,7 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             }
             else
             {
-                candleStand.BuildGeometry();
+                candleStand.EnsureGeometry();
             }
 
             // 12. Runic Slate & Crystal Matrix
@@ -1384,6 +1417,20 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             {
                 runicSlateMatrix.EnsureGeometry();
             }
+
+            // 13. Trinket Cluster (Ring, Brooch, Crystal)
+            if (trinketCluster == null)
+            {
+                trinketCluster = layoutRoot.GetComponentInChildren<TabletopTrinketCluster>() ?? FindFirstObjectByType<TabletopTrinketCluster>();
+            }
+            if (trinketCluster == null)
+            {
+                CreateTrinketCluster();
+            }
+            else
+            {
+                trinketCluster.EnsureCluster();
+            }
         }
 
         private void BuildTableLayout()
@@ -1391,7 +1438,7 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             // 기존 layoutRoot 직계 자식 정리 (중복 생성 방지)
             if (layoutRoot != null)
             {
-                string[] cleanupKeywords = { "Paper", "Score Sheet", "Layered Parchment", "Game Info", "Burgundy", "3D Wood Planks Table", "3D Fabric Runner", "Medieval Wood Planks Table", "Emerald Wide Runner", "Emerald Ribbon Runner", "Solid Burgundy Game Mat", "Augment Card Tray", "Stone Augment Card Tray", "Roll Orb", "Reroll Counter Bar", "Inkwell", "Quill", "Paperweight", "Hourglass", "Candle", "Runic Slate", "Crystal Matrix" };
+                string[] cleanupKeywords = { "Paper", "Score Sheet", "Layered Parchment", "Game Info", "Burgundy", "3D Wood Planks Table", "3D Fabric Runner", "Medieval Wood Planks Table", "Emerald Wide Runner", "Emerald Ribbon Runner", "Solid Burgundy Game Mat", "Augment Card Tray", "Stone Augment Card Tray", "Roll Orb", "Roll Cosmic Cube", "Reroll Counter Bar", "Inkwell", "Quill", "Paperweight", "Hourglass", "Candle", "Runic Slate", "Crystal Matrix", "Trinket", "SilverRing", "Brooch", "ManaCrystal" };
                 List<GameObject> directChildrenToDelete = new();
                 for (int i = 0; i < layoutRoot.childCount; i++)
                 {
@@ -1407,8 +1454,17 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
                 }
                 foreach (GameObject go in directChildrenToDelete)
                 {
-                    if (Application.isPlaying) Destroy(go);
-                    else DestroyImmediate(go);
+                    if (go.GetComponent<RollCosmicCube>() != null) rollCosmicCube = null;
+                    go.SetActive(false);
+                    if (Application.isPlaying)
+                    {
+                        go.transform.SetParent(null, false);
+                        Destroy(go);
+                    }
+                    else
+                    {
+                        DestroyImmediate(go);
+                    }
                 }
             }
 
@@ -1433,8 +1489,8 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             // Layer 7 (Top-Parchment): 양피지 상단 3D 고풍스러운 다크 조약돌 누름돌(Paperweight) 생성
             CreatePaperweight();
 
-            // Layer 8 (Tray Bottom-Right): 주사위 트레이 하단 우측 3D 스타일라이즈드 마법 수정구 롤 오브젝트
-            CreateRollOrb();
+            // Layer 8 (Tray Bottom-Right): 주사위 트레이 하단 우측 3D 스타일라이즈드 코스믹 큐브 롤 오브젝트
+            CreateRollCosmicCube();
 
             // Layer 9 (Tray Bottom-Left): 주사위 트레이 하단 좌측 3D 남은 롤 횟수 안내 마나 크리스탈 바
             CreateRerollCounterBar();
@@ -1447,6 +1503,14 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
 
             // Layer 12 (Hourglass Right): 고대 룬 석판과 동적 마나 수정진 생성
             CreateRunicSlateMatrix();
+
+            // Layer 13 (Slate-Score Gap): 룬 석판과 족보 사이 3종 장식 오브젝트 클러스터 생성 (은반지, 체인 브로치, 마나 크리스탈)
+            CreateTrinketCluster();
+        }
+
+        private void CreateTrinketCluster()
+        {
+            trinketCluster = TabletopTrinketCluster.Create(layoutRoot);
         }
 
         private void CreateRunicSlateMatrix()
@@ -1478,6 +1542,47 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             rerollCounterBar = RerollCounterBar.Create(layoutRoot, counterPos, null, counterScale);
         }
 
+        private void CreateRollCosmicCube()
+        {
+            EnsureSingleRollCosmicCube();
+            if (rollCosmicCube != null) return;
+
+            Vector3 cubePos = new Vector3(-0.35f, 0.12f, -6.30f);
+            Vector3 cubeScale = Vector3.one * 1.35f;
+            rollCosmicCube = RollCosmicCube.Create(layoutRoot, cubePos, null, cubeScale);
+        }
+
+        private void EnsureSingleRollCosmicCube()
+        {
+            if (layoutRoot == null) return;
+
+            RollCosmicCube[] cubes = layoutRoot.GetComponentsInChildren<RollCosmicCube>(true);
+            RollCosmicCube primary = rollCosmicCube != null && rollCosmicCube.transform.IsChildOf(layoutRoot)
+                ? rollCosmicCube
+                : (cubes.Length > 0 ? cubes[0] : null);
+
+            foreach (RollCosmicCube cube in cubes)
+            {
+                if (cube == null || cube == primary) continue;
+
+                GameObject duplicate = cube.gameObject;
+                duplicate.SetActive(false);
+                if (Application.isPlaying)
+                {
+                    duplicate.transform.SetParent(null, false);
+                    Destroy(duplicate);
+                }
+                else
+                {
+                    DestroyImmediate(duplicate);
+                }
+            }
+
+            rollCosmicCube = primary;
+            if (rollCosmicCube != null) rollCosmicCube.EnsureGeometry();
+        }
+
+        // [기존 3D 수정구 보존] 필요 시 호출하여 전환 가능한 원본 롤 오브젝트
         private void CreateRollOrb()
         {
             Vector3 orbPos = new Vector3(-0.35f, 0.12f, -6.30f);

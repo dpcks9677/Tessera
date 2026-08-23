@@ -77,7 +77,44 @@ namespace Tessera.Tabletop
             if (transform.childCount == 0)
             {
                 BuildGeometry();
+                return;
             }
+
+            BindExistingGeometry();
+        }
+
+        private void BindExistingGeometry()
+        {
+            gemRenderers.Clear();
+            gemRidgeRenderers.Clear();
+            gemLights.Clear();
+
+            Transform platform = transform.Find("Sector_100_Stone_Platform");
+            if (platform == null) return;
+
+            for (int i = 0; i < 3; i++)
+            {
+                Transform gemRoot = platform.Find($"Faceted_Sapphire_Gem_{i}");
+                gemRenderers.Add(gemRoot?.Find("Faceted_Gem_Mesh")?.GetComponent<MeshRenderer>());
+
+                List<MeshRenderer> ridges = new();
+                Transform ridgeRoot = gemRoot?.Find("Facet_Ridge_Lines");
+                if (ridgeRoot != null)
+                {
+                    for (int r = 0; r < ridgeRoot.childCount; r++)
+                    {
+                        MeshRenderer renderer = ridgeRoot.GetChild(r).GetComponent<MeshRenderer>();
+                        if (renderer != null) ridges.Add(renderer);
+                    }
+                }
+                gemRidgeRenderers.Add(ridges);
+                gemLights.Add(gemRoot?.Find($"Gem_Light_{i}")?.GetComponent<Light>());
+            }
+
+            baseGemMat = gemRenderers.Count > 0 ? gemRenderers[0]?.sharedMaterial : null;
+            baseRidgeMat = gemRidgeRenderers.Count > 0 && gemRidgeRenderers[0].Count > 0
+                ? gemRidgeRenderers[0][0].sharedMaterial
+                : null;
         }
 
         public void SetRollsRemaining(int count, int max = 3)

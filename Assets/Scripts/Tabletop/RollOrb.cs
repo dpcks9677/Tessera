@@ -88,7 +88,31 @@ namespace Tessera.Tabletop
             if (transform.childCount == 0)
             {
                 BuildGeometry();
+                return;
             }
+
+            BindExistingGeometry();
+        }
+
+        private void BindExistingGeometry()
+        {
+            Transform orbRoot = transform.Find("Crystal_Orb_Root");
+            Transform bezelRoot = orbRoot?.Find("Orb_Ornate_Silver_Bezel");
+            if (orbRoot == null || bezelRoot == null) return;
+
+            MeshRenderer orbRenderer = orbRoot.Find("Crystal_Orb_Sphere")?.GetComponent<MeshRenderer>();
+            orbMaterial = orbRenderer?.sharedMaterial;
+
+            ambientHaloRenderer = bezelRoot.Find("Orb_Ambient_Halo_Plane")?.GetComponent<MeshRenderer>();
+            ambientHaloMaterial = ambientHaloRenderer?.sharedMaterial;
+
+            hearthstoneAuraRenderer = bezelRoot.Find("Orb_Hearthstone_Aura_Plane")?.GetComponent<MeshRenderer>();
+            hearthstoneAuraObject = hearthstoneAuraRenderer != null ? hearthstoneAuraRenderer.gameObject : null;
+            hearthstoneAuraMaterial = hearthstoneAuraRenderer?.sharedMaterial;
+
+            constellationRenderer = bezelRoot.Find("Orb_Constellation_Plane")?.GetComponent<MeshRenderer>();
+            constellationMaterial = constellationRenderer?.sharedMaterial;
+            magicParticles = orbRoot.GetComponentInChildren<ParticleSystem>(true);
         }
 
         public void AdvanceZodiac()

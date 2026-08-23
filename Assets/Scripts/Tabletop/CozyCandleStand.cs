@@ -63,7 +63,25 @@ namespace Tessera.Tabletop
             if (transform.childCount == 0 || IsGeometryMissing())
             {
                 BuildGeometry();
+                return;
             }
+
+            BindExistingGeometry();
+        }
+
+        private void BindExistingGeometry()
+        {
+            Transform cluster = transform.Find("Candle_Trio_Cluster");
+            if (cluster == null) return;
+
+            mainFlameTransform = cluster.Find("Candle_Main/Flame");
+            medFlameTransform = cluster.Find("Candle_Medium/Flame");
+            smallFlameTransform = cluster.Find("Candle_Small/Flame");
+            candleLight = cluster.Find("Candle_Point_Light")?.GetComponent<Light>();
+
+            if (mainFlameTransform != null) mainFlameBaseScale = mainFlameTransform.localScale;
+            if (medFlameTransform != null) medFlameBaseScale = medFlameTransform.localScale;
+            if (smallFlameTransform != null) smallFlameBaseScale = smallFlameTransform.localScale;
         }
 
         private bool IsGeometryMissing()
