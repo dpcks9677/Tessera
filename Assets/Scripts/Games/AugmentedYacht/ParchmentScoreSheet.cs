@@ -101,10 +101,20 @@ namespace Tessera.Games.AugmentedYacht
 
         private readonly Text[] p1ScoreLabels = new Text[14];
         private readonly Text[] p2ScoreLabels = new Text[14];
+        private readonly Image[] p1ScoreSlots = new Image[14];
+        private readonly Image[] p2ScoreSlots = new Image[14];
+        private readonly Button[] p1ScoreButtons = new Button[14];
+        private readonly Button[] p2ScoreButtons = new Button[14];
+        private readonly Dictionary<ScoreCategory, int> candidateScores = new();
         private Text p1BonusProgressText;
+        private Text p1HeaderText;
+        private Text p2HeaderText;
+        private int activePlayerIndex = -1;
+        private bool selectionEnabled;
 
         public PlayerScoreData Player1 => player1Data;
         public PlayerScoreData Player2 => player2Data;
+        public event Action<int, ScoreCategory> ScoreSelected;
 
 #if UNITY_EDITOR
         [UnityEditor.MenuItem("Tessera/Rebuild Score Sheet")]
@@ -139,16 +149,19 @@ namespace Tessera.Games.AugmentedYacht
 
         private void Awake()
         {
+            if (!Application.isPlaying) return;
             EnsureStructure();
         }
 
         private void OnEnable()
         {
+            if (!Application.isPlaying) return;
             EnsureStructure();
         }
 
         private void Start()
         {
+            if (!Application.isPlaying) return;
             EnsureStructure();
             RefreshAllScores();
         }
@@ -187,6 +200,7 @@ namespace Tessera.Games.AugmentedYacht
 
         private void LateUpdate()
         {
+            if (!Application.isPlaying) return;
             SyncOverlayTransform();
         }
 
@@ -367,6 +381,13 @@ namespace Tessera.Games.AugmentedYacht
             cachedCanvas = GameObject.Find("Pixel Presentation")?.GetComponent<Canvas>() ?? FindFirstObjectByType<Canvas>();
             if (cachedCanvas == null) return;
 
+            Array.Clear(p1ScoreLabels, 0, p1ScoreLabels.Length);
+            Array.Clear(p2ScoreLabels, 0, p2ScoreLabels.Length);
+            Array.Clear(p1ScoreSlots, 0, p1ScoreSlots.Length);
+            Array.Clear(p2ScoreSlots, 0, p2ScoreSlots.Length);
+            Array.Clear(p1ScoreButtons, 0, p1ScoreButtons.Length);
+            Array.Clear(p2ScoreButtons, 0, p2ScoreButtons.Length);
+
             // 씬 전체의 모든 구버전 HighRes Score Sheet Overlay 전수 검색 및 즉시 비활성화 후 파괴 (중복 렌더링 원천 방지)
             GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
             foreach (GameObject go in allObjects)
@@ -458,8 +479,8 @@ namespace Tessera.Games.AugmentedYacht
             // 2. Row 0: Header Band (CATEGORIES, P1, P2) - 빈 칸 없이 1:1 완벽 통합
             CreateBox(overlayObj.transform, "Header_Band", new Vector2(u0, VBottom(0)), new Vector2(u3, VTop(0)), Vector2.zero, Vector2.zero, headerBandColor);
             CreateLabel(overlayObj.transform, "Header_Categories", fontHeader, "CATEGORIES", new Vector2(u0, VBottom(0)), new Vector2(u1, VTop(0)), new Vector2(16f, 0f), new Vector2(-4f, 0f), 24, FontStyle.Normal, headerTextGold, TextAnchor.MiddleLeft);
-            CreateLabel(overlayObj.transform, "Header_P1", fontHeader, "P1", new Vector2(u1, VBottom(0)), new Vector2(u2, VTop(0)), Vector2.zero, Vector2.zero, 26, FontStyle.Normal, playerHeaderGold, TextAnchor.MiddleCenter);
-            CreateLabel(overlayObj.transform, "Header_P2", fontHeader, "P2", new Vector2(u2, VBottom(0)), new Vector2(u3, VTop(0)), Vector2.zero, Vector2.zero, 26, FontStyle.Normal, playerHeaderGold, TextAnchor.MiddleCenter);
+            p1HeaderText = CreateLabel(overlayObj.transform, "Header_P1", fontHeader, "P1", new Vector2(u1, VBottom(0)), new Vector2(u2, VTop(0)), Vector2.zero, Vector2.zero, 26, FontStyle.Normal, playerHeaderGold, TextAnchor.MiddleCenter);
+            p2HeaderText = CreateLabel(overlayObj.transform, "Header_P2", fontHeader, "P2", new Vector2(u2, VBottom(0)), new Vector2(u3, VTop(0)), Vector2.zero, Vector2.zero, 26, FontStyle.Normal, playerHeaderGold, TextAnchor.MiddleCenter);
 
             // 3. 족보 데이터
             string[] upperNames = { "Aces", "Deuces", "Threes", "Fours", "Fives", "Sixes" };
@@ -473,8 +494,8 @@ namespace Tessera.Games.AugmentedYacht
                 int r = i + 1;
 
                 // 점수 슬롯 배경 박스
-                CreateBox(overlayObj.transform, $"P1_Slot_Box_{r}", new Vector2(u1, VBottom(r)), new Vector2(u2, VTop(r)), new Vector2(3f, 3f), new Vector2(-3f, -3f), slotInsetColor);
-                CreateBox(overlayObj.transform, $"P2_Slot_Box_{r}", new Vector2(u2, VBottom(r)), new Vector2(u3, VTop(r)), new Vector2(3f, 3f), new Vector2(-3f, -3f), slotInsetColor);
+                ConfigureScoreSlot(CreateBox(overlayObj.transform, $"P1_Slot_Box_{r}", new Vector2(u1, VBottom(r)), new Vector2(u2, VTop(r)), new Vector2(3f, 3f), new Vector2(-3f, -3f), slotInsetColor), 0, (ScoreCategory)i);
+                ConfigureScoreSlot(CreateBox(overlayObj.transform, $"P2_Slot_Box_{r}", new Vector2(u2, VBottom(r)), new Vector2(u3, VTop(r)), new Vector2(3f, 3f), new Vector2(-3f, -3f), slotInsetColor), 1, (ScoreCategory)i);
 
                 // Col 0: 아이콘 + 족보명
                 CreateIcon(overlayObj.transform, upperIcons[i], new Vector2(u0, VBottom(r)), new Vector2(u1, VTop(r)), 22f, inkMain);
@@ -497,8 +518,9 @@ namespace Tessera.Games.AugmentedYacht
                 int r = i + 8;
 
                 // 점수 슬롯 배경 박스
-                CreateBox(overlayObj.transform, $"P1_Slot_Box_{r}", new Vector2(u1, VBottom(r)), new Vector2(u2, VTop(r)), new Vector2(3f, 3f), new Vector2(-3f, -3f), slotInsetColor);
-                CreateBox(overlayObj.transform, $"P2_Slot_Box_{r}", new Vector2(u2, VBottom(r)), new Vector2(u3, VTop(r)), new Vector2(3f, 3f), new Vector2(-3f, -3f), slotInsetColor);
+                ScoreCategory category = (ScoreCategory)((int)ScoreCategory.Choice + i);
+                ConfigureScoreSlot(CreateBox(overlayObj.transform, $"P1_Slot_Box_{r}", new Vector2(u1, VBottom(r)), new Vector2(u2, VTop(r)), new Vector2(3f, 3f), new Vector2(-3f, -3f), slotInsetColor), 0, category);
+                ConfigureScoreSlot(CreateBox(overlayObj.transform, $"P2_Slot_Box_{r}", new Vector2(u2, VBottom(r)), new Vector2(u3, VTop(r)), new Vector2(3f, 3f), new Vector2(-3f, -3f), slotInsetColor), 1, category);
 
                 // Col 0: 아이콘 + 족보명
                 CreateIcon(overlayObj.transform, lowerIcons[i], new Vector2(u0, VBottom(r)), new Vector2(u1, VTop(r)), 22f, inkMain);
@@ -514,6 +536,33 @@ namespace Tessera.Games.AugmentedYacht
             CreateLabel(overlayObj.transform, "Footer_Total", fontHeader, "TOTAL", new Vector2(u0, VBottom(14)), new Vector2(u1, VTop(14)), new Vector2(16f, 0f), new Vector2(-4f, 0f), 26, FontStyle.Normal, footerTextGold, TextAnchor.MiddleLeft);
             p1ScoreLabels[13] = CreateLabel(overlayObj.transform, "P1_Score_Label_13", fontHeader, "0", new Vector2(u1, VBottom(14)), new Vector2(u2, VTop(14)), Vector2.zero, Vector2.zero, 32, FontStyle.Normal, footerScoreGold, TextAnchor.MiddleCenter);
             p2ScoreLabels[13] = CreateLabel(overlayObj.transform, "P2_Score_Label_13", fontHeader, "0", new Vector2(u2, VBottom(14)), new Vector2(u3, VTop(14)), Vector2.zero, Vector2.zero, 32, FontStyle.Normal, footerScoreGold, TextAnchor.MiddleCenter);
+
+            RefreshAllScores();
+        }
+
+        private void ConfigureScoreSlot(GameObject slotObject, int playerIndex, ScoreCategory category)
+        {
+            if (slotObject == null) return;
+
+            Image image = slotObject.GetComponent<Image>();
+            if (image == null) return;
+            image.raycastTarget = true;
+
+            Button button = slotObject.AddComponent<Button>();
+            button.targetGraphic = image;
+            button.transition = Selectable.Transition.ColorTint;
+            ColorBlock colors = button.colors;
+            colors.highlightedColor = new Color32(226, 178, 82, 180);
+            colors.pressedColor = new Color32(162, 91, 38, 210);
+            colors.disabledColor = image.color;
+            button.colors = colors;
+            button.onClick.AddListener(() => OnScoreSlotClicked(playerIndex, category));
+
+            int categoryIndex = (int)category;
+            Image[] slots = playerIndex == 0 ? p1ScoreSlots : p2ScoreSlots;
+            Button[] buttons = playerIndex == 0 ? p1ScoreButtons : p2ScoreButtons;
+            slots[categoryIndex] = image;
+            buttons[categoryIndex] = button;
         }
 
         private static GameObject CreateBox(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax, Color color)
@@ -592,6 +641,7 @@ namespace Tessera.Games.AugmentedYacht
 
         public void SetPlayerScore(int playerIndex, ScoreCategory category, int score)
         {
+            if (playerIndex < 0 || playerIndex > 1 || !YachtScoreCalculator.IsScorable(category)) return;
             PlayerScoreData data = playerIndex == 0 ? player1Data : player2Data;
             int catIdx = (int)category;
 
@@ -606,6 +656,62 @@ namespace Tessera.Games.AugmentedYacht
 
             data.RecalculateTotal();
             RefreshAllScores();
+        }
+
+        public void ResetScores()
+        {
+            player1Data.Reset();
+            player2Data.Reset();
+            candidateScores.Clear();
+            activePlayerIndex = -1;
+            selectionEnabled = false;
+            RefreshAllScores();
+        }
+
+        public void SetActivePlayer(int playerIndex, bool canSelectScore)
+        {
+            activePlayerIndex = playerIndex >= 0 && playerIndex <= 1 ? playerIndex : -1;
+            selectionEnabled = canSelectScore;
+            RefreshAllScores();
+        }
+
+        public void ShowCandidateScores(int playerIndex, IReadOnlyDictionary<ScoreCategory, int> scores)
+        {
+            activePlayerIndex = playerIndex >= 0 && playerIndex <= 1 ? playerIndex : -1;
+            candidateScores.Clear();
+            if (scores != null)
+            {
+                foreach (KeyValuePair<ScoreCategory, int> entry in scores)
+                {
+                    if (YachtScoreCalculator.IsScorable(entry.Key)) candidateScores[entry.Key] = entry.Value;
+                }
+            }
+            selectionEnabled = activePlayerIndex >= 0 && candidateScores.Count > 0;
+            RefreshAllScores();
+        }
+
+        public void ClearCandidateScores()
+        {
+            candidateScores.Clear();
+            selectionEnabled = false;
+            RefreshAllScores();
+        }
+
+        public bool IsScoreFilled(int playerIndex, ScoreCategory category)
+        {
+            if (playerIndex < 0 || playerIndex > 1) return true;
+            PlayerScoreData data = playerIndex == 0 ? player1Data : player2Data;
+            int categoryIndex = (int)category;
+            if (categoryIndex >= 0 && categoryIndex <= 5) return data.upperScores[categoryIndex] >= 0;
+            if (categoryIndex >= 7 && categoryIndex <= 12) return data.lowerScores[categoryIndex - 7] >= 0;
+            return true;
+        }
+
+        private void OnScoreSlotClicked(int playerIndex, ScoreCategory category)
+        {
+            if (!Application.isPlaying || !selectionEnabled || playerIndex != activePlayerIndex) return;
+            if (IsScoreFilled(playerIndex, category) || !candidateScores.ContainsKey(category)) return;
+            ScoreSelected?.Invoke(playerIndex, category);
         }
 
         /// <summary>
@@ -642,6 +748,60 @@ namespace Tessera.Games.AugmentedYacht
         {
             UpdatePlayerScoreUI(player1Data, p1ScoreLabels, p1BonusProgressText);
             UpdatePlayerScoreUI(player2Data, p2ScoreLabels, null);
+            ApplyCandidatePreviews();
+            RefreshInteractionVisuals();
+        }
+
+        private void ApplyCandidatePreviews()
+        {
+            if (activePlayerIndex < 0 || activePlayerIndex > 1) return;
+            Text[] labels = activePlayerIndex == 0 ? p1ScoreLabels : p2ScoreLabels;
+            Color previewInk = new Color32(27, 111, 122, 255);
+            foreach (KeyValuePair<ScoreCategory, int> entry in candidateScores)
+            {
+                int categoryIndex = (int)entry.Key;
+                if (categoryIndex < 0 || categoryIndex >= labels.Length || IsScoreFilled(activePlayerIndex, entry.Key)) continue;
+                if (labels[categoryIndex] == null) continue;
+                labels[categoryIndex].text = entry.Value.ToString();
+                SetLabelColor(labels[categoryIndex], previewInk);
+            }
+        }
+
+        private void RefreshInteractionVisuals()
+        {
+            Color inactiveSlot = new Color32(150, 115, 80, 55);
+            Color activeSlot = new Color32(223, 172, 78, 105);
+            Color activeHeader = new Color32(255, 205, 100, 255);
+            Color inactiveHeader = new Color32(170, 135, 90, 220);
+
+            SetLabelColor(p1HeaderText, activePlayerIndex == 0 ? activeHeader : inactiveHeader);
+            SetLabelColor(p2HeaderText, activePlayerIndex == 1 ? activeHeader : inactiveHeader);
+
+            foreach (ScoreCategory category in YachtScoreCalculator.ScorableCategories)
+            {
+                int categoryIndex = (int)category;
+                UpdateSlotState(0, category, p1ScoreSlots[categoryIndex], p1ScoreButtons[categoryIndex], inactiveSlot, activeSlot);
+                UpdateSlotState(1, category, p2ScoreSlots[categoryIndex], p2ScoreButtons[categoryIndex], inactiveSlot, activeSlot);
+            }
+        }
+
+        private void UpdateSlotState(int playerIndex, ScoreCategory category, Image slot, Button button, Color inactiveColor, Color activeColor)
+        {
+            Color desiredColor = playerIndex == activePlayerIndex ? activeColor : inactiveColor;
+            if (slot != null) slot.color = desiredColor;
+            if (button == null) return;
+            ColorBlock colors = button.colors;
+            colors.normalColor = desiredColor;
+            colors.disabledColor = desiredColor;
+            colors.highlightedColor = playerIndex == activePlayerIndex
+                ? new Color32(235, 186, 88, 180)
+                : inactiveColor;
+            colors.pressedColor = new Color32(162, 91, 38, 210);
+            button.colors = colors;
+            button.interactable = selectionEnabled
+                && playerIndex == activePlayerIndex
+                && !IsScoreFilled(playerIndex, category)
+                && candidateScores.ContainsKey(category);
         }
 
         private void UpdatePlayerScoreUI(PlayerScoreData data, Text[] labels, Text bonusText)

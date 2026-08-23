@@ -19,6 +19,9 @@ namespace Tessera.Core
         public const float PresetFloorY = -0.528f;
         public const float TrayScale = 0.05f;
         public const float RollSurfaceY = 0.2f;
+        // 트레이 비주얼의 고정 Z 오프셋. 주사위 루트는 Z = 0을 기준으로 하므로,
+        // 정렬/킵 목표 좌표에 이 값을 더해 트레이 내부 기준과 일치시킨다.
+        public const float TrayCenterZ = -0.3f;
 
         // 트레이 내부 바닥 착지 시 Y 중심 좌표 (0.2 + 0.39 = 0.59f)
         public const float FloorRestY = RollSurfaceY + DieHalfSize; // 0.59f
@@ -39,14 +42,14 @@ namespace Tessera.Core
 
         public const float KeepStartX = KeepStartSourceX * TrayScale;       // -2.20f
         public const float KeepSpacingX = KeepSpacingSourceX * TrayScale;   //  1.10f
-        public const float KeepCenterZ = KeepCenterSourceZ * TrayScale;     // +2.90f
+        public const float KeepCenterZ = TrayCenterZ + KeepCenterSourceZ * TrayScale; // +2.60f
 
         // 트레이 전체 외곽 가로폭: 155 * 0.05 = 7.75f
         // 5개 주사위 정렬 시 총 가로폭이 트레이 가로폭과 같아지도록 하는 간격: (7.75 - 1.014) / 4 = 1.684f
         public const float TrayOuterWidth = 155f * TrayScale; // 7.75f
         public const float ActiveSpacing = 1.5f; // 요청에 따른 정렬 간격 조정 (1.5f)
 
-        public const float ActiveCenterZ = 0.0f;
+        public const float ActiveCenterZ = TrayCenterZ;
         public const float KeepDieScale = 0.95f;
 
         /// <summary>

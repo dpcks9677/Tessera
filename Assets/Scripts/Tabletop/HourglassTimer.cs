@@ -11,7 +11,7 @@ namespace Tessera.Tabletop
     /// - 피벗 힌지 중심(Y=1.30f)에서 40도 기본 각도로 거치된 독립 틸트 모래시계 본체 (Hourglass_RotatingBody)
     /// - 계단식 단차로 Z-fighting이 완벽히 방지된 앤틱 브론즈 캡 & 짐벌 베이스 플레이트
     /// - 상하 벌브와 중앙 목이 이어진 일체형 유리 및 안식각 기반 절차적 모래 지오메트리
-    /// - 턴 시작 시 부드러운 180도 플립(Flip) 애니메이션 (0.55초 SmoothStep) 및 상/하단 모래 자동 스왑
+    /// - 턴 시작 시 남은 모래의 정착 후 부드러운 180도 플립(Flip) 애니메이션 및 상/하단 모래 자동 스왑
     /// </summary>
     [ExecuteAlways]
     public sealed class HourglassTimer : MonoBehaviour
@@ -40,6 +40,7 @@ namespace Tessera.Tabletop
         private Material royalVioletMaterial;
 
         private int flipCount;
+        private float visualSandProgress = 1.0f;
 
         // 피벗 높이 및 기본 카메라 대면 틸트 각도 (40도 기본 거치)
         private const float PivotHeight = 1.30f;
@@ -180,6 +181,12 @@ namespace Tessera.Tabletop
         /// </summary>
         public void StartTimer(float duration = 60f, bool animateFlip = true)
         {
+            // 논리 타이머를 새 턴으로 갱신하기 전에, 화면에 남아 있는 실제 모래 비율을 보존한다.
+            float previousSandProgress = visualSandProgress;
+
+            StopAllCoroutines();
+            isRunning = false;
+            isFlipping = false;
             defaultDuration = Mathf.Max(1f, duration);
             remainingTime = defaultDuration;
 
@@ -194,7 +201,7 @@ namespace Tessera.Tabletop
 
             if (animateFlip && gameObject.activeInHierarchy)
             {
-                StartCoroutine(FlipAndStartRoutine());
+                StartCoroutine(SettleFlipAndStartRoutine(previousSandProgress));
             }
             else
             {
@@ -202,6 +209,30 @@ namespace Tessera.Tabletop
                 UpdateSandVisuals(1.0f);
                 OnTimerStarted?.Invoke();
             }
+        }
+
+        /// <summary>
+        /// 게임 시작 전 상태로 되돌립니다. 모래는 아래 벌브에 모이고 낙하 스트림은 숨겨집니다.
+        /// </summary>
+        public void SetIdleState(float duration = 60f)
+        {
+            StopAllCoroutines();
+            defaultDuration = Mathf.Max(1f, duration);
+            remainingTime = defaultDuration;
+            isRunning = false;
+            isFlipping = false;
+            flipCount = 0;
+
+            if (bodyRoot != null)
+            {
+                bodyRoot.localRotation = Quaternion.Euler(DefaultBodyPitch, 0f, 0f);
+            }
+            if (sandMaterial != null) sandMaterial.SetColor("_EmissionColor", sandEmissionNormal);
+            if (sandStreamMaterial != null) sandStreamMaterial.SetColor("_EmissionColor", sandEmissionNormal * 1.4f);
+
+            UpdateSandVisuals(0f);
+            if (sandStreamTransform != null) sandStreamTransform.gameObject.SetActive(false);
+            OnTimerTick?.Invoke(remainingTime, defaultDuration);
         }
 
         public void PauseTimer()
@@ -219,10 +250,10 @@ namespace Tessera.Tabletop
             }
         }
 
-        public void StopTimer()
+        public void StopTimer(bool hideSandStream = true)
         {
             isRunning = false;
-            if (sandStreamTransform != null) sandStreamTransform.gameObject.SetActive(false);
+            if (hideSandStream && sandStreamTransform != null) sandStreamTransform.gameObject.SetActive(false);
         }
 
         public void ResetTimer(float duration = 60f)
@@ -233,24 +264,67 @@ namespace Tessera.Tabletop
             UpdateSandVisuals(1.0f);
         }
 
-        private IEnumerator FlipAndStartRoutine()
+        private IEnumerator SettleFlipAndStartRoutine(float previousSandProgress)
         {
             isFlipping = true;
             isRunning = false;
 
+            // 1. 흐르던 모래를 짧게 감속해 멈춘다. 남아 있는 모래의 양은 바꾸지 않는다.
+            const float stopDuration = 0.10f;
+            float elapsed = 0f;
+            bool hadVisibleSandFlow = sandStreamTransform != null && sandStreamTransform.gameObject.activeSelf;
+            Vector3 initialStreamScale = sandStreamTransform != null ? sandStreamTransform.localScale : Vector3.zero;
+            Color initialStreamEmission = sandStreamMaterial != null && sandStreamMaterial.HasProperty("_EmissionColor")
+                ? sandStreamMaterial.GetColor("_EmissionColor")
+                : sandEmissionNormal * 1.4f;
+
+            while (hadVisibleSandFlow && elapsed < stopDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / stopDuration);
+                if (sandStreamTransform != null)
+                {
+                    sandStreamTransform.gameObject.SetActive(true);
+                    sandStreamTransform.localScale = Vector3.Lerp(initialStreamScale, Vector3.zero, t);
+                }
+                if (sandStreamMaterial != null) sandStreamMaterial.SetColor("_EmissionColor", Color.Lerp(initialStreamEmission, sandEmissionNormal * 0.45f, t));
+                yield return null;
+            }
+
             if (sandStreamTransform != null) sandStreamTransform.gameObject.SetActive(false);
 
+            // 2. 남은 모래를 아래 벌브로 빠르게 정착시킨다.
+            // 새 턴의 타이머 값과 독립된 시각 연출이므로, 이 구간에서만 모래를 가속한다.
+            if (previousSandProgress > 0.005f)
+            {
+                const float settleDuration = 0.50f;
+                elapsed = 0f;
+                while (elapsed < settleDuration)
+                {
+                    elapsed += Time.deltaTime;
+                    float t = Mathf.SmoothStep(0f, 1f, elapsed / settleDuration);
+                    UpdateSandVisuals(Mathf.Lerp(previousSandProgress, 0f, t), true);
+                    if (sandMaterial != null) sandMaterial.SetColor("_EmissionColor", Color.Lerp(sandEmissionNormal * 1.2f, sandEmissionNormal * 0.55f, t));
+                    if (sandStreamMaterial != null) sandStreamMaterial.SetColor("_EmissionColor", sandEmissionNormal * 1.8f);
+                    yield return null;
+                }
+            }
+
+            UpdateSandVisuals(0f);
+            if (sandStreamTransform != null) sandStreamTransform.gameObject.SetActive(false);
+
+            // 3. 모든 모래가 한쪽에 모인 상태에서 뒤집는다. 따라서 플립 직후 자연스럽게 새 턴의 위 벌브가 가득 찬다.
             flipCount++;
             float startPitch = DefaultBodyPitch + (flipCount - 1) * 180f;
             float targetPitch = DefaultBodyPitch + flipCount * 180f;
 
-            float duration = 0.55f;
-            float elapsed = 0f;
+            const float flipDuration = 0.62f;
+            elapsed = 0f;
 
-            while (elapsed < duration)
+            while (elapsed < flipDuration)
             {
                 elapsed += Time.deltaTime;
-                float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / flipDuration);
                 float currentPitch = Mathf.Lerp(startPitch, targetPitch, t);
 
                 if (bodyRoot != null)
@@ -266,9 +340,9 @@ namespace Tessera.Tabletop
                 bodyRoot.localRotation = Quaternion.Euler(targetPitch, 0f, 0f);
             }
 
-            // 모래시계 회전 완료 직후 1.0f 상태(위쪽 꽉 참)로 0.5초 대기 (모래가 바로 떨어지지 않고 여유를 둠)
             UpdateSandVisuals(1.0f);
-            yield return new WaitForSeconds(0.5f);
+            if (sandMaterial != null) sandMaterial.SetColor("_EmissionColor", sandEmissionNormal);
+            if (sandStreamMaterial != null) sandStreamMaterial.SetColor("_EmissionColor", sandEmissionNormal * 1.4f);
 
             isFlipping = false;
             isRunning = true;
@@ -280,9 +354,10 @@ namespace Tessera.Tabletop
         /// 남은 시간 비율 (1.0 -> 0.0)에 따라 유리 내벽 형상에 맞춘 모래 표면을 실시간 업데이트합니다.
         /// (홀수/짝수 플립에 따라 상/하단 모래 역할을 자동 스왑)
         /// </summary>
-        private void UpdateSandVisuals(float progress)
+        private void UpdateSandVisuals(float progress, bool forceStream = false)
         {
             float clamped = Mathf.Clamp01(progress);
+            visualSandProgress = clamped;
 
             // 플립 홀수/짝수에 따라 상/하단 역할 스왑
             bool isEvenFlip = (flipCount % 2 == 0);
@@ -313,7 +388,7 @@ namespace Tessera.Tabletop
             // 3. 중앙 모래 낙하 스트림
             if (sandStreamTransform != null)
             {
-                bool showStream = isRunning && clamped > 0.005f && clamped < 0.999f;
+                bool showStream = (isRunning || forceStream) && clamped > 0.005f && clamped < 0.999f;
                 sandStreamTransform.gameObject.SetActive(showStream);
                 if (showStream)
                 {

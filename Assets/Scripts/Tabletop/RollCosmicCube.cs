@@ -95,13 +95,11 @@ namespace Tessera.Tabletop
 
         private void Awake()
         {
-            ZodiacConstellationData.ClearCache();
             EnsureGeometry();
         }
 
         private void OnEnable()
         {
-            ZodiacConstellationData.ClearCache();
             EnsureGeometry();
         }
 

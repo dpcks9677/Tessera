@@ -64,6 +64,13 @@ namespace Tessera.Games.AugmentedYacht
         private CozyCandleStand candleStand;
         private RunicSlateMatrix runicSlateMatrix;
         private TabletopTrinketCluster trinketCluster;
+        private YachtGameSession gameSession;
+        private GameObject startGameOverlay;
+        private GameObject gameResultOverlay;
+        private Text timerText;
+        private Text resultText;
+        private bool turnTransitionInProgress;
+        private string pendingTurnTransitionMessage;
 
         public ParchmentScoreSheet ScoreSheet => parchmentScoreSheet;
         public AugmentCardTray CardTray => augmentCardTray;
@@ -74,6 +81,7 @@ namespace Tessera.Games.AugmentedYacht
         public CozyCandleStand CandleStand => candleStand;
         public RunicSlateMatrix RunicMatrix => runicSlateMatrix;
         public TabletopTrinketCluster TrinketCluster => trinketCluster;
+        public YachtGameSession GameSession => gameSession;
 
         private Coroutine rollRoutine;
         private Coroutine keepRoutine;
@@ -110,6 +118,7 @@ namespace Tessera.Games.AugmentedYacht
         private const float TrayVisualY = RollSurfaceY + 10.283531f * TrayScale;
         private const int DiceLayer = 8;
         private const int DecorationLayer = 11;
+        private const float TurnDurationSeconds = 60f;
 
         public bool IsSettled => hasCompletedRoll && !isArranging && rollRoutine == null;
         public int KeptDieCount => keptDice.FindAll(kept => kept).Count;
@@ -241,6 +250,10 @@ namespace Tessera.Games.AugmentedYacht
             {
                 hourglassTimer.EnsureGeometry();
             }
+
+            WarmUpRollAssets();
+            ResolveRunicMatrix();
+            InitializeYachtGame();
         }
 
         private void EnsureDiceMaterials()
@@ -361,6 +374,296 @@ namespace Tessera.Games.AugmentedYacht
             StartCoroutine(LoadSoundsAsync());
         }
 
+        private void InitializeYachtGame()
+        {
+            if (!Application.isPlaying || parchmentScoreSheet == null) return;
+
+            parchmentScoreSheet.EnsureStructure();
+            parchmentScoreSheet.ScoreSelected -= OnScoreSelected;
+            parchmentScoreSheet.ScoreSelected += OnScoreSelected;
+
+            gameSession = new YachtGameSession(parchmentScoreSheet.Player1, parchmentScoreSheet.Player2);
+            parchmentScoreSheet.SetActivePlayer(-1, false);
+
+            if (hourglassTimer != null)
+            {
+                hourglassTimer.OnTimerStarted -= OnTurnTimerStarted;
+                hourglassTimer.OnTimerTick -= OnTurnTimerTick;
+                hourglassTimer.OnTimerExpired -= OnTurnTimerExpired;
+                hourglassTimer.OnTimerStarted += OnTurnTimerStarted;
+                hourglassTimer.OnTimerTick += OnTurnTimerTick;
+                hourglassTimer.OnTimerExpired += OnTurnTimerExpired;
+                hourglassTimer.SetIdleState(TurnDurationSeconds);
+            }
+
+            runicSlateMatrix?.SetRoundProgress(0);
+            rerollCounterBar?.SetRollsRemaining(YachtGameSession.MaxRolls, YachtGameSession.MaxRolls);
+            EnsureGameFlowUI();
+            ResetDiceForTurn();
+            SetTimerTextIdle();
+            SetRollInteraction(false);
+            UpdateStatusText("게임 시작 버튼을 눌러 주세요.");
+        }
+
+        private void EnsureGameFlowUI()
+        {
+            GameObject canvasObject = GameObject.Find("Pixel Presentation");
+            if (canvasObject == null) return;
+
+            Transform existingStart = canvasObject.transform.Find("Yacht Game Start Overlay");
+            if (existingStart != null)
+            {
+                if (Application.isPlaying) Destroy(existingStart.gameObject);
+                else DestroyImmediate(existingStart.gameObject);
+            }
+            Transform existingResult = canvasObject.transform.Find("Yacht Game Result Overlay");
+            if (existingResult != null)
+            {
+                if (Application.isPlaying) Destroy(existingResult.gameObject);
+                else DestroyImmediate(existingResult.gameObject);
+            }
+            Transform existingTimer = canvasObject.transform.Find("Yacht Turn Timer Text");
+            if (existingTimer != null)
+            {
+                if (Application.isPlaying) Destroy(existingTimer.gameObject);
+                else DestroyImmediate(existingTimer.gameObject);
+            }
+
+            timerText = CreateText(canvasObject.transform, "Yacht Turn Timer Text", "--", Vector2.zero,
+                new Vector2(120f, 46f), new Vector2(0.5f, 0.5f), 30, TextAnchor.MiddleCenter);
+            timerText.color = new Color32(255, 226, 151, 255);
+
+            startGameOverlay = CreateFullScreenOverlay(canvasObject.transform, "Yacht Game Start Overlay");
+            Text title = CreateText(startGameOverlay.transform, "Title", "기본 요트 다이스", new Vector2(0f, 40f),
+                new Vector2(620f, 90f), new Vector2(0.5f, 0.5f), 42, TextAnchor.MiddleCenter);
+            title.color = new Color32(255, 222, 151, 255);
+            CreateButton(startGameOverlay.transform, "Start Yacht Game", "게임 시작", new Vector2(0f, -65f),
+                new Vector2(240f, 64f), new Vector2(0.5f, 0.5f), StartNewGame);
+
+            gameResultOverlay = CreateFullScreenOverlay(canvasObject.transform, "Yacht Game Result Overlay");
+            resultText = CreateText(gameResultOverlay.transform, "Result", "", new Vector2(0f, 35f),
+                new Vector2(720f, 150f), new Vector2(0.5f, 0.5f), 36, TextAnchor.MiddleCenter);
+            resultText.color = new Color32(255, 222, 151, 255);
+            CreateButton(gameResultOverlay.transform, "Restart Yacht Game", "다시 시작", new Vector2(0f, -105f),
+                new Vector2(240f, 64f), new Vector2(0.5f, 0.5f), StartNewGame);
+            gameResultOverlay.SetActive(false);
+        }
+
+        private static GameObject CreateFullScreenOverlay(Transform parent, string name)
+        {
+            GameObject overlay = new(name, typeof(RectTransform), typeof(Image));
+            overlay.transform.SetParent(parent, false);
+            RectTransform rect = overlay.GetComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            Image image = overlay.GetComponent<Image>();
+            image.color = new Color(0.035f, 0.025f, 0.04f, 0.82f);
+            image.raycastTarget = true;
+            return overlay;
+        }
+
+        private void StartNewGame()
+        {
+            if (gameSession == null) return;
+
+            if (rollRoutine != null)
+            {
+                StopCoroutine(rollRoutine);
+                rollRoutine = null;
+            }
+            if (keepRoutine != null)
+            {
+                StopCoroutine(keepRoutine);
+                keepRoutine = null;
+            }
+
+            hourglassTimer?.SetIdleState(TurnDurationSeconds);
+            gameSession.StartNewGame();
+            parchmentScoreSheet.RefreshAllScores();
+            parchmentScoreSheet.SetActivePlayer(gameSession.CurrentPlayerIndex, false);
+            startGameOverlay?.SetActive(false);
+            gameResultOverlay?.SetActive(false);
+            runicSlateMatrix?.SetRoundProgress(gameSession.CurrentRound);
+            ResetDiceForTurn();
+            BeginTurnTimer();
+            UpdateStatusText();
+        }
+
+        private void BeginTurnTimer()
+        {
+            turnTransitionInProgress = true;
+            parchmentScoreSheet?.SetActivePlayer(gameSession.CurrentPlayerIndex, false);
+            SetRollInteraction(false);
+            SetTimerText(TurnDurationSeconds);
+
+            if (hourglassTimer != null)
+            {
+                hourglassTimer.StartTimer(TurnDurationSeconds, true);
+            }
+            else
+            {
+                OnTurnTimerStarted();
+            }
+        }
+
+        private void OnTurnTimerStarted()
+        {
+            string transitionMessage = null;
+            if (gameSession != null && gameSession.Phase == YachtGamePhase.TurnTransition)
+            {
+                if (!gameSession.AdvanceTurnAfterAnimation()) return;
+
+                transitionMessage = pendingTurnTransitionMessage;
+                pendingTurnTransitionMessage = null;
+                ResetDiceForTurn();
+                rerollCounterBar?.SetRollsRemaining(YachtGameSession.MaxRolls, YachtGameSession.MaxRolls);
+                runicSlateMatrix?.SetRoundProgress(gameSession.CurrentRound);
+                parchmentScoreSheet?.SetActivePlayer(gameSession.CurrentPlayerIndex, false);
+            }
+
+            turnTransitionInProgress = false;
+            RefreshGameInteraction();
+            UpdateStatusText(transitionMessage);
+        }
+
+        private void OnTurnTimerTick(float remaining, float total)
+        {
+            SetTimerText(remaining);
+        }
+
+        private void OnTurnTimerExpired()
+        {
+            if (gameSession == null || !gameSession.ResolveTimeout(out YachtTurnResult result)) return;
+            parchmentScoreSheet.RefreshAllScores();
+            HandleTurnCompleted(result, "시간 초과로 점수가 자동 확정되었습니다.");
+        }
+
+        private void OnScoreSelected(int playerIndex, ScoreCategory category)
+        {
+            if (gameSession == null || playerIndex != gameSession.CurrentPlayerIndex) return;
+            if (!gameSession.TryCommitScore(category, out YachtTurnResult result)) return;
+
+            parchmentScoreSheet.RefreshAllScores();
+            HandleTurnCompleted(result, $"P{result.ScoredPlayerIndex + 1} 점수 {result.Score}점 확정");
+        }
+
+        private void HandleTurnCompleted(YachtTurnResult result, string message)
+        {
+            hourglassTimer?.StopTimer(false);
+            parchmentScoreSheet.ClearCandidateScores();
+            SetRollInteraction(false);
+
+            if (result.GameEnded)
+            {
+                FinishGame();
+                return;
+            }
+
+            pendingTurnTransitionMessage = message;
+            UpdateStatusText(message);
+            BeginTurnHandoffAnimation();
+        }
+
+        private void BeginTurnHandoffAnimation()
+        {
+            turnTransitionInProgress = true;
+            SetRollInteraction(false);
+            SetTimerText(TurnDurationSeconds);
+
+            if (hourglassTimer != null)
+            {
+                hourglassTimer.StartTimer(TurnDurationSeconds, true);
+            }
+            else
+            {
+                OnTurnTimerStarted();
+            }
+        }
+
+        private void FinishGame()
+        {
+            turnTransitionInProgress = false;
+            hourglassTimer?.StopTimer();
+            rerollCounterBar?.SetRollsRemaining(0, YachtGameSession.MaxRolls);
+            parchmentScoreSheet?.SetActivePlayer(-1, false);
+            SetRollInteraction(false);
+            SetTimerTextIdle();
+
+            int p1 = gameSession.GetPlayer(0).totalScore;
+            int p2 = gameSession.GetPlayer(1).totalScore;
+            string winner = p1 == p2 ? "무승부" : (p1 > p2 ? "P1 승리" : "P2 승리");
+            if (resultText != null) resultText.text = $"{winner}\nP1  {p1}점   ·   P2  {p2}점";
+            gameResultOverlay?.SetActive(true);
+            UpdateStatusText("게임이 종료되었습니다.");
+        }
+
+        private void ResetDiceForTurn()
+        {
+            for (int i = 0; i < keptDice.Count; i++) keptDice[i] = false;
+            for (int i = 0; i < keptSlotIndices.Count; i++) keptSlotIndices[i] = -1;
+            hasCompletedRoll = false;
+            isArranging = false;
+            hoveredDieIndex = -1;
+            ArrangeDiceInitialPositions();
+        }
+
+        private void RefreshGameInteraction()
+        {
+            if (gameSession == null)
+            {
+                SetRollInteraction(false);
+                return;
+            }
+
+            bool allKept = keptDice.Count > 0 && keptDice.TrueForAll(kept => kept);
+            bool canRoll = gameSession.CanRoll && !turnTransitionInProgress
+                && rollRoutine == null && !isArranging && !allKept;
+            SetRollInteraction(canRoll);
+
+            if (gameSession.Phase == YachtGamePhase.ScoreSelection && !turnTransitionInProgress)
+            {
+                parchmentScoreSheet?.ShowCandidateScores(gameSession.CurrentPlayerIndex, gameSession.CurrentCandidates);
+            }
+            else if (gameSession.Phase != YachtGamePhase.GameOver)
+            {
+                parchmentScoreSheet?.SetActivePlayer(gameSession.CurrentPlayerIndex, false);
+            }
+        }
+
+        private bool CanInitiateRoll()
+        {
+            if (gameSession == null || !gameSession.CanRoll || turnTransitionInProgress) return false;
+            if (rollRoutine != null || isArranging) return false;
+            return keptDice.Count == 0 || !keptDice.TrueForAll(kept => kept);
+        }
+
+        private void SetTimerText(float remaining)
+        {
+            if (timerText == null) return;
+            int seconds = Mathf.Clamp(Mathf.CeilToInt(remaining), 0, Mathf.CeilToInt(TurnDurationSeconds));
+            timerText.text = $"{seconds}s";
+            timerText.color = seconds <= 10
+                ? new Color32(255, 100, 65, 255)
+                : new Color32(255, 226, 151, 255);
+        }
+
+        private void SetTimerTextIdle()
+        {
+            if (timerText == null) return;
+            timerText.text = "--";
+            timerText.color = new Color32(160, 140, 120, 230);
+        }
+
+        private void UpdateTimerTextPosition()
+        {
+            if (timerText == null || hourglassTimer == null || worldCamera == null) return;
+            Vector3 worldPosition = hourglassTimer.transform.position + Vector3.up * 2.8f;
+            Vector3 screenPosition = worldCamera.WorldToScreenPoint(worldPosition);
+            if (screenPosition.z > 0f) timerText.rectTransform.position = screenPosition;
+        }
+
         private void InitializeAudio()
         {
             audioSource = GetComponent<AudioSource>();
@@ -374,12 +677,21 @@ namespace Tessera.Games.AugmentedYacht
 
         private void InitializePresetCatalog()
         {
-            presetCatalog = DicePresetCatalog.LoadAll();
+            // 첫 롤에서 JSON을 동기 파싱하면 입력 프레임이 멈춘다.
+            // 현재 게임에서 사용하는 5주사위 프리셋을 초기화 단계에서 미리 적재한다.
+            presetCatalog = DicePresetCatalog.LoadNormalFiveDice();
             if (!presetCatalog.IsLoaded)
             {
-                presetCatalog = DicePresetCatalog.LoadNormalFiveDice();
+                presetCatalog = DicePresetCatalog.LoadAll();
             }
             Debug.Log($"Preset Catalog loaded: {presetCatalog.NormalFiveDiceClipCount} clips available.");
+        }
+
+        private static void WarmUpRollAssets()
+        {
+            // 저장된 씬의 기존 롤 오브젝트는 지오메트리를 재생성하지 않아 별자리 캐시가 비어 있을 수 있다.
+            // 입력 처리 전에 베이킹을 끝내, 첫 RollDice 호출이 프레임을 점유하지 않도록 한다.
+            ZodiacConstellationData.GetAllZodiacTextures();
         }
 
         private void InitializeBakedController()
@@ -646,35 +958,33 @@ namespace Tessera.Games.AugmentedYacht
 
         public void RollDice()
         {
-            if (rollRoutine != null || isArranging) return;
-            if (keptDice.Count > 0 && keptDice.TrueForAll(kept => kept))
+            if (!CanInitiateRoll())
             {
-                UpdateStatusText("모든 주사위가 킵되어 있습니다.");
+                if (gameSession != null && gameSession.RollsRemaining <= 0)
+                    UpdateStatusText("이번 턴의 굴림 횟수를 모두 사용했습니다.");
+                else if (keptDice.Count > 0 && keptDice.TrueForAll(kept => kept))
+                    UpdateStatusText("모든 주사위가 킵되어 있습니다.");
                 return;
             }
 
+            if (!gameSession.TryBeginRoll()) return;
+            hourglassTimer?.PauseTimer();
+            parchmentScoreSheet?.ClearCandidateScores();
+            rerollCounterBar?.SetRollsRemaining(gameSession.RollsRemaining, YachtGameSession.MaxRolls);
+            SetRollInteraction(false);
             rollRoutine = StartCoroutine(PerformBakedRollSequence());
         }
 
         public void ResetAndRollDice()
         {
-            if (rollRoutine != null)
-            {
-                StopCoroutine(rollRoutine);
-                rollRoutine = null;
-            }
-            if (keepRoutine != null)
-            {
-                StopCoroutine(keepRoutine);
-                keepRoutine = null;
-            }
+            if (rollRoutine != null || isArranging) return;
 
             for (int i = 0; i < keptDice.Count; i++)
             {
                 keptDice[i] = false;
             }
-
-            rollRoutine = StartCoroutine(PerformBakedRollSequence());
+            for (int i = 0; i < keptSlotIndices.Count; i++) keptSlotIndices[i] = -1;
+            RollDice();
         }
 
         private IEnumerator PerformBakedRollSequence()
@@ -685,12 +995,6 @@ namespace Tessera.Games.AugmentedYacht
             hoveredDieIndex = -1;
             rollIndex++;
 
-            // 첫 굴림 / 턴 시작 시 모래시계 타이머 자동 가동 (60초)
-            if (hourglassTimer != null && !hourglassTimer.IsRunning && !hourglassTimer.IsFlipping)
-            {
-                hourglassTimer.StartTimer(60f);
-            }
-
             // 코스믹 큐브 / 수정구 황도 12궁 다음 별자리로 순차 전환 (부드러운 크로스페이드)
             if (rollCosmicCube != null)
             {
@@ -699,13 +1003,6 @@ namespace Tessera.Games.AugmentedYacht
             if (rollOrb != null)
             {
                 rollOrb.AdvanceZodiac();
-            }
-
-            // 3D 롤 카운터 육각 보석 잔여 수 갱신
-            if (rerollCounterBar != null)
-            {
-                int remaining = Mathf.Max(0, 3 - ((rollIndex - 1) % 3) - 1);
-                rerollCounterBar.SetRollsRemaining(remaining, 3);
             }
 
             // 1. 결정론적 타겟 눈 생성 (1~6)
@@ -758,12 +1055,16 @@ namespace Tessera.Games.AugmentedYacht
 
             hasCompletedRoll = true;
             rollRoutine = null;
-            SetRollInteraction(true);
+            gameSession.CompleteRoll(diceValues);
+            parchmentScoreSheet?.ShowCandidateScores(gameSession.CurrentPlayerIndex, gameSession.CurrentCandidates);
+            hourglassTimer?.ResumeTimer();
+            RefreshGameInteraction();
             UpdateStatusText();
         }
 
         public bool SetDieKept(int index, bool kept)
         {
+            if (gameSession == null || !gameSession.CanKeepDice || turnTransitionInProgress) return false;
             if (!hasCompletedRoll || isArranging || rollRoutine != null) return false;
             if (index < 0 || index >= keptDice.Count || activeDice[index] == null) return false;
             if (keptDice[index] == kept) return true;
@@ -812,6 +1113,7 @@ namespace Tessera.Games.AugmentedYacht
         {
             yield return AnimateDiceLayout(0.32f);
             keepRoutine = null;
+            RefreshGameInteraction();
         }
 
         private IEnumerator AnimateDiceLayout(float duration)
@@ -909,6 +1211,7 @@ namespace Tessera.Games.AugmentedYacht
             }
 
             UpdateDicePointer();
+            UpdateTimerTextPosition();
             FitFullScreen();
         }
 
@@ -979,12 +1282,7 @@ namespace Tessera.Games.AugmentedYacht
 
         private void OnRollOrbClicked()
         {
-            if (rollRoutine != null || isArranging) return;
-            if (keptDice.Count > 0 && keptDice.TrueForAll(kept => kept))
-            {
-                UpdateStatusText("모든 주사위가 킵되어 있습니다.");
-                return;
-            }
+            if (!CanInitiateRoll()) return;
 
             if (rollCosmicCube != null)
             {
@@ -1013,6 +1311,18 @@ namespace Tessera.Games.AugmentedYacht
         private void UpdateStatusText(string message = null)
         {
             if (statusText == null) return;
+
+            if (gameSession == null || gameSession.Phase == YachtGamePhase.WaitingToStart)
+            {
+                statusText.text = message ?? "게임 시작 버튼을 눌러 주세요.";
+                return;
+            }
+            if (gameSession.Phase == YachtGamePhase.GameOver)
+            {
+                statusText.text = message ?? "게임이 종료되었습니다.";
+                return;
+            }
+
             int keptCount = keptDice.FindAll(kept => kept).Count;
             string interaction = hoveredDieIndex >= 0 && hasCompletedRoll && !isArranging
                 ? (keptDice[hoveredDieIndex] ? "CLICK: UNKEEP" : "CLICK: KEEP")
@@ -1021,10 +1331,11 @@ namespace Tessera.Games.AugmentedYacht
             string valuesSummary = hasCompletedRoll ? $" [ {string.Join(", ", diceValues)} ]" : "";
             string currentZodiac = rollCosmicCube != null ? rollCosmicCube.CurrentZodiacName : (rollOrb != null ? rollOrb.CurrentZodiacName : "");
             string zodiacInfo = !string.IsNullOrEmpty(currentZodiac) ? $"  |  ★ {currentZodiac}" : "";
+            string turnInfo = $"P{gameSession.CurrentPlayerIndex + 1}  |  {gameSession.CurrentRound}/12 라운드  |  굴림 {gameSession.RollsRemaining}회";
 
             statusText.text = string.IsNullOrEmpty(message)
-                ? $"{internalResolution.x} x {internalResolution.y}  |  {interaction}{valuesSummary}{zodiacInfo}  |  CUBE / SPACE: ROLL"
-                : $"{message}  |  {interaction}{valuesSummary}{zodiacInfo}";
+                ? $"{turnInfo}  |  {interaction}{valuesSummary}{zodiacInfo}"
+                : $"{message}  |  {turnInfo}  |  {interaction}{valuesSummary}{zodiacInfo}";
         }
 
         public void ToggleResolution()
@@ -1873,7 +2184,7 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             if (yachtTrayMesh == null) return;
             GameObject tray = new("Yacht Tray Visual", typeof(MeshFilter), typeof(MeshRenderer));
             tray.transform.SetParent(layoutRoot, false);
-            tray.transform.localPosition = new Vector3(CenterSectionX, TrayVisualY, -0.3f);
+            tray.transform.localPosition = new Vector3(CenterSectionX, TrayVisualY, DiceBoardMetrics.TrayCenterZ);
             tray.transform.localRotation = Quaternion.identity;
             tray.transform.localScale = Vector3.one * TrayScale;
 
@@ -2195,6 +2506,16 @@ keyLightToggleButton = CreateButton(canvasObject.transform, "KeyLightToggle", $"
 
         private void OnDestroy()
         {
+            if (parchmentScoreSheet != null)
+            {
+                parchmentScoreSheet.ScoreSelected -= OnScoreSelected;
+            }
+            if (hourglassTimer != null)
+            {
+                hourglassTimer.OnTimerStarted -= OnTurnTimerStarted;
+                hourglassTimer.OnTimerTick -= OnTurnTimerTick;
+                hourglassTimer.OnTimerExpired -= OnTurnTimerExpired;
+            }
             if (worldCamera != null) worldCamera.targetTexture = null;
             if (lowResolutionTarget != null)
             {
