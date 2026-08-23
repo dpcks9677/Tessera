@@ -55,8 +55,8 @@ public static class BuildDiceGraphicsPoC
 
     private static void BuildOnce()
     {
-        if (EditorApplication.isPlayingOrWillChangePlaymode) return;
-        if (EditorApplication.isCompiling)
+        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying || Application.isPlaying) return;
+        if (EditorApplication.isCompiling || EditorApplication.isUpdating)
         {
             EditorApplication.delayCall += BuildOnce;
             return;
@@ -80,12 +80,14 @@ public static class BuildDiceGraphicsPoC
     [MenuItem("Tools/Tessera/Upgrade Scene To Yacht Tray")]
     public static void UpgradeExistingSceneToYachtTray()
     {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying || Application.isPlaying) return;
         Mesh trayMesh = EnsureYachtTrayMesh();
         if (trayMesh != null) UpgradeExistingSceneToYachtTray(trayMesh);
     }
 
     private static void UpgradeExistingSceneToYachtTray(Mesh trayMesh)
     {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying || Application.isPlaying) return;
         Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
         AugmentedYachtController controller = Object.FindFirstObjectByType<AugmentedYachtController>();
         if (controller == null)
@@ -104,6 +106,7 @@ public static class BuildDiceGraphicsPoC
     [MenuItem("Tools/Tessera/Bake Editable Layout Into Scene")]
     public static void BakeEditableLayoutIntoExistingScene()
     {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying || Application.isPlaying) return;
         Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
         AugmentedYachtController controller = Object.FindFirstObjectByType<AugmentedYachtController>();
         if (controller == null)
@@ -112,11 +115,37 @@ public static class BuildDiceGraphicsPoC
             return;
         }
 
-        controller.BuildEditableLayout();
+        controller.BuildEditableLayout(true);
         EditorUtility.SetDirty(controller);
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene, ScenePath);
         Debug.Log("Tessera editable layout baked into scene.");
+    }
+
+    [MenuItem("Tools/Tessera/Sync Code-Generated Objects Into Scene")]
+    public static void SyncCodeGeneratedObjectsIntoScene()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying || Application.isPlaying) return;
+
+        Scene scene = SceneManager.GetActiveScene();
+        if (!scene.IsValid() || scene.path != ScenePath)
+        {
+            scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+        }
+
+        AugmentedYachtController controller = Object.FindFirstObjectByType<AugmentedYachtController>();
+        if (controller == null)
+        {
+            Debug.LogError("Tessera scene sync stopped: controller missing from Augmented Dice scene.");
+            return;
+        }
+
+        // 완성된 씬 오브젝트는 유지하고, 코드 정의상 누락된 지오메트리만 복원합니다.
+        controller.BuildEditableLayout();
+        EditorUtility.SetDirty(controller);
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene, ScenePath);
+        Debug.Log("Tessera code-generated objects synchronized into the editable scene.");
     }
 
     private static void EnsureSceneExists()

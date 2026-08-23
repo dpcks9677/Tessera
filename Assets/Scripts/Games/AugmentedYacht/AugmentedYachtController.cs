@@ -56,13 +56,30 @@ namespace Tessera.Games.AugmentedYacht
         private Transform layoutRoot;
         private Transform diceRoot;
         private ParchmentScoreSheet parchmentScoreSheet;
+        private AugmentCardTray augmentCardTray;
+        private RollOrb rollOrb;
+        private RollCosmicCube rollCosmicCube;
+        private RerollCounterBar rerollCounterBar;
+        private HourglassTimer hourglassTimer;
+        private CozyCandleStand candleStand;
+        private RunicSlateMatrix runicSlateMatrix;
+        private TabletopTrinketCluster trinketCluster;
 
         public ParchmentScoreSheet ScoreSheet => parchmentScoreSheet;
+        public AugmentCardTray CardTray => augmentCardTray;
+        public RollOrb RollOrb => rollOrb;
+        public RollCosmicCube RollCosmicCube => rollCosmicCube;
+        public RerollCounterBar RerollCounter => rerollCounterBar;
+        public HourglassTimer Hourglass => hourglassTimer;
+        public CozyCandleStand CandleStand => candleStand;
+        public RunicSlateMatrix RunicMatrix => runicSlateMatrix;
+        public TabletopTrinketCluster TrinketCluster => trinketCluster;
 
         private Coroutine rollRoutine;
         private Coroutine keepRoutine;
-        private Button rollButton;
         private Button keyLightToggleButton;
+        private Button runeFxButton;
+        private Button runeStoneButton;
         private int rollIndex;
         private bool hasCompletedRoll;
         private bool isArranging;
@@ -102,10 +119,36 @@ namespace Tessera.Games.AugmentedYacht
             return index >= 0 && index < diceValues.Count ? diceValues[index] : 0;
         }
 
-        public void BuildEditableLayout()
+        public void BuildEditableLayout(bool forceRebuild = false)
         {
             if (Application.isPlaying) return;
-            if (editableLayoutBuilt && ResolveEditableLayout()) return;
+            if (!forceRebuild && editableLayoutBuilt && ResolveEditableLayout()) return;
+
+            if (upscaleShader == null)
+            {
+#if UNITY_EDITOR
+                upscaleShader = UnityEditor.AssetDatabase.LoadAssetAtPath<Shader>("Assets/Rendering/Shaders/DicePixelUpscale.shader")
+                    ?? Shader.Find("DicePoC/PixelUpscale");
+#else
+                upscaleShader = Shader.Find("DicePoC/PixelUpscale");
+#endif
+            }
+
+            // 부모 transform 아래의 기존 모든 프레젠테이션 및 레이아웃 오브젝트 전수 제거
+            List<GameObject> toDestroy = new();
+            for (int i = 0; i < transform.childCount; i++)
+            {
+                Transform child = transform.GetChild(i);
+                if (child != null && (child.name.Contains("Pixel Presentation") || child.name.Contains("Graphics Layout") || child.name.Contains("Display 1 Camera")))
+                {
+                    toDestroy.Add(child.gameObject);
+                }
+            }
+            foreach (GameObject go in toDestroy)
+            {
+                if (Application.isPlaying) Destroy(go);
+                else DestroyImmediate(go);
+            }
 
             BuildWorld();
             BuildPresentation();
@@ -165,11 +208,39 @@ namespace Tessera.Games.AugmentedYacht
             ApplyRenderSettings();
             ConfigureLighting();
             SyncTrayVisualMat();
+            EnsureSingleAudioListener();
             InitializeAudio();
             InitializePresetCatalog();
             InitializeBakedController();
             EnsureDiceRoot();
             EnsureDiceState();
+
+            if (parchmentScoreSheet == null) parchmentScoreSheet = FindFirstObjectByType<ParchmentScoreSheet>();
+            if (parchmentScoreSheet != null)
+            {
+                parchmentScoreSheet.RefreshAllScores();
+            }
+
+            EnsureSingleRollCosmicCube();
+
+            if (rollOrb == null) rollOrb = FindFirstObjectByType<RollOrb>();
+            if (rollOrb != null)
+            {
+                rollOrb.EnsureGeometry();
+            }
+
+            if (rerollCounterBar == null) rerollCounterBar = FindFirstObjectByType<RerollCounterBar>();
+            if (rerollCounterBar != null)
+            {
+                rerollCounterBar.EnsureGeometry();
+                rerollCounterBar.SetRollsRemaining(3, 3);
+            }
+
+            if (hourglassTimer == null) hourglassTimer = FindFirstObjectByType<HourglassTimer>();
+            if (hourglassTimer != null)
+            {
+                hourglassTimer.EnsureGeometry();
+            }
         }
 
         private void EnsureDiceMaterials()
@@ -204,6 +275,7 @@ namespace Tessera.Games.AugmentedYacht
             {
                 SyncTableBackground();
                 SyncTrayVisualMat();
+                ApplyRenderSettings();
             }
 #endif
         }
@@ -215,6 +287,7 @@ namespace Tessera.Games.AugmentedYacht
             {
                 SyncTableBackground();
                 SyncTrayVisualMat();
+                ApplyRenderSettings();
             }
         }
 #endif
@@ -274,6 +347,11 @@ namespace Tessera.Games.AugmentedYacht
             ApplyTopDownCamera();
             ConfigureLighting();
             SyncTrayVisualMat();
+            if (parchmentScoreSheet != null)
+            {
+                parchmentScoreSheet.EnsureStructure();
+                parchmentScoreSheet.RefreshAllScores();
+            }
             editableLayoutBuilt = true;
         }
 
@@ -551,7 +629,7 @@ namespace Tessera.Games.AugmentedYacht
                 Vector3 targetPos = DiceBoardMetrics.GetActivePosition(i, activeDice.Count);
                 activeDice[i].transform.localPosition = targetPos;
                 activeDice[i].transform.localScale = Vector3.one * DiceBoardMetrics.ActiveDieSize;
-                Quaternion targetRot = DiceFaceOrientation.GetTopRotation(diceValues[i], Vector3.forward);
+                Quaternion targetRot = DiceFaceOrientation.GetCameraFacingRotation(diceValues[i], 75.0f);
                 activeDice[i].transform.localRotation = targetRot;
 
                 Transform visual = activeDice[i].transform.Find("Visual");
@@ -606,6 +684,29 @@ namespace Tessera.Games.AugmentedYacht
             SetRollInteraction(false);
             hoveredDieIndex = -1;
             rollIndex++;
+
+            // 첫 굴림 / 턴 시작 시 모래시계 타이머 자동 가동 (60초)
+            if (hourglassTimer != null && !hourglassTimer.IsRunning && !hourglassTimer.IsFlipping)
+            {
+                hourglassTimer.StartTimer(60f);
+            }
+
+            // 코스믹 큐브 / 수정구 황도 12궁 다음 별자리로 순차 전환 (부드러운 크로스페이드)
+            if (rollCosmicCube != null)
+            {
+                rollCosmicCube.AdvanceZodiac();
+            }
+            if (rollOrb != null)
+            {
+                rollOrb.AdvanceZodiac();
+            }
+
+            // 3D 롤 카운터 육각 보석 잔여 수 갱신
+            if (rerollCounterBar != null)
+            {
+                int remaining = Mathf.Max(0, 3 - ((rollIndex - 1) % 3) - 1);
+                rerollCounterBar.SetRollsRemaining(remaining, 3);
+            }
 
             // 1. 결정론적 타겟 눈 생성 (1~6)
             for (int i = 0; i < diceCount; i++)
@@ -724,27 +825,27 @@ namespace Tessera.Games.AugmentedYacht
 
             var unkeptIndices = new List<int>();
 
-            // 1. 킵된 주사위와 활성(킵되지 않은) 주사위 분류 및 순수 Yaw 수평 정렬 목표 회전 계산
+            // 1. 킵된 주사위와 활성(킵되지 않은) 주사위 분류 및 카메라 정면 틸트 정렬 목표 회전 계산
             for (int i = 0; i < activeDice.Count; i++)
             {
                 diceTransforms[i] = activeDice[i] != null ? activeDice[i].transform : null;
                 float normalScale = DiceBoardMetrics.DieSize;
 
-                // 현재 주사위 루트의 착지 회전으로부터 윗면(Top)을 유지한 채 순수 Yaw 수평만 정렬하는 직립 회전 계산
+                // 현재 주사위 루트의 착지 회전으로부터 윗면(Top)을 유지한 채 카메라 렌즈를 정면으로 바라보도록 회전 계산
                 Quaternion currentRot = activeDice[i] != null ? activeDice[i].transform.localRotation : Quaternion.identity;
-                Quaternion pureYawRot = DiceFaceOrientation.GetUprightRotation(currentRot, Vector3.forward);
+                Quaternion cameraFacingRot = DiceFaceOrientation.GetCameraFacingUprightRotation(currentRot, 75.0f);
 
                 if (keptDice[i])
                 {
                     int slot = (keptSlotIndices.Count > i && keptSlotIndices[i] >= 0) ? keptSlotIndices[i] : 0;
                     targetPositions[i] = DiceBoardMetrics.GetKeepPosition(slot);
                     targetScales[i] = Vector3.one * (normalScale * DiceBoardMetrics.KeepDieScale);
-                    targetRotations[i] = pureYawRot;
+                    targetRotations[i] = cameraFacingRot;
                 }
                 else
                 {
                     unkeptIndices.Add(i);
-                    targetRotations[i] = pureYawRot;
+                    targetRotations[i] = cameraFacingRot;
                 }
             }
 
@@ -827,10 +928,36 @@ namespace Tessera.Games.AugmentedYacht
                 0f);
             Ray ray = worldCamera.ViewportPointToRay(viewport);
             int hitIndex = -1;
+            bool hitOrb = false;
             if (Physics.Raycast(ray, out RaycastHit hit, 50f))
             {
                 DiceKeepTarget target = hit.collider.GetComponentInParent<DiceKeepTarget>();
                 if (target != null) hitIndex = target.Index;
+
+                RollCosmicCube cube = hit.collider.GetComponentInParent<RollCosmicCube>();
+                RollOrb orb = hit.collider.GetComponentInParent<RollOrb>();
+                if (cube != null || orb != null) hitOrb = true;
+
+                if (mouse.leftButton.wasPressedThisFrame)
+                {
+                    TabletopTrinketRing ringHit = hit.collider.GetComponentInParent<TabletopTrinketRing>();
+                    if (ringHit != null) ringHit.TriggerRattle();
+
+                    TabletopTrinketBrooch broochHit = hit.collider.GetComponentInParent<TabletopTrinketBrooch>();
+                    if (broochHit != null) broochHit.TriggerRattle();
+
+                    TabletopTrinketManaCrystal crystalHit = hit.collider.GetComponentInParent<TabletopTrinketManaCrystal>();
+                    if (crystalHit != null) crystalHit.TriggerGlow();
+                }
+            }
+
+            if (rollCosmicCube != null)
+            {
+                rollCosmicCube.SetHovered(hitOrb);
+            }
+            if (rollOrb != null)
+            {
+                rollOrb.SetHovered(hitOrb);
             }
 
             if (hoveredDieIndex != hitIndex)
@@ -839,24 +966,48 @@ namespace Tessera.Games.AugmentedYacht
                 UpdateStatusText();
             }
 
+            if (hitOrb && mouse.leftButton.wasPressedThisFrame)
+            {
+                OnRollOrbClicked();
+            }
+
             if (hitIndex >= 0 && mouse.leftButton.wasPressedThisFrame)
             {
                 ToggleKeep(hitIndex);
             }
         }
 
-        private void SetRollInteraction(bool interactable)
+        private void OnRollOrbClicked()
         {
-            if (rollButton != null) rollButton.interactable = interactable;
-            UpdateRollButton();
+            if (rollRoutine != null || isArranging) return;
+            if (keptDice.Count > 0 && keptDice.TrueForAll(kept => kept))
+            {
+                UpdateStatusText("모든 주사위가 킵되어 있습니다.");
+                return;
+            }
+
+            if (rollCosmicCube != null)
+            {
+                rollCosmicCube.TriggerClickFeedback();
+            }
+            if (rollOrb != null)
+            {
+                rollOrb.TriggerClickFeedback();
+            }
+
+            RollDice();
         }
 
-        private void UpdateRollButton()
+        private void SetRollInteraction(bool interactable)
         {
-            if (rollButton == null) return;
-            Text label = rollButton.GetComponentInChildren<Text>();
-            if (label == null) return;
-            label.text = $"ROLL {diceCount} DICE";
+            if (rollCosmicCube != null)
+            {
+                rollCosmicCube.SetInteractable(interactable);
+            }
+            if (rollOrb != null)
+            {
+                rollOrb.SetInteractable(interactable);
+            }
         }
 
         private void UpdateStatusText(string message = null)
@@ -868,10 +1019,12 @@ namespace Tessera.Games.AugmentedYacht
                 : $"KEEP {keptCount}/{diceCount}";
 
             string valuesSummary = hasCompletedRoll ? $" [ {string.Join(", ", diceValues)} ]" : "";
+            string currentZodiac = rollCosmicCube != null ? rollCosmicCube.CurrentZodiacName : (rollOrb != null ? rollOrb.CurrentZodiacName : "");
+            string zodiacInfo = !string.IsNullOrEmpty(currentZodiac) ? $"  |  ★ {currentZodiac}" : "";
 
             statusText.text = string.IsNullOrEmpty(message)
-                ? $"{internalResolution.x} x {internalResolution.y}  |  {interaction}{valuesSummary}  |  SPACE: ROLL"
-                : $"{message}  |  {interaction}{valuesSummary}";
+                ? $"{internalResolution.x} x {internalResolution.y}  |  {interaction}{valuesSummary}{zodiacInfo}  |  CUBE / SPACE: ROLL"
+                : $"{message}  |  {interaction}{valuesSummary}{zodiacInfo}";
         }
 
         public void ToggleResolution()
@@ -906,6 +1059,7 @@ namespace Tessera.Games.AugmentedYacht
         {
             internalResolution = resolution;
             ApplyRenderSettings();
+            if (parchmentScoreSheet != null) parchmentScoreSheet.SyncOverlayTransform();
         }
 
         private bool ResolveEditableLayout()
@@ -931,11 +1085,56 @@ namespace Tessera.Games.AugmentedYacht
             statusText = statusObject != null ? statusObject.GetComponent<Text>() : null;
             upscaleMaterial = gameImage != null ? gameImage.material : null;
 
-            // 항상 최신 테이블 및 배경 레이아웃 동기화
-            BuildTableLayout();
+            if (imageObject != null)
+            {
+                imageObject.SetActive(true);
+            }
+
+            EnsureSingleAudioListener();
+
+            // 씬 내 테이블 요소들 안전 바인딩 또는 누락분 생성 (파괴 없이)
+            EnsureTableLayoutElements();
 
             ApplyTopDownCamera();
+            CreateRenderTarget();
+            ApplyRenderSettings();
             return worldCamera != null && presentationCamera != null && gameImage != null;
+        }
+
+        private void EnsureSingleAudioListener()
+        {
+            if (worldCamera == null)
+            {
+                GameObject camObj = GameObject.Find("Full Field World Camera") ?? GameObject.Find("Low Resolution World Camera");
+                if (camObj != null) worldCamera = camObj.GetComponent<Camera>();
+            }
+
+            AudioListener[] allListeners = Resources.FindObjectsOfTypeAll<AudioListener>();
+            bool foundPrimary = false;
+            foreach (AudioListener al in allListeners)
+            {
+                if (al == null) continue;
+#if UNITY_EDITOR
+                if (UnityEditor.EditorUtility.IsPersistent(al.gameObject)) continue;
+#endif
+                if (!foundPrimary && worldCamera != null && al.gameObject == worldCamera.gameObject)
+                {
+                    al.enabled = true;
+                    foundPrimary = true;
+                }
+                else
+                {
+                    if (Application.isPlaying) Destroy(al);
+                    else DestroyImmediate(al);
+                }
+            }
+
+            if (!foundPrimary && worldCamera != null)
+            {
+                AudioListener al = worldCamera.GetComponent<AudioListener>();
+                if (al == null) al = worldCamera.gameObject.AddComponent<AudioListener>();
+                al.enabled = true;
+            }
         }
 
         public void SyncTableBackground()
@@ -970,8 +1169,9 @@ namespace Tessera.Games.AugmentedYacht
         {
             Button resolutionButton = GameObject.Find("Debug")?.GetComponent<Button>();
             keyLightToggleButton = GameObject.Find("KeyLightToggle")?.GetComponent<Button>();
+            runeFxButton = GameObject.Find("RuneFxDebug")?.GetComponent<Button>();
+            runeStoneButton = GameObject.Find("RuneStoneDebug")?.GetComponent<Button>();
             GameObject quantizeObject = GameObject.Find("Quantize");
-            rollButton = GameObject.Find("Roll Dice")?.GetComponent<Button>();
             if (resolutionButton != null)
             {
                 resolutionButton.onClick.RemoveAllListeners();
@@ -992,13 +1192,31 @@ namespace Tessera.Games.AugmentedYacht
                 Text label = keyLightToggleButton.GetComponentInChildren<Text>();
                 if (label != null) label.text = $"Light: {keyLightPresets[currentKeyLightPresetIndex].name}";
             }
-            if (quantizeObject != null) quantizeObject.SetActive(false);
-            if (rollButton != null)
+            
+            GameObject canvasObject = GameObject.Find("Pixel Presentation");
+            if (canvasObject != null)
             {
-                rollButton.onClick.RemoveAllListeners();
-                rollButton.onClick.AddListener(ResetAndRollDice);
+                if (runeFxButton == null)
+                {
+                    runeFxButton = CreateButton(canvasObject.transform, "RuneFxDebug", "Runes: 0/12", new Vector2(333f, -18f), new Vector2(140f, 38f), new Vector2(0f, 1f), DebugAdvanceRuneLighting);
+                }
+                if (runeStoneButton == null)
+                {
+                    runeStoneButton = CreateButton(canvasObject.transform, "RuneStoneDebug", "Stones: 0/4", new Vector2(483f, -18f), new Vector2(150f, 38f), new Vector2(0f, 1f), DebugCycleRuneStones);
+                }
             }
-            UpdateRollButton();
+            if (runeFxButton != null)
+            {
+                runeFxButton.onClick.RemoveAllListeners();
+                runeFxButton.onClick.AddListener(DebugAdvanceRuneLighting);
+            }
+            if (runeStoneButton != null)
+            {
+                runeStoneButton.onClick.RemoveAllListeners();
+                runeStoneButton.onClick.AddListener(DebugCycleRuneStones);
+            }
+            UpdateRunicDebugButtonLabels();
+if (quantizeObject != null) quantizeObject.SetActive(false);
         }
 
         private void BuildWorld()
@@ -1008,13 +1226,32 @@ namespace Tessera.Games.AugmentedYacht
 
             EnsureLayoutRoot();
 
+            // 씬 전체의 모든 구버전 카메라 전수 검색 및 삭제 (중복 생성 방지)
+            GameObject[] allSceneObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+            foreach (GameObject go in allSceneObjects)
+            {
+                if (go == null) continue;
+#if UNITY_EDITOR
+                if (UnityEditor.EditorUtility.IsPersistent(go)) continue;
+#endif
+                if (go.name == "Full Field World Camera" || go.name == "Low Resolution World Camera")
+                {
+                    if (Application.isPlaying) Destroy(go);
+                    else DestroyImmediate(go);
+                }
+            }
+
+            Transform existingLight = layoutRoot != null ? layoutRoot.Find("Key Light") : null;
+            if (existingLight != null)
+            {
+                if (Application.isPlaying) Destroy(existingLight.gameObject);
+                else DestroyImmediate(existingLight.gameObject);
+            }
+
             GameObject cameraObject = new("Full Field World Camera", typeof(Camera), typeof(AudioListener));
             cameraObject.transform.SetParent(layoutRoot, false);
             worldCamera = cameraObject.GetComponent<Camera>();
-            worldCamera.transform.position = new Vector3(0f, 9.6f, -5.2f);
             ApplyTopDownCamera();
-            worldCamera.orthographic = true;
-            worldCamera.orthographicSize = 8.0f;
             worldCamera.nearClipPlane = 0.1f;
             worldCamera.farClipPlane = 40f;
             worldCamera.clearFlags = CameraClearFlags.SolidColor;
@@ -1031,7 +1268,7 @@ namespace Tessera.Games.AugmentedYacht
             key.shadowStrength = 0.58f;
             key.shadowBias = 0.005f;
             key.shadowNormalBias = 0.03f;
-            lightObject.transform.rotation = Quaternion.Euler(75f, -20f, 0f);
+            lightObject.transform.rotation = Quaternion.Euler(60f, -35f, 0f);
             lightObject.transform.SetParent(layoutRoot, true);
 
             BuildTableLayout();
@@ -1040,11 +1277,16 @@ namespace Tessera.Games.AugmentedYacht
 
         private void ApplyTopDownCamera()
         {
+            ApplyAngledWorldCamera(75.0f);
+        }
+
+        private void ApplyAngledWorldCamera(float pitchAngle = 75.0f)
+        {
             if (worldCamera == null) return;
-            worldCamera.transform.position = new Vector3(CenterSectionX, 11f, 0f);
-            worldCamera.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+            worldCamera.transform.position = new Vector3(CenterSectionX, 11.5f, -3.1f);
+            worldCamera.transform.rotation = Quaternion.Euler(pitchAngle, 0f, 0f);
             worldCamera.orthographic = true;
-            worldCamera.orthographicSize = 8.0f;
+            worldCamera.orthographicSize = 8.2f;
         }
 
         private void EnsureLayoutRoot()
@@ -1062,14 +1304,141 @@ namespace Tessera.Games.AugmentedYacht
             layoutRoot = root.transform;
         }
 
+        private void EnsureTableLayoutElements()
+        {
+            EnsureLayoutRoot();
+
+            // 1. Table
+            Transform table = layoutRoot.Find("3D Wood Planks Table");
+            if (table == null) Create3DWoodPlanksTable();
+
+            // 2. Runner
+            Transform runner = layoutRoot.Find("3D Fabric Runner");
+            if (runner == null) Create3DFabricRunner();
+
+            // 3. Tray Visual
+            Transform tray = layoutRoot.Find("Yacht Tray Visual");
+            if (tray == null) CreateGameTray();
+
+            // 4. Augment Card Tray
+            if (augmentCardTray == null)
+            {
+                augmentCardTray = layoutRoot.GetComponentInChildren<AugmentCardTray>() ?? FindFirstObjectByType<AugmentCardTray>();
+            }
+            if (augmentCardTray == null) CreateAugmentCardTray();
+
+            // 5. Parchment Score Sheet
+            if (parchmentScoreSheet == null)
+            {
+                parchmentScoreSheet = layoutRoot.GetComponentInChildren<ParchmentScoreSheet>() ?? FindFirstObjectByType<ParchmentScoreSheet>();
+            }
+            if (parchmentScoreSheet == null)
+            {
+                CreateScoreSheet();
+            }
+            else
+            {
+                parchmentScoreSheet.EnsureStructure();
+                parchmentScoreSheet.RefreshAllScores();
+            }
+
+            // 6. Inkwell and Quill
+            Transform inkwell = layoutRoot.Find("3D Inkwell and Quill Decoration");
+            if (inkwell == null) CreateInkwellAndQuill();
+
+            // 7. Paperweight
+            Transform paperweight = layoutRoot.Find("3D Parchment Paperweight");
+            if (paperweight == null) CreatePaperweight();
+
+            // 8. Reroll Counter Bar
+            if (rerollCounterBar == null)
+            {
+                rerollCounterBar = layoutRoot.GetComponentInChildren<RerollCounterBar>() ?? FindFirstObjectByType<RerollCounterBar>();
+            }
+            if (rerollCounterBar == null)
+            {
+                CreateRerollCounterBar();
+            }
+            else
+            {
+                rerollCounterBar.EnsureGeometry();
+                rerollCounterBar.SetRollsRemaining(3, 3);
+            }
+
+            // 9. 3D Roll Cosmic Cube (코스믹 큐브)
+            EnsureSingleRollCosmicCube();
+            if (rollCosmicCube == null)
+            {
+                CreateRollCosmicCube();
+            }
+            else
+            {
+                rollCosmicCube.EnsureGeometry();
+            }
+
+            // 10. Hourglass Timer
+            if (hourglassTimer == null)
+            {
+                hourglassTimer = layoutRoot.GetComponentInChildren<HourglassTimer>() ?? FindFirstObjectByType<HourglassTimer>();
+            }
+            if (hourglassTimer == null)
+            {
+                CreateHourglassTimer();
+            }
+            else
+            {
+                hourglassTimer.EnsureGeometry();
+            }
+
+            // 11. Cozy Candle Stand
+            if (candleStand == null)
+            {
+                candleStand = layoutRoot.GetComponentInChildren<CozyCandleStand>() ?? FindFirstObjectByType<CozyCandleStand>();
+            }
+            if (candleStand == null)
+            {
+                CreateCandleStand();
+            }
+            else
+            {
+                candleStand.EnsureGeometry();
+            }
+
+            // 12. Runic Slate & Crystal Matrix
+            if (runicSlateMatrix == null)
+            {
+                runicSlateMatrix = layoutRoot.GetComponentInChildren<RunicSlateMatrix>() ?? FindFirstObjectByType<RunicSlateMatrix>();
+            }
+            if (runicSlateMatrix == null)
+            {
+                CreateRunicSlateMatrix();
+            }
+            else
+            {
+                runicSlateMatrix.EnsureGeometry();
+            }
+
+            // 13. Trinket Cluster (Ring, Brooch, Crystal)
+            if (trinketCluster == null)
+            {
+                trinketCluster = layoutRoot.GetComponentInChildren<TabletopTrinketCluster>() ?? FindFirstObjectByType<TabletopTrinketCluster>();
+            }
+            if (trinketCluster == null)
+            {
+                CreateTrinketCluster();
+            }
+            else
+            {
+                trinketCluster.EnsureCluster();
+            }
+        }
+
         private void BuildTableLayout()
         {
-            // 기존 테이블/러너/종이/매트/양피지 오브젝트 정리 후 재생성 (중복 및 구버전 방지)
-            string[] cleanupKeywords = { "Paper", "Score Sheet", "Layered Parchment", "Game Info", "Burgundy", "3D Wood Planks Table", "3D Fabric Runner", "Medieval Wood Planks Table", "Emerald Wide Runner", "Emerald Ribbon Runner", "Solid Burgundy Game Mat" };
-            
-            // 1. layoutRoot 직계 자식 정리
+            // 기존 layoutRoot 직계 자식 정리 (중복 생성 방지)
             if (layoutRoot != null)
             {
+                string[] cleanupKeywords = { "Paper", "Score Sheet", "Layered Parchment", "Game Info", "Burgundy", "3D Wood Planks Table", "3D Fabric Runner", "Medieval Wood Planks Table", "Emerald Wide Runner", "Emerald Ribbon Runner", "Solid Burgundy Game Mat", "Augment Card Tray", "Stone Augment Card Tray", "Roll Orb", "Roll Cosmic Cube", "Reroll Counter Bar", "Inkwell", "Quill", "Paperweight", "Hourglass", "Candle", "Runic Slate", "Crystal Matrix", "Trinket", "SilverRing", "Brooch", "ManaCrystal" };
                 List<GameObject> directChildrenToDelete = new();
                 for (int i = 0; i < layoutRoot.childCount; i++)
                 {
@@ -1085,23 +1454,17 @@ namespace Tessera.Games.AugmentedYacht
                 }
                 foreach (GameObject go in directChildrenToDelete)
                 {
-                    if (Application.isPlaying) Destroy(go);
-                    else DestroyImmediate(go);
-                }
-            }
-
-            // 2. Hierarchy 전체의 불필요 오브젝트 전수 검색 및 영구 삭제
-            GameObject[] allSceneObjects = Resources.FindObjectsOfTypeAll<GameObject>();
-            foreach (GameObject go in allSceneObjects)
-            {
-                if (go == null) continue;
-#if UNITY_EDITOR
-                if (UnityEditor.EditorUtility.IsPersistent(go)) continue;
-#endif
-                if (go.name.Contains("Paper") || go.name.Contains("Score Sheet") || go.name.Contains("Layered Parchment") || go.name.Contains("Game Info") || go.name.Contains("Burgundy") || go.name.Contains("Inkwell") || go.name.Contains("Quill") || go.name.Contains("Paperweight"))
-                {
-                    if (Application.isPlaying) Destroy(go);
-                    else DestroyImmediate(go);
+                    if (go.GetComponent<RollCosmicCube>() != null) rollCosmicCube = null;
+                    go.SetActive(false);
+                    if (Application.isPlaying)
+                    {
+                        go.transform.SetParent(null, false);
+                        Destroy(go);
+                    }
+                    else
+                    {
+                        DestroyImmediate(go);
+                    }
                 }
             }
 
@@ -1111,17 +1474,127 @@ namespace Tessera.Games.AugmentedYacht
             // Layer 2 (Mid): 가로 기준 + 약 4.5도 사선 회전 3D 딥 크림슨 패브릭 러너 + 골드 트림 생성
             Create3DFabricRunner();
 
-            // Layer 3 (Top): 주사위 트레이 배치
+            // Layer 3 (Center): 주사위 트레이 배치
             CreateGameTray();
 
-            // Layer 4 (Right): 우측 3D 레이어드 양피지 야추 족보 점수표 생성
+            // Layer 4 (Left): 좌측 3D 스톤 증강 카드 트레이 (카탄 3구 슬롯 + 하스스톤 스톤 룩앤필)
+            CreateAugmentCardTray();
+
+            // Layer 5 (Right): 우측 3D 레이어드 양피지 야추 족보 점수표 생성
             CreateScoreSheet();
 
-            // Layer 5 (Bottom-Right): 우측 하단 3D 앤틱 원통형 황동 잉크통 & 2시 방향 깃펜 오브젝트 생성
+            // Layer 6 (Bottom-Right): 우측 하단 3D 앤틱 원통형 황동 잉크통 & 2시 방향 깃펜 오브젝트 생성
             CreateInkwellAndQuill();
 
-            // Layer 6 (Top-Parchment): 양피지 상단 3D 고풍스러운 다크 조약돌 누름돌(Paperweight) 생성
+            // Layer 7 (Top-Parchment): 양피지 상단 3D 고풍스러운 다크 조약돌 누름돌(Paperweight) 생성
             CreatePaperweight();
+
+            // Layer 8 (Tray Bottom-Right): 주사위 트레이 하단 우측 3D 스타일라이즈드 코스믹 큐브 롤 오브젝트
+            CreateRollCosmicCube();
+
+            // Layer 9 (Tray Bottom-Left): 주사위 트레이 하단 좌측 3D 남은 롤 횟수 안내 마나 크리스탈 바
+            CreateRerollCounterBar();
+
+            // Layer 10 (Tray Top): 주사위 트레이 상단 3D 스타일라이즈드 앤틱 모래시계 1분 타이머
+            CreateHourglassTimer();
+
+            // Layer 11 (Bottom-Left): 테이블 좌측 하단 3D 코지 밀랍 양초 데코레이션 생성
+            CreateCandleStand();
+
+            // Layer 12 (Hourglass Right): 고대 룬 석판과 동적 마나 수정진 생성
+            CreateRunicSlateMatrix();
+
+            // Layer 13 (Slate-Score Gap): 룬 석판과 족보 사이 3종 장식 오브젝트 클러스터 생성 (은반지, 체인 브로치, 마나 크리스탈)
+            CreateTrinketCluster();
+        }
+
+        private void CreateTrinketCluster()
+        {
+            trinketCluster = TabletopTrinketCluster.Create(layoutRoot);
+        }
+
+        private void CreateRunicSlateMatrix()
+        {
+            Vector3 matrixPosition = new Vector3(-0.35f, 0.10f, 5.85f);
+            runicSlateMatrix = RunicSlateMatrix.Create(layoutRoot, matrixPosition, Quaternion.identity, Vector3.one * 1.3f);
+        }
+
+        private void CreateCandleStand()
+        {
+            Vector3 candlePos = new Vector3(-14f, 0.08f, -9.3f);
+            Quaternion candleRot = Quaternion.Euler(0f, 25f, 0f);
+            Vector3 candleScale = Vector3.one * 2.70f;
+            candleStand = CozyCandleStand.Create(layoutRoot, candlePos, candleRot, candleScale);
+        }
+
+        private void CreateHourglassTimer()
+        {
+            Vector3 timerPos = new Vector3(-3.5f, 0.12f, 5.73f);
+            Quaternion timerRot = Quaternion.Euler(0f, -40f, 0f);
+            Vector3 timerScale = Vector3.one * 1.1f;
+            hourglassTimer = HourglassTimer.Create(layoutRoot, timerPos, timerRot, timerScale);
+        }
+
+        private void CreateRerollCounterBar()
+        {
+            Vector3 counterPos = new Vector3(-0.35f, 0.12f, -6.30f);
+            Vector3 counterScale = Vector3.one * 1.35f;
+            rerollCounterBar = RerollCounterBar.Create(layoutRoot, counterPos, null, counterScale);
+        }
+
+        private void CreateRollCosmicCube()
+        {
+            EnsureSingleRollCosmicCube();
+            if (rollCosmicCube != null) return;
+
+            Vector3 cubePos = new Vector3(-0.35f, 0.12f, -6.30f);
+            Vector3 cubeScale = Vector3.one * 1.35f;
+            rollCosmicCube = RollCosmicCube.Create(layoutRoot, cubePos, null, cubeScale);
+        }
+
+        private void EnsureSingleRollCosmicCube()
+        {
+            if (layoutRoot == null) return;
+
+            RollCosmicCube[] cubes = layoutRoot.GetComponentsInChildren<RollCosmicCube>(true);
+            RollCosmicCube primary = rollCosmicCube != null && rollCosmicCube.transform.IsChildOf(layoutRoot)
+                ? rollCosmicCube
+                : (cubes.Length > 0 ? cubes[0] : null);
+
+            foreach (RollCosmicCube cube in cubes)
+            {
+                if (cube == null || cube == primary) continue;
+
+                GameObject duplicate = cube.gameObject;
+                duplicate.SetActive(false);
+                if (Application.isPlaying)
+                {
+                    duplicate.transform.SetParent(null, false);
+                    Destroy(duplicate);
+                }
+                else
+                {
+                    DestroyImmediate(duplicate);
+                }
+            }
+
+            rollCosmicCube = primary;
+            if (rollCosmicCube != null) rollCosmicCube.EnsureGeometry();
+        }
+
+        // [기존 3D 수정구 보존] 필요 시 호출하여 전환 가능한 원본 롤 오브젝트
+        private void CreateRollOrb()
+        {
+            Vector3 orbPos = new Vector3(-0.35f, 0.12f, -6.30f);
+            Vector3 orbScale = Vector3.one * 1.35f;
+            rollOrb = RollOrb.Create(layoutRoot, orbPos, null, orbScale);
+        }
+
+        private void CreateAugmentCardTray()
+        {
+            Vector3 trayPos = new Vector3(-10f, 0.1f, -0.3f);
+            Vector3 trayScale = Vector3.one * 1.5f;
+            augmentCardTray = AugmentCardTray.Create(layoutRoot, trayPos, trayScale);
         }
 
         private void CreateScoreSheet()
@@ -1129,11 +1602,12 @@ namespace Tessera.Games.AugmentedYacht
             Vector3 scoreSheetPos = new Vector3(8.8f, -0.38f, 0.03f);
             Vector3 scoreSheetScale = Vector3.one * 1.5f;
             parchmentScoreSheet = ParchmentScoreSheet.Create(layoutRoot, scoreSheetPos, scoreSheetScale);
+            parchmentScoreSheet.RefreshAllScores();
         }
 
         private void CreateInkwellAndQuill()
         {
-            Vector3 inkwellPos = new Vector3(13.0f, 0.08f, -7.5f);
+            Vector3 inkwellPos = new Vector3(13.0f, 0.08f, -7.9f);
             Quaternion inkwellRot = Quaternion.Euler(0f, 110f, 0f);
             Vector3 inkwellScale = Vector3.one * 2.5f;
             InkwellAndQuill.Create(layoutRoot, inkwellPos, inkwellRot, inkwellScale);
@@ -1399,7 +1873,7 @@ namespace Tessera.Games.AugmentedYacht
             if (yachtTrayMesh == null) return;
             GameObject tray = new("Yacht Tray Visual", typeof(MeshFilter), typeof(MeshRenderer));
             tray.transform.SetParent(layoutRoot, false);
-            tray.transform.localPosition = new Vector3(CenterSectionX, TrayVisualY, 0f);
+            tray.transform.localPosition = new Vector3(CenterSectionX, TrayVisualY, -0.3f);
             tray.transform.localRotation = Quaternion.identity;
             tray.transform.localScale = Vector3.one * TrayScale;
 
@@ -1453,7 +1927,7 @@ namespace Tessera.Games.AugmentedYacht
             if (key != null)
             {
                 key.enabled = true;
-                key.transform.rotation = Quaternion.Euler(75f, -20f, 0f);
+                key.transform.rotation = Quaternion.Euler(60f, -35f, 0f);
                 key.cullingMask |= 1 << DiceLayer;
                 key.shadows = LightShadows.Soft;
                 key.shadowStrength = 0.58f;
@@ -1463,9 +1937,82 @@ namespace Tessera.Games.AugmentedYacht
             }
         }
 
+        public void DebugAdvanceRuneLighting()
+        {
+            ResolveRunicMatrix();
+            runicSlateMatrix?.AdvanceDebugRuneLighting();
+            UpdateRunicDebugButtonLabels();
+        }
+
+        public void DebugCycleRuneStones()
+        {
+            ResolveRunicMatrix();
+            runicSlateMatrix?.CycleDebugRuneStoneCount();
+            UpdateRunicDebugButtonLabels();
+        }
+
+        public void GrantExtraTurnsFromAugment(int amount)
+        {
+            ResolveRunicMatrix();
+            runicSlateMatrix?.GrantExtraTurns(amount);
+        }
+
+        public bool ConsumeExtraTurn()
+        {
+            ResolveRunicMatrix();
+            return runicSlateMatrix != null && runicSlateMatrix.ConsumeExtraTurn();
+        }
+
+        public bool ApplyAugmentScoreOverwrite(int playerIndex, ScoreCategory category, int score, int grantedExtraTurns)
+        {
+            if (parchmentScoreSheet == null) parchmentScoreSheet = FindFirstObjectByType<ParchmentScoreSheet>();
+            if (parchmentScoreSheet == null || !parchmentScoreSheet.OverwriteScoreFromAugment(playerIndex, category, score)) return false;
+
+            GrantExtraTurnsFromAugment(grantedExtraTurns);
+            return true;
+        }
+
+        private void ResolveRunicMatrix()
+        {
+            if (runicSlateMatrix == null) runicSlateMatrix = FindFirstObjectByType<RunicSlateMatrix>();
+            if (runicSlateMatrix == null) return;
+
+            runicSlateMatrix.StateChanged -= UpdateRunicDebugButtonLabels;
+            runicSlateMatrix.StateChanged += UpdateRunicDebugButtonLabels;
+        }
+
+        private void UpdateRunicDebugButtonLabels()
+        {
+            ResolveRunicMatrix();
+            int runeProgress = runicSlateMatrix != null ? runicSlateMatrix.OuterRuneProgress : 0;
+            int stoneCount = runicSlateMatrix != null ? runicSlateMatrix.ExtraTurnCount : 0;
+            int stoneCapacity = runicSlateMatrix != null ? runicSlateMatrix.MaxExtraTurns : 4;
+
+            Text runeLabel = runeFxButton != null ? runeFxButton.GetComponentInChildren<Text>() : null;
+            if (runeLabel != null) runeLabel.text = $"Runes: {runeProgress}/12";
+
+            Text stoneLabel = runeStoneButton != null ? runeStoneButton.GetComponentInChildren<Text>() : null;
+            if (stoneLabel != null) stoneLabel.text = $"Stones: {stoneCount}/{stoneCapacity}";
+        }
+
         private void BuildPresentation()
         {
             EnsureEventSystem();
+
+            // 씬 전체의 모든 구버전 Pixel Presentation 및 Display 1 Camera 전수 검색 및 영구 삭제
+            GameObject[] allSceneObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+            foreach (GameObject go in allSceneObjects)
+            {
+                if (go == null) continue;
+#if UNITY_EDITOR
+                if (UnityEditor.EditorUtility.IsPersistent(go)) continue;
+#endif
+                if (go.name == "Pixel Presentation" || go.name == "Display 1 Camera")
+                {
+                    if (Application.isPlaying) Destroy(go);
+                    else DestroyImmediate(go);
+                }
+            }
 
             GameObject canvasObject = new("Pixel Presentation", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             canvasObject.transform.SetParent(transform, false);
@@ -1495,15 +2042,26 @@ namespace Tessera.Games.AugmentedYacht
 
             upscaleMaterial = new Material(upscaleShader != null ? upscaleShader : Shader.Find("UI/Default"));
             gameImage.material = upscaleMaterial;
+            imageObject.SetActive(true);
 
             CreateButton(canvasObject.transform, "Debug", "960 / 640", new Vector2(18f, -18f), new Vector2(130f, 38f), new Vector2(0f, 1f), ToggleResolution);
-            keyLightToggleButton = CreateButton(canvasObject.transform, "KeyLightToggle", $"Light: {keyLightPresets[currentKeyLightPresetIndex].name}", new Vector2(158f, -18f), new Vector2(165f, 38f), new Vector2(0f, 1f), ToggleKeyLightPreset);
-            rollButton = CreateButton(canvasObject.transform, "Roll Dice", "ROLL 5 DICE", new Vector2(0f, 28f), new Vector2(300f, 64f), new Vector2(0.5f, 0f), ResetAndRollDice);
+            
+            runeFxButton = CreateButton(canvasObject.transform, "RuneFxDebug", "Runes: 0/12", new Vector2(333f, -18f), new Vector2(140f, 38f), new Vector2(0f, 1f), DebugAdvanceRuneLighting);
+            runeStoneButton = CreateButton(canvasObject.transform, "RuneStoneDebug", "Stones: 0/4", new Vector2(483f, -18f), new Vector2(150f, 38f), new Vector2(0f, 1f), DebugCycleRuneStones);
+keyLightToggleButton = CreateButton(canvasObject.transform, "KeyLightToggle", $"Light: {keyLightPresets[currentKeyLightPresetIndex].name}", new Vector2(158f, -18f), new Vector2(165f, 38f), new Vector2(0f, 1f), ToggleKeyLightPreset);
 
             statusText = CreateText(canvasObject.transform, "Status", "", new Vector2(0f, -20f), new Vector2(600f, 30f), new Vector2(0.5f, 1f), 15, TextAnchor.MiddleCenter);
             Canvas.ForceUpdateCanvases();
             CreateRenderTarget();
             BindPresentationActions();
+
+            if (parchmentScoreSheet == null) parchmentScoreSheet = FindFirstObjectByType<ParchmentScoreSheet>();
+            if (parchmentScoreSheet != null)
+            {
+                parchmentScoreSheet.EnsureStructure();
+                parchmentScoreSheet.RefreshAllScores();
+                parchmentScoreSheet.SyncOverlayTransform();
+            }
         }
 
         private void CreatePresentationCamera()
@@ -1533,7 +2091,7 @@ namespace Tessera.Games.AugmentedYacht
             rect.sizeDelta = size;
 
             Image image = buttonObject.GetComponent<Image>();
-            image.color = name == "Roll Dice" ? new Color(0.9f, 0.2f, 0.16f, 0.96f) : new Color(0.06f, 0.4f, 0.46f, 0.94f);
+            image.color = new Color(0.06f, 0.4f, 0.46f, 0.94f);
 
             Button button = buttonObject.GetComponent<Button>();
             button.targetGraphic = image;
@@ -1543,7 +2101,7 @@ namespace Tessera.Games.AugmentedYacht
             button.colors = colors;
             button.onClick.AddListener(action);
 
-            CreateText(buttonObject.transform, "Label", label, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f), name == "Roll Dice" ? 22 : 15, TextAnchor.MiddleCenter, true);
+            CreateText(buttonObject.transform, "Label", label, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f), 15, TextAnchor.MiddleCenter, true);
             return button;
         }
 
@@ -1609,7 +2167,11 @@ namespace Tessera.Games.AugmentedYacht
             };
             lowResolutionTarget.Create();
             worldCamera.targetTexture = lowResolutionTarget;
-            gameImage.texture = lowResolutionTarget;
+            if (gameImage != null)
+            {
+                gameImage.gameObject.SetActive(true);
+                gameImage.texture = lowResolutionTarget;
+            }
             FitFullScreen();
         }
 
@@ -1634,12 +2196,27 @@ namespace Tessera.Games.AugmentedYacht
         private void OnDestroy()
         {
             if (worldCamera != null) worldCamera.targetTexture = null;
-            if (presentationCamera != null) Destroy(presentationCamera.gameObject);
-            if (lowResolutionTarget != null) lowResolutionTarget.Release();
-            Destroy(lowResolutionTarget);
-            Destroy(upscaleMaterial);
-            if (diceBodyMaterial != null) Destroy(diceBodyMaterial);
-            if (dicePipMaterial != null) Destroy(dicePipMaterial);
+            if (lowResolutionTarget != null)
+            {
+                lowResolutionTarget.Release();
+                if (Application.isPlaying) Destroy(lowResolutionTarget);
+                else DestroyImmediate(lowResolutionTarget);
+            }
+            if (upscaleMaterial != null)
+            {
+                if (Application.isPlaying) Destroy(upscaleMaterial);
+                else DestroyImmediate(upscaleMaterial);
+            }
+            if (diceBodyMaterial != null)
+            {
+                if (Application.isPlaying) Destroy(diceBodyMaterial);
+                else DestroyImmediate(diceBodyMaterial);
+            }
+            if (dicePipMaterial != null)
+            {
+                if (Application.isPlaying) Destroy(dicePipMaterial);
+                else DestroyImmediate(dicePipMaterial);
+            }
         }
     }
 }
