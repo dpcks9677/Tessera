@@ -3,78 +3,10 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
+using Tessera.Games.Yacht;
 
 namespace Tessera.Games.AugmentedYacht
 {
-    public enum ScoreCategory
-    {
-        Aces = 0,
-        Deuces = 1,
-        Threes = 2,
-        Fours = 3,
-        Fives = 4,
-        Sixes = 5,
-        Bonus = 6,
-        Choice = 7,
-        FourOfAKind = 8,
-        FullHouse = 9,
-        SmallStraight = 10,
-        LargeStraight = 11,
-        Yacht = 12,
-        Total = 13
-    }
-
-    [Serializable]
-    public class PlayerScoreData
-    {
-        public int[] upperScores = new int[] { -1, -1, -1, -1, -1, -1 };
-        public bool hasBonus = false;
-        public int bonusScore = 0;
-        public int[] lowerScores = new int[] { -1, -1, -1, -1, -1, -1 };
-        public int totalScore = 0;
-
-        public void Reset()
-        {
-            for (int i = 0; i < 6; i++) upperScores[i] = -1;
-            hasBonus = false;
-            bonusScore = 0;
-            for (int i = 0; i < 6; i++) lowerScores[i] = -1;
-            totalScore = 0;
-        }
-
-        public int CalculateUpperSum()
-        {
-            int sum = 0;
-            for (int i = 0; i < 6; i++)
-            {
-                if (upperScores[i] > 0) sum += upperScores[i];
-            }
-            return sum;
-        }
-
-        public void RecalculateTotal()
-        {
-            int upperSum = CalculateUpperSum();
-            if (upperSum >= 63)
-            {
-                hasBonus = true;
-                bonusScore = 35;
-            }
-            else
-            {
-                hasBonus = false;
-                bonusScore = 0;
-            }
-
-            int sum = upperSum + bonusScore;
-            for (int i = 0; i < 6; i++)
-            {
-                if (lowerScores[i] > 0) sum += lowerScores[i];
-            }
-            totalScore = sum;
-        }
-    }
-
     [ExecuteAlways]
     public sealed class ParchmentScoreSheet : MonoBehaviour
     {

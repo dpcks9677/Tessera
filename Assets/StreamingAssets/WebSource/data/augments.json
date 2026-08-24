@@ -5,7 +5,7 @@
     "en-name": "Lucky Sevens",
     "target": "에이스 (Aces)",
     "mark": "L. Sevens",
-    "description": "에이스 족보를 <strong><u>럭키 세븐</u></strong> 족보로 변경합니다.<br><br>주사위 눈금 총합이 7, 17, 27 중 하나일 때 기입이 가능하며, 족보의 조건을 만족하면 고정 15점을 기입할 수 있습니다.",
+    "description": "에이스 족보를 <strong><u>럭키 세븐</u></strong> 족보로 변경합니다.<br><br>주사위 눈금 총합이 7, 17, 27 중 하나일 때 기입이 가능하며, 족보의 조건을 만족하면 고정 15점을 기입할 수 있습니다.<br><br>(15점 전부 상단 보너스 합계에 포함됩니다.)",
     "augmentId": "lucky-sevens"
   },
   {
@@ -14,7 +14,7 @@
     "en-name": "Perfect Squares",
     "target": "에이스 (Aces)",
     "mark": "P. Squares",
-    "description": "에이스 족보를 <strong><u>퍼펙트 스퀘어</u></strong> 족보로 변경합니다.<br><br>주사위 눈금 총합이 9, 16, 25 중 하나일 때 기입이 가능하며, 족보의 조건을 만족하면 고정 12점을 기입할 수 있습니다.",
+    "description": "에이스 족보를 <strong><u>퍼펙트 스퀘어</u></strong> 족보로 변경합니다.<br><br>주사위 눈금 총합이 9, 16, 25 중 하나일 때 기입이 가능하며, 족보의 조건을 만족하면 고정 12점을 기입할 수 있습니다.<br><br>(12점 전부 상단 보너스 합계에 포함됩니다.)",
     "augmentId": "perfect-squares"
   },
   {
@@ -31,7 +31,7 @@
     "en-name": "Anti-Four Threes",
     "target": "트리플 (Threes)",
     "augmentId": "anti-four-threes",
-    "description": "쓰리스 족보를 <strong><u>안티-포 트리플</u></strong> 족보로 변경합니다.<br><br>'3'이 3개 이상이면서 '4'가 단 하나도 없을 때 기입이 가능하며, 족보의 조건을 만족하면 고정 12점을 기입할 수 있습니다."
+    "description": "쓰리스 족보를 <strong><u>안티-포 쓰리스</u></strong> 족보로 변경합니다.<br><br>'3'이 3개 이상이면서 '4'가 단 하나도 없을 때 기입이 가능하며, 족보의 조건을 만족하면 고정 12점을 기입할 수 있습니다."
   },
   {
     "id": 5,
@@ -48,7 +48,7 @@
     "en-name": "Anti-Six Fours",
     "target": "쿼드 (Fours)",
     "augmentId": "anti-six-fours",
-    "description": "포스 족보를 <strong><u>안티-식스 쿼드</u></strong> 족보로 변경합니다.<br><br>'4'가 3개 이상이면서 '6'이 단 하나도 없을 때 기입이 가능하며, 족보의 조건을 만족하면 고정 16점을 기입할 수 있습니다."
+    "description": "포스 족보를 <strong><u>안티-식스 포스</u></strong> 족보로 변경합니다.<br><br>'4'가 3개 이상이면서 '6'이 단 하나도 없을 때 기입이 가능하며, 족보의 조건을 만족하면 고정 16점을 기입할 수 있습니다."
   },
   {
     "id": 7,
@@ -56,7 +56,7 @@
     "en-name": "Anti-Six Fives",
     "target": "펜타 (Fives)",
     "augmentId": "anti-six-fives",
-    "description": "파이브스 족보를 <strong><u>안티-식스 펜타</u></strong> 족보로 변경합니다.<br><br>'5'가 3개 이상이면서 '6'이 단 하나도 없을 때 기입이 가능하며, 족보의 조건을 만족하면 고정 20점을 기입할 수 있습니다."
+    "description": "파이브스 족보를 <strong><u>안티-식스 파이브스</u></strong> 족보로 변경합니다.<br><br>'5'가 3개 이상이면서 '6'이 단 하나도 없을 때 기입이 가능하며, 족보의 조건을 만족하면 고정 20점을 기입할 수 있습니다."
   },
   {
     "id": 8,
@@ -64,7 +64,7 @@
     "en-name": "Anti-Five Sixes",
     "target": "헥사 (Sixes)",
     "augmentId": "anti-five-sixes",
-    "description": "식스스 족보를 <strong><u>안티-파이브 헥사</u></strong> 족보로 변경합니다.<br><br>'6'이 3개 이상이면서 '5'가 단 하나도 없을 때 기입이 가능하며, 족보의 조건을 만족하면 고정 24점을 기입할 수 있습니다."
+    "description": "식스스 족보를 <strong><u>안티-파이브 식스스</u></strong> 족보로 변경합니다.<br><br>'6'이 3개 이상이면서 '5'가 단 하나도 없을 때 기입이 가능하며, 족보의 조건을 만족하면 고정 24점을 기입할 수 있습니다."
   },
   {
     "id": 9,
@@ -99,7 +99,7 @@
     "en-name": "Tiny House",
     "target": "풀하우스 (Full House)",
     "mark": "Tiny House",
-    "description": "풀하우스 족보를 <strong><u>타이니 하우스</u></strong> 족보로 변경합니다.<br><br>'5'와 '6'을 제외한 눈금만으로 족보의 조건을 만족하면 고정 28점을 기입할 수 있습니다.",
+    "description": "풀하우스 족보를 <strong><u>타이니 하우스</u></strong> 족보로 변경합니다.<br><br>'5', '6', '7'을 제외한 눈금만으로 족보의 조건을 만족하면 고정 28점을 기입할 수 있습니다.",
     "augmentId": "tiny-house"
   },
   {
@@ -135,7 +135,7 @@
     "en-name": "Odds",
     "target": "스몰 스트레이트 (Small Straight)",
     "mark": "Odds",
-    "description": "스몰 스트레이트 족보를 <strong><u>오즈</u></strong> 족보로 변경합니다.<br><br>주사위 5개가 모두 홀수(1, 3, 5)일 때 기입이 가능하며, 족보의 조건을 만족하면 고정 20점을 얻을 수 있습니다.",
+    "description": "스몰 스트레이트 족보를 <strong><u>오즈</u></strong> 족보로 변경합니다.<br><br>주사위 5개가 모두 홀수(1, 3, 5, 7)일 때 기입이 가능하며, 족보의 조건을 만족하면 고정 20점을 얻을 수 있습니다.",
     "augmentId": "odds"
   },
   {
@@ -153,7 +153,7 @@
     "en-name": "Prime Collection",
     "target": "라지 스트레이트 (Large Straight)",
     "mark": "P. Collection",
-    "description": "라지 스트레이트 족보를 <strong><u>프라임 컬렉션</u></strong> 족보로 변경합니다.<br><br>모든 눈금이 소수(2, 3, 5)이고 종류별로 최소 1개 이상 포함될 때 기입이 가능하며, 족보의 조건을 만족하면 고정 35점을 얻을 수 있습니다.",
+    "description": "라지 스트레이트 족보를 <strong><u>프라임 컬렉션</u></strong> 족보로 변경합니다.<br><br>모든 눈금이 소수(2, 3, 5, 7)이고 2, 3, 5가 최소 1개씩 포함될 때 기입이 가능하며, 족보의 조건을 만족하면 고정 35점을 얻을 수 있습니다.",
     "augmentId": "prime-collection"
   },
   {
@@ -258,8 +258,8 @@
     "en-name": "Step by Step",
     "target": "q3",
     "type": "Quest / Phase 1",
-    "reward": "Sixes 완료 즉시, 상단 보너스 점수가 +35점에서 +55점으로 영구 강화",
-    "description": "<strong><u>퀘스트</strong></u>: 숫자 족보들을 위에서부터 순서대로 기입해야 합니다.(Aces부터 Sixes까지)<br><br>퀘스트 완료 시, 상단 보너스가 55점으로 강화됩니다.",
+    "reward": "Sixes 완료 후 상단 보너스 획득 기준을 63점에서 58점으로 완화. 기준 달성 시 보너스를 +35점에서 +55점으로 강화",
+    "description": "<strong><u>퀘스트</strong></u>: 숫자 족보들을 위에서부터 순서대로 기입해야 합니다.(Aces부터 Sixes까지)<br><br>퀘스트 완료 시 상단 보너스 획득 기준이 58점으로 낮아집니다.<br><br>상단 합계가 58점 이상이면 상단 보너스가 55점으로 강화됩니다.",
     "augmentId": "step-by-step"
   },
   {
@@ -279,7 +279,7 @@
     "target": "q5",
     "type": "Quest",
     "reward": "기입 즉시 보너스 +7점 획득",
-    "description": "<strong><u>퀘스트</strong></u>: 9~12턴 사이에 풀하우스 족보를 기입합니다.<br><br>퀘스트 완료 시, 보너스 7점을 획득합니다.",
+    "description": "<strong><u>퀘스트</strong></u>: 9턴 이후에 풀하우스 족보를 기입합니다. 12턴 이후 추가 턴에도 달성할 수 있습니다.<br><br>퀘스트 완료 시, 보너스 7점을 획득합니다.",
     "augmentId": "holdout"
   },
   {
@@ -329,7 +329,7 @@
     "target": "q10",
     "type": "Quest",
     "reward": "보너스 +9점 획득",
-    "description": "<strong><u>퀘스트</strong></u>: 다음 페이즈 전까지 나의 턴 타이머를 15초로 설정합니다.<br><br>퀘스트 완료 시, 보너스 9점을 획득합니다.",
+    "description": "<strong><u>퀘스트</strong></u>: 다음 증강 획득 직전 라운드까지, 마지막 페이즈에서는 12라운드 종료까지 나의 턴 타이머를 15초로 설정합니다. 해당 마지막 턴이 끝나면 퀘스트를 완료합니다.<br><br>퀘스트 완료 시, 보너스 9점을 획득합니다.",
     "augmentId": "nozdormu"
   },
   {
@@ -343,14 +343,14 @@
     "id": 38,
     "name": "추진력",
     "en-name": "Momentum",
-    "description": "<strong><u>족보에 처음으로 0점(스크래치)을 기록했을 때 발동</strong></u>합니다.<br><br>다음 턴에 족보를 기입하여 점수를 획득하면 해당 획득 점수(보너스 포함)가 1.5배로 증가합니다.<br><br>(소수점은 버리며, 단 1회 발동합니다.)",
+    "description": "<strong><u>족보의 기본 점수를 처음으로 0점 등록했을 때 발동</strong></u>합니다. 같은 기입에서 얻은 추가 보너스 점수는 스크래치 판정에 영향을 주지 않습니다.<br><br>다음 턴에 기본 점수를 획득하면 해당 획득 점수(보너스 포함)가 1.5배로 증가합니다.<br><br>(소수점은 버리며, 단 1회 발동합니다.)",
     "augmentId": "momentum"
   },
   {
     "id": 39,
     "name": "황금 주사위",
     "en-name": "Golden Die",
-    "description": "기본 주사위를 <strong><u>황금 주사위</strong></u>로 변경합니다.<br><br>황금 주사위는 족보 기입 시 이 주사위 눈금이 1, 2, 3 중 하나라면 +2점 추가로 획득합니다.",
+    "description": "기본 주사위를 <strong><u>황금 주사위</strong></u>로 변경합니다.<br><br>황금 주사위는 족보 기입 시 이 주사위 눈금이 1, 2, 3 중 하나라면 +2점 추가로 획득합니다.<br><br>(상단 족보 기입 시 추가 점수도 상단 보너스 합계에 포함됩니다.)",
     "augmentId": "golden-die"
   },
   {
@@ -364,7 +364,7 @@
     "id": 42,
     "name": "이상한 주사위",
     "en-name": "Strange Die",
-    "description": "기본 주사위를 <strong><u>이상한 주사위</strong></u>로 변경합니다.<br><br>이상한 주사위는 족보에 쓸 수 없는 조커 주사위이며, <strong><u>+2, +1, +1, 0, -1, 파괴</u></strong> 눈금 조합을 가집니다.<br><br>매 턴 족보 기입 시 눈금에 표시된 만큼 추가로 점수를 얻으며, 파괴 면이 나온 상태로 족보를 기입하면 주사위가 사라집니다.",
+    "description": "<strong><u>리워크 예정으로 현재 선택 풀에서 제외되어 있습니다.</u></strong><br><br>기존 이상한 주사위는 족보에 쓸 수 없는 조커 주사위이며, <strong><u>+2, +1, +1, 0, -1, 파괴</u></strong> 눈금 조합을 가집니다.",
     "augmentId": "strange-die",
     "isAvailable": false
   },
@@ -379,7 +379,7 @@
     "id": 44,
     "name": "커플 주사위",
     "en-name": "Couple Dice",
-    "description": "기본 주사위 2개를 <strong><u>커플 주사위</strong></u>로 변경합니다.<br><br>커플 주사위는 족보 기입 시 두 주사위의 눈금이 같다면 +3점 추가 획득하는 특성을 가집니다.",
+    "description": "기본 주사위 2개를 <strong><u>커플 주사위</strong></u>로 변경합니다.<br><br>커플 주사위는 족보 기입 시 두 주사위의 눈금이 같다면 +3점 추가 획득하는 특성을 가집니다.<br><br>(상단 족보 기입 시 추가 점수도 상단 보너스 합계에 포함됩니다.)",
     "augmentId": "couple-dice"
   },
   {
