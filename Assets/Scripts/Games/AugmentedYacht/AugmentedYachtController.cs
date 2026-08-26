@@ -77,6 +77,7 @@ namespace Tessera.Games.AugmentedYacht
         private Text augmentOwnedText;
         private Text augmentEffectText;
         private readonly Button[] augmentDraftButtons = new Button[YachtAugmentRuntime.DraftOptionCount];
+        private readonly AugmentCardView[] augmentDraftCards = new AugmentCardView[YachtAugmentRuntime.DraftOptionCount];
         private static readonly string[] ManualAugmentIds =
         {
             YachtAugmentRuntime.TableFlipId,
@@ -527,20 +528,26 @@ namespace Tessera.Games.AugmentedYacht
             gameResultOverlay.SetActive(false);
 
             augmentDraftOverlay = CreateFullScreenOverlay(canvasObject.transform, "Yacht Augment Draft Overlay");
-            augmentDraftTitle = CreateText(augmentDraftOverlay.transform, "Draft Title", "증강 선택", new Vector2(0f, 175f),
+            float draftCardWidth = 460f;
+            float draftCardAspect = augmentCardTray != null
+                ? augmentCardTray.CardSlotAspectRatio
+                : AugmentCardView.TrayCardAspectRatio;
+            float draftCardHeight = draftCardWidth / Mathf.Max(1f, draftCardAspect);
+            float draftCardSpacing = draftCardWidth + 24f;
+            augmentDraftTitle = CreateText(augmentDraftOverlay.transform, "Draft Title", "증강 선택", new Vector2(0f, draftCardHeight * 0.5f + 72f),
                 new Vector2(760f, 60f), new Vector2(0.5f, 0.5f), 34, TextAnchor.MiddleCenter);
             augmentDraftTitle.color = new Color32(255, 222, 151, 255);
             for (int i = 0; i < augmentDraftButtons.Length; i++)
             {
                 int optionIndex = i;
-                augmentDraftButtons[i] = CreateButton(
+                augmentDraftCards[i] = AugmentCardView.Create(
                     augmentDraftOverlay.transform,
                     $"Draft Option {i + 1}",
-                    "증강",
-                    new Vector2(0f, 80f - i * 105f),
-                    new Vector2(620f, 86f),
+                    new Vector2((i - 1) * draftCardSpacing, -8f),
+                    new Vector2(draftCardWidth, draftCardHeight),
                     new Vector2(0.5f, 0.5f),
                     () => SelectDraftOption(optionIndex));
+                augmentDraftButtons[i] = augmentDraftCards[i].Button;
             }
             augmentDraftOverlay.SetActive(false);
 
@@ -685,7 +692,12 @@ namespace Tessera.Games.AugmentedYacht
                 && gameSession.Phase != YachtGamePhase.WaitingToStart
                 && gameSession.Phase != YachtGamePhase.GameOver;
             if (augmentDraftOverlay != null)
-                augmentDraftOverlay.SetActive(gameInProgress && gameSession.IsDrafting);
+            {
+                bool showDraft = gameInProgress && gameSession.IsDrafting;
+                augmentDraftOverlay.SetActive(showDraft);
+                if (showDraft)
+                    augmentDraftOverlay.transform.SetAsLastSibling();
+            }
             if (augmentOwnedText != null)
                 augmentOwnedText.gameObject.SetActive(augmented);
             if (augmentEffectText != null)
@@ -727,11 +739,7 @@ namespace Tessera.Games.AugmentedYacht
                 button.gameObject.SetActive(active);
                 if (!active) continue;
                 YachtAugmentDefinition definition = augmentViewCatalog.FindDefinition(options[i]);
-                Text label = button.GetComponentInChildren<Text>();
-                if (label != null)
-                    label.text = definition == null
-                        ? options[i]
-                        : $"{definition.DisplayName}\n{definition.Description}";
+                augmentDraftCards[i]?.Bind(definition, AugmentCardDisplayState.Available);
             }
         }
 

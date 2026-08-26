@@ -15,6 +15,7 @@ namespace Tessera.Tabletop
     public sealed class AugmentCardTray : MonoBehaviour
     {
         private const int DecorationLayer = 11;
+        public const float DefaultCardSlotAspectRatio = 1.774f;
 
         [Header("Tray Dimensions")]
         [SerializeField] private float trayWidth = 5.06f;           // 우측 족보(5.06f)와 동일한 기본 가로 폭
@@ -32,6 +33,19 @@ namespace Tessera.Tabletop
         private readonly Transform[] slotAnchors = new Transform[3];
 
         public int SlotCount => slotCount;
+        public float CardSlotAspectRatio
+        {
+            get
+            {
+                float insideHeight = trayHeight - wallThickness * 2f;
+                float dividersHeight = dividerThickness * Mathf.Max(0, slotCount - 1);
+                float slotHeight = slotCount > 0 ? (insideHeight - dividersHeight) / slotCount : 0f;
+                float slotWidth = trayWidth - wallThickness * 2f;
+                return slotWidth > 0f && slotHeight > 0f
+                    ? slotWidth / slotHeight
+                    : DefaultCardSlotAspectRatio;
+            }
+        }
 
         public static AugmentCardTray Create(Transform parent, Vector3 worldPosition, Vector3? scale = null)
         {
