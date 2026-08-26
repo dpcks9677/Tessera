@@ -74,10 +74,14 @@ namespace Tessera.Games.AugmentedYacht
         private Text timerText;
         private Text resultText;
         private Text augmentDraftTitle;
-        private Text augmentOwnedText;
         private Text augmentEffectText;
+        private Text augmentHoverDetailText;
         private readonly Button[] augmentDraftButtons = new Button[YachtAugmentRuntime.DraftOptionCount];
         private readonly AugmentCardView[] augmentDraftCards = new AugmentCardView[YachtAugmentRuntime.DraftOptionCount];
+        private readonly AugmentTrayCardView[] augmentOwnedCards = new AugmentTrayCardView[3];
+        private int displayedAugmentPlayer = -1;
+        private int hoveredAugmentSlot = -1;
+        private int selectedAugmentSlot = -1;
         private static readonly string[] ManualAugmentIds =
         {
             YachtAugmentRuntime.TableFlipId,
@@ -457,6 +461,7 @@ namespace Tessera.Games.AugmentedYacht
             runicSlateMatrix?.SetRoundProgress(0);
             rerollCounterBar?.SetRollsRemaining(YachtGameSession.MaxRolls, YachtGameSession.MaxRolls);
             EnsureGameFlowUI();
+            EnsureOwnedCardViews();
             ResetDiceForTurn();
             SetTimerTextIdle();
             SetRollInteraction(false);
@@ -496,6 +501,7 @@ namespace Tessera.Games.AugmentedYacht
             {
                 "Yacht Augment Owned Text",
                 "Yacht Augment Effect Text",
+                "Yacht Augment Hover Detail Text",
                 "Use Table Flip",
             };
             foreach (string presentationName in augmentPresentationNames)
@@ -551,12 +557,13 @@ namespace Tessera.Games.AugmentedYacht
             }
             augmentDraftOverlay.SetActive(false);
 
-            augmentOwnedText = CreateText(canvasObject.transform, "Yacht Augment Owned Text", "", new Vector2(18f, -64f),
-                new Vector2(500f, 94f), new Vector2(0f, 1f), 15, TextAnchor.UpperLeft);
-            augmentOwnedText.color = new Color32(255, 226, 151, 245);
             augmentEffectText = CreateText(canvasObject.transform, "Yacht Augment Effect Text", "", new Vector2(0f, 58f),
                 new Vector2(760f, 44f), new Vector2(0.5f, 0f), 18, TextAnchor.MiddleCenter);
             augmentEffectText.color = new Color32(255, 205, 95, 255);
+            augmentHoverDetailText = CreateText(canvasObject.transform, "Yacht Augment Hover Detail Text", "", new Vector2(0f, 126f),
+                new Vector2(820f, 64f), new Vector2(0.5f, 0f), 16, TextAnchor.MiddleCenter);
+            augmentHoverDetailText.color = new Color32(255, 226, 151, 255);
+            augmentHoverDetailText.gameObject.SetActive(false);
             for (int i = 0; i < augmentActionButtons.Length; i++)
             {
                 string augmentId = ManualAugmentIds[i];
@@ -698,8 +705,6 @@ namespace Tessera.Games.AugmentedYacht
                 if (showDraft)
                     augmentDraftOverlay.transform.SetAsLastSibling();
             }
-            if (augmentOwnedText != null)
-                augmentOwnedText.gameObject.SetActive(augmented);
             if (augmentEffectText != null)
             {
                 augmentEffectText.gameObject.SetActive(augmented && !string.IsNullOrEmpty(message));
@@ -719,12 +724,9 @@ namespace Tessera.Games.AugmentedYacht
                 button.gameObject.SetActive(owned);
                 if (i > 0) button.interactable = owned && !turnTransitionInProgress && rollRoutine == null && !isArranging;
             }
+            RefreshOwnedCardTray(augmented, gameInProgress);
             if (!augmented) return;
 
-            if (augmentOwnedText != null)
-            {
-                augmentOwnedText.text = $"전역: {FormatGlobalAugments()}\nP1: {FormatOwnedAugments(0)}  |  P2: {FormatOwnedAugments(1)}";
-            }
             if (!gameSession.IsDrafting) return;
 
             int playerIndex = gameSession.State.Draft.PlayerIndex;
@@ -743,16 +745,109 @@ namespace Tessera.Games.AugmentedYacht
             }
         }
 
-        private string FormatOwnedAugments(int playerIndex)
+        private void EnsureOwnedCardViews()
         {
-            if (gameSession?.State?.AugmentPlayers == null || playerIndex >= gameSession.State.AugmentPlayers.Length)
-                return "없음";
-            string[] owned = gameSession.State.AugmentPlayers[playerIndex].OwnedIds;
-            if (owned == null || owned.Length == 0) return "없음";
-            var names = new string[owned.Length];
-            for (int i = 0; i < owned.Length; i++)
-                names[i] = augmentViewCatalog.FindDefinition(owned[i])?.DisplayName ?? owned[i];
-            return string.Join(", ", names);
+            if (augmentCardTray == null || worldCamera == null) return;
+            Vector2 slotSize = augmentCardTray.CardSlotLocalSize;
+            int count = Mathf.Min(augmentOwnedCards.Length, augmentCardTray.SlotCount);
+            for (int i = 0; i < count; i++)
+            {
+                if (augmentOwnedCards[i] != null) continue;
+                Transform anchor = augmentCardTray.GetSlotAnchor(i);
+                if (anchor == null) continue;
+                Transform existing = anchor.Find($"Owned Augment Card {i + 1}");
+                augmentOwnedCards[i] = existing != null
+                    ? existing.GetComponent<AugmentTrayCardView>()
+                    : AugmentTrayCardView.Create(anchor, worldCamera, slotSize, i);
+            }
+        }
+
+        private void RefreshOwnedCardTray(bool augmented, bool gameInProgress)
+        {
+            EnsureOwnedCardViews();
+            int playerIndex = gameSession != null && gameSession.IsDrafting
+                ? gameSession.State.Draft.PlayerIndex
+                : gameSession?.CurrentPlayerIndex ?? -1;
+            if (displayedAugmentPlayer != playerIndex)
+            {
+                displayedAugmentPlayer = playerIndex;
+                selectedAugmentSlot = -1;
+                SetHoveredAugmentSlot(-1);
+            }
+
+            string[] owned = augmented && gameInProgress && playerIndex >= 0
+                ? gameSession.State.AugmentPlayers[playerIndex].OwnedIds
+                : Array.Empty<string>();
+            if (selectedAugmentSlot >= owned.Length) selectedAugmentSlot = -1;
+
+            for (int i = 0; i < augmentOwnedCards.Length; i++)
+            {
+                AugmentTrayCardView view = augmentOwnedCards[i];
+                if (view == null) continue;
+                bool visible = i < owned.Length;
+                view.SetVisible(visible);
+                if (!visible) continue;
+                view.Bind(augmentViewCatalog.FindDefinition(owned[i]));
+                view.SetSelected(i == selectedAugmentSlot);
+            }
+        }
+
+        private void UpdateAugmentCardPointer()
+        {
+            Mouse mouse = Mouse.current;
+            if (mouse == null || worldCamera == null || gameSession == null
+                || gameSession.Mode != YachtGameMode.Augmented || gameSession.IsDrafting)
+            {
+                SetHoveredAugmentSlot(-1);
+                return;
+            }
+
+            Vector2 pointer = mouse.position.ReadValue();
+            Vector3 viewport = new(
+                Screen.width > 0 ? pointer.x / Screen.width : 0.5f,
+                Screen.height > 0 ? pointer.y / Screen.height : 0.5f,
+                0f);
+            Ray ray = worldCamera.ViewportPointToRay(viewport);
+            int hitSlot = -1;
+            RaycastHit[] hits = Physics.RaycastAll(ray, 50f);
+            for (int i = 0; i < hits.Length; i++)
+            {
+                AugmentTrayCardView view = hits[i].collider.GetComponentInParent<AugmentTrayCardView>();
+                if (view == null) continue;
+                hitSlot = Array.IndexOf(augmentOwnedCards, view);
+                if (hitSlot >= 0) break;
+            }
+
+            SetHoveredAugmentSlot(hitSlot);
+            if (hitSlot >= 0 && mouse.leftButton.wasPressedThisFrame)
+            {
+                selectedAugmentSlot = selectedAugmentSlot == hitSlot ? -1 : hitSlot;
+                for (int i = 0; i < augmentOwnedCards.Length; i++)
+                    if (augmentOwnedCards[i] != null && augmentOwnedCards[i].gameObject.activeSelf)
+                        augmentOwnedCards[i].SetSelected(i == selectedAugmentSlot);
+            }
+        }
+
+        private void SetHoveredAugmentSlot(int slotIndex)
+        {
+            if (hoveredAugmentSlot == slotIndex) return;
+            if (hoveredAugmentSlot >= 0 && hoveredAugmentSlot < augmentOwnedCards.Length)
+                augmentOwnedCards[hoveredAugmentSlot]?.SetHovered(false);
+
+            hoveredAugmentSlot = slotIndex;
+            YachtAugmentDefinition definition = null;
+            if (slotIndex >= 0 && slotIndex < augmentOwnedCards.Length)
+            {
+                AugmentTrayCardView view = augmentOwnedCards[slotIndex];
+                view?.SetHovered(true);
+                definition = view?.Definition;
+            }
+
+            if (augmentHoverDetailText == null) return;
+            bool show = definition != null;
+            augmentHoverDetailText.gameObject.SetActive(show);
+            if (show)
+                augmentHoverDetailText.text = $"{definition.DisplayName}\n{definition.Description}";
         }
 
         private bool IsOwnedAugment(int playerIndex, string augmentId)
@@ -761,16 +856,6 @@ namespace Tessera.Games.AugmentedYacht
                 || playerIndex < 0 || playerIndex >= gameSession.State.AugmentPlayers.Length) return false;
             string[] owned = gameSession.State.AugmentPlayers[playerIndex].OwnedIds;
             return Array.IndexOf(owned, augmentId) >= 0;
-        }
-
-        private string FormatGlobalAugments()
-        {
-            string[] global = gameSession?.State?.GlobalAugmentIds;
-            if (global == null || global.Length == 0) return "없음";
-            var names = new string[global.Length];
-            for (int i = 0; i < global.Length; i++)
-                names[i] = augmentViewCatalog.FindDefinition(global[i])?.DisplayName ?? global[i];
-            return string.Join(", ", names);
         }
 
         private static string GetAugmentEventMessage(YachtGameCommandResult result)
@@ -1600,6 +1685,7 @@ namespace Tessera.Games.AugmentedYacht
                 if (keyboard.digit8Key.wasPressedThisFrame || keyboard.numpad8Key.wasPressedThisFrame) SetDieType(DieType.Weird);
             }
 
+            UpdateAugmentCardPointer();
             UpdateDicePointer();
             UpdateTimerTextPosition();
             FitFullScreen();

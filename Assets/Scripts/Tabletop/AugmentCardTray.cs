@@ -33,14 +33,23 @@ namespace Tessera.Tabletop
         private readonly Transform[] slotAnchors = new Transform[3];
 
         public int SlotCount => slotCount;
-        public float CardSlotAspectRatio
+        public Vector2 CardSlotLocalSize
         {
             get
             {
                 float insideHeight = trayHeight - wallThickness * 2f;
                 float dividersHeight = dividerThickness * Mathf.Max(0, slotCount - 1);
                 float slotHeight = slotCount > 0 ? (insideHeight - dividersHeight) / slotCount : 0f;
-                float slotWidth = trayWidth - wallThickness * 2f;
+                return new Vector2(trayWidth - wallThickness * 2f, slotHeight);
+            }
+        }
+        public float CardSlotAspectRatio
+        {
+            get
+            {
+                Vector2 slotSize = CardSlotLocalSize;
+                float slotWidth = slotSize.x;
+                float slotHeight = slotSize.y;
                 return slotWidth > 0f && slotHeight > 0f
                     ? slotWidth / slotHeight
                     : DefaultCardSlotAspectRatio;
@@ -63,11 +72,29 @@ namespace Tessera.Tabletop
 
         public Transform GetSlotAnchor(int slotIndex)
         {
+            ResolveSlotAnchors();
             if (slotIndex >= 0 && slotIndex < slotAnchors.Length)
             {
                 return slotAnchors[slotIndex];
             }
             return null;
+        }
+
+        private void ResolveSlotAnchors()
+        {
+            Transform[] descendants = null;
+            for (int i = 0; i < slotAnchors.Length; i++)
+            {
+                if (slotAnchors[i] != null) continue;
+                descendants ??= GetComponentsInChildren<Transform>(true);
+                string anchorName = $"CardSlot_{i}_Anchor";
+                for (int j = 0; j < descendants.Length; j++)
+                {
+                    if (descendants[j].name != anchorName) continue;
+                    slotAnchors[i] = descendants[j];
+                    break;
+                }
+            }
         }
 
         public void BuildGeometry()

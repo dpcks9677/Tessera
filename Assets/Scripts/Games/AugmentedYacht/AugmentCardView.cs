@@ -29,6 +29,10 @@ namespace Tessera.Games.AugmentedYacht
         private static readonly Color Indigo = new(0.21f, 0.29f, 0.43f, 1f);
 
         private Image background;
+        private Image header;
+        private Image iconBacking;
+        private Image stateAccent;
+        private Outline outline;
         private Image icon;
         private Text nameText;
         private Text descriptionText;
@@ -44,6 +48,10 @@ namespace Tessera.Games.AugmentedYacht
         public Text TargetText => targetText;
         public Text StateText => stateText;
         public Image Icon => icon;
+        public Image Background => background;
+        public Image StateAccent => stateAccent;
+        public Outline CardOutline => outline;
+        public AugmentCardDisplayState DisplayState { get; private set; }
 
         public static AugmentCardView Create(
             Transform parent,
@@ -93,14 +101,15 @@ namespace Tessera.Games.AugmentedYacht
 
         public void SetState(AugmentCardDisplayState state)
         {
+            DisplayState = state;
             stateText.text = state switch
             {
-                AugmentCardDisplayState.Available => "선택 가능",
-                AugmentCardDisplayState.Selected => "선택됨",
-                AugmentCardDisplayState.Owned => "보유 중",
-                AugmentCardDisplayState.Conflict => "충돌",
-                AugmentCardDisplayState.Used => "사용 완료",
-                _ => "비활성"
+                AugmentCardDisplayState.Available => "[선택 가능]",
+                AugmentCardDisplayState.Selected => "[선택됨]",
+                AugmentCardDisplayState.Owned => "[보유 중]",
+                AugmentCardDisplayState.Conflict => "[충돌]",
+                AugmentCardDisplayState.Used => "[사용 완료]",
+                _ => "[비활성]"
             };
 
             Color accent = state switch
@@ -112,11 +121,31 @@ namespace Tessera.Games.AugmentedYacht
                 AugmentCardDisplayState.Used => Indigo,
                 _ => new Color(0.35f, 0.33f, 0.31f, 1f)
             };
+            Color cardColor = state switch
+            {
+                AugmentCardDisplayState.Selected => new Color(0.98f, 0.82f, 0.55f, 1f),
+                AugmentCardDisplayState.Owned => new Color(0.88f, 0.72f, 0.47f, 1f),
+                AugmentCardDisplayState.Conflict => new Color(0.68f, 0.48f, 0.40f, 1f),
+                AugmentCardDisplayState.Used => new Color(0.55f, 0.58f, 0.61f, 1f),
+                AugmentCardDisplayState.Disabled => new Color(0.42f, 0.40f, 0.37f, 1f),
+                _ => Parchment
+            };
+
             stateText.color = accent;
+            stateAccent.color = accent;
+            header.color = Color.Lerp(Crimson, accent, state == AugmentCardDisplayState.Available ? 0f : 0.28f);
+            iconBacking.color = Color.Lerp(new Color(0.12f, 0.08f, 0.07f, 0.94f), accent, 0.12f);
+            outline.effectColor = accent;
+            outline.effectDistance = state is AugmentCardDisplayState.Selected or AugmentCardDisplayState.Conflict
+                ? new Vector2(5f, -5f)
+                : new Vector2(3f, -3f);
             button.interactable = state == AugmentCardDisplayState.Available;
-            background.color = state == AugmentCardDisplayState.Disabled
-                ? new Color(0.48f, 0.43f, 0.37f, 1f)
-                : Parchment;
+            background.color = cardColor;
+
+            // Button의 기본 비활성 회색 틴트가 상태별 색상을 덮지 않도록 카드 자체 색상을 유지한다.
+            ColorBlock colors = button.colors;
+            colors.disabledColor = Color.white;
+            button.colors = colors;
         }
 
         private void Build(UnityAction onClick, Vector2 size)
@@ -126,7 +155,7 @@ namespace Tessera.Games.AugmentedYacht
             background = GetComponent<Image>();
             background.color = Parchment;
 
-            Outline outline = GetComponent<Outline>();
+            outline = GetComponent<Outline>();
             outline.effectColor = new Color(0.37f, 0.20f, 0.10f, 1f);
             outline.effectDistance = new Vector2(3f, -3f);
 
@@ -136,19 +165,28 @@ namespace Tessera.Games.AugmentedYacht
             colors.normalColor = Color.white;
             colors.highlightedColor = new Color(1f, 0.88f, 0.58f, 1f);
             colors.pressedColor = new Color(0.78f, 0.54f, 0.30f, 1f);
-            colors.disabledColor = new Color(0.58f, 0.55f, 0.52f, 1f);
+            colors.disabledColor = Color.white;
             colors.colorMultiplier = 1f;
             button.colors = colors;
             if (onClick != null) button.onClick.AddListener(onClick);
 
             float headerY = height * 0.40f;
-            Image header = CreateImage(transform, "Crimson Header", new Vector2(0f, headerY), new Vector2(-24f, height * 0.18f), Crimson);
+            stateAccent = CreateImage(transform, "State Accent", Vector2.zero, new Vector2(8f, -16f), AntiqueGold);
+            RectTransform accentRect = stateAccent.rectTransform;
+            accentRect.anchorMin = new Vector2(0f, 0f);
+            accentRect.anchorMax = new Vector2(0f, 1f);
+            accentRect.pivot = new Vector2(0f, 0.5f);
+            accentRect.anchoredPosition = new Vector2(7f, 0f);
+            accentRect.sizeDelta = new Vector2(8f, -16f);
+            stateAccent.raycastTarget = false;
+
+            header = CreateImage(transform, "Crimson Header", new Vector2(0f, headerY), new Vector2(-24f, height * 0.18f), Crimson);
             header.raycastTarget = false;
 
             kindText = CreateText(transform, "Kind Badge", "종류", new Vector2(-width * 0.31f, headerY), new Vector2(width * 0.31f, 28f), 14, TextAnchor.MiddleLeft, AntiqueGold);
-            stateText = CreateText(transform, "State Badge", "선택 가능", new Vector2(width * 0.31f, headerY), new Vector2(width * 0.31f, 28f), 13, TextAnchor.MiddleRight, AntiqueGold);
+            stateText = CreateText(transform, "State Badge", "[선택 가능]", new Vector2(width * 0.31f, headerY), new Vector2(width * 0.31f, 28f), 13, TextAnchor.MiddleRight, AntiqueGold);
 
-            Image iconBacking = CreateImage(transform, "Pixel Icon Backing", new Vector2(0f, height * 0.19f), new Vector2(60f, 60f), new Color(0.12f, 0.08f, 0.07f, 0.94f));
+            iconBacking = CreateImage(transform, "Pixel Icon Backing", new Vector2(0f, height * 0.19f), new Vector2(60f, 60f), new Color(0.12f, 0.08f, 0.07f, 0.94f));
             iconBacking.raycastTarget = false;
             icon = CreateImage(iconBacking.transform, "Pixel Icon", Vector2.zero, new Vector2(-10f, -10f), AntiqueGold, true);
             icon.preserveAspect = true;
@@ -286,7 +324,7 @@ namespace Tessera.Games.AugmentedYacht
         };
     }
 
-    internal static class AugmentPixelIconFactory
+    public static class AugmentPixelIconFactory
     {
         private const int Size = 64;
         private static readonly Dictionary<YachtAugmentKind, Sprite> Cache = new();
