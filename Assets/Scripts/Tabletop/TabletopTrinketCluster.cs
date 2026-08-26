@@ -13,7 +13,8 @@ namespace Tessera.Tabletop
     public sealed class TabletopTrinketCluster : MonoBehaviour
     {
         private const int DecorationLayer = 11;
-        private const float ClusterLocalX = -0.21f;
+        private const float ClusterLocalX = -6.75f;
+        private const float ClusterLocalZ = -11.45f;
 
         [Header("Trinket References")]
         [SerializeField] private TabletopTrinketRing ring;
@@ -54,9 +55,10 @@ namespace Tessera.Tabletop
         public void EnsureCluster()
         {
             Vector3 clusterPosition = transform.localPosition;
-            if (!Mathf.Approximately(clusterPosition.x, ClusterLocalX))
+            if (!Mathf.Approximately(clusterPosition.x, ClusterLocalX) ||
+                !Mathf.Approximately(clusterPosition.z, ClusterLocalZ))
             {
-                transform.localPosition = new Vector3(ClusterLocalX, clusterPosition.y, clusterPosition.z);
+                transform.localPosition = new Vector3(ClusterLocalX, clusterPosition.y, ClusterLocalZ);
             }
 
             if (transform.childCount == 0 || IsClusterMissing())
@@ -81,7 +83,7 @@ namespace Tessera.Tabletop
             GameObject root = new("3D Trinket Cluster (Ring, Brooch, Crystal)");
             root.layer = DecorationLayer;
             root.transform.SetParent(parent, false);
-            root.transform.localPosition = worldPosition ?? new Vector3(ClusterLocalX, 0f, 0f);
+            root.transform.localPosition = worldPosition ?? new Vector3(ClusterLocalX, 0f, ClusterLocalZ);
             root.transform.localRotation = Quaternion.identity;
             root.transform.localScale = Vector3.one;
 

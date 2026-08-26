@@ -315,6 +315,7 @@ namespace Tessera.Games.AugmentedYacht
                 SyncTableBackground();
                 SyncTrayVisualMat();
                 ApplyRenderSettings();
+                QueueEditorTurnBalanceIndicator();
             }
 #endif
         }
@@ -327,7 +328,36 @@ namespace Tessera.Games.AugmentedYacht
                 SyncTableBackground();
                 SyncTrayVisualMat();
                 ApplyRenderSettings();
+                QueueEditorTurnBalanceIndicator();
             }
+        }
+#endif
+
+#if UNITY_EDITOR
+        private void QueueEditorTurnBalanceIndicator()
+        {
+            UnityEditor.EditorApplication.delayCall -= EnsureEditorTurnBalanceIndicator;
+            UnityEditor.EditorApplication.delayCall += EnsureEditorTurnBalanceIndicator;
+        }
+
+        private void EnsureEditorTurnBalanceIndicator()
+        {
+            if (this == null || gameObject == null || Application.isPlaying || !editableLayoutBuilt) return;
+
+            EnsureLayoutRoot();
+            turnBalanceIndicator = layoutRoot.GetComponentInChildren<TurnBalanceIndicator>();
+            if (turnBalanceIndicator == null)
+            {
+                CreateTurnBalanceIndicator();
+                UnityEditor.EditorUtility.SetDirty(turnBalanceIndicator.gameObject);
+                UnityEditor.EditorUtility.SetDirty(gameObject);
+                UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(gameObject.scene);
+                return;
+            }
+
+            turnBalanceIndicator.EnsureGeometry();
+            turnBalanceIndicator.transform.localPosition = TurnBalanceIndicator.DefaultPosition;
+            turnBalanceIndicator.transform.localRotation = Quaternion.Euler(TurnBalanceIndicator.DefaultEulerAngles);
         }
 #endif
 
@@ -2218,7 +2248,7 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
 
         private void CreateTrinketCluster()
         {
-            Vector3 trinketPos = new(-6.74f, 0f, -12.01f);
+            Vector3 trinketPos = new(-6.75f, 0f, -11.45f);
             trinketCluster = TabletopTrinketCluster.Create(layoutRoot, trinketPos);
         }
 
