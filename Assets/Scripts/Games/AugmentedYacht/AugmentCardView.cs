@@ -22,7 +22,7 @@ namespace Tessera.Games.AugmentedYacht
     {
         public const float TrayCardAspectRatio = 1.774f;
 
-        private static readonly Color Parchment = new(0.88f, 0.75f, 0.54f, 1f);
+        private static readonly Color Parchment = new(0.97f, 0.95f, 0.91f, 1f);
         private static readonly Color Ink = new(0.16f, 0.10f, 0.07f, 1f);
         private static readonly Color Crimson = new(0.53f, 0.18f, 0.13f, 1f);
         private static readonly Color AntiqueGold = new(0.90f, 0.66f, 0.24f, 1f);
@@ -127,11 +127,11 @@ namespace Tessera.Games.AugmentedYacht
             };
             Color cardColor = state switch
             {
-                AugmentCardDisplayState.Selected => new Color(1f, .93f, .77f, 1f),
-                AugmentCardDisplayState.Owned => new Color(.95f, .88f, .75f, 1f),
-                AugmentCardDisplayState.Conflict => new Color(.78f, .58f, .53f, 1f),
-                AugmentCardDisplayState.Used => new Color(.66f, .70f, .74f, 1f),
-                AugmentCardDisplayState.Disabled => new Color(.50f, .49f, .47f, 1f),
+                AugmentCardDisplayState.Selected => new Color(1f, .97f, .88f, 1f),
+                AugmentCardDisplayState.Owned => new Color(.98f, .96f, .92f, 1f),
+                AugmentCardDisplayState.Conflict => new Color(.82f, .62f, .58f, 1f),
+                AugmentCardDisplayState.Used => new Color(.72f, .75f, .78f, 1f),
+                AugmentCardDisplayState.Disabled => new Color(.56f, .55f, .53f, 1f),
                 _ => Color.white
             };
 

@@ -38,10 +38,10 @@ public static class AugmentScrollAssetGenerator
 
         Material front = CreateOrReplaceLitMaterial(
             MaterialFolder + "/AugmentScrollPaperFront.mat",
-            new Color(.98f, .90f, .72f, 1f), .10f, true);
+            new Color(.98f, .97f, .95f, 1f), .10f, true);
         Material underside = CreateOrReplaceLitMaterial(
             MaterialFolder + "/AugmentScrollPaperUnderside.mat",
-            new Color(.72f, .50f, .30f, 1f), .07f, true);
+            new Color(.97f, .96f, .93f, 1f), .08f, true);
         Material leather = CreateOrReplaceLitMaterial(
             MaterialFolder + "/AugmentScrollLeather.mat",
             new Color(.20f, .09f, .045f, 1f), .18f, false);
@@ -162,7 +162,7 @@ public static class AugmentScrollAssetGenerator
 
             Light light = lightObject.GetComponent<Light>();
             light.type = LightType.Directional;
-            light.color = new Color(1f, .92f, .82f);
+            light.color = new Color(1f, .98f, .95f);
             light.intensity = 1.20f;
             light.cullingMask = 1 << PreviewLayer;
             light.transform.rotation = Quaternion.Euler(50f, -35f, 0f);

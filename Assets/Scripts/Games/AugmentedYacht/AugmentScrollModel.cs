@@ -114,8 +114,8 @@ namespace Tessera.Games.AugmentedYacht
                 return instance.GetComponent<AugmentScrollModel>();
             }
 
-            Material front = CreateMaterial("Runtime Scroll Paper Front", new Color(.98f, .90f, .72f, 1f), .10f, true);
-            Material underside = CreateMaterial("Runtime Scroll Paper Underside", new Color(.72f, .50f, .30f, 1f), .07f, true);
+            Material front = CreateMaterial("Runtime Scroll Paper Front", new Color(.98f, .97f, .95f, 1f), .10f, true);
+            Material underside = CreateMaterial("Runtime Scroll Paper Underside", new Color(.97f, .96f, .93f, 1f), .08f, true);
             Material leather = CreateMaterial("Runtime Scroll Leather", new Color(.20f, .09f, .045f, 1f), .18f, false);
             Material wax = CreateMaterial("Runtime Scroll Wax", new Color(.54f, .10f, .09f, 1f), .34f, false);
             Material cyan = CreateGlowMaterial("Runtime Scroll Cyan Border", new Color(.37f, .86f, 1f, .78f));

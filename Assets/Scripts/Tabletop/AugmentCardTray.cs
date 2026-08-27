@@ -387,10 +387,10 @@ namespace Tessera.Tabletop
                 SetupPart(rimCapBottom, slotGroup.transform, new Vector3(rimX, rimY, -halfGap - 0.03f), Vector3.zero,
                     new Vector3(rimThickness, rimH, 0.06f), stoneHighlightMat);
 
-                // 3-5. 카드 안착용 3D 앵커 Transform
+                // 3-5. 카드 안착용 3D 앵커 Transform (스폰 위치 x -0.17 좌측 이동 적용)
                 GameObject anchorObj = new($"CardSlot_{i}_Anchor");
                 anchorObj.transform.SetParent(slotGroup.transform, false);
-                anchorObj.transform.localPosition = new Vector3(0f, baseThickness + 0.06f, 0f);
+                anchorObj.transform.localPosition = new Vector3(-0.17f, baseThickness + 0.06f, 0f);
                 slotAnchors[i] = anchorObj.transform;
 
                 // 3-6. 슬롯 간 분할 격벽 (Divider Bar)

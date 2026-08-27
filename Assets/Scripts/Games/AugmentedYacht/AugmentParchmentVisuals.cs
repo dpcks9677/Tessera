@@ -70,8 +70,8 @@ namespace Tessera.Games.AugmentedYacht
         {
             int key = (int)preset;
             Color32[] pixels = new Color32[TextureWidth * TextureHeight];
-            Color paperLight = new(.91f, .78f, .55f, 1f);
-            Color paperDark = new(.62f, .39f, .22f, 1f);
+            Color paperLight = new(.98f, .97f, .94f, 1f);
+            Color paperDark = new(.86f, .82f, .76f, 1f);
             Color cyan = new(.37f, .86f, 1f, .78f);
             Color leather = new(.20f, .10f, .055f, 1f);
             Color wax = new(.54f, .10f, .09f, 1f);
