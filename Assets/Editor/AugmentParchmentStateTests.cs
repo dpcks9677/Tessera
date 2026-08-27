@@ -48,11 +48,12 @@ public sealed class AugmentParchmentStateTests
             out _, out _, out _), Is.True);
         Assert.That(state.AugmentPlayers[0].OwnedIds, Has.Length.EqualTo(1));
         Assert.That(state.AugmentPlayers[0].OwnedIds[0], Is.Not.EqualTo(YachtAugmentRuntime.RandomBoxId));
-        Assert.That(state.AugmentPlayers[0].OwnedCardPresetIds, Is.EqualTo(new[] { 4 }));
+        Assert.That(state.AugmentPlayers[0].OwnedCardPresetIds, Is.EqualTo(new[] { 3 }));
     }
 
     [TestCase(-1, 0)]
     [TestCase(5, 0)]
+    [TestCase(4, 3)]
     [TestCase(3, 3)]
     public void CardPreset_유효하지않은값은_첫프리셋으로폴백한다(int value, int expected)
     {

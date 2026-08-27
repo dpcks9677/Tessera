@@ -179,6 +179,7 @@ namespace Tessera.Games.Yacht
     /// </summary>
     public sealed class YachtAugmentRuntime
     {
+        public const int CardVisualPresetCount = 4;
         public const string LuckySevensId = "lucky-sevens";
         public const string PerfectSquaresId = "perfect-squares";
         public const string GamblerId = "gambler";
@@ -467,7 +468,7 @@ namespace Tessera.Games.Yacht
             int optionIndex = Array.IndexOf(state.Draft.Options, augmentId);
             int visualPreset = optionIndex >= 0 && optionIndex < (state.Draft.OptionCardPresetIds?.Length ?? 0)
                 ? NormalizeCardPreset(state.Draft.OptionCardPresetIds[optionIndex])
-                : visualRandom.NextInt(0, 5);
+                : visualRandom.NextInt(0, CardVisualPresetCount);
             var emitted = new List<YachtGameEvent>();
             ApplyAugment(state, playerIndex, augmentId, emitted, false, visualPreset);
             state.Draft.SelectionCounts[playerIndex]++;
@@ -1273,7 +1274,7 @@ namespace Tessera.Games.Yacht
 
         private static int[] CreateCardPresetIds(int count, IRandomSource visualRandom)
         {
-            int[] values = { 0, 1, 2, 3, 4 };
+            int[] values = { 0, 1, 2, 3 };
             for (int i = values.Length - 1; i > 0; i--)
             {
                 int index = visualRandom.NextInt(0, i + 1);
@@ -1284,7 +1285,9 @@ namespace Tessera.Games.Yacht
             return result;
         }
 
-        public static int NormalizeCardPreset(int value) => value >= 0 && value < 5 ? value : 0;
+        public static int NormalizeCardPreset(int value) => value == 4
+            ? CardVisualPresetCount - 1
+            : value >= 0 && value < CardVisualPresetCount ? value : 0;
 
         private static void Shuffle<T>(IList<T> values, IRandomSource random)
         {

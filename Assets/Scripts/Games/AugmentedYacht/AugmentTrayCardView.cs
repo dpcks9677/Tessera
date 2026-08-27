@@ -53,7 +53,7 @@ namespace Tessera.Games.AugmentedYacht
 
             AugmentTrayCardView view = root.AddComponent<AugmentTrayCardView>();
             view.worldCamera = worldCamera;
-            view.cardWorldSize = new Vector2(slotLocalSize.x * .94f, slotLocalSize.y * .90f);
+            view.cardWorldSize = slotLocalSize;
             view.pointerCollider = root.AddComponent<BoxCollider>();
             view.pointerCollider.center = new Vector3(0f, RestingHeight + .04f, 0f);
             view.pointerCollider.size = new Vector3(view.cardWorldSize.x, .18f, view.cardWorldSize.y);

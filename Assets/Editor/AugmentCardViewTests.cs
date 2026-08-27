@@ -48,12 +48,12 @@ public sealed class AugmentCardViewTests
         }
     }
 
-    [TestCase(AugmentCardDisplayState.Available, "[선택 가능]", true, 3f)]
-    [TestCase(AugmentCardDisplayState.Selected, "[선택됨]", false, 5f)]
-    [TestCase(AugmentCardDisplayState.Owned, "[보유 중]", false, 3f)]
-    [TestCase(AugmentCardDisplayState.Conflict, "[충돌]", false, 5f)]
-    [TestCase(AugmentCardDisplayState.Used, "[사용 완료]", false, 3f)]
-    [TestCase(AugmentCardDisplayState.Disabled, "[비활성]", false, 3f)]
+    [TestCase(AugmentCardDisplayState.Available, "[선택 가능]", true, 1f)]
+    [TestCase(AugmentCardDisplayState.Selected, "[선택됨]", false, 2f)]
+    [TestCase(AugmentCardDisplayState.Owned, "[보유 중]", false, 1f)]
+    [TestCase(AugmentCardDisplayState.Conflict, "[충돌]", false, 2f)]
+    [TestCase(AugmentCardDisplayState.Used, "[사용 완료]", false, 1f)]
+    [TestCase(AugmentCardDisplayState.Disabled, "[비활성]", false, 1f)]
     public void CommonCard_상태별문구강조입력여부를_즉시구분한다(
         AugmentCardDisplayState state,
         string expectedLabel,
@@ -141,14 +141,16 @@ public sealed class AugmentCardViewTests
             Assert.That(view.GetComponentInChildren<Canvas>(true), Is.Null);
             Assert.That(view.OverlayRect.parent, Is.EqualTo(overlayCanvas.transform));
             Assert.That(view.ScrollModel, Is.Not.Null);
-            Assert.That(view.GetComponentsInChildren<MeshFilter>(true), Has.Length.GreaterThanOrEqualTo(5));
+            Assert.That(view.GetComponentsInChildren<MeshFilter>(true), Has.Length.GreaterThanOrEqualTo(6));
             Assert.That(view.ScrollModel.WaxRenderer, Is.Not.Null);
             Assert.That(view.ScrollModel.OverlayAnchors.Count, Is.EqualTo(4));
             Assert.That(view.ScrollModel.HasCenteredSeal, Is.True);
+            Assert.That(view.ScrollModel.CubeSealMark, Is.Not.Null);
+            Assert.That(view.transform.Find("Parchment Visual Root/Augment Scroll Preset 0/Cyan Inner Border"), Is.Not.Null);
             Assert.That(view.Card.Background.color.a, Is.Zero);
             Assert.That(view.Card.CardOutline.enabled, Is.False);
-            Assert.That(view.PointerCollider.size.x, Is.LessThan(slotSize.x));
-            Assert.That(view.PointerCollider.size.z, Is.LessThan(slotSize.y));
+            Assert.That(view.PointerCollider.size.x, Is.EqualTo(slotSize.x).Within(.001f));
+            Assert.That(view.PointerCollider.size.z, Is.EqualTo(slotSize.y).Within(.001f));
             foreach (Graphic graphic in view.Card.GetComponentsInChildren<Graphic>(true))
                 Assert.That(graphic.raycastTarget, Is.False);
         }
@@ -180,7 +182,7 @@ public sealed class AugmentCardViewTests
                 DisplayName = "럭키 세븐",
                 Description = "트레이 카드 상호작용 검증",
                 Kind = YachtAugmentKind.Enhancement
-            }, (int)AugmentParchmentPreset.Scalloped);
+            }, (int)AugmentParchmentPreset.BottomTear);
             view.SetVisible(true);
 
             float restingHeight = view.VisualRoot.localPosition.y;
@@ -209,14 +211,17 @@ public sealed class AugmentCardViewTests
     }
 
     [Test]
-    public void Parchment_다섯프리셋은_펼친본문과다층롤및밀랍인장을가진다()
+    public void Parchment_네프리셋은_직사각형본문과2점5회말림및큐브인장을가진다()
     {
         var signatures = new HashSet<string>();
         foreach (AugmentParchmentPreset preset in System.Enum.GetValues(typeof(AugmentParchmentPreset)))
         {
             Mesh body = AugmentScrollModelFactory.CreatePaperBodyMesh(preset, 4.3f, 2.3f);
             Mesh roll = AugmentScrollModelFactory.CreateRolledLayersMesh(preset, 4.3f, 2.3f);
+            Mesh band = AugmentScrollModelFactory.CreateSealBandMesh(preset, 4.3f, 2.3f);
             Mesh seal = AugmentScrollModelFactory.CreateWaxSealMesh(preset, 4.3f, 2.3f);
+            Mesh mark = AugmentScrollModelFactory.CreateCubeSealMarkMesh(4.3f, 2.3f);
+            Mesh border = AugmentScrollModelFactory.CreateInnerBorderMesh(4.3f, 2.3f);
             try
             {
                 signatures.Add(AugmentParchmentVisuals.GetOutlineSignature(preset));
@@ -226,22 +231,30 @@ public sealed class AugmentCardViewTests
                 Assert.That(body.uv, Has.Length.EqualTo(body.vertexCount));
                 Assert.That(body.normals, Has.Length.EqualTo(body.vertexCount));
                 Assert.That(body.tangents, Has.Length.EqualTo(body.vertexCount));
+                Assert.That(body.bounds.min.x, Is.LessThanOrEqualTo(-1.655f));
 
                 Assert.That(roll.vertexCount, Is.EqualTo(
                     AugmentScrollModelFactory.RollAxisSegments * AugmentScrollModelFactory.RollSpiralSegments * 2));
                 Assert.That(roll.subMeshCount, Is.EqualTo(2));
                 Assert.That(roll.bounds.size.y, Is.GreaterThan(.35f));
                 Assert.That(roll.bounds.size.z, Is.GreaterThan(.25f));
+                Assert.That(AugmentScrollModelFactory.RollTurns, Is.EqualTo(2.5f));
+                Assert.That(band.vertexCount, Is.EqualTo(56));
 
                 Assert.That(seal.vertexCount, Is.GreaterThan(50));
                 Assert.That(seal.bounds.size.x, Is.GreaterThan(.30f));
                 Assert.That(seal.bounds.size.z, Is.GreaterThan(.30f));
+                Assert.That(mark.vertexCount, Is.EqualTo(36));
+                Assert.That(border.vertexCount, Is.EqualTo(16));
             }
             finally
             {
                 Object.DestroyImmediate(body);
                 Object.DestroyImmediate(roll);
+                Object.DestroyImmediate(band);
                 Object.DestroyImmediate(seal);
+                Object.DestroyImmediate(mark);
+                Object.DestroyImmediate(border);
             }
         }
         Assert.That(signatures.Count, Is.EqualTo(AugmentParchmentVisuals.PresetCount));
@@ -251,13 +264,51 @@ public sealed class AugmentCardViewTests
     [TestCase(1)]
     [TestCase(2)]
     [TestCase(3)]
-    [TestCase(4)]
-    public void Parchment_정적3D프리팹은_다섯프리셋을제공한다(int presetId)
+    public void Parchment_정적3D프리팹과선택프리뷰는_네프리셋을제공한다(int presetId)
     {
         GameObject prefab = Resources.Load<GameObject>($"AugmentScrolls/AugmentScrollPreset_{presetId}");
         Assert.That(prefab, Is.Not.Null);
         Assert.That(prefab.GetComponent<AugmentScrollModel>(), Is.Not.Null);
-        Assert.That(prefab.GetComponentsInChildren<MeshFilter>(true), Has.Length.GreaterThanOrEqualTo(5));
+        Assert.That(prefab.GetComponentsInChildren<MeshFilter>(true), Has.Length.GreaterThanOrEqualTo(6));
+        Assert.That(prefab.transform.Find("Embossed Cube Seal Mark"), Is.Not.Null);
+        Assert.That(prefab.transform.Find("Cyan Inner Border"), Is.Not.Null);
+        Assert.That(prefab.transform.Find("Pixel Readable Roll Layers"), Is.Null);
+        Transform roll = prefab.transform.Find("Left Rolled Paper 2.5 Turns");
+        Transform band = prefab.transform.Find("Leather Seal Band");
+        Transform wax = prefab.transform.Find("Crimson Wax Seal");
+        Assert.That(roll, Is.Not.Null);
+        Assert.That(band, Is.Not.Null);
+        Assert.That(wax, Is.Not.Null);
+        Assert.That(roll.localEulerAngles.z, Is.EqualTo(AugmentScrollModelFactory.RollRotationZ).Within(.01f));
+        Assert.That(band.localPosition, Is.EqualTo(roll.localPosition));
+        Assert.That(wax.localPosition, Is.EqualTo(roll.localPosition));
+        Assert.That(prefab.transform.Find("Ribbon Tail"), Is.Null);
+        Assert.That(prefab.transform.Find("Iron Rod"), Is.Null);
+        Assert.That(prefab.transform.Find("Metal Rod"), Is.Null);
+        Assert.That(Resources.Load<Sprite>($"AugmentScrolls/Previews/AugmentScrollPreview_{presetId}"), Is.Not.Null);
+    }
+
+    [Test]
+    public void CommonCard_왼쪽장식거터를비운_공통안전영역을사용한다()
+    {
+        GameObject canvasObject = new("Augment Safe Area Test Canvas", typeof(Canvas));
+        try
+        {
+            AugmentCardView card = AugmentCardView.Create(
+                canvasObject.transform, "Safe Area Card", Vector2.zero,
+                new Vector2(460f, 460f / AugmentCardView.TrayCardAspectRatio),
+                new Vector2(.5f, .5f), null);
+            Rect expected = AugmentParchmentVisuals.ContentSafeRect;
+            Assert.That(card.ContentRoot.anchorMin.x, Is.EqualTo(expected.xMin).Within(.001f));
+            Assert.That(card.ContentRoot.anchorMax.x, Is.EqualTo(expected.xMax).Within(.001f));
+            Assert.That(card.ContentRoot.anchorMin.x, Is.GreaterThanOrEqualTo(.20f));
+            Assert.That(card.NameText.transform.IsChildOf(card.ContentRoot), Is.True);
+            Assert.That(card.DescriptionText.transform.IsChildOf(card.ContentRoot), Is.True);
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+        }
     }
 
     [Test]

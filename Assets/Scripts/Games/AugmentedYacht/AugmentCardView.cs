@@ -34,6 +34,7 @@ namespace Tessera.Games.AugmentedYacht
         private Image stateAccent;
         private Outline outline;
         private Image icon;
+        private RectTransform contentRoot;
         private Text nameText;
         private Text descriptionText;
         private Text kindText;
@@ -51,6 +52,7 @@ namespace Tessera.Games.AugmentedYacht
         public Image Icon => icon;
         public Image Background => background;
         public Image StateAccent => stateAccent;
+        public RectTransform ContentRoot => contentRoot;
         public Outline CardOutline => outline;
         public AugmentParchmentPreset ParchmentPreset { get; private set; }
         public AugmentCardDisplayState DisplayState { get; private set; }
@@ -125,12 +127,12 @@ namespace Tessera.Games.AugmentedYacht
             };
             Color cardColor = state switch
             {
-                AugmentCardDisplayState.Selected => new Color(0.98f, 0.82f, 0.55f, 1f),
-                AugmentCardDisplayState.Owned => new Color(0.88f, 0.72f, 0.47f, 1f),
-                AugmentCardDisplayState.Conflict => new Color(0.68f, 0.48f, 0.40f, 1f),
-                AugmentCardDisplayState.Used => new Color(0.55f, 0.58f, 0.61f, 1f),
-                AugmentCardDisplayState.Disabled => new Color(0.42f, 0.40f, 0.37f, 1f),
-                _ => Parchment
+                AugmentCardDisplayState.Selected => new Color(1f, .93f, .77f, 1f),
+                AugmentCardDisplayState.Owned => new Color(.95f, .88f, .75f, 1f),
+                AugmentCardDisplayState.Conflict => new Color(.78f, .58f, .53f, 1f),
+                AugmentCardDisplayState.Used => new Color(.66f, .70f, .74f, 1f),
+                AugmentCardDisplayState.Disabled => new Color(.50f, .49f, .47f, 1f),
+                _ => Color.white
             };
 
             if (overlayContentOnly) cardColor.a = 0f;
@@ -141,8 +143,8 @@ namespace Tessera.Games.AugmentedYacht
             iconBacking.color = Color.Lerp(new Color(0.12f, 0.08f, 0.07f, 0.94f), accent, 0.12f);
             outline.effectColor = accent;
             outline.effectDistance = state is AugmentCardDisplayState.Selected or AugmentCardDisplayState.Conflict
-                ? new Vector2(5f, -5f)
-                : new Vector2(3f, -3f);
+                ? new Vector2(2f, -2f)
+                : new Vector2(1f, -1f);
             button.interactable = state == AugmentCardDisplayState.Available;
             background.color = cardColor;
 
@@ -183,8 +185,8 @@ namespace Tessera.Games.AugmentedYacht
             SetParchmentPreset(AugmentParchmentPreset.GentleWave);
 
             outline = GetComponent<Outline>();
-            outline.effectColor = new Color(0.37f, 0.20f, 0.10f, 1f);
-            outline.effectDistance = new Vector2(3f, -3f);
+            outline.effectColor = new Color(.37f, .86f, 1f, .42f);
+            outline.effectDistance = new Vector2(1f, -1f);
 
             button = GetComponent<Button>();
             button.targetGraphic = background;
@@ -197,8 +199,18 @@ namespace Tessera.Games.AugmentedYacht
             button.colors = colors;
             if (onClick != null) button.onClick.AddListener(onClick);
 
-            float headerY = height * 0.40f;
-            stateAccent = CreateImage(transform, "State Accent", Vector2.zero, new Vector2(8f, -16f), AntiqueGold);
+            GameObject contentObject = new("Content Root", typeof(RectTransform));
+            contentObject.transform.SetParent(transform, false);
+            contentRoot = contentObject.GetComponent<RectTransform>();
+            Rect safeRect = AugmentParchmentVisuals.ContentSafeRect;
+            contentRoot.anchorMin = new Vector2(safeRect.xMin, safeRect.yMin);
+            contentRoot.anchorMax = new Vector2(safeRect.xMax, safeRect.yMax);
+            contentRoot.offsetMin = contentRoot.offsetMax = Vector2.zero;
+
+            float contentWidth = width * safeRect.width;
+            float contentHeight = height * safeRect.height;
+            float headerY = contentHeight * 0.40f;
+            stateAccent = CreateImage(contentRoot, "State Accent", Vector2.zero, new Vector2(8f, -12f), AntiqueGold);
             RectTransform accentRect = stateAccent.rectTransform;
             accentRect.anchorMin = new Vector2(0f, 0f);
             accentRect.anchorMax = new Vector2(0f, 1f);
@@ -207,30 +219,30 @@ namespace Tessera.Games.AugmentedYacht
             accentRect.sizeDelta = new Vector2(8f, -16f);
             stateAccent.raycastTarget = false;
 
-            header = CreateImage(transform, "Crimson Header", new Vector2(0f, headerY), new Vector2(-24f, height * 0.18f), Crimson);
+            header = CreateImage(contentRoot, "Crimson Header", new Vector2(0f, headerY), new Vector2(-18f, contentHeight * 0.18f), Crimson);
             header.raycastTarget = false;
 
-            kindText = CreateText(transform, "Kind Badge", "종류", new Vector2(-width * 0.31f, headerY), new Vector2(width * 0.31f, 28f), 14, TextAnchor.MiddleLeft, AntiqueGold);
-            stateText = CreateText(transform, "State Badge", "[선택 가능]", new Vector2(width * 0.31f, headerY), new Vector2(width * 0.31f, 28f), 13, TextAnchor.MiddleRight, AntiqueGold);
+            kindText = CreateText(contentRoot, "Kind Badge", "종류", new Vector2(-contentWidth * 0.29f, headerY), new Vector2(contentWidth * 0.36f, 28f), 14, TextAnchor.MiddleLeft, AntiqueGold);
+            stateText = CreateText(contentRoot, "State Badge", "[선택 가능]", new Vector2(contentWidth * 0.29f, headerY), new Vector2(contentWidth * 0.36f, 28f), 13, TextAnchor.MiddleRight, AntiqueGold);
 
-            iconBacking = CreateImage(transform, "Pixel Icon Backing", new Vector2(0f, height * 0.19f), new Vector2(60f, 60f), new Color(0.12f, 0.08f, 0.07f, 0.94f));
+            iconBacking = CreateImage(contentRoot, "Pixel Icon Backing", new Vector2(0f, contentHeight * 0.19f), new Vector2(56f, 56f), new Color(0.12f, 0.08f, 0.07f, 0.94f));
             iconBacking.raycastTarget = false;
             icon = CreateImage(iconBacking.transform, "Pixel Icon", Vector2.zero, new Vector2(-10f, -10f), AntiqueGold, true);
             icon.preserveAspect = true;
             icon.raycastTarget = false;
 
-            nameText = CreateText(transform, "Name", "증강", new Vector2(0f, height * 0.015f), new Vector2(-40f, 34f), 21, TextAnchor.MiddleCenter, Ink);
-            Image divider = CreateImage(transform, "Description Divider", new Vector2(0f, -height * 0.085f), new Vector2(-36f, 2f), new Color(0.37f, 0.20f, 0.10f, 0.46f));
+            nameText = CreateText(contentRoot, "Name", "증강", new Vector2(0f, contentHeight * 0.015f), new Vector2(-30f, 34f), 21, TextAnchor.MiddleCenter, Ink);
+            Image divider = CreateImage(contentRoot, "Description Divider", new Vector2(0f, -contentHeight * 0.085f), new Vector2(-28f, 2f), new Color(0.37f, 0.20f, 0.10f, 0.46f));
             divider.raycastTarget = false;
 
-            descriptionText = CreateText(transform, "One Line Effect", "효과", new Vector2(0f, -height * 0.19f), new Vector2(-44f, 30f), 15, TextAnchor.MiddleCenter, Ink);
+            descriptionText = CreateText(contentRoot, "One Line Effect", "효과", new Vector2(0f, -contentHeight * 0.19f), new Vector2(-34f, 30f), 15, TextAnchor.MiddleCenter, Ink);
             descriptionText.resizeTextForBestFit = true;
             descriptionText.resizeTextMinSize = 12;
             descriptionText.resizeTextMaxSize = 15;
             descriptionText.horizontalOverflow = HorizontalWrapMode.Overflow;
             descriptionText.verticalOverflow = VerticalWrapMode.Truncate;
 
-            targetText = CreateText(transform, "Target Badge", "대상 · 없음", new Vector2(0f, -height * 0.39f), new Vector2(-44f, 24f), 12, TextAnchor.MiddleCenter, new Color(0.25f, 0.19f, 0.15f, 1f));
+            targetText = CreateText(contentRoot, "Target Badge", "대상 · 없음", new Vector2(0f, -contentHeight * 0.39f), new Vector2(-34f, 24f), 12, TextAnchor.MiddleCenter, new Color(0.25f, 0.19f, 0.15f, 1f));
         }
 
         private static Image CreateImage(Transform parent, string name, Vector2 position, Vector2 size, Color color, bool stretch = false)

@@ -4,11 +4,12 @@ using UnityEngine.Rendering;
 
 namespace Tessera.Games.AugmentedYacht
 {
-    /// <summary>펼쳐진 종이, 다층 롤, 밀랍 인장과 오버레이 기준점을 묶는 3D 스크롤입니다.</summary>
+    /// <summary>직사각형 종이, 왼쪽 말림, 가죽 띠, 큐브 인장과 오버레이 기준점을 묶습니다.</summary>
     public sealed class AugmentScrollModel : MonoBehaviour
     {
         [SerializeField] private Transform[] overlayAnchors;
         [SerializeField] private Renderer waxRenderer;
+        [SerializeField] private Transform cubeSealMark;
         [SerializeField] private bool ownsRuntimeAssets;
 
         private readonly List<Mesh> runtimeMeshes = new();
@@ -16,12 +17,15 @@ namespace Tessera.Games.AugmentedYacht
 
         public IReadOnlyList<Transform> OverlayAnchors => overlayAnchors;
         public Renderer WaxRenderer => waxRenderer;
-        public bool HasCenteredSeal => waxRenderer != null && Mathf.Abs(waxRenderer.transform.localPosition.x) < 1.2f;
+        public Transform CubeSealMark => cubeSealMark;
+        public bool HasCenteredSeal => waxRenderer != null
+            && Mathf.Abs(waxRenderer.transform.localPosition.z) < .05f;
 
-        public void Configure(Transform[] anchors, Renderer sealRenderer, bool ownsAssets)
+        public void Configure(Transform[] anchors, Renderer sealRenderer, Transform sealMark, bool ownsAssets)
         {
             overlayAnchors = anchors;
             waxRenderer = sealRenderer;
+            cubeSealMark = sealMark;
             ownsRuntimeAssets = ownsAssets;
         }
 
@@ -80,21 +84,22 @@ namespace Tessera.Games.AugmentedYacht
         }
     }
 
-    /// <summary>정적 프리팹을 우선 사용하고 누락 시 동일 구조의 런타임 3D 스크롤을 생성합니다.</summary>
+    /// <summary>정적 프리팹을 우선 사용하고 누락 시 같은 구조를 런타임에 생성합니다.</summary>
     public static class AugmentScrollModelFactory
     {
         public const float ReferenceWidth = 4.30f;
         public const float ReferenceHeight = 2.30f;
-        public const int PaperColumns = 21;
-        public const int PaperRows = 13;
-        public const int RollAxisSegments = 14;
-        public const int RollSpiralSegments = 36;
+        public const int PaperColumns = 25;
+        public const int PaperRows = 15;
+        public const int RollAxisSegments = 18;
+        public const int RollSpiralSegments = 44;
+        public const float RollTurns = 2.5f;
+        public const float RollRotationZ = 210f;
         private const float PaperThickness = .022f;
+        private const float RollCenterXNormalized = -.385f;
+        private const float RollCenterYNormalized = .125f;
 
-        public static AugmentScrollModel Create(
-            Transform parent,
-            AugmentParchmentPreset preset,
-            Vector2 size)
+        public static AugmentScrollModel Create(Transform parent, AugmentParchmentPreset preset, Vector2 size)
         {
             int key = (int)AugmentParchmentVisuals.Normalize((int)preset);
             GameObject prefab = Resources.Load<GameObject>($"AugmentScrolls/AugmentScrollPreset_{key}");
@@ -109,17 +114,18 @@ namespace Tessera.Games.AugmentedYacht
                 return instance.GetComponent<AugmentScrollModel>();
             }
 
-            Material front = CreateMaterial(
-                "Runtime Scroll Paper Front", new Color(.91f, .76f, .48f, 1f), .11f, true);
-            Material underside = CreateMaterial(
-                "Runtime Scroll Paper Underside", new Color(.39f, .20f, .10f, 1f), .08f, true);
-            Material wax = CreateMaterial(
-                "Runtime Scroll Wax", new Color(.54f, .10f, .09f, 1f), .34f, false);
-            Material[] materials = { front, underside, wax };
+            Material front = CreateMaterial("Runtime Scroll Paper Front", new Color(.98f, .90f, .72f, 1f), .10f, true);
+            Material underside = CreateMaterial("Runtime Scroll Paper Underside", new Color(.72f, .50f, .30f, 1f), .07f, true);
+            Material leather = CreateMaterial("Runtime Scroll Leather", new Color(.20f, .09f, .045f, 1f), .18f, false);
+            Material wax = CreateMaterial("Runtime Scroll Wax", new Color(.54f, .10f, .09f, 1f), .34f, false);
+            Material cyan = CreateGlowMaterial("Runtime Scroll Cyan Border", new Color(.37f, .86f, 1f, .78f));
+            Material[] materials = { front, underside, leather, wax, cyan };
             AugmentScrollModel model = Build(parent, preset, size.x, size.y, materials, true);
             model.RegisterRuntimeAsset(front);
             model.RegisterRuntimeAsset(underside);
+            model.RegisterRuntimeAsset(leather);
             model.RegisterRuntimeAsset(wax);
+            model.RegisterRuntimeAsset(cyan);
             return model;
         }
 
@@ -137,33 +143,42 @@ namespace Tessera.Games.AugmentedYacht
             root.transform.SetParent(parent, false);
             AugmentScrollModel model = root.AddComponent<AugmentScrollModel>();
 
-            Material front = materials != null && materials.Length > 0 ? materials[0] : null;
-            Material underside = materials != null && materials.Length > 1 ? materials[1] : front;
-            Material wax = materials != null && materials.Length > 2 ? materials[2] : front;
+            Material front = GetMaterial(materials, 0);
+            Material underside = GetMaterial(materials, 1) ?? front;
+            Material leather = GetMaterial(materials, 2) ?? underside;
+            Material wax = GetMaterial(materials, 3) ?? leather;
+            Material cyan = GetMaterial(materials, 4) ?? front;
 
             Mesh body = CreatePaperBodyMesh(preset, width, height);
-            CreateMeshPart(root.transform, "Paper Front And Underside", body, new[] { front, underside });
+            CreateMeshPart(root.transform, "Rectangular Paper Body", body, new[] { front, underside });
             Mesh roll = CreateRolledLayersMesh(preset, width, height);
-            CreateMeshPart(root.transform, "Rolled Inner Layers", roll, new[] { front, underside });
-
+            Transform rollTransform = CreateMeshPart(
+                root.transform, "Left Rolled Paper 2.5 Turns", roll, new[] { front, underside }).transform;
+            Vector3 rollCenter = GetRollCenter(width, height);
+            rollTransform.localPosition = rollCenter;
+            rollTransform.localRotation = Quaternion.Euler(0f, 0f, RollRotationZ);
             Mesh band = CreateSealBandMesh(preset, width, height);
-            CreateMeshPart(root.transform, "Seal Band", band, new[] { wax });
-
+            Transform bandTransform = CreateMeshPart(root.transform, "Leather Seal Band", band, new[] { leather }).transform;
+            bandTransform.localPosition = rollCenter;
             Mesh seal = CreateWaxSealMesh(preset, width, height);
-            MeshRenderer sealRenderer = CreateMeshPart(root.transform, "Wax Seal", seal, new[] { wax });
-
-            Mesh ribbon = CreateRibbonMesh(preset, width, height);
-            CreateMeshPart(root.transform, "Ribbon Tail", ribbon, new[] { wax });
+            MeshRenderer sealRenderer = CreateMeshPart(root.transform, "Crimson Wax Seal", seal, new[] { wax });
+            sealRenderer.transform.localPosition = rollCenter;
+            Mesh mark = CreateCubeSealMarkMesh(width, height);
+            Transform markTransform = CreateMeshPart(root.transform, "Embossed Cube Seal Mark", mark, new[] { leather }).transform;
+            markTransform.localPosition = rollCenter;
+            Mesh border = CreateInnerBorderMesh(width, height);
+            CreateMeshPart(root.transform, "Cyan Inner Border", border, new[] { cyan });
 
             Transform[] anchors = CreateOverlayAnchors(root.transform, width, height);
-            model.Configure(anchors, sealRenderer, ownsAssets);
+            model.Configure(anchors, sealRenderer, markTransform, ownsAssets);
             if (ownsAssets)
             {
                 model.RegisterRuntimeAsset(body);
                 model.RegisterRuntimeAsset(roll);
                 model.RegisterRuntimeAsset(band);
                 model.RegisterRuntimeAsset(seal);
-                model.RegisterRuntimeAsset(ribbon);
+                model.RegisterRuntimeAsset(mark);
+                model.RegisterRuntimeAsset(border);
             }
             return model;
         }
@@ -182,33 +197,29 @@ namespace Tessera.Games.AugmentedYacht
                 for (int zIndex = 0; zIndex < PaperRows; zIndex++)
                 {
                     float v = (float)zIndex / (PaperRows - 1);
+                    float sideWear = SideInset(key, v);
                     for (int xIndex = 0; xIndex < PaperColumns; xIndex++)
                     {
                         float u = (float)xIndex / (PaperColumns - 1);
-                        float bottomInset = EdgeInset(key, u, false);
-                        float topInset = EdgeInset(key, u, true);
+                        float bottomInset = AugmentParchmentVisuals.SampleEdgeInset(preset, u, false);
+                        float topInset = AugmentParchmentVisuals.SampleEdgeInset(preset, u, true);
                         float minZ = (-.5f + bottomInset) * height;
                         float maxZ = (.5f - topInset) * height;
-                        float x = (u - .5f) * width;
+                        // 펼친 본문을 말림의 중심까지 연장해 두 부분이 한 장의 종이처럼 겹쳐 보이게 한다.
+                        float x = Mathf.Lerp(RollCenterXNormalized * width, (.5f - sideWear) * width, u);
                         float z = Mathf.Lerp(minZ, maxZ, v);
-
-                        float leftLift = Mathf.Pow(Mathf.Clamp01((.13f - u) / .13f), 2f) * (.035f + key * .006f);
-                        float rightLift = Mathf.Pow(Mathf.Clamp01((u - .84f) / .16f), 2f) * (.045f + key * .009f);
-                        float lowerCornerWeight = Mathf.Pow(Mathf.Clamp01((.20f - v) / .20f), 2f);
-                        float lowerLift = lowerCornerWeight * (
-                            .09f * Mathf.Exp(-Mathf.Pow((u - .12f) / .18f, 2f))
-                            + .055f * Mathf.Exp(-Mathf.Pow((u - .90f) / .14f, 2f)));
-                        float crease = .012f * Mathf.Sin((u * 2.7f + v * 1.3f + key) * Mathf.PI);
-                        float y = thickness + leftLift + rightLift + lowerLift + crease;
-                        vertices.Add(new Vector3(x, y, z));
-                        uvs.Add(new Vector2(u * 1.35f, v));
+                        float joinLift = Mathf.Exp(-Mathf.Pow(u / .10f, 2f)) * height * .035f;
+                        float edgeLift = Mathf.Pow(Mathf.Abs(u - .5f) * 2f, 6f) * height * .010f;
+                        float broadCrease = Mathf.Sin((u * 1.7f + v * 1.15f + key * .31f) * Mathf.PI) * height * .004f;
+                        vertices.Add(new Vector3(x, thickness + joinLift + edgeLift + broadCrease, z));
+                        uvs.Add(new Vector2(u * 1.15f, v));
                     }
                 }
             }
 
             AddGridSurfaces(frontTriangles, undersideTriangles, PaperColumns, PaperRows);
             AddGridSides(undersideTriangles, PaperColumns, PaperRows, PaperColumns * PaperRows);
-            return BuildMesh($"Augment_Scroll_Body_{key}", vertices, uvs, frontTriangles, undersideTriangles);
+            return BuildMesh($"Augment_Rectangular_Paper_{key}", vertices, uvs, frontTriangles, undersideTriangles);
         }
 
         public static Mesh CreateRolledLayersMesh(AugmentParchmentPreset preset, float width, float height)
@@ -219,53 +230,82 @@ namespace Tessera.Games.AugmentedYacht
             var uvs = new List<Vector2>(layerVertexCount * 2);
             var frontTriangles = new List<int>();
             var undersideTriangles = new List<int>();
-            float rollStartX = -.46f * width;
-            float rollEndX = (.06f + key * .008f) * width;
-            float centerZ = height * (.265f + key * .006f);
-            float centerY = height * .115f;
-            float tilt = (-.018f + key * .009f) * height;
-            float innerRadius = height * (.030f + key * .0015f);
-            float outerRadius = height * (.125f + key * .004f);
+            float baseCenterX = width * key * .002f;
+            float baseCenterY = 0f;
+            float innerRadius = height * .030f;
+            float outerRadius = height * .140f;
 
             for (int layer = 0; layer < 2; layer++)
+            for (int axisIndex = 0; axisIndex < RollAxisSegments; axisIndex++)
             {
-                for (int axisIndex = 0; axisIndex < RollAxisSegments; axisIndex++)
+                float axisT = (float)axisIndex / (RollAxisSegments - 1);
+                float centerPinch = 1f - .24f * Mathf.Sin(axisT * Mathf.PI);
+                float z = Mathf.Lerp(-height * .515f, height * .515f, axisT);
+                float centerX = baseCenterX + (axisT - .5f) * height * .018f;
+                float centerY = baseCenterY + Mathf.Abs(axisT - .5f) * height * .018f;
+                for (int spiralIndex = 0; spiralIndex < RollSpiralSegments; spiralIndex++)
                 {
-                    float axisT = (float)axisIndex / (RollAxisSegments - 1);
-                    float axisEase = Mathf.Sin(axisT * Mathf.PI);
-                    float x = Mathf.Lerp(rollStartX, rollEndX, axisT);
-                    float localCenterZ = centerZ + (axisT - .5f) * tilt;
-                    float localCenterY = centerY + axisEase * height * .012f;
-                    for (int spiralIndex = 0; spiralIndex < RollSpiralSegments; spiralIndex++)
-                    {
-                        float q = (float)spiralIndex / (RollSpiralSegments - 1);
-                        float radius = Mathf.Lerp(innerRadius, outerRadius, q)
-                            * (1f + .035f * Mathf.Sin(axisT * Mathf.PI * 3f + key));
-                        if (layer == 0) radius -= PaperThickness;
-                        float angle = -Mathf.PI * 4f + q * Mathf.PI * (4.45f + key * .06f);
-                        float y = localCenterY + Mathf.Cos(angle) * radius * 1.48f;
-                        float z = localCenterZ + Mathf.Sin(angle) * radius * .86f;
-                        vertices.Add(new Vector3(x, y, z));
-                        uvs.Add(new Vector2(axisT, q * 2.2f));
-                    }
+                    float q = (float)spiralIndex / (RollSpiralSegments - 1);
+                    float radius = Mathf.Lerp(innerRadius, outerRadius, q) * centerPinch;
+                    if (layer == 0) radius = Mathf.Max(.004f, radius - PaperThickness);
+                    float angle = -RollTurns * Mathf.PI + q * RollTurns * Mathf.PI * 2f;
+                    float x = centerX + Mathf.Cos(angle) * radius;
+                    float y = centerY + Mathf.Sin(angle) * radius * 1.32f;
+                    vertices.Add(new Vector3(x, y, z));
+                    uvs.Add(new Vector2(axisT, q * RollTurns));
                 }
             }
 
             AddGridSurfaces(frontTriangles, undersideTriangles, RollSpiralSegments, RollAxisSegments);
             AddGridSides(undersideTriangles, RollSpiralSegments, RollAxisSegments, layerVertexCount);
-            return BuildMesh($"Augment_Scroll_Roll_{key}", vertices, uvs, frontTriangles, undersideTriangles);
+            return BuildMesh($"Augment_Left_Roll_{key}", vertices, uvs, frontTriangles, undersideTriangles);
+        }
+
+        public static Mesh CreateSealBandMesh(AugmentParchmentPreset preset, float width, float height)
+        {
+            const int segments = 28;
+            float centerX = 0f;
+            float centerY = 0f;
+            float radius = height * .140f * .78f;
+            float halfWidth = height * .047f;
+            var vertices = new List<Vector3>(segments * 2);
+            var uvs = new List<Vector2>(segments * 2);
+            var triangles = new List<int>();
+
+            for (int side = 0; side < 2; side++)
+            for (int i = 0; i < segments; i++)
+            {
+                float t = (float)i / segments;
+                float angle = t * Mathf.PI * 2f;
+                vertices.Add(new Vector3(
+                    centerX + Mathf.Cos(angle) * radius * 1.04f,
+                    centerY + Mathf.Sin(angle) * radius * 1.34f,
+                    side == 0 ? -halfWidth : halfWidth));
+                uvs.Add(new Vector2(side, t));
+            }
+            for (int i = 0; i < segments; i++)
+            {
+                int next = (i + 1) % segments;
+                int a = i;
+                int b = next;
+                int c = segments + i;
+                int d = segments + next;
+                triangles.Add(a); triangles.Add(c); triangles.Add(b);
+                triangles.Add(b); triangles.Add(c); triangles.Add(d);
+            }
+            return BuildSingleSubmesh("Augment_Leather_Band", vertices, uvs, triangles);
         }
 
         public static Mesh CreateWaxSealMesh(AugmentParchmentPreset preset, float width, float height)
         {
             int key = (int)AugmentParchmentVisuals.Normalize((int)preset);
-            const int segments = 16;
+            const int segments = 18;
             const int rings = 3;
-            float radius = height * (.087f + key * .002f);
-            float centerX = width * (-.20f + key * .008f);
-            float centerZ = height * (.275f + key * .006f);
-            float bottomY = height * .325f;
-            float topY = bottomY + height * .045f;
+            float radius = height * .094f;
+            float centerX = 0f;
+            float centerZ = 0f;
+            float bottomY = height * .150f;
+            float topY = bottomY + height * .050f;
             var vertices = new List<Vector3>();
             var uvs = new List<Vector2>();
             var triangles = new List<int>();
@@ -274,7 +314,7 @@ namespace Tessera.Games.AugmentedYacht
             {
                 float ringT = (float)ring / (rings - 1);
                 float ringRadius = radius * ringT;
-                float y = Mathf.Lerp(topY + height * .008f, topY, ringT);
+                float y = Mathf.Lerp(topY + height * .010f, topY, ringT);
                 for (int i = 0; i < segments; i++)
                 {
                     float angle = i * Mathf.PI * 2f / segments;
@@ -295,8 +335,8 @@ namespace Tessera.Games.AugmentedYacht
                 int b = ring * segments + next;
                 int c = (ring + 1) * segments + i;
                 int d = (ring + 1) * segments + next;
-                triangles.Add(a); triangles.Add(c); triangles.Add(b);
-                triangles.Add(b); triangles.Add(c); triangles.Add(d);
+                triangles.Add(a); triangles.Add(b); triangles.Add(c);
+                triangles.Add(b); triangles.Add(d); triangles.Add(c);
             }
 
             int outerStart = (rings - 1) * segments;
@@ -316,101 +356,67 @@ namespace Tessera.Games.AugmentedYacht
                 triangles.Add(topA); triangles.Add(bottomA); triangles.Add(topB);
                 triangles.Add(topB); triangles.Add(bottomA); triangles.Add(bottomB);
             }
-
-            var mesh = new Mesh { name = $"Augment_Scroll_Seal_{key}" };
-            mesh.SetVertices(vertices);
-            mesh.SetUVs(0, uvs);
-            mesh.SetTriangles(triangles, 0);
-            mesh.RecalculateNormals();
-            mesh.RecalculateTangents();
-            mesh.RecalculateBounds();
-            return mesh;
+            return BuildSingleSubmesh($"Augment_Crimson_Seal_{key}", vertices, uvs, triangles);
         }
 
-        public static Mesh CreateSealBandMesh(AugmentParchmentPreset preset, float width, float height)
+        public static Mesh CreateCubeSealMarkMesh(float width, float height)
         {
-            int key = (int)AugmentParchmentVisuals.Normalize((int)preset);
-            const int segments = 24;
-            float centerX = width * (-.20f + key * .008f);
-            float centerY = height * .115f;
-            float centerZ = height * (.265f + key * .006f);
-            float radius = height * (.137f + key * .003f);
-            float halfWidth = width * .022f;
-            var vertices = new List<Vector3>(segments * 2);
-            var uvs = new List<Vector2>(segments * 2);
-            var triangles = new List<int>();
-
-            for (int side = 0; side < 2; side++)
-            for (int i = 0; i < segments; i++)
-            {
-                float t = (float)i / segments;
-                float angle = t * Mathf.PI * 2f;
-                vertices.Add(new Vector3(
-                    centerX + (side == 0 ? -halfWidth : halfWidth),
-                    centerY + Mathf.Cos(angle) * radius * 1.49f,
-                    centerZ + Mathf.Sin(angle) * radius * .87f));
-                uvs.Add(new Vector2(side, t));
-            }
-            for (int i = 0; i < segments; i++)
-            {
-                int next = (i + 1) % segments;
-                int a = i;
-                int b = next;
-                int c = segments + i;
-                int d = segments + next;
-                triangles.Add(a); triangles.Add(c); triangles.Add(b);
-                triangles.Add(b); triangles.Add(c); triangles.Add(d);
-            }
-            return BuildSingleSubmesh($"Augment_Scroll_Band_{key}", vertices, uvs, triangles);
-        }
-
-        public static Mesh CreateRibbonMesh(AugmentParchmentPreset preset, float width, float height)
-        {
-            int key = (int)AugmentParchmentVisuals.Normalize((int)preset);
-            Vector3 start = new(width * (-.19f + key * .008f), height * .385f, height * .20f);
+            float centerX = 0f;
+            float centerY = height * .219f;
+            float radius = height * .067f;
             Vector3[] points =
             {
-                start,
-                start + new Vector3(width * .025f, -.05f, -height * .08f),
-                start + new Vector3(width * .07f, -.10f, -height * .17f),
-                start + new Vector3(width * .13f, -.13f, -height * .25f),
-                start + new Vector3(width * .18f, -.15f, -height * .32f)
+                new(centerX, centerY, radius),
+                new(centerX + radius * .866f, centerY, radius * .5f),
+                new(centerX + radius * .866f, centerY, -radius * .5f),
+                new(centerX, centerY, -radius),
+                new(centerX - radius * .866f, centerY, -radius * .5f),
+                new(centerX - radius * .866f, centerY, radius * .5f),
+                new(centerX, centerY, 0f)
             };
-            float halfWidth = width * .015f;
-            var vertices = new List<Vector3>(points.Length * 2);
-            var uvs = new List<Vector2>(points.Length * 2);
-            var triangles = new List<int>();
-            for (int i = 0; i < points.Length; i++)
-            {
-                float sway = Mathf.Sin((i + key) * 1.4f) * width * .006f;
-                vertices.Add(points[i] + new Vector3(-halfWidth + sway, 0f, 0f));
-                vertices.Add(points[i] + new Vector3(halfWidth + sway, 0f, 0f));
-                float v = (float)i / (points.Length - 1);
-                uvs.Add(new Vector2(0f, v));
-                uvs.Add(new Vector2(1f, v));
-            }
-            for (int i = 0; i < points.Length - 1; i++)
-            {
-                int a = i * 2;
-                int b = a + 1;
-                int c = a + 2;
-                int d = a + 3;
-                triangles.Add(a); triangles.Add(c); triangles.Add(b);
-                triangles.Add(b); triangles.Add(c); triangles.Add(d);
-                triangles.Add(a); triangles.Add(b); triangles.Add(c);
-                triangles.Add(b); triangles.Add(d); triangles.Add(c);
-            }
-            return BuildSingleSubmesh($"Augment_Scroll_Ribbon_{key}", vertices, uvs, triangles);
+            var vertices = new List<Vector3>(36);
+            var uvs = new List<Vector2>(36);
+            var triangles = new List<int>(54);
+            float thickness = height * .010f;
+            for (int i = 0; i < 6; i++)
+                AddFlatStrip(vertices, uvs, triangles, points[i], points[(i + 1) % 6], thickness);
+            AddFlatStrip(vertices, uvs, triangles, points[6], points[0], thickness);
+            AddFlatStrip(vertices, uvs, triangles, points[6], points[2], thickness);
+            AddFlatStrip(vertices, uvs, triangles, points[6], points[4], thickness);
+            return BuildSingleSubmesh("Augment_Embossed_Cube_Mark", vertices, uvs, triangles);
+        }
+
+        public static Mesh CreateInnerBorderMesh(float width, float height)
+        {
+            float xMin = width * -.255f;
+            float xMax = width * .455f;
+            float zMin = height * -.420f;
+            float zMax = height * .420f;
+            float thickness = Mathf.Max(.012f, height * .008f);
+            float y = height * .030f;
+            var vertices = new List<Vector3>(16);
+            var uvs = new List<Vector2>(16);
+            var triangles = new List<int>(24);
+            AddFlatStrip(vertices, uvs, triangles, new Vector3(xMin, y, zMin), new Vector3(xMax, y, zMin), thickness);
+            AddFlatStrip(vertices, uvs, triangles, new Vector3(xMin, y, zMax), new Vector3(xMax, y, zMax), thickness);
+            AddFlatStrip(vertices, uvs, triangles, new Vector3(xMin, y, zMin), new Vector3(xMin, y, zMax), thickness);
+            AddFlatStrip(vertices, uvs, triangles, new Vector3(xMax, y, zMin), new Vector3(xMax, y, zMax), thickness);
+            return BuildSingleSubmesh("Augment_Cyan_Inner_Border", vertices, uvs, triangles);
         }
 
         private static Transform[] CreateOverlayAnchors(Transform parent, float width, float height)
         {
+            Rect safe = AugmentParchmentVisuals.ContentSafeRect;
+            float left = (safe.xMin - .5f) * width;
+            float right = (safe.xMax - .5f) * width;
+            float bottom = (safe.yMin - .5f) * height;
+            float top = (safe.yMax - .5f) * height;
             Vector3[] positions =
             {
-                new(-width * .27f, .045f, -height * .34f),
-                new( width * .43f, .045f, -height * .34f),
-                new( width * .43f, .045f,  height * .15f),
-                new(-width * .27f, .045f,  height * .15f)
+                new(left, .052f, bottom),
+                new(right, .052f, bottom),
+                new(right, .052f, top),
+                new(left, .052f, top)
             };
             string[] names = { "Overlay Bottom Left", "Overlay Bottom Right", "Overlay Top Right", "Overlay Top Left" };
             Transform[] anchors = new Transform[4];
@@ -423,6 +429,12 @@ namespace Tessera.Games.AugmentedYacht
             }
             return anchors;
         }
+
+        private static Material GetMaterial(Material[] materials, int index) =>
+            materials != null && index >= 0 && index < materials.Length ? materials[index] : null;
+
+        private static Vector3 GetRollCenter(float width, float height) =>
+            new(width * RollCenterXNormalized, height * RollCenterYNormalized, 0f);
 
         private static MeshRenderer CreateMeshPart(Transform parent, string name, Mesh mesh, Material[] materials)
         {
@@ -452,25 +464,50 @@ namespace Tessera.Games.AugmentedYacht
                 {
                     material.mainTexture = texture;
                     if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", texture);
-                    material.mainTextureScale = new Vector2(1.25f, .9f);
+                    material.mainTextureScale = new Vector2(1.10f, .92f);
                 }
             }
             return material;
         }
 
-        private static float EdgeInset(int key, float u, bool top)
+        private static Material CreateGlowMaterial(string name, Color color)
         {
-            float phase = top ? key * .73f : key * 1.11f + 1.4f;
-            float wave = .014f + .014f * Mathf.Abs(Mathf.Sin(u * Mathf.PI * (3f + key * .35f) + phase));
-            float tear = key switch
-            {
-                1 => .025f * Mathf.Exp(-Mathf.Pow((u - .84f) / .08f, 2f)),
-                2 => .020f * Mathf.Exp(-Mathf.Pow((u - .22f) / .11f, 2f)),
-                3 => .030f * Mathf.Exp(-Mathf.Pow((u - .68f) / .10f, 2f)),
-                4 => .028f * (Mathf.Exp(-Mathf.Pow((u - .08f) / .08f, 2f)) + Mathf.Exp(-Mathf.Pow((u - .93f) / .07f, 2f))),
-                _ => 0f
-            };
-            return wave + tear;
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+            Material material = new(shader) { name = name, color = color };
+            if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
+            if (material.HasProperty("_Color")) material.SetColor("_Color", color);
+            return material;
+        }
+
+        private static float SideInset(int key, float v)
+        {
+            float baseInset = .004f + .003f * Mathf.Abs(Mathf.Sin(v * Mathf.PI * 4f + key));
+            if (key == 3) baseInset += .010f * Mathf.Pow(Mathf.Abs(v - .5f) * 2f, 5f);
+            return Mathf.Min(.016f, baseInset);
+        }
+
+        private static void AddFlatStrip(
+            List<Vector3> vertices,
+            List<Vector2> uvs,
+            List<int> triangles,
+            Vector3 start,
+            Vector3 end,
+            float thickness)
+        {
+            Vector3 direction = end - start;
+            Vector3 side = new(-direction.z, 0f, direction.x);
+            side = side.normalized * thickness * .5f;
+            int o = vertices.Count;
+            vertices.Add(start - side);
+            vertices.Add(start + side);
+            vertices.Add(end + side);
+            vertices.Add(end - side);
+            uvs.Add(new Vector2(0f, 0f));
+            uvs.Add(new Vector2(0f, 1f));
+            uvs.Add(new Vector2(1f, 1f));
+            uvs.Add(new Vector2(1f, 0f));
+            triangles.Add(o); triangles.Add(o + 1); triangles.Add(o + 2);
+            triangles.Add(o); triangles.Add(o + 2); triangles.Add(o + 3);
         }
 
         private static void AddGridSurfaces(
