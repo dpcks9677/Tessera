@@ -53,6 +53,7 @@ namespace Tessera.Games.Yacht
         public bool IsActive;
         public int PlayerIndex = -1;
         public string[] Options = Array.Empty<string>();
+        public int[] OptionCardPresetIds = Array.Empty<int>();
         public int[] SelectionCounts = Array.Empty<int>();
 
         public YachtDraftState Clone() => new()
@@ -60,6 +61,7 @@ namespace Tessera.Games.Yacht
             IsActive = IsActive,
             PlayerIndex = PlayerIndex,
             Options = (string[])(Options?.Clone() ?? Array.Empty<string>()),
+            OptionCardPresetIds = (int[])(OptionCardPresetIds?.Clone() ?? Array.Empty<int>()),
             SelectionCounts = (int[])(SelectionCounts?.Clone() ?? Array.Empty<int>())
         };
     }
@@ -68,6 +70,7 @@ namespace Tessera.Games.Yacht
     public sealed class YachtAugmentPlayerState
     {
         public string[] OwnedIds = Array.Empty<string>();
+        public int[] OwnedCardPresetIds = Array.Empty<int>();
         public int ExtraTurns;
         public int NoTimeRemaining;
         public bool NoTimeFailed;
@@ -119,6 +122,7 @@ namespace Tessera.Games.Yacht
         public YachtAugmentPlayerState Clone() => new()
         {
             OwnedIds = (string[])(OwnedIds?.Clone() ?? Array.Empty<string>()),
+            OwnedCardPresetIds = (int[])(OwnedCardPresetIds?.Clone() ?? Array.Empty<int>()),
             ExtraTurns = ExtraTurns,
             NoTimeRemaining = NoTimeRemaining,
             NoTimeFailed = NoTimeFailed,
@@ -396,7 +400,14 @@ namespace Tessera.Games.Yacht
             for (int i = 0; i < playerCount; i++) state.AugmentPlayers[i] = new YachtAugmentPlayerState();
         }
 
-        public bool TryBeginDraft(YachtGameState state, IRandomSource random, out YachtGameEvent gameEvent)
+        public bool TryBeginDraft(YachtGameState state, IRandomSource random, out YachtGameEvent gameEvent) =>
+            TryBeginDraft(state, random, new SystemRandomSource(0), out gameEvent);
+
+        public bool TryBeginDraft(
+            YachtGameState state,
+            IRandomSource random,
+            IRandomSource visualRandom,
+            out YachtGameEvent gameEvent)
         {
             gameEvent = null;
             if (state.Mode != YachtGameMode.Augmented || !IsDraftRound(state.CurrentRound)) return false;
@@ -408,6 +419,7 @@ namespace Tessera.Games.Yacht
             state.Draft.IsActive = true;
             state.Draft.PlayerIndex = playerIndex;
             state.Draft.Options = CreateDraftOptions(state, playerIndex, random);
+            state.Draft.OptionCardPresetIds = CreateCardPresetIds(state.Draft.Options.Length, visualRandom);
             state.Phase = YachtGamePhase.Draft;
             gameEvent = new YachtGameEvent
             {
@@ -425,6 +437,18 @@ namespace Tessera.Games.Yacht
             IRandomSource random,
             out YachtGameEvent[] events,
             out YachtCommandErrorCode errorCode,
+            out string errorMessage) =>
+            TrySelectAugment(state, playerIndex, augmentId, random, new SystemRandomSource(0),
+                out events, out errorCode, out errorMessage);
+
+        public bool TrySelectAugment(
+            YachtGameState state,
+            int playerIndex,
+            string augmentId,
+            IRandomSource random,
+            IRandomSource visualRandom,
+            out YachtGameEvent[] events,
+            out YachtCommandErrorCode errorCode,
             out string errorMessage)
         {
             events = Array.Empty<YachtGameEvent>();
@@ -440,8 +464,12 @@ namespace Tessera.Games.Yacht
                     : YachtCommandErrorCode.AugmentUnavailable,
                     "이미 보유했거나 충돌하는 증강입니다.", out errorCode, out errorMessage);
 
+            int optionIndex = Array.IndexOf(state.Draft.Options, augmentId);
+            int visualPreset = optionIndex >= 0 && optionIndex < (state.Draft.OptionCardPresetIds?.Length ?? 0)
+                ? NormalizeCardPreset(state.Draft.OptionCardPresetIds[optionIndex])
+                : visualRandom.NextInt(0, 5);
             var emitted = new List<YachtGameEvent>();
-            ApplyAugment(state, playerIndex, augmentId, emitted, false);
+            ApplyAugment(state, playerIndex, augmentId, emitted, false, visualPreset);
             state.Draft.SelectionCounts[playerIndex]++;
             emitted.Add(new YachtGameEvent
             {
@@ -457,6 +485,7 @@ namespace Tessera.Games.Yacht
             {
                 state.Draft.PlayerIndex = nextPlayer;
                 state.Draft.Options = CreateDraftOptions(state, nextPlayer, random);
+                state.Draft.OptionCardPresetIds = CreateCardPresetIds(state.Draft.Options.Length, visualRandom);
                 emitted.Add(new YachtGameEvent
                 {
                     Type = YachtGameEventType.DraftStarted,
@@ -470,6 +499,7 @@ namespace Tessera.Games.Yacht
                 state.Draft.IsActive = false;
                 state.Draft.PlayerIndex = -1;
                 state.Draft.Options = Array.Empty<string>();
+                state.Draft.OptionCardPresetIds = Array.Empty<int>();
                 state.Phase = YachtGamePhase.TurnReady;
             }
 
@@ -1068,12 +1098,32 @@ namespace Tessera.Games.Yacht
             int playerIndex,
             string augmentId,
             ICollection<YachtGameEvent> events,
-            bool replacement)
+            bool replacement,
+            int visualPreset)
         {
             YachtAugmentPlayerState runtime = state.AugmentPlayers[playerIndex];
             YachtAugmentDefinition definition = FindDefinition(augmentId);
             if (definition?.IsGlobal == true) state.GlobalAugmentIds = Append(state.GlobalAugmentIds, augmentId);
-            else runtime.OwnedIds = Append(runtime.OwnedIds, augmentId);
+            else if (replacement)
+            {
+                int replacedIndex = Array.IndexOf(runtime.OwnedIds, RandomBoxId);
+                if (replacedIndex >= 0)
+                {
+                    runtime.OwnedIds[replacedIndex] = augmentId;
+                    runtime.OwnedCardPresetIds = EnsureCardPresetCount(runtime.OwnedCardPresetIds, runtime.OwnedIds.Length);
+                    runtime.OwnedCardPresetIds[replacedIndex] = NormalizeCardPreset(visualPreset);
+                }
+                else
+                {
+                    runtime.OwnedIds = Append(runtime.OwnedIds, augmentId);
+                    runtime.OwnedCardPresetIds = Append(runtime.OwnedCardPresetIds, NormalizeCardPreset(visualPreset));
+                }
+            }
+            else
+            {
+                runtime.OwnedIds = Append(runtime.OwnedIds, augmentId);
+                runtime.OwnedCardPresetIds = Append(runtime.OwnedCardPresetIds, NormalizeCardPreset(visualPreset));
+            }
 
             if (augmentId == LuckySevensId)
             {
@@ -1201,8 +1251,10 @@ namespace Tessera.Games.Yacht
             {
                 YachtAugmentPlayerState player = state.AugmentPlayers[playerIndex];
                 if (!Contains(player.OwnedIds, RandomBoxId) || !string.IsNullOrEmpty(player.RandomBoxAwardId)) continue;
-                player.OwnedIds = Remove(player.OwnedIds, RandomBoxId);
-
+                int randomBoxIndex = Array.IndexOf(player.OwnedIds, RandomBoxId);
+                int inheritedPreset = randomBoxIndex >= 0 && randomBoxIndex < (player.OwnedCardPresetIds?.Length ?? 0)
+                    ? NormalizeCardPreset(player.OwnedCardPresetIds[randomBoxIndex])
+                    : 0;
                 var candidates = new List<string>();
                 for (int i = 0; i < Definitions.Length; i++)
                 {
@@ -1215,9 +1267,24 @@ namespace Tessera.Games.Yacht
 
                 string awarded = candidates[0];
                 player.RandomBoxAwardId = awarded;
-                ApplyAugment(state, playerIndex, awarded, events, true);
+                ApplyAugment(state, playerIndex, awarded, events, true, inheritedPreset);
             }
         }
+
+        private static int[] CreateCardPresetIds(int count, IRandomSource visualRandom)
+        {
+            int[] values = { 0, 1, 2, 3, 4 };
+            for (int i = values.Length - 1; i > 0; i--)
+            {
+                int index = visualRandom.NextInt(0, i + 1);
+                (values[index], values[i]) = (values[i], values[index]);
+            }
+            var result = new int[Math.Min(count, values.Length)];
+            Array.Copy(values, result, result.Length);
+            return result;
+        }
+
+        public static int NormalizeCardPreset(int value) => value >= 0 && value < 5 ? value : 0;
 
         private static void Shuffle<T>(IList<T> values, IRandomSource random)
         {
@@ -1386,6 +1453,14 @@ namespace Tessera.Games.Yacht
             return result;
         }
 
+        private static int[] EnsureCardPresetCount(IReadOnlyList<int> values, int count)
+        {
+            var result = new int[Math.Max(0, count)];
+            for (int i = 0; i < result.Length; i++)
+                result[i] = i < (values?.Count ?? 0) ? NormalizeCardPreset(values[i]) : 0;
+            return result;
+        }
+
         private static bool Contains(IReadOnlyList<string> values, string target)
         {
             for (int i = 0; i < (values?.Count ?? 0); i++)
@@ -1399,14 +1474,6 @@ namespace Tessera.Games.Yacht
             for (int i = 0; i < result.Length - 1; i++) result[i] = values[i];
             result[result.Length - 1] = item;
             return result;
-        }
-
-        private static string[] Remove(IReadOnlyList<string> values, string item)
-        {
-            var result = new List<string>(values?.Count ?? 0);
-            for (int i = 0; i < (values?.Count ?? 0); i++)
-                if (!string.Equals(values[i], item, StringComparison.Ordinal)) result.Add(values[i]);
-            return result.ToArray();
         }
 
         private static bool Fail(

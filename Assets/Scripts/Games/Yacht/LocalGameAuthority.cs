@@ -8,6 +8,7 @@ namespace Tessera.Games.Yacht
     {
         private readonly YachtGameOptions options;
         private readonly IRandomSource random;
+        private readonly IRandomSource visualRandom;
         private readonly IYachtRuleSet rules;
         private readonly YachtAugmentRuntime augmentRuntime = new();
         private readonly HashSet<string> acceptedCommandIds = new(StringComparer.Ordinal);
@@ -17,7 +18,8 @@ namespace Tessera.Games.Yacht
             YachtGameOptions options = null,
             IRandomSource random = null,
             PlayerScoreData[] scoreData = null,
-            IYachtRuleSet rules = null)
+            IYachtRuleSet rules = null,
+            IRandomSource visualRandom = null)
         {
             this.options = options?.Clone() ?? new YachtGameOptions();
             if (this.options.PlayerCount != YachtGameSession.PlayerCount)
@@ -26,6 +28,7 @@ namespace Tessera.Games.Yacht
                 throw new ArgumentOutOfRangeException(nameof(options), "기본 요트는 주사위 5개를 사용합니다.");
 
             this.random = random ?? new SystemRandomSource();
+            this.visualRandom = visualRandom ?? new SystemRandomSource();
             this.rules = rules ?? YachtRuleSetFactory.Create(this.options.Mode);
             if (this.rules.Mode != this.options.Mode)
                 throw new ArgumentException("실행 옵션과 규칙 세트의 게임 모드가 다릅니다.", nameof(rules));
@@ -91,7 +94,7 @@ namespace Tessera.Games.Yacht
             {
                 new() { Type = YachtGameEventType.GameStarted, PlayerIndex = command.PlayerIndex }
             };
-            if (augmentRuntime.TryBeginDraft(state, random, out YachtGameEvent draftEvent)) events.Add(draftEvent);
+            if (augmentRuntime.TryBeginDraft(state, random, visualRandom, out YachtGameEvent draftEvent)) events.Add(draftEvent);
             return Accept(events.ToArray());
         }
 
@@ -104,6 +107,7 @@ namespace Tessera.Games.Yacht
                     command.PlayerIndex,
                     command.AugmentId,
                     random,
+                    visualRandom,
                     out YachtGameEvent[] events,
                     out YachtCommandErrorCode code,
                     out string message))
@@ -342,7 +346,7 @@ namespace Tessera.Games.Yacht
             {
                 new() { Type = YachtGameEventType.TurnAdvanced, PlayerIndex = state.CurrentPlayerIndex }
             };
-            if (!state.IsExtraTurnPhase && augmentRuntime.TryBeginDraft(state, random, out YachtGameEvent draftEvent))
+            if (!state.IsExtraTurnPhase && augmentRuntime.TryBeginDraft(state, random, visualRandom, out YachtGameEvent draftEvent))
                 events.Add(draftEvent);
             return Accept(events.ToArray());
         }
@@ -541,13 +545,18 @@ namespace Tessera.Games.Yacht
         private readonly LocalGameAuthority authority;
         private long nextCommandId;
 
-        public YachtGameSession(PlayerScoreData playerOne, PlayerScoreData playerTwo, YachtGameOptions options = null, IRandomSource random = null)
+        public YachtGameSession(
+            PlayerScoreData playerOne,
+            PlayerScoreData playerTwo,
+            YachtGameOptions options = null,
+            IRandomSource random = null,
+            IRandomSource visualRandom = null)
         {
             authority = new LocalGameAuthority(options, random, new[]
             {
                 playerOne ?? throw new ArgumentNullException(nameof(playerOne)),
                 playerTwo ?? throw new ArgumentNullException(nameof(playerTwo))
-            });
+            }, visualRandom: visualRandom);
         }
 
         public YachtGameState State => authority.CurrentState;

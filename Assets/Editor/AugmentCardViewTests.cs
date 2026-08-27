@@ -121,31 +121,42 @@ public sealed class AugmentCardViewTests
     }
 
     [Test]
-    public void TrayCard_월드캔버스와포인터영역이_슬롯안에배치된다()
+    public void TrayCard_고해상도오버레이와3D양피지를_슬롯에배치한다()
     {
         GameObject anchorObject = new("Tray Slot Anchor");
         GameObject cameraObject = new("Tray Card Camera", typeof(Camera));
+        GameObject canvasObject = new("Pixel Presentation", typeof(Canvas));
         try
         {
+            Canvas overlayCanvas = canvasObject.GetComponent<Canvas>();
+            overlayCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
             Vector2 slotSize = new(4.58f, 2.58f);
             AugmentTrayCardView view = AugmentTrayCardView.Create(
                 anchorObject.transform,
                 cameraObject.GetComponent<Camera>(),
+                overlayCanvas,
                 slotSize,
                 0);
 
-            Canvas canvas = view.GetComponentInChildren<Canvas>(true);
-            RectTransform rect = canvas.GetComponent<RectTransform>();
-            Assert.That(canvas.renderMode, Is.EqualTo(RenderMode.WorldSpace));
-            Assert.That(rect.sizeDelta.x / rect.sizeDelta.y,
-                Is.EqualTo(AugmentCardView.TrayCardAspectRatio).Within(0.001f));
+            Assert.That(view.GetComponentInChildren<Canvas>(true), Is.Null);
+            Assert.That(view.OverlayRect.parent, Is.EqualTo(overlayCanvas.transform));
+            Assert.That(view.ScrollModel, Is.Not.Null);
+            Assert.That(view.GetComponentsInChildren<MeshFilter>(true), Has.Length.GreaterThanOrEqualTo(5));
+            Assert.That(view.ScrollModel.WaxRenderer, Is.Not.Null);
+            Assert.That(view.ScrollModel.OverlayAnchors.Count, Is.EqualTo(4));
+            Assert.That(view.ScrollModel.HasCenteredSeal, Is.True);
+            Assert.That(view.Card.Background.color.a, Is.Zero);
+            Assert.That(view.Card.CardOutline.enabled, Is.False);
             Assert.That(view.PointerCollider.size.x, Is.LessThan(slotSize.x));
             Assert.That(view.PointerCollider.size.z, Is.LessThan(slotSize.y));
+            foreach (Graphic graphic in view.Card.GetComponentsInChildren<Graphic>(true))
+                Assert.That(graphic.raycastTarget, Is.False);
         }
         finally
         {
             Object.DestroyImmediate(anchorObject);
             Object.DestroyImmediate(cameraObject);
+            Object.DestroyImmediate(canvasObject);
         }
     }
 
@@ -154,11 +165,13 @@ public sealed class AugmentCardViewTests
     {
         GameObject anchorObject = new("Interactive Tray Slot Anchor");
         GameObject cameraObject = new("Interactive Tray Card Camera", typeof(Camera));
+        GameObject canvasObject = new("Interactive Card Overlay", typeof(Canvas));
         try
         {
             AugmentTrayCardView view = AugmentTrayCardView.Create(
                 anchorObject.transform,
                 cameraObject.GetComponent<Camera>(),
+                canvasObject.GetComponent<Canvas>(),
                 new Vector2(4.58f, 2.58f),
                 0);
             view.Bind(new YachtAugmentDefinition
@@ -167,27 +180,84 @@ public sealed class AugmentCardViewTests
                 DisplayName = "럭키 세븐",
                 Description = "트레이 카드 상호작용 검증",
                 Kind = YachtAugmentKind.Enhancement
-            });
+            }, (int)AugmentParchmentPreset.Scalloped);
             view.SetVisible(true);
 
-            Canvas canvas = view.GetComponentInChildren<Canvas>();
-            float restingHeight = canvas.transform.localPosition.y;
-            float restingScale = canvas.transform.localScale.x;
+            float restingHeight = view.VisualRoot.localPosition.y;
+            float restingScale = view.VisualRoot.localScale.x;
             view.SetHovered(true);
-            Assert.That(canvas.transform.localPosition.y, Is.GreaterThan(restingHeight));
-            Assert.That(canvas.transform.localScale.x, Is.GreaterThan(restingScale));
+            view.TickHover(0.06f);
+            Assert.That(view.VisualRoot.localPosition.y, Is.GreaterThan(restingHeight));
+            Assert.That(view.VisualRoot.localPosition.y, Is.LessThan(0.16f));
+            Assert.That(view.VisualRoot.localScale.x, Is.GreaterThan(restingScale));
+            for (int i = 0; i < 20; i++) view.TickHover(0.06f);
+            Assert.That(view.VisualRoot.localScale.x, Is.EqualTo(1.06f).Within(0.002f));
 
             view.SetSelected(true);
             Assert.That(view.IsSelected, Is.True);
             Assert.That(view.Card.DisplayState, Is.EqualTo(AugmentCardDisplayState.Selected));
             view.SetHovered(false);
-            Assert.That(canvas.transform.localPosition.y, Is.EqualTo(restingHeight));
+            for (int i = 0; i < 20; i++) view.TickHover(0.06f);
+            Assert.That(view.VisualRoot.localPosition.y, Is.EqualTo(restingHeight).Within(0.002f));
         }
         finally
         {
             Object.DestroyImmediate(anchorObject);
             Object.DestroyImmediate(cameraObject);
+            Object.DestroyImmediate(canvasObject);
         }
+    }
+
+    [Test]
+    public void Parchment_다섯프리셋은_펼친본문과다층롤및밀랍인장을가진다()
+    {
+        var signatures = new HashSet<string>();
+        foreach (AugmentParchmentPreset preset in System.Enum.GetValues(typeof(AugmentParchmentPreset)))
+        {
+            Mesh body = AugmentScrollModelFactory.CreatePaperBodyMesh(preset, 4.3f, 2.3f);
+            Mesh roll = AugmentScrollModelFactory.CreateRolledLayersMesh(preset, 4.3f, 2.3f);
+            Mesh seal = AugmentScrollModelFactory.CreateWaxSealMesh(preset, 4.3f, 2.3f);
+            try
+            {
+                signatures.Add(AugmentParchmentVisuals.GetOutlineSignature(preset));
+                Assert.That(body.vertexCount, Is.EqualTo(
+                    AugmentScrollModelFactory.PaperColumns * AugmentScrollModelFactory.PaperRows * 2));
+                Assert.That(body.subMeshCount, Is.EqualTo(2));
+                Assert.That(body.uv, Has.Length.EqualTo(body.vertexCount));
+                Assert.That(body.normals, Has.Length.EqualTo(body.vertexCount));
+                Assert.That(body.tangents, Has.Length.EqualTo(body.vertexCount));
+
+                Assert.That(roll.vertexCount, Is.EqualTo(
+                    AugmentScrollModelFactory.RollAxisSegments * AugmentScrollModelFactory.RollSpiralSegments * 2));
+                Assert.That(roll.subMeshCount, Is.EqualTo(2));
+                Assert.That(roll.bounds.size.y, Is.GreaterThan(.35f));
+                Assert.That(roll.bounds.size.z, Is.GreaterThan(.25f));
+
+                Assert.That(seal.vertexCount, Is.GreaterThan(50));
+                Assert.That(seal.bounds.size.x, Is.GreaterThan(.30f));
+                Assert.That(seal.bounds.size.z, Is.GreaterThan(.30f));
+            }
+            finally
+            {
+                Object.DestroyImmediate(body);
+                Object.DestroyImmediate(roll);
+                Object.DestroyImmediate(seal);
+            }
+        }
+        Assert.That(signatures.Count, Is.EqualTo(AugmentParchmentVisuals.PresetCount));
+    }
+
+    [TestCase(0)]
+    [TestCase(1)]
+    [TestCase(2)]
+    [TestCase(3)]
+    [TestCase(4)]
+    public void Parchment_정적3D프리팹은_다섯프리셋을제공한다(int presetId)
+    {
+        GameObject prefab = Resources.Load<GameObject>($"AugmentScrolls/AugmentScrollPreset_{presetId}");
+        Assert.That(prefab, Is.Not.Null);
+        Assert.That(prefab.GetComponent<AugmentScrollModel>(), Is.Not.Null);
+        Assert.That(prefab.GetComponentsInChildren<MeshFilter>(true), Has.Length.GreaterThanOrEqualTo(5));
     }
 
     [Test]

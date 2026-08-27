@@ -40,6 +40,7 @@ namespace Tessera.Games.AugmentedYacht
         private Text targetText;
         private Text stateText;
         private Button button;
+        private bool overlayContentOnly;
 
         public Button Button => button;
         public Text NameText => nameText;
@@ -51,6 +52,7 @@ namespace Tessera.Games.AugmentedYacht
         public Image Background => background;
         public Image StateAccent => stateAccent;
         public Outline CardOutline => outline;
+        public AugmentParchmentPreset ParchmentPreset { get; private set; }
         public AugmentCardDisplayState DisplayState { get; private set; }
 
         public static AugmentCardView Create(
@@ -131,6 +133,8 @@ namespace Tessera.Games.AugmentedYacht
                 _ => Parchment
             };
 
+            if (overlayContentOnly) cardColor.a = 0f;
+
             stateText.color = accent;
             stateAccent.color = accent;
             header.color = Color.Lerp(Crimson, accent, state == AugmentCardDisplayState.Available ? 0f : 0.28f);
@@ -148,12 +152,35 @@ namespace Tessera.Games.AugmentedYacht
             button.colors = colors;
         }
 
+        public void SetParchmentPreset(AugmentParchmentPreset preset, bool overlayContentOnly = false)
+        {
+            ParchmentPreset = AugmentParchmentVisuals.Normalize((int)preset);
+            this.overlayContentOnly = overlayContentOnly;
+            background.sprite = AugmentParchmentVisuals.GetSprite(ParchmentPreset, overlayContentOnly);
+            background.type = Image.Type.Simple;
+            background.preserveAspect = false;
+            if (outline != null) outline.enabled = !overlayContentOnly;
+            if (overlayContentOnly)
+            {
+                Color transparent = background.color;
+                transparent.a = 0f;
+                background.color = transparent;
+            }
+        }
+
+        public void SetRaycastTargets(bool enabled)
+        {
+            Graphic[] graphics = GetComponentsInChildren<Graphic>(true);
+            for (int i = 0; i < graphics.Length; i++) graphics[i].raycastTarget = enabled && graphics[i] == background;
+        }
+
         private void Build(UnityAction onClick, Vector2 size)
         {
             float width = Mathf.Max(240f, size.x);
             float height = Mathf.Max(135f, size.y);
             background = GetComponent<Image>();
             background.color = Parchment;
+            SetParchmentPreset(AugmentParchmentPreset.GentleWave);
 
             outline = GetComponent<Outline>();
             outline.effectColor = new Color(0.37f, 0.20f, 0.10f, 1f);

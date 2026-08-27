@@ -553,6 +553,7 @@ namespace Tessera.Games.AugmentedYacht
                     new Vector2(draftCardWidth, draftCardHeight),
                     new Vector2(0.5f, 0.5f),
                     () => SelectDraftOption(optionIndex));
+                augmentDraftCards[i].SetParchmentPreset((AugmentParchmentPreset)i);
                 augmentDraftButtons[i] = augmentDraftCards[i].Button;
             }
             augmentDraftOverlay.SetActive(false);
@@ -741,6 +742,10 @@ namespace Tessera.Games.AugmentedYacht
                 button.gameObject.SetActive(active);
                 if (!active) continue;
                 YachtAugmentDefinition definition = augmentViewCatalog.FindDefinition(options[i]);
+                int presetId = i < (gameSession.State.Draft.OptionCardPresetIds?.Length ?? 0)
+                    ? gameSession.State.Draft.OptionCardPresetIds[i]
+                    : 0;
+                augmentDraftCards[i]?.SetParchmentPreset(AugmentParchmentVisuals.Normalize(presetId));
                 augmentDraftCards[i]?.Bind(definition, AugmentCardDisplayState.Available);
             }
         }
@@ -749,6 +754,8 @@ namespace Tessera.Games.AugmentedYacht
         {
             if (augmentCardTray == null || worldCamera == null) return;
             Vector2 slotSize = augmentCardTray.CardSlotLocalSize;
+            Canvas presentationCanvas = GameObject.Find("Pixel Presentation")?.GetComponent<Canvas>()
+                ?? FindFirstObjectByType<Canvas>();
             int count = Mathf.Min(augmentOwnedCards.Length, augmentCardTray.SlotCount);
             for (int i = 0; i < count; i++)
             {
@@ -758,12 +765,17 @@ namespace Tessera.Games.AugmentedYacht
                 Transform existing = anchor.Find($"Owned Augment Card {i + 1}");
                 augmentOwnedCards[i] = existing != null
                     ? existing.GetComponent<AugmentTrayCardView>()
-                    : AugmentTrayCardView.Create(anchor, worldCamera, slotSize, i);
+                    : AugmentTrayCardView.Create(anchor, worldCamera, presentationCanvas, slotSize, i);
             }
         }
 
         private void RefreshOwnedCardTray(bool augmented, bool gameInProgress)
         {
+            if (!augmented || !gameInProgress)
+            {
+                for (int i = 0; i < augmentOwnedCards.Length; i++) augmentOwnedCards[i]?.SetVisible(false);
+                return;
+            }
             EnsureOwnedCardViews();
             int playerIndex = gameSession != null && gameSession.IsDrafting
                 ? gameSession.State.Draft.PlayerIndex
@@ -778,6 +790,9 @@ namespace Tessera.Games.AugmentedYacht
             string[] owned = augmented && gameInProgress && playerIndex >= 0
                 ? gameSession.State.AugmentPlayers[playerIndex].OwnedIds
                 : Array.Empty<string>();
+            int[] presets = playerIndex >= 0
+                ? gameSession.State.AugmentPlayers[playerIndex].OwnedCardPresetIds
+                : Array.Empty<int>();
             if (selectedAugmentSlot >= owned.Length) selectedAugmentSlot = -1;
 
             for (int i = 0; i < augmentOwnedCards.Length; i++)
@@ -787,7 +802,8 @@ namespace Tessera.Games.AugmentedYacht
                 bool visible = i < owned.Length;
                 view.SetVisible(visible);
                 if (!visible) continue;
-                view.Bind(augmentViewCatalog.FindDefinition(owned[i]));
+                int presetId = i < (presets?.Length ?? 0) ? presets[i] : 0;
+                view.Bind(augmentViewCatalog.FindDefinition(owned[i]), presetId);
                 view.SetSelected(i == selectedAugmentSlot);
             }
         }
