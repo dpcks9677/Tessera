@@ -108,6 +108,20 @@ M5에서는 규칙 검증을 위한 최소 표시와 임시 리소스만 사용�
 
 ## 5. 단계 작업 기록
 
+### 2026-08-31 — M7-T4 선택 창·트레이 카드 UI 정합 및 선택 창 픽셀 필터 적용
+
+- 상태: `검증 대기`
+- 사용자 요청/결정: 선택 창 카드를 기준으로 트레이 카드 UI를 통일하고, 선택 창 카드 본체에도 픽셀 필터를 적용한다. 텍스트 정보 레이어는 기존대로 고해상도를 유지한다.
+- 원인: (1) 3D 오버레이 앵커가 이미 `ContentSafeRect` 영역인데 `AugmentCardView`가 같은 안전 영역을 한 번 더 적용해 정보 영역이 이중으로 축소되었고, 카드 렉트를 오버레이 박스에 늘려 채우면서 절대 픽셀로 잡힌 글자·아이콘 크기 비율이 선택 창과 어긋났다. (2) 선택 창 카드는 `Pixel Presentation` 스크린 오버레이 캔버스에 있어 저해상도 렌더 타깃을 거치지 않았다.
+- 완료 내용:
+  - `AugmentTrayCardView`가 투영된 안전 영역에서 카드 전체 사각형을 역산하고, 카드 렉트는 선택 창과 같은 기준 크기(`460 × 460/슬롯 비율`)로 고정한 뒤 균일 스케일만 적용하도록 변경했다. 카드 비율도 슬롯 비율에서 계산해 선택 창과 같은 값을 사용한다.
+  - `AugmentParchmentVisuals.GetPixelFilteredSprite`를 추가해 카드 본체 스프라이트를 화면 대비 내부 해상도 비율(기본 `640×360`)로 최근접 다운샘플하고 Point 필터로 확대한다. 결과는 `(프리셋, 격자 크기)` 단위로 캐시한다.
+  - `AugmentCardView`는 오버레이 전용(트레이) 카드에서는 기존 투명 배경을, 선택 창 카드에서는 픽셀 필터 적용 스프라이트를 사용한다.
+  - `AugmentedYachtController`가 해상도 전환 시 픽셀 격자를 갱신하고 선택 창 카드 본체를 다시 굽는다.
+- 변경 파일: `Assets/Scripts/Games/AugmentedYacht/AugmentParchmentVisuals.cs`, `AugmentCardView.cs`, `AugmentTrayCardView.cs`, `AugmentedYachtController.cs`
+- 남은 문제/차단 요소: 작업 환경에 Unity가 없어 컴파일·EditMode·Play Mode 검증을 수행하지 못했다. 사용자 측에서 카드 전용 EditMode, 전체 EditMode, Play Mode 시각 검수를 실행해야 한다.
+- 다음 단계: 검증 통과 후 사용자가 지정할 M7 후속 작업 대기
+
 ### 2026-08-27 — M7-T4 Scene 조정값 기본 프리팹 이관
 
 - 상태: `DONE`

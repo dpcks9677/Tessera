@@ -534,6 +534,7 @@ namespace Tessera.Games.AugmentedYacht
             gameResultOverlay.SetActive(false);
 
             augmentDraftOverlay = CreateFullScreenOverlay(canvasObject.transform, "Yacht Augment Draft Overlay");
+            AugmentParchmentVisuals.PixelFilterResolution = internalResolution;
             float draftCardWidth = 460f;
             float draftCardAspect = augmentCardTray != null
                 ? augmentCardTray.CardSlotAspectRatio
@@ -748,6 +749,13 @@ namespace Tessera.Games.AugmentedYacht
                 augmentDraftCards[i]?.SetParchmentPreset(AugmentParchmentVisuals.Normalize(presetId));
                 augmentDraftCards[i]?.Bind(definition, AugmentCardDisplayState.Available);
             }
+        }
+
+        /// <summary>픽셀 격자가 바뀌면 선택 창 카드 본체를 새 격자로 다시 굽는다.</summary>
+        private void RefreshDraftCardParchment()
+        {
+            for (int i = 0; i < augmentDraftCards.Length; i++)
+                augmentDraftCards[i]?.SetParchmentPreset(augmentDraftCards[i].ParchmentPreset);
         }
 
         private void EnsureOwnedCardViews()
@@ -1868,6 +1876,8 @@ namespace Tessera.Games.AugmentedYacht
         private void SetResolution(Vector2Int resolution)
         {
             internalResolution = resolution;
+            AugmentParchmentVisuals.PixelFilterResolution = resolution;
+            RefreshDraftCardParchment();
             ApplyRenderSettings();
             if (parchmentScoreSheet != null) parchmentScoreSheet.SyncOverlayTransform();
         }

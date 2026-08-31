@@ -24,6 +24,7 @@ namespace Tessera.Games.AugmentedYacht
         private Vector2 cardWorldSize;
         private Vector3 positionVelocity;
         private Vector3 scaleVelocity;
+        private float cardAspectRatio = AugmentCardView.TrayCardAspectRatio;
         private AugmentParchmentPreset currentPreset;
         private bool hasPreset;
         private bool selected;
@@ -37,6 +38,7 @@ namespace Tessera.Games.AugmentedYacht
         public RectTransform OverlayRect => overlayRect;
         public Transform VisualRoot => visualRoot;
         public AugmentScrollModel ScrollModel => scrollModel;
+        public float CardAspectRatio => Mathf.Max(1f, cardAspectRatio);
 
         public static AugmentTrayCardView Create(
             Transform slotAnchor,
@@ -54,6 +56,9 @@ namespace Tessera.Games.AugmentedYacht
             AugmentTrayCardView view = root.AddComponent<AugmentTrayCardView>();
             view.worldCamera = worldCamera;
             view.cardWorldSize = slotLocalSize;
+            view.cardAspectRatio = slotLocalSize.y > 0f
+                ? slotLocalSize.x / slotLocalSize.y
+                : AugmentCardView.TrayCardAspectRatio;
             view.pointerCollider = root.AddComponent<BoxCollider>();
             view.pointerCollider.center = new Vector3(0f, RestingHeight + .04f, 0f);
             view.pointerCollider.size = new Vector3(view.cardWorldSize.x, .18f, view.cardWorldSize.y);
@@ -74,14 +79,11 @@ namespace Tessera.Games.AugmentedYacht
                 view.overlayRect.anchorMin = view.overlayRect.anchorMax = new Vector2(.5f, .5f);
                 view.overlayRect.pivot = new Vector2(.5f, .5f);
 
-                float cardPixelHeight = CardPixelWidth / AugmentCardView.TrayCardAspectRatio;
+                // 선택 창과 같은 기준 크기·비율로 만든 뒤 균일 스케일만 적용해 정보 배치를 일치시킨다.
+                float cardPixelHeight = CardPixelWidth / view.CardAspectRatio;
                 view.card = AugmentCardView.Create(
                     overlayObject.transform, "Card Content", Vector2.zero,
                     new Vector2(CardPixelWidth, cardPixelHeight), new Vector2(.5f, .5f), null);
-                RectTransform cardRect = view.card.GetComponent<RectTransform>();
-                cardRect.anchorMin = Vector2.zero;
-                cardRect.anchorMax = Vector2.one;
-                cardRect.offsetMin = cardRect.offsetMax = Vector2.zero;
                 view.card.SetRaycastTargets(false);
                 view.card.SetParchmentPreset(AugmentParchmentPreset.GentleWave, true);
             }
@@ -178,8 +180,20 @@ namespace Tessera.Games.AugmentedYacht
             float maxX = Mathf.Max(s0.x, s1.x, s2.x, s3.x);
             float minY = Mathf.Min(s0.y, s1.y, s2.y, s3.y);
             float maxY = Mathf.Max(s0.y, s1.y, s2.y, s3.y);
-            overlayRect.position = new Vector3((minX + maxX) * .5f, (minY + maxY) * .5f, 0f);
-            overlayRect.sizeDelta = new Vector2(maxX - minX, maxY - minY);
+            // 3D 앵커는 안전 영역만 알려주므로 카드 전체 사각형을 역산해 선택 창과 같은 좌표계를 쓴다.
+            Rect safe = AugmentParchmentVisuals.ContentSafeRect;
+            float cardWidth = (maxX - minX) / Mathf.Max(.01f, safe.width);
+            float cardHeight = (maxY - minY) / Mathf.Max(.01f, safe.height);
+            overlayRect.position = new Vector3(
+                (minX + maxX) * .5f - (safe.center.x - .5f) * cardWidth,
+                (minY + maxY) * .5f - (safe.center.y - .5f) * cardHeight,
+                0f);
+            overlayRect.sizeDelta = new Vector2(cardWidth, cardHeight);
+            if (card != null)
+            {
+                float scale = cardWidth / CardPixelWidth;
+                card.transform.localScale = new Vector3(scale, scale, 1f);
+            }
         }
 
         private void ApplyPreset(AugmentParchmentPreset preset)

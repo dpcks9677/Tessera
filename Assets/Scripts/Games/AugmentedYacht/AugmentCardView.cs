@@ -42,6 +42,7 @@ namespace Tessera.Games.AugmentedYacht
         private Text stateText;
         private Button button;
         private bool overlayContentOnly;
+        private Vector2 cardDisplaySize;
 
         public Button Button => button;
         public Text NameText => nameText;
@@ -158,7 +159,9 @@ namespace Tessera.Games.AugmentedYacht
         {
             ParchmentPreset = AugmentParchmentVisuals.Normalize((int)preset);
             this.overlayContentOnly = overlayContentOnly;
-            background.sprite = AugmentParchmentVisuals.GetSprite(ParchmentPreset, overlayContentOnly);
+            background.sprite = overlayContentOnly
+                ? AugmentParchmentVisuals.GetSprite(ParchmentPreset, true)
+                : AugmentParchmentVisuals.GetPixelFilteredSprite(ParchmentPreset, cardDisplaySize);
             background.type = Image.Type.Simple;
             background.preserveAspect = false;
             if (outline != null) outline.enabled = !overlayContentOnly;
@@ -178,6 +181,7 @@ namespace Tessera.Games.AugmentedYacht
 
         private void Build(UnityAction onClick, Vector2 size)
         {
+            cardDisplaySize = size;
             float width = Mathf.Max(240f, size.x);
             float height = Mathf.Max(135f, size.y);
             background = GetComponent<Image>();

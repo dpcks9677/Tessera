@@ -21,6 +21,10 @@ namespace Tessera.Games.AugmentedYacht
         private const int TextureWidth = 512;
         private const int TextureHeight = 288;
         private static readonly Dictionary<int, Sprite> FallbackSprites = new();
+        private static readonly Dictionary<(int Preset, int Width, int Height), Sprite> PixelFilteredSprites = new();
+
+        /// <summary>월드 픽셀 필터가 사용하는 내부 해상도입니다. 해상도 전환 시 컨트롤러가 갱신합니다.</summary>
+        public static Vector2Int PixelFilterResolution { get; set; } = new(640, 360);
 
         private static readonly float[][] EdgeProfiles =
         {
@@ -64,6 +68,62 @@ namespace Tessera.Games.AugmentedYacht
             Sprite fallback = CreateFallbackSprite((AugmentParchmentPreset)key);
             FallbackSprites[key] = fallback;
             return fallback;
+        }
+
+        /// <summary>카드 본체를 월드와 같은 픽셀 격자로 다운샘플한 스프라이트를 돌려줍니다.</summary>
+        public static Sprite GetPixelFilteredSprite(AugmentParchmentPreset preset, Vector2 displaySize)
+        {
+            Sprite source = GetSprite(preset, false);
+            if (source == null || source.texture == null) return source;
+            if (displaySize.x < 1f || displaySize.y < 1f || Screen.width < 1 || Screen.height < 1) return source;
+            if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) return source;
+
+            int key = (int)Normalize((int)preset);
+            int width = Mathf.Clamp(
+                Mathf.RoundToInt(displaySize.x * PixelFilterResolution.x / Screen.width), 16, source.texture.width);
+            int height = Mathf.Clamp(
+                Mathf.RoundToInt(displaySize.y * PixelFilterResolution.y / Screen.height), 16, source.texture.height);
+
+            if (PixelFilteredSprites.TryGetValue((key, width, height), out Sprite cached) && cached != null) return cached;
+            Sprite reduced = CreateDownsampledSprite(source.texture, key, width, height);
+            if (reduced == null) return source;
+            PixelFilteredSprites[(key, width, height)] = reduced;
+            return reduced;
+        }
+
+        private static Sprite CreateDownsampledSprite(Texture source, int key, int width, int height)
+        {
+            RenderTexture target = RenderTexture.GetTemporary(
+                width, height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            target.filterMode = FilterMode.Point;
+            FilterMode sourceFilter = source.filterMode;
+            RenderTexture previous = RenderTexture.active;
+            Texture2D texture = new(width, height, TextureFormat.RGBA32, false)
+            {
+                name = $"Augment_Parchment_Pixel_{key}_{width}x{height}",
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp,
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            try
+            {
+                source.filterMode = FilterMode.Point;
+                Graphics.Blit(source, target);
+                RenderTexture.active = target;
+                texture.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+                texture.Apply(false, false);
+            }
+            finally
+            {
+                RenderTexture.active = previous;
+                source.filterMode = sourceFilter;
+                RenderTexture.ReleaseTemporary(target);
+            }
+
+            Sprite sprite = Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(.5f, .5f), 100f);
+            sprite.name = texture.name;
+            sprite.hideFlags = HideFlags.HideAndDontSave;
+            return sprite;
         }
 
         private static Sprite CreateFallbackSprite(AugmentParchmentPreset preset)
