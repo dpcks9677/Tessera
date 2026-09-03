@@ -192,7 +192,7 @@ Tessera.Network
 └─ EOS/Steam 어댑터
 ```
 
-실제 폴더 및 asmdef 분리는 구현 전에 현재 참조 관계를 확인한 뒤 결정한다. 네임스페이스와 책임 경계는 위 구조를 따른다.
+위 구조는 책임 경계다. 실제 폴더 배치는 `D-028`에서 확정했다: 증강 관련 코드는 전부 `Assets/Scripts/Games/AugmentedYacht/` 아래에 두되, 순수 C# 로직은 `Logic/`, MonoBehaviour 프레젠테이션은 `Presentation/`으로 나눈다. 네임스페이스는 `Tessera.Games.Yacht`를 유지한다(`D-021`). asmdef 분리는 아직 하지 않는다.
 
 ### 5.2 핵심 처리 흐름
 
@@ -480,14 +480,17 @@ M7.5는 게임 규칙의 동작을 바꾸지 않고 증강 구현 구조만 재�
 - 등록은 리플렉션이 아니라 명시적 카탈로그 리스트를 사용한다(IL2CPP/AOT 안전).
 - `YachtAugmentRuntime`은 "보유 증강 → 시점 인터페이스 필터 → `Order` 정렬 → 호출"만 하는 디스패처로 축소한다.
 
-디렉터리는 기획상 3분류를 따른다(`D-021`). 네임스페이스는 `Tessera.Games.Yacht`를 유지한다.
+디렉터리는 기획상 3분류를 따른다(`D-021`). 상위 경로는 `D-028`에서 `AugmentedYacht/Logic/` 아래로 옮겼다. 네임스페이스는 `Tessera.Games.Yacht`를 유지한다.
 
 ```text
-Assets/Scripts/Games/Yacht/Augments/
-├─ Core/          시점 인터페이스, 컨텍스트, IAugmentState, 카탈로그, 디스패처
-├─ Modification/  변형 18
-├─ Enhance/       강화 16
-└─ Quest/         퀘스트 11
+Assets/Scripts/Games/AugmentedYacht/Logic/
+├─ YachtAugmentRuntime.cs      증강 정의·런타임 상태·디스패치
+├─ YachtAugmentScoreEngine.cs  기본 족보 계산
+└─ Augments/
+   ├─ Core/          시점 인터페이스, 컨텍스트, IAugmentState, 카탈로그, 디스패처
+   ├─ Modification/  변형 18
+   ├─ Enhance/       강화 16
+   └─ Quest/         퀘스트 11
 ```
 
 | ID | 작업 | 상태 | 완료 조건 |
@@ -697,6 +700,7 @@ npm run validate:augments
 | `D-025` | 2026-09-03 | `YachtAugmentHook` 플래그와 `YachtAugmentDefinition.Hooks` 필드를 제거한다. | 디스패치에 쓰이지 않아 정의와 실행이 이원화된 원인이었고, 구현된 인터페이스가 그 역할을 대신함. 리포지토리 전체에서 참조가 없었음 | 정의 팩토리 5개에서 `Hooks` 지정을 삭제; 발동 시점은 처리기가 구현한 인터페이스로만 판단 |
 | `D-026` | 2026-09-03 | 분류 전체에 적용되는 규칙은 `YachtAugmentRuntime`에 남기고, 증강 하나에만 해당하는 부수 효과만 처리기로 옮긴다. | 변형 18개가 공통으로 갖는 "대상 칸 초기화 + 추가 턴"을 처리기마다 복제하면 같은 코드가 18벌이 됨. 반면 `double-large-straight`의 상단 기준 60은 그 증강만의 규칙이라 처리기에 둠 | `ApplyAugment`는 `Kind == Modification`으로 공통 초기화를 수행하고, 획득한 증강의 `IOnAugmentSelected`만 추가로 호출 |
 | `D-027` | 2026-09-03 | 족보 판정 헬퍼를 `YachtDiceFacts`로 추출해 기본 점수 계산과 처리기가 공유한다. | 18개 처리기가 각자 눈 개수와 합을 다시 세면 중복이고, 판정 규칙이 두 벌로 갈라질 위험이 있음 | 주사위 한 벌당 한 번 계산해 `AugmentScoreContext.Facts`로 전달; `YachtAugmentScoreEngine`의 private 판정 헬퍼는 전부 이쪽으로 이동 |
+| `D-028` | 2026-09-03 | 증강 코드를 `Assets/Scripts/Games/AugmentedYacht/` 아래로 모으고, 순수 C# 로직은 `Logic/`, MonoBehaviour 프레젠테이션은 `Presentation/`으로 나눈다. 네임스페이스는 `Tessera.Games.Yacht`를 유지한다. | 증강은 증강요트 전용 기능인데 기본 요트 모듈 하위에 있어 소속이 어긋났고 5.1절과도 모순됐음. 다만 `Games/Yacht`가 MonoBehaviour 0개인 순수 로직 계층이라, 그대로 옮기면 로직과 뷰가 한 폴더에 섞이므로 하위 폴더로 경계를 유지함 | `D-021`의 디렉터리 조항을 대체하고 네임스페이스 조항은 존치. `Augments/` 트리와 `YachtAugmentRuntime`·`YachtAugmentScoreEngine`이 `Logic/`으로, 뷰 6종이 `Presentation/`으로 이동. asmdef가 없어 어셈블리 영향 없고 코드 변경 0. `Enhance/`·`Quest/`는 새 경로 아래에 만든다 |
 
 ---
 

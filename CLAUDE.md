@@ -102,8 +102,7 @@ Rules:
 - 메시지는 Conventional Commits 헤더로 시작합니다: `type(scope): 한국어 요약` (type: feat/fix/chore/style/refactor/docs/test 등).
 - 헤더 아래 빈 줄 뒤에 **불릿포인트(`- `)** 로 수정 사항을 한국어로 요약 설명합니다. 파일 나열이 아니라 "무엇을 왜 바꿨는지" 단위로 적습니다.
 - 기존 커밋 로그(`git log`)의 패턴을 따릅니다.
-- 커밋 메시지 끝에 다음 줄을 넣습니다:
-  `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>`
+- 커밋 메시지 끝에 하네스가 지정한 `Co-Authored-By:` 라인을 넣습니다 (모델명은 세션마다 다르므로 여기에 고정하지 않습니다).
 - 커밋·푸시는 사용자가 요청할 때만 수행합니다. 기본 브랜치면 먼저 브랜치를 만듭니다.
 
 ## Unity Editor 자동화 (unity-skills)
