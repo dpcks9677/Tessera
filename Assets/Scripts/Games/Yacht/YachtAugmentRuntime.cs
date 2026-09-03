@@ -228,24 +228,6 @@ namespace Tessera.Games.Yacht
 
         private static readonly YachtAugmentDefinition[] Definitions =
         {
-            Score(LuckySevensId, "럭키 세븐", ScoreCategory.Aces),
-            Score(PerfectSquaresId, "퍼펙트 스퀘어", ScoreCategory.Aces),
-            Score(GamblerId, "갬블러", ScoreCategory.Choice),
-            Score(ThreeOfAKindId, "쓰리 오브 어 카인드", ScoreCategory.FourOfAKind),
-            Score(TinyHouseId, "타이니 하우스", ScoreCategory.FullHouse),
-            Score(TwoPairId, "투 페어", ScoreCategory.FullHouse),
-            Score(HeadAndTailId, "머리와 몸통", ScoreCategory.FullHouse),
-            Score(EvensId, "에번스", ScoreCategory.SmallStraight),
-            Score(OddsId, "오즈", ScoreCategory.SmallStraight),
-            Score(DoubleLargeStraightId, "더블 라지 스트레이트", ScoreCategory.SmallStraight),
-            Score(PrimeCollectionId, "프라임 컬렉션", ScoreCategory.LargeStraight),
-            Score(DuplexHouseId, "땅콩주택", ScoreCategory.LargeStraight),
-            Score(MountainId, "마운틴", ScoreCategory.LargeStraight),
-            Score(HighDiceId, "하이 다이스", ScoreCategory.LargeStraight),
-            Score(SecondChoiceId, "두 번째 초이스", ScoreCategory.Yacht, true),
-            Score(FibonacciId, "피보나치 넘버즈", ScoreCategory.Yacht, true),
-            Score(ReverseChoiceId, "리버스 초이스", ScoreCategory.Yacht, true),
-            Score(BlackjackId, "블랙잭 21", ScoreCategory.Yacht, true),
             Enhance(YachtBankId, "요트 뱅크"),
             Quest(FastStraightId, "재빠른 스트레이트", true),
             Quest(NoTimeToWasteId, "낭비할 시간 없다"),
@@ -275,15 +257,21 @@ namespace Tessera.Games.Yacht
             Action(DiceAlchemyId, "주사위 연금술")
         };
 
-        private static YachtAugmentDefinition Score(string id, string name, ScoreCategory target, bool phaseOneOnly = false) => new()
+        /// <summary>
+        /// 처리기로 이관된 증강의 정의와 아직 이관하지 않은 정의를 합친 전체 목록입니다.
+        /// 카탈로그 등록 순서를 앞에 두어 이관 전후로 노출 순서가 바뀌지 않게 합니다.
+        /// </summary>
+        private static readonly YachtAugmentDefinition[] AllDefinitions = BuildAllDefinitions();
+
+        private static YachtAugmentDefinition[] BuildAllDefinitions()
         {
-            Id = id,
-            DisplayName = name,
-            Description = Describe(id),
-            Target = target.ToString(),
-            Kind = YachtAugmentKind.Modification,
-            PhaseOneOnly = phaseOneOnly
-        };
+            IReadOnlyList<IAugmentHandler> handlers = YachtAugmentCatalog.All;
+            var result = new List<YachtAugmentDefinition>(handlers.Count + Definitions.Length);
+            for (int i = 0; i < handlers.Count; i++) result.Add(handlers[i].CreateDefinition());
+            for (int i = 0; i < Definitions.Length; i++)
+                if (YachtAugmentCatalog.Find(Definitions[i].Id) == null) result.Add(Definitions[i]);
+            return result.ToArray();
+        }
 
         private static YachtAugmentDefinition Quest(string id, string name, bool phaseOneOnly = false) => new()
         {
@@ -324,24 +312,6 @@ namespace Tessera.Games.Yacht
 
         private static string Describe(string id) => id switch
         {
-            LuckySevensId => "Aces를 합 7·17·27이면 15점인 족보로 바꿉니다.",
-            PerfectSquaresId => "Aces를 합 9·16·25이면 12점인 족보로 바꿉니다.",
-            GamblerId => "Choice를 합 24 이상이면 합계+7점인 족보로 바꿉니다.",
-            ThreeOfAKindId => "Four of a Kind를 같은 눈 3개 이상이면 합계 점수인 족보로 바꿉니다.",
-            TinyHouseId => "Full House를 1~4만 사용해 완성하면 28점인 족보로 바꿉니다.",
-            TwoPairId => "Full House를 서로 다른 두 쌍 또는 포카드면 15점인 족보로 바꿉니다.",
-            HeadAndTailId => "Full House를 연속 3개와 같은 눈 2개면 합계+10점인 족보로 바꿉니다.",
-            EvensId => "Small Straight를 모든 눈이 2·4·6이면 20점인 족보로 바꿉니다.",
-            OddsId => "Small Straight를 모든 눈이 1·3·5·7이면 20점인 족보로 바꿉니다.",
-            DoubleLargeStraightId => "Small Straight를 Large Straight 조건 30점으로 바꾸고 상단 기준을 60으로 낮춥니다.",
-            PrimeCollectionId => "Large Straight를 모든 눈이 2·3·5·7이고 2·3·5를 포함하면 35점인 족보로 바꿉니다.",
-            DuplexHouseId => "Large Straight를 연속한 두 눈의 2+3 Full House면 35점인 족보로 바꿉니다.",
-            MountainId => "Large Straight를 2·3·4·5·6이면 40점인 족보로 바꿉니다.",
-            HighDiceId => "Large Straight를 4~7만 사용하고 합 26 이상이면 35점인 족보로 바꿉니다.",
-            SecondChoiceId => "Yacht를 조건 없이 합계의 절반을 얻는 족보로 바꿉니다.",
-            FibonacciId => "Yacht를 1·1·2·3·5이면 25점인 족보로 바꿉니다.",
-            ReverseChoiceId => "Yacht를 조건 없이 30-합계 점수로 바꾸며 음수도 허용합니다.",
-            BlackjackId => "Yacht를 합계가 21이면 21점인 족보로 바꿉니다.",
             YachtBankId => "3턴 동안 가장 왼쪽 킵 주사위를 점수에서 제외해 최대 15까지 저축하고 다음 내 턴에 받습니다.",
             FastStraightId => "8번째 내 턴까지 두 Straight를 모두 기입하면 +15점입니다.",
             NoTimeToWasteId => "연속 3턴 첫 굴림 직후 기입하면 +15점입니다.",
@@ -374,15 +344,15 @@ namespace Tessera.Games.Yacht
 
         public IReadOnlyList<YachtAugmentDefinition> GetDefinitions()
         {
-            var result = new YachtAugmentDefinition[Definitions.Length];
-            for (int i = 0; i < result.Length; i++) result[i] = Definitions[i].Clone();
+            var result = new YachtAugmentDefinition[AllDefinitions.Length];
+            for (int i = 0; i < result.Length; i++) result[i] = AllDefinitions[i].Clone();
             return result;
         }
 
         public YachtAugmentDefinition FindDefinition(string augmentId)
         {
-            for (int i = 0; i < Definitions.Length; i++)
-                if (string.Equals(Definitions[i].Id, augmentId, StringComparison.Ordinal)) return Definitions[i].Clone();
+            for (int i = 0; i < AllDefinitions.Length; i++)
+                if (string.Equals(AllDefinitions[i].Id, augmentId, StringComparison.Ordinal)) return AllDefinitions[i].Clone();
             return null;
         }
 
@@ -463,7 +433,7 @@ namespace Tessera.Games.Yacht
                 ? NormalizeCardPreset(state.Draft.OptionCardPresetIds[optionIndex])
                 : visualRandom.NextInt(0, CardVisualPresetCount);
             var emitted = new List<YachtGameEvent>();
-            ApplyAugment(state, playerIndex, augmentId, emitted, false, visualPreset);
+            ApplyAugment(state, playerIndex, augmentId, emitted, false, visualPreset, random);
             state.Draft.SelectionCounts[playerIndex]++;
             emitted.Add(new YachtGameEvent
             {
@@ -565,15 +535,38 @@ namespace Tessera.Games.Yacht
                 : $"dice_presets_normal_{normals}.json";
         }
 
+        /// <summary>기본 족보를 계산한 뒤 보유한 변형 증강의 족보 교체를 적용합니다.</summary>
+        public Dictionary<ScoreCategory, int> CalculateScores(
+            YachtGameState state,
+            int playerIndex,
+            IReadOnlyList<YachtDieState> dice) =>
+            CalculateScoringDiceScores(state, playerIndex, GetScoringDice(state, playerIndex, dice));
+
+        private Dictionary<ScoreCategory, int> CalculateScoringDiceScores(
+            YachtGameState state,
+            int playerIndex,
+            IReadOnlyList<YachtDieState> scoringDice)
+        {
+            YachtDiceFacts facts = YachtAugmentScoreEngine.CreateFacts(
+                scoringDice, state.AugmentPlayers[playerIndex].OwnedIds);
+            Dictionary<ScoreCategory, int> scores = YachtAugmentScoreEngine.CalculateBaseScores(facts);
+            var context = new AugmentScoreContext(state, playerIndex, scoringDice, scores, facts);
+            List<IBeforeScorePreview> handlers = YachtAugmentDispatcher.Collect<IBeforeScorePreview>(state, playerIndex);
+            for (int i = 0; i < handlers.Count; i++)
+            {
+                context.BindAugment(((IAugmentHandler)handlers[i]).Id);
+                handlers[i].ModifyScores(context);
+            }
+            return scores;
+        }
+
         public void ModifyScorePreview(
             YachtGameState state,
             int playerIndex,
             IReadOnlyList<YachtDieState> dice,
             IDictionary<ScoreCategory, int> scores)
         {
-            Dictionary<ScoreCategory, int> calculated = YachtAugmentScoreEngine.CalculateBaseScores(
-                GetScoringDice(state, playerIndex, dice),
-                state.AugmentPlayers[playerIndex].OwnedIds);
+            Dictionary<ScoreCategory, int> calculated = CalculateScores(state, playerIndex, dice);
             foreach (KeyValuePair<ScoreCategory, int> pair in calculated) scores[pair.Key] = pair.Value;
         }
 
@@ -584,7 +577,7 @@ namespace Tessera.Games.Yacht
         {
             IReadOnlyList<YachtDieState> scoringDice = GetScoringDice(state, playerIndex, dice);
             YachtAugmentPlayerState player = state.AugmentPlayers[playerIndex];
-            Dictionary<ScoreCategory, int> baseScores = YachtAugmentScoreEngine.CalculateBaseScores(scoringDice, player.OwnedIds);
+            Dictionary<ScoreCategory, int> baseScores = CalculateScoringDiceScores(state, playerIndex, scoringDice);
             int diceBonus = YachtAugmentScoreEngine.CalculateDiceBonus(scoringDice);
             var result = new YachtScoreCandidate[YachtScoreCalculator.ScorableCategories.Length];
             for (int i = 0; i < result.Length; i++)
@@ -1027,8 +1020,8 @@ namespace Tessera.Games.Yacht
         private string[] CreateDraftOptions(YachtGameState state, int playerIndex, IRandomSource random)
         {
             var candidates = new List<string>();
-            for (int i = 0; i < Definitions.Length; i++)
-                if (CanAcquire(state, playerIndex, Definitions[i].Id)) candidates.Add(Definitions[i].Id);
+            for (int i = 0; i < AllDefinitions.Length; i++)
+                if (CanAcquire(state, playerIndex, AllDefinitions[i].Id)) candidates.Add(AllDefinitions[i].Id);
             Shuffle(candidates, random);
             int count = Math.Min(DraftOptionCount, candidates.Count);
             var result = new string[count];
@@ -1093,7 +1086,8 @@ namespace Tessera.Games.Yacht
             string augmentId,
             ICollection<YachtGameEvent> events,
             bool replacement,
-            int visualPreset)
+            int visualPreset,
+            IRandomSource random)
         {
             YachtAugmentPlayerState runtime = state.AugmentPlayers[playerIndex];
             YachtAugmentDefinition definition = FindDefinition(augmentId);
@@ -1119,18 +1113,11 @@ namespace Tessera.Games.Yacht
                 runtime.OwnedCardPresetIds = Append(runtime.OwnedCardPresetIds, NormalizeCardPreset(visualPreset));
             }
 
-            if (augmentId == LuckySevensId)
-            {
-                ResetFilledTarget(state, playerIndex, ScoreCategory.Aces, runtime);
-            }
-            else if (definition?.Kind == YachtAugmentKind.Modification)
+            // 대상 칸 초기화와 추가 턴은 변형 분류 전체에 적용되는 규칙이므로 여기서 처리하고,
+            // 증강 하나에만 해당하는 부수 효과는 아래에서 처리기에 위임한다.
+            if (definition?.Kind == YachtAugmentKind.Modification)
             {
                 if (Enum.TryParse(definition.Target, out ScoreCategory target)) ResetFilledTarget(state, playerIndex, target, runtime);
-                if (augmentId == DoubleLargeStraightId)
-                {
-                    state.Players[playerIndex].upperBonusThreshold = Math.Min(state.Players[playerIndex].upperBonusThreshold, 60);
-                    state.Players[playerIndex].RecalculateTotal();
-                }
             }
             else if (augmentId == YachtBankId)
             {
@@ -1196,6 +1183,13 @@ namespace Tessera.Games.Yacht
                 runtime.RandomBoxAwardId = null;
             }
 
+            if (YachtAugmentCatalog.Find(augmentId) is IOnAugmentSelected selected)
+            {
+                var selection = new AugmentSelectionContext(state, playerIndex, random, events, replacement);
+                selection.BindAugment(augmentId);
+                selected.OnSelected(selection);
+            }
+
             if (replacement)
             {
                 events.Add(new YachtGameEvent
@@ -1250,9 +1244,9 @@ namespace Tessera.Games.Yacht
                     ? NormalizeCardPreset(player.OwnedCardPresetIds[randomBoxIndex])
                     : 0;
                 var candidates = new List<string>();
-                for (int i = 0; i < Definitions.Length; i++)
+                for (int i = 0; i < AllDefinitions.Length; i++)
                 {
-                    YachtAugmentDefinition definition = Definitions[i];
+                    YachtAugmentDefinition definition = AllDefinitions[i];
                     if (definition.Id == RandomBoxId || definition.IsQuest || !CanAcquire(state, playerIndex, definition.Id)) continue;
                     candidates.Add(definition.Id);
                 }
@@ -1261,7 +1255,7 @@ namespace Tessera.Games.Yacht
 
                 string awarded = candidates[0];
                 player.RandomBoxAwardId = awarded;
-                ApplyAugment(state, playerIndex, awarded, events, true, inheritedPreset);
+                ApplyAugment(state, playerIndex, awarded, events, true, inheritedPreset, random);
             }
         }
 

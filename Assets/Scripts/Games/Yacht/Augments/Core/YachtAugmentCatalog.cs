@@ -12,7 +12,27 @@ namespace Tessera.Games.Yacht
     {
         private static readonly IAugmentHandler[] Handlers =
         {
-            // M7.5-R2부터 변형·강화·퀘스트 처리기를 여기에 등록합니다.
+            // 변형 18종. 등록 순서가 드래프트 후보와 정의 목록의 노출 순서가 됩니다.
+            new LuckySevens(),
+            new PerfectSquares(),
+            new Gambler(),
+            new ThreeOfAKind(),
+            new TinyHouse(),
+            new TwoPair(),
+            new HeadAndTail(),
+            new Evens(),
+            new Odds(),
+            new DoubleLargeStraight(),
+            new PrimeCollection(),
+            new DuplexHouse(),
+            new Mountain(),
+            new HighDice(),
+            new SecondChoice(),
+            new FibonacciNumbers(),
+            new ReverseChoice(),
+            new Blackjack21()
+
+            // 강화·퀘스트 처리기는 M7.5-R3부터 여기에 추가합니다.
         };
 
         public static IReadOnlyList<IAugmentHandler> All => Handlers;

@@ -856,7 +856,17 @@ namespace Tessera.Editor.Tests
 
         private static int AugmentScore(string augmentId, ScoreCategory category, params int[] values)
         {
-            return YachtAugmentScoreEngine.CalculateBaseScores(CreateDice(values), new[] { augmentId })[category];
+            var runtime = new YachtAugmentRuntime();
+            var state = new YachtGameState
+            {
+                Mode = YachtGameMode.Augmented,
+                CurrentRound = 1,
+                Players = new[] { new PlayerScoreData() },
+                Dice = CreateDice(values)
+            };
+            runtime.Initialize(state, 1);
+            state.AugmentPlayers[0].OwnedIds = new[] { augmentId };
+            return runtime.CalculateScores(state, 0, state.Dice)[category];
         }
 
         private static YachtScoreCandidate FindCandidate(IReadOnlyList<YachtScoreCandidate> candidates, ScoreCategory category)

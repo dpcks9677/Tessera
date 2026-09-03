@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using Tessera.Games.Yacht;
 
@@ -163,10 +164,8 @@ namespace Tessera.Editor.Tests
         [Test]
         public void 변형증강은_대상칸_외의_족보를_바꾸지_않는다()
         {
-            var withAugment = YachtAugmentScoreEngine.CalculateBaseScores(
-                Dice(1, 1, 1, 2, 2), new[] { YachtAugmentRuntime.LuckySevensId });
-            var withoutAugment = YachtAugmentScoreEngine.CalculateBaseScores(
-                Dice(1, 1, 1, 2, 2), new string[0]);
+            Dictionary<ScoreCategory, int> withAugment = ScoresWith(YachtAugmentRuntime.LuckySevensId, 1, 1, 1, 2, 2);
+            Dictionary<ScoreCategory, int> withoutAugment = ScoresWith(null, 1, 1, 1, 2, 2);
 
             Assert.That(withAugment[ScoreCategory.Aces], Is.EqualTo(15));
             Assert.That(withoutAugment[ScoreCategory.Aces], Is.EqualTo(3));
@@ -180,7 +179,7 @@ namespace Tessera.Editor.Tests
         [Test]
         public void 변형증강을_보유하지_않으면_기본_족보를_계산한다()
         {
-            var scores = YachtAugmentScoreEngine.CalculateBaseScores(Dice(1, 1, 1, 2, 2), new string[0]);
+            Dictionary<ScoreCategory, int> scores = ScoresWith(null, 1, 1, 1, 2, 2);
 
             Assert.That(scores[ScoreCategory.Aces], Is.EqualTo(3));
             Assert.That(scores[ScoreCategory.Deuces], Is.EqualTo(4));
@@ -219,9 +218,23 @@ namespace Tessera.Editor.Tests
             return state;
         }
 
-        private static int Score(string augmentId, ScoreCategory category, params int[] values)
+        private static int Score(string augmentId, ScoreCategory category, params int[] values) =>
+            ScoresWith(augmentId, values)[category];
+
+        /// <summary>증강을 보유한 상태에서 실제 점수 계산 경로를 그대로 타 족보 점수를 얻습니다.</summary>
+        private static Dictionary<ScoreCategory, int> ScoresWith(string augmentId, params int[] values)
         {
-            return YachtAugmentScoreEngine.CalculateBaseScores(Dice(values), new[] { augmentId })[category];
+            var runtime = new YachtAugmentRuntime();
+            var state = new YachtGameState
+            {
+                Mode = YachtGameMode.Augmented,
+                CurrentRound = 1,
+                Players = new[] { new PlayerScoreData() },
+                Dice = Dice(values)
+            };
+            runtime.Initialize(state, 1);
+            if (augmentId != null) state.AugmentPlayers[0].OwnedIds = new[] { augmentId };
+            return runtime.CalculateScores(state, 0, state.Dice);
         }
 
         private static YachtDieState[] Dice(params int[] values)

@@ -24,9 +24,9 @@
 |---|---|
 | 전체 상태 | M1~M6 완료, M7 중단 (M7-T1~T5 완료); 사용자 지시로 `M7.5` 구조 리팩토링을 먼저 진행 |
 | 현재 마일스톤 | `M7.5` 증강 시스템 구조 리팩토링 |
-| 현재 작업 | 없음 — `M7.5-R1` 완료 후 사용자 지시 대기 |
-| 다음 행동 | `M7.5-R2` 변형 18개 이관 (특성화 테스트는 선행 완료) |
-| 마지막 완료 작업 | `M7.5-R1` 코어 골격 (EditMode 83/83 통과) |
+| 현재 작업 | 없음 — `M7.5-R2` 완료 후 사용자 지시 대기 |
+| 다음 행동 | `M7.5-R3` 강화 중 주사위·상시형 이관 |
+| 마지막 완료 작업 | `M7.5-R2` 변형 18개 이관 (EditMode 83/83 통과) |
 | 차단 요소 | 기술적 차단 없음 |
 | 마지막 갱신일 | 2026-09-03 |
 
@@ -494,7 +494,7 @@ Assets/Scripts/Games/Yacht/Augments/
 |---|---|---|---|
 | `M7.5-R0` | 작업 계획서 갱신 | `DONE` | M7 중단과 M7.5 범위·결정이 이 문서에 기록됨 |
 | `M7.5-R1` | 코어 골격 | `DONE` | 시점 인터페이스·컨텍스트·상태 저장소·카탈로그·디스패처가 존재하고, 기존 로직을 유지한 채 컴파일과 기존 테스트가 통과함 |
-| `M7.5-R2` | 변형 18개 이관 | `TODO` | 18개가 핸들러로 이동하고 `YachtAugmentScoreEngine`은 기본 족보 계산만 담당함 (특성화 테스트 23개는 선행 작성 완료) |
+| `M7.5-R2` | 변형 18개 이관 | `DONE` | 18개가 핸들러로 이동하고 `YachtAugmentScoreEngine`은 기본 족보 계산만 담당함 |
 | `M7.5-R3` | 강화 중 주사위·상시형 이관 | `TODO` | 주사위 6종과 요트 뱅크·추진력·결투·저금통이 핸들러로 이동함 |
 | `M7.5-R4` | 퀘스트 11개 이관 | `TODO` | `AfterScoreCommit` 250줄이 해체되고 퀘스트별 진행·실패·보상이 각 파일에 모임 |
 | `M7.5-R5` | 수동 행동 5개 이관 | `TODO` | `LocalGameAuthority.UseAugmentAction`의 증강 ID 하드코딩이 제거되고 핸들러 위임으로 바뀜 |
@@ -695,6 +695,8 @@ npm run validate:augments
 | `D-023` | 2026-09-03 | 잉크색 아이콘을 어두운 받침판 대신 카드 양피지 위에 직접 얹는다. | 앤틱 잉크 아이콘이 기존 받침판(`0.12, 0.08, 0.07`) 위에서 대비가 부족해 묻힘 | `AugmentCardView`의 `iconBacking`을 `Color.clear`로 두고 배치 기준 부모로만 사용 |
 | `D-024` | 2026-09-03 | 시점 인터페이스는 현재 처리기가 존재하는 것만 정의하고, `AfterRoll`·`BeforeScoreCommit`·`OnGameEnded`는 필요한 증강이 생길 때 추가한다. 굴림 전 발동(갬빗·더블 다운)은 별도 시점이 아니라 `RequiredPhase`가 `TurnReady`인 수동 행동으로 다룬다. | 호출 지점이 없는 인터페이스는 디스패처에 빈 호출부를 만들게 되어 `CLAUDE.md`의 불필요한 추상화 금지에 어긋남. 추가 비용은 인터페이스 1개와 디스패치 1줄로 낮음 | R1에서 9개 인터페이스를 정의함: `IOnAugmentSelected`, `IOnTurnStarted`, `IOnTurnEnded`, `IBeforeScorePreview`, `IAfterScoreCommit`, `IManualActionAugment`, `IDiceCountModifier`, `IDiceLayoutProvider`, `ITurnDurationModifier` |
 | `D-025` | 2026-09-03 | `YachtAugmentHook` 플래그와 `YachtAugmentDefinition.Hooks` 필드를 제거한다. | 디스패치에 쓰이지 않아 정의와 실행이 이원화된 원인이었고, 구현된 인터페이스가 그 역할을 대신함. 리포지토리 전체에서 참조가 없었음 | 정의 팩토리 5개에서 `Hooks` 지정을 삭제; 발동 시점은 처리기가 구현한 인터페이스로만 판단 |
+| `D-026` | 2026-09-03 | 분류 전체에 적용되는 규칙은 `YachtAugmentRuntime`에 남기고, 증강 하나에만 해당하는 부수 효과만 처리기로 옮긴다. | 변형 18개가 공통으로 갖는 "대상 칸 초기화 + 추가 턴"을 처리기마다 복제하면 같은 코드가 18벌이 됨. 반면 `double-large-straight`의 상단 기준 60은 그 증강만의 규칙이라 처리기에 둠 | `ApplyAugment`는 `Kind == Modification`으로 공통 초기화를 수행하고, 획득한 증강의 `IOnAugmentSelected`만 추가로 호출 |
+| `D-027` | 2026-09-03 | 족보 판정 헬퍼를 `YachtDiceFacts`로 추출해 기본 점수 계산과 처리기가 공유한다. | 18개 처리기가 각자 눈 개수와 합을 다시 세면 중복이고, 판정 규칙이 두 벌로 갈라질 위험이 있음 | 주사위 한 벌당 한 번 계산해 `AugmentScoreContext.Facts`로 전달; `YachtAugmentScoreEngine`의 private 판정 헬퍼는 전부 이쪽으로 이동 |
 
 ---
 
@@ -724,6 +726,18 @@ npm run validate:augments
 ## 13. 작업 세션 로그
 
 최신 로그를 위에 추가한다. 작업을 끝낼 때 아래 항목을 빠뜨리지 않는다.
+
+### 2026-09-03 — Claude (M7.5-R2 변형 18개 이관)
+
+- 작업 ID: `M7.5-R2`
+- 시작 상태: 변형 18종의 점수 규칙이 `YachtAugmentScoreEngine.ApplyReplacementScores`의 else-if 체인에, 획득 시 부수 효과는 `YachtAugmentRuntime.ApplyAugment`의 분기에 나뉘어 있었음
+- 완료 내용: `Augments/Modification/`에 공통 기반 `ModificationAugment`와 처리기 18개를 추가하고 카탈로그에 등록함. 족보 판정 헬퍼를 `Augments/Core/YachtDiceFacts.cs`로 추출해 기본 점수 계산과 처리기가 공유하게 함. `YachtAugmentScoreEngine`에서 교체 로직과 전용 판정 헬퍼를 제거해 기본 족보 계산만 남김. 점수 미리보기·후보 생성 경로가 `IBeforeScorePreview` 처리기를 호출하도록 바꾸고, 정의 목록·드래프트 후보·랜덤 박스 후보가 카탈로그와 잔여 정적 배열을 합친 `AllDefinitions`를 쓰도록 정리함
+- 변경 파일: `Augments/Modification/` 19개 신규, `Augments/Core/YachtDiceFacts.cs` 신규, `Augments/Core/AugmentContexts.cs`, `Augments/Core/YachtAugmentCatalog.cs`, `YachtAugmentRuntime.cs`, `YachtAugmentScoreEngine.cs`, `YachtGameRulesTests.cs`, `YachtModificationAugmentTests.cs`
+- 실행한 검증: 생성된 C# 처리기에서 점수 식을 추출해 이관 전 규칙과 전수 대조(증강 18종 × 주사위 5개 조합, 눈 1~6과 1~7 두 범위, 12,852건). Unity 재임포트 후 EditMode 결과를 지우고 전체 재실행
+- 검증 결과: 전수 대조 불일치 **0건**, 컴파일 오류 0건, EditMode **83/83 통과**
+- 새 결정/가정: `D-026`(분류 공통 규칙은 런타임에, 증강 고유 부수 효과만 처리기에), `D-027`(`YachtDiceFacts` 추출). 정의 노출 순서를 유지하려고 카탈로그 등록 순서를 기존 배열 순서와 일치시킴
+- 남은 문제/차단 요소: 없음
+- 다음 작업: `M7.5-R3` 강화 중 주사위·상시형 이관
 
 ### 2026-09-03 — Claude (M7.5-R1 검증 및 R2 특성화 테스트 선행 작성)
 

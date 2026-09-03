@@ -8,13 +8,13 @@ namespace Tessera.Games.Yacht
     /// </summary>
     public abstract class AugmentContext
     {
-        private readonly IList<YachtGameEvent> events;
+        private readonly ICollection<YachtGameEvent> events;
 
         protected AugmentContext(
             YachtGameState game,
             int playerIndex,
             IRandomSource random,
-            IList<YachtGameEvent> events)
+            ICollection<YachtGameEvent> events)
         {
             Game = game;
             PlayerIndex = playerIndex;
@@ -67,7 +67,7 @@ namespace Tessera.Games.Yacht
             YachtGameState game,
             int playerIndex,
             IRandomSource random,
-            IList<YachtGameEvent> events,
+            ICollection<YachtGameEvent> events,
             bool isRandomBoxReplacement)
             : base(game, playerIndex, random, events)
         {
@@ -85,7 +85,7 @@ namespace Tessera.Games.Yacht
             YachtGameState game,
             int playerIndex,
             IRandomSource random,
-            IList<YachtGameEvent> events,
+            ICollection<YachtGameEvent> events,
             bool growPromotion)
             : base(game, playerIndex, random, events)
         {
@@ -147,11 +147,13 @@ namespace Tessera.Games.Yacht
             YachtGameState game,
             int playerIndex,
             IReadOnlyList<YachtDieState> dice,
-            IDictionary<ScoreCategory, int> scores)
+            IDictionary<ScoreCategory, int> scores,
+            YachtDiceFacts facts)
             : base(game, playerIndex, null, null)
         {
             Dice = dice;
             Scores = scores;
+            Facts = facts;
         }
 
         /// <summary>점수 계산에 실제로 사용되는 주사위입니다.</summary>
@@ -159,6 +161,9 @@ namespace Tessera.Games.Yacht
 
         /// <summary>족보별 점수입니다. 처리기가 자기 대상 칸만 덮어씁니다.</summary>
         public IDictionary<ScoreCategory, int> Scores { get; }
+
+        /// <summary>같은 주사위에 대해 한 번만 계산된 족보 판정 결과입니다.</summary>
+        public YachtDiceFacts Facts { get; }
     }
 
     /// <summary>점수를 확정한 시점과 턴이 끝나는 시점에 공통으로 쓰입니다.</summary>
@@ -168,7 +173,7 @@ namespace Tessera.Games.Yacht
             YachtGameState game,
             int playerIndex,
             IRandomSource random,
-            IList<YachtGameEvent> events,
+            ICollection<YachtGameEvent> events,
             ScoreCategory category,
             int baseScore,
             int finalScore,
@@ -203,7 +208,7 @@ namespace Tessera.Games.Yacht
             YachtGameState game,
             int playerIndex,
             IRandomSource random,
-            IList<YachtGameEvent> events)
+            ICollection<YachtGameEvent> events)
             : base(game, playerIndex, random, events)
         {
         }
