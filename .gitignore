@@ -128,3 +128,6 @@ yarn-error.log*
 /[Aa]ssets/_Recovery/
 /[Aa]ssets/_Recovery.meta
 
+# graphify 지식 그래프 산출물 (graphify update . 로 재생성)
+/graphify-out/
+
