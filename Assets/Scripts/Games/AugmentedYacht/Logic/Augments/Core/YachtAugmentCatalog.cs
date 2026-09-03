@@ -30,9 +30,40 @@ namespace Tessera.Games.Yacht
             new SecondChoice(),
             new FibonacciNumbers(),
             new ReverseChoice(),
-            new Blackjack21()
+            new Blackjack21(),
 
-            // 강화·퀘스트 처리기는 M7.5-R3부터 여기에 추가합니다.
+            // 강화 11종 (주사위 6 + 상시/특수 5)
+            new WeightedDice(),
+            new GoldenDie(),
+            new Octahedron(),
+            new PromotionDie(),
+            new CoupleDice(),
+            new SevensDice(),
+            new YachtBank(),
+            new Momentum(),
+            new Duel(),
+            new PiggyBank(),
+            new RandomBox(),
+
+            // 퀘스트 11종
+            new NoTimeToWaste(),
+            new BountyHunter(),
+            new StepByStep(),
+            new FastStraight(),
+            new Holdout(),
+            new CautiousStraight(),
+            new EveryLittleCounts(),
+            new Copycat(),
+            new Prophet(),
+            new Doubling(),
+            new Nozdormu(),
+
+            // 수동 행동 5종
+            new TableFlip(),
+            new EquivalentExchange(),
+            new Gambit(),
+            new DoubleDown(),
+            new DiceAlchemy()
         };
 
         public static IReadOnlyList<IAugmentHandler> All => Handlers;

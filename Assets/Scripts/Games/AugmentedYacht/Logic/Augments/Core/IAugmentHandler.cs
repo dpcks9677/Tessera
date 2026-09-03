@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Tessera.Games.Yacht
 {
     /// <summary>
@@ -63,7 +65,21 @@ namespace Tessera.Games.Yacht
     /// <summary>이번 턴에 사용할 주사위 종류를 배정합니다.</summary>
     public interface IDiceLayoutProvider
     {
+        int RequiredDiceSlots { get; }
+
         void ConfigureDice(AugmentDiceContext context);
+    }
+
+    /// <summary>점수 계산에 사용되는 주사위를 필터링합니다. (예: 요트 뱅크)</summary>
+    public interface IScoringDiceFilter
+    {
+        IReadOnlyList<YachtDieState> FilterScoringDice(AugmentQueryContext context, IReadOnlyList<YachtDieState> dice);
+    }
+
+    /// <summary>점수 후보의 배율을 보정합니다. (예: 추진력, 더블 다운)</summary>
+    public interface IScoreEnhancementModifier
+    {
+        bool TryGetEnhancement(AugmentQueryContext context, ScoreCategory category, int baseScore, out float multiplier, out string enhancementSource);
     }
 
     /// <summary>턴 제한 시간을 보정합니다.</summary>

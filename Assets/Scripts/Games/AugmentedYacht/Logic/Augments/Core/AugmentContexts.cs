@@ -33,6 +33,22 @@ namespace Tessera.Games.Yacht
 
         public YachtAugmentPlayerState Player => Game.AugmentPlayers[PlayerIndex];
 
+        /// <summary>플레이어가 특정 증강을 보유하고 있는지 확인합니다.</summary>
+        public bool Owns(string augmentId)
+        {
+            if (Player?.OwnedIds != null)
+            {
+                for (int i = 0; i < Player.OwnedIds.Length; i++)
+                    if (string.Equals(Player.OwnedIds[i], augmentId, System.StringComparison.Ordinal)) return true;
+            }
+            if (Game?.GlobalAugmentIds != null)
+            {
+                for (int i = 0; i < Game.GlobalAugmentIds.Length; i++)
+                    if (string.Equals(Game.GlobalAugmentIds[i], augmentId, System.StringComparison.Ordinal)) return true;
+            }
+            return false;
+        }
+
         /// <summary>현재 증강의 전용 상태를 가져옵니다. 없으면 만들어집니다.</summary>
         public T State<T>() where T : class, IAugmentState, new() => Player.States.GetOrCreate<T>(AugmentId);
 

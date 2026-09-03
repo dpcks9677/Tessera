@@ -182,58 +182,51 @@ namespace Tessera.Games.Yacht
         {
             YachtGameCommandResult turnError = ValidateCurrentPlayer(command);
             if (turnError != null) return turnError;
-            if (string.Equals(command.AugmentId, YachtAugmentRuntime.TableFlipId, StringComparison.Ordinal))
+            if (YachtAugmentCatalog.Find(command.AugmentId) is not IManualActionAugment action)
+                return Reject(YachtCommandErrorCode.AugmentUnavailable, "지원하지 않는 증강 행동입니다.");
+
+            if (state.Phase != action.RequiredPhase)
             {
-                if (state.Phase != YachtGamePhase.ScoreSelection)
-                    return Reject(YachtCommandErrorCode.InvalidPhase, "현재 단계에서는 판 뒤집기를 사용할 수 없습니다.");
-                if (!augmentRuntime.CanUseTableFlip(state, command.PlayerIndex, out YachtCommandErrorCode code, out string message))
-                    return Reject(code, message);
-                YachtGameCommandResult result = RollDice(command, YachtAugmentRuntime.TableFlipId);
-                if (result.Accepted) augmentRuntime.MarkTableFlipUsed(state, command.PlayerIndex);
+                string phaseMessage = action.RequiredPhase == YachtGamePhase.TurnReady
+                    ? "첫 굴림 전에만 사용할 수 있습니다."
+                    : "현재 단계에서는 사용할 수 없습니다.";
+                if (string.Equals(command.AugmentId, YachtAugmentRuntime.TableFlipId, StringComparison.Ordinal))
+                    phaseMessage = "현재 단계에서는 판 뒤집기를 사용할 수 없습니다.";
+                else if (string.Equals(command.AugmentId, YachtAugmentRuntime.EquivalentExchangeId, StringComparison.Ordinal))
+                    phaseMessage = "현재 단계에서는 등가교환을 사용할 수 없습니다.";
+                else if (string.Equals(command.AugmentId, YachtAugmentRuntime.DiceAlchemyId, StringComparison.Ordinal))
+                    phaseMessage = "첫 굴림 후 주사위 연금술을 사용할 수 있습니다.";
+
+                return Reject(YachtCommandErrorCode.InvalidPhase, phaseMessage);
+            }
+
+            var actionContext = new AugmentActionContext(state, command.PlayerIndex, random, null);
+            actionContext.BindAugment(command.AugmentId);
+            if (!action.CanUse(actionContext, out YachtCommandErrorCode code, out string message))
+                return Reject(code, message);
+
+            if (action.RerollsDice)
+            {
+                YachtGameCommandResult result = RollDice(command, command.AugmentId);
+                if (result.Accepted) action.Use(actionContext);
                 return result;
             }
-            if (string.Equals(command.AugmentId, YachtAugmentRuntime.EquivalentExchangeId, StringComparison.Ordinal))
-            {
-                if (state.Phase != YachtGamePhase.ScoreSelection)
-                    return Reject(YachtCommandErrorCode.InvalidPhase, "현재 단계에서는 등가교환을 사용할 수 없습니다.");
-                if (!augmentRuntime.CanUseEquivalentExchange(state, command.PlayerIndex, out YachtCommandErrorCode code, out string message))
-                    return Reject(code, message);
-                YachtGameCommandResult result = RollDice(command, YachtAugmentRuntime.EquivalentExchangeId);
-                if (result.Accepted) augmentRuntime.MarkEquivalentExchangeUsed(state, command.PlayerIndex);
-                return result;
-            }
-            if (string.Equals(command.AugmentId, YachtAugmentRuntime.GambitId, StringComparison.Ordinal)
-                || string.Equals(command.AugmentId, YachtAugmentRuntime.DoubleDownId, StringComparison.Ordinal))
-            {
-                if (state.Phase != YachtGamePhase.TurnReady)
-                    return Reject(YachtCommandErrorCode.InvalidPhase, "첫 굴림 전에만 사용할 수 있습니다.");
-                if (!augmentRuntime.TryActivateBeforeRoll(state, command.PlayerIndex, command.AugmentId, out YachtCommandErrorCode code, out string message))
-                    return Reject(code, message);
-                if (string.Equals(command.AugmentId, YachtAugmentRuntime.GambitId, StringComparison.Ordinal)) ResetDiceForCurrentPlayer();
-                return Accept(new YachtGameEvent
-                {
-                    Type = YachtGameEventType.AugmentActionUsed,
-                    PlayerIndex = command.PlayerIndex,
-                    AugmentId = command.AugmentId,
-                    Message = $"{command.AugmentId} 발동"
-                });
-            }
-            if (string.Equals(command.AugmentId, YachtAugmentRuntime.DiceAlchemyId, StringComparison.Ordinal))
-            {
-                if (state.Phase != YachtGamePhase.ScoreSelection)
-                    return Reject(YachtCommandErrorCode.InvalidPhase, "첫 굴림 후 주사위 연금술을 사용할 수 있습니다.");
-                if (!augmentRuntime.TryUseDiceAlchemy(state, command.PlayerIndex, out YachtCommandErrorCode code, out string message))
-                    return Reject(code, message);
+
+            action.Use(actionContext);
+            if (string.Equals(command.AugmentId, YachtAugmentRuntime.GambitId, StringComparison.Ordinal))
+                ResetDiceForCurrentPlayer();
+            else if (string.Equals(command.AugmentId, YachtAugmentRuntime.DiceAlchemyId, StringComparison.Ordinal))
                 UpdateCandidates();
-                return Accept(new YachtGameEvent
-                {
-                    Type = YachtGameEventType.AugmentActionUsed,
-                    PlayerIndex = command.PlayerIndex,
-                    AugmentId = command.AugmentId,
-                    Message = "주사위 연금술 사용"
-                });
-            }
-            return Reject(YachtCommandErrorCode.AugmentUnavailable, "지원하지 않는 증강 행동입니다.");
+
+            return Accept(new YachtGameEvent
+            {
+                Type = YachtGameEventType.AugmentActionUsed,
+                PlayerIndex = command.PlayerIndex,
+                AugmentId = command.AugmentId,
+                Message = string.Equals(command.AugmentId, YachtAugmentRuntime.DiceAlchemyId, StringComparison.Ordinal)
+                    ? "주사위 연금술 사용"
+                    : $"{command.AugmentId} 발동"
+            });
         }
 
         private YachtGameCommandResult SetDieKept(YachtGameCommand command)

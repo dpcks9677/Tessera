@@ -68,107 +68,243 @@ namespace Tessera.Games.Yacht
         /// 자신의 <see cref="IAugmentState"/> 구현체를 여기에 보관합니다.
         /// </summary>
         public AugmentStateStore States = new();
-
-        public int NoTimeRemaining;
-        public bool NoTimeFailed;
-        public bool NoTimeRewarded;
-        public int StepCategoryIndex;
-        public bool StepFailed;
-        public bool StepRewarded;
-        public bool TableFlipUsed;
-        public string RandomBoxAwardId;
         public int TurnsTaken;
-        public bool FastSmallScored;
-        public bool FastLargeScored;
-        public bool FastRewarded;
-        public bool HoldoutRewarded;
-        public bool CautiousSmallScored;
-        public bool CautiousFailed;
-        public bool CautiousRewarded;
-        public int EveryLittleCount;
-        public bool EveryLittleRewarded;
-        public int CopycatCount;
-        public bool CopycatRewarded;
-        public int[] RecordedBaseScores = Array.Empty<int>();
-        public bool DoublingRewarded;
-        public int NozdormuTargetTurn;
-        public bool NozdormuRewarded;
-        public int MomentumState;
-        public int YachtBankRemainingTurns;
-        public int YachtBankBalance;
-        public bool YachtBankPayoutPending;
-        public bool YachtBankPaid;
-        public int PromotionValue;
-        public bool PromotionActive;
-        public bool PromotionSkipNextGrowth;
-        public int EquivalentExchangeUses;
-        public int BountyTargetCategory = -1;
-        public int BountySuccesses;
-        public int BountyScratches;
-        public bool BountyRewarded;
-        public int DuelRound;
-        public bool DuelResolved;
-        public int ProphetTurnsRemaining;
-        public int[] ProphetTargets = Array.Empty<int>();
-        public int GambitState;
-        public bool DoubleDownUsed;
-        public bool DoubleDownActive;
-        public int PiggyBankBalance;
-        public bool DiceAlchemyUsed;
 
         public YachtAugmentPlayerState Clone() => new()
         {
             OwnedIds = (string[])(OwnedIds?.Clone() ?? Array.Empty<string>()),
             OwnedCardPresetIds = (int[])(OwnedCardPresetIds?.Clone() ?? Array.Empty<int>()),
             ExtraTurns = ExtraTurns,
-            States = States?.Clone() ?? new AugmentStateStore(),
-            NoTimeRemaining = NoTimeRemaining,
-            NoTimeFailed = NoTimeFailed,
-            NoTimeRewarded = NoTimeRewarded,
-            StepCategoryIndex = StepCategoryIndex,
-            StepFailed = StepFailed,
-            StepRewarded = StepRewarded,
-            TableFlipUsed = TableFlipUsed,
-            RandomBoxAwardId = RandomBoxAwardId,
             TurnsTaken = TurnsTaken,
-            FastSmallScored = FastSmallScored,
-            FastLargeScored = FastLargeScored,
-            FastRewarded = FastRewarded,
-            HoldoutRewarded = HoldoutRewarded,
-            CautiousSmallScored = CautiousSmallScored,
-            CautiousFailed = CautiousFailed,
-            CautiousRewarded = CautiousRewarded,
-            EveryLittleCount = EveryLittleCount,
-            EveryLittleRewarded = EveryLittleRewarded,
-            CopycatCount = CopycatCount,
-            CopycatRewarded = CopycatRewarded,
-            RecordedBaseScores = (int[])(RecordedBaseScores?.Clone() ?? Array.Empty<int>()),
-            DoublingRewarded = DoublingRewarded,
-            NozdormuTargetTurn = NozdormuTargetTurn,
-            NozdormuRewarded = NozdormuRewarded,
-            MomentumState = MomentumState,
-            YachtBankRemainingTurns = YachtBankRemainingTurns,
-            YachtBankBalance = YachtBankBalance,
-            YachtBankPayoutPending = YachtBankPayoutPending,
-            YachtBankPaid = YachtBankPaid,
-            PromotionValue = PromotionValue,
-            PromotionActive = PromotionActive,
-            PromotionSkipNextGrowth = PromotionSkipNextGrowth,
-            EquivalentExchangeUses = EquivalentExchangeUses,
-            BountyTargetCategory = BountyTargetCategory,
-            BountySuccesses = BountySuccesses,
-            BountyScratches = BountyScratches,
-            BountyRewarded = BountyRewarded,
-            DuelRound = DuelRound,
-            DuelResolved = DuelResolved,
-            ProphetTurnsRemaining = ProphetTurnsRemaining,
-            ProphetTargets = (int[])(ProphetTargets?.Clone() ?? Array.Empty<int>()),
-            GambitState = GambitState,
-            DoubleDownUsed = DoubleDownUsed,
-            DoubleDownActive = DoubleDownActive,
-            PiggyBankBalance = PiggyBankBalance,
-            DiceAlchemyUsed = DiceAlchemyUsed
+            States = States?.Clone() ?? new AugmentStateStore()
         };
+
+        // --- 구 상태 필드 호환성 프로퍼티 (States 위임) ---
+        public int NoTimeRemaining
+        {
+            get => States.GetOrCreate<NoTimeToWasteState>(YachtAugmentRuntime.NoTimeToWasteId).RemainingTurns;
+            set => States.GetOrCreate<NoTimeToWasteState>(YachtAugmentRuntime.NoTimeToWasteId).RemainingTurns = value;
+        }
+        public bool NoTimeFailed
+        {
+            get => States.GetOrCreate<NoTimeToWasteState>(YachtAugmentRuntime.NoTimeToWasteId).Failed;
+            set => States.GetOrCreate<NoTimeToWasteState>(YachtAugmentRuntime.NoTimeToWasteId).Failed = value;
+        }
+        public bool NoTimeRewarded
+        {
+            get => States.GetOrCreate<NoTimeToWasteState>(YachtAugmentRuntime.NoTimeToWasteId).Rewarded;
+            set => States.GetOrCreate<NoTimeToWasteState>(YachtAugmentRuntime.NoTimeToWasteId).Rewarded = value;
+        }
+        public int StepCategoryIndex
+        {
+            get => States.GetOrCreate<StepByStepState>(YachtAugmentRuntime.StepByStepId).CategoryIndex;
+            set => States.GetOrCreate<StepByStepState>(YachtAugmentRuntime.StepByStepId).CategoryIndex = value;
+        }
+        public bool StepFailed
+        {
+            get => States.GetOrCreate<StepByStepState>(YachtAugmentRuntime.StepByStepId).Failed;
+            set => States.GetOrCreate<StepByStepState>(YachtAugmentRuntime.StepByStepId).Failed = value;
+        }
+        public bool StepRewarded
+        {
+            get => States.GetOrCreate<StepByStepState>(YachtAugmentRuntime.StepByStepId).Rewarded;
+            set => States.GetOrCreate<StepByStepState>(YachtAugmentRuntime.StepByStepId).Rewarded = value;
+        }
+        public bool TableFlipUsed
+        {
+            get => States.GetOrCreate<TableFlipState>(YachtAugmentRuntime.TableFlipId).IsUsed;
+            set => States.GetOrCreate<TableFlipState>(YachtAugmentRuntime.TableFlipId).IsUsed = value;
+        }
+        public string RandomBoxAwardId
+        {
+            get => States.GetOrCreate<RandomBoxState>(YachtAugmentRuntime.RandomBoxId).AwardId;
+            set => States.GetOrCreate<RandomBoxState>(YachtAugmentRuntime.RandomBoxId).AwardId = value;
+        }
+        public bool FastSmallScored
+        {
+            get => States.GetOrCreate<FastStraightState>(YachtAugmentRuntime.FastStraightId).SmallScored;
+            set => States.GetOrCreate<FastStraightState>(YachtAugmentRuntime.FastStraightId).SmallScored = value;
+        }
+        public bool FastLargeScored
+        {
+            get => States.GetOrCreate<FastStraightState>(YachtAugmentRuntime.FastStraightId).LargeScored;
+            set => States.GetOrCreate<FastStraightState>(YachtAugmentRuntime.FastStraightId).LargeScored = value;
+        }
+        public bool FastRewarded
+        {
+            get => States.GetOrCreate<FastStraightState>(YachtAugmentRuntime.FastStraightId).Rewarded;
+            set => States.GetOrCreate<FastStraightState>(YachtAugmentRuntime.FastStraightId).Rewarded = value;
+        }
+        public bool HoldoutRewarded
+        {
+            get => States.GetOrCreate<HoldoutState>(YachtAugmentRuntime.HoldoutId).Rewarded;
+            set => States.GetOrCreate<HoldoutState>(YachtAugmentRuntime.HoldoutId).Rewarded = value;
+        }
+        public bool CautiousSmallScored
+        {
+            get => States.GetOrCreate<CautiousStraightState>(YachtAugmentRuntime.CautiousStraightId).SmallScored;
+            set => States.GetOrCreate<CautiousStraightState>(YachtAugmentRuntime.CautiousStraightId).SmallScored = value;
+        }
+        public bool CautiousFailed
+        {
+            get => States.GetOrCreate<CautiousStraightState>(YachtAugmentRuntime.CautiousStraightId).Failed;
+            set => States.GetOrCreate<CautiousStraightState>(YachtAugmentRuntime.CautiousStraightId).Failed = value;
+        }
+        public bool CautiousRewarded
+        {
+            get => States.GetOrCreate<CautiousStraightState>(YachtAugmentRuntime.CautiousStraightId).Rewarded;
+            set => States.GetOrCreate<CautiousStraightState>(YachtAugmentRuntime.CautiousStraightId).Rewarded = value;
+        }
+        public int EveryLittleCount
+        {
+            get => States.GetOrCreate<EveryLittleCountsState>(YachtAugmentRuntime.EveryLittleId).Count;
+            set => States.GetOrCreate<EveryLittleCountsState>(YachtAugmentRuntime.EveryLittleId).Count = value;
+        }
+        public bool EveryLittleRewarded
+        {
+            get => States.GetOrCreate<EveryLittleCountsState>(YachtAugmentRuntime.EveryLittleId).Rewarded;
+            set => States.GetOrCreate<EveryLittleCountsState>(YachtAugmentRuntime.EveryLittleId).Rewarded = value;
+        }
+        public int CopycatCount
+        {
+            get => States.GetOrCreate<CopycatState>(YachtAugmentRuntime.CopycatId).Count;
+            set => States.GetOrCreate<CopycatState>(YachtAugmentRuntime.CopycatId).Count = value;
+        }
+        public bool CopycatRewarded
+        {
+            get => States.GetOrCreate<CopycatState>(YachtAugmentRuntime.CopycatId).Rewarded;
+            set => States.GetOrCreate<CopycatState>(YachtAugmentRuntime.CopycatId).Rewarded = value;
+        }
+        public int[] RecordedBaseScores
+        {
+            get => States.GetOrCreate<DoublingState>(YachtAugmentRuntime.DoublingId).RecordedBaseScores.ToArray();
+            set => States.GetOrCreate<DoublingState>(YachtAugmentRuntime.DoublingId).RecordedBaseScores = value != null ? new System.Collections.Generic.List<int>(value) : new System.Collections.Generic.List<int>();
+        }
+        public bool DoublingRewarded
+        {
+            get => States.GetOrCreate<DoublingState>(YachtAugmentRuntime.DoublingId).Rewarded;
+            set => States.GetOrCreate<DoublingState>(YachtAugmentRuntime.DoublingId).Rewarded = value;
+        }
+        public int NozdormuTargetTurn
+        {
+            get => States.GetOrCreate<NozdormuState>(YachtAugmentRuntime.NozdormuId).TargetTurn;
+            set => States.GetOrCreate<NozdormuState>(YachtAugmentRuntime.NozdormuId).TargetTurn = value;
+        }
+        public bool NozdormuRewarded
+        {
+            get => States.GetOrCreate<NozdormuState>(YachtAugmentRuntime.NozdormuId).Rewarded;
+            set => States.GetOrCreate<NozdormuState>(YachtAugmentRuntime.NozdormuId).Rewarded = value;
+        }
+        public int MomentumState
+        {
+            get => States.GetOrCreate<MomentumAugmentState>(YachtAugmentRuntime.MomentumId).State;
+            set => States.GetOrCreate<MomentumAugmentState>(YachtAugmentRuntime.MomentumId).State = value;
+        }
+        public int YachtBankRemainingTurns
+        {
+            get => States.GetOrCreate<YachtBankState>(YachtAugmentRuntime.YachtBankId).RemainingTurns;
+            set => States.GetOrCreate<YachtBankState>(YachtAugmentRuntime.YachtBankId).RemainingTurns = value;
+        }
+        public int YachtBankBalance
+        {
+            get => States.GetOrCreate<YachtBankState>(YachtAugmentRuntime.YachtBankId).Balance;
+            set => States.GetOrCreate<YachtBankState>(YachtAugmentRuntime.YachtBankId).Balance = value;
+        }
+        public bool YachtBankPayoutPending
+        {
+            get => States.GetOrCreate<YachtBankState>(YachtAugmentRuntime.YachtBankId).PayoutPending;
+            set => States.GetOrCreate<YachtBankState>(YachtAugmentRuntime.YachtBankId).PayoutPending = value;
+        }
+        public bool YachtBankPaid
+        {
+            get => States.GetOrCreate<YachtBankState>(YachtAugmentRuntime.YachtBankId).Paid;
+            set => States.GetOrCreate<YachtBankState>(YachtAugmentRuntime.YachtBankId).Paid = value;
+        }
+        public int PromotionValue
+        {
+            get => States.GetOrCreate<PromotionDieState>(YachtAugmentRuntime.PromotionDieId).Value;
+            set => States.GetOrCreate<PromotionDieState>(YachtAugmentRuntime.PromotionDieId).Value = value;
+        }
+        public bool PromotionActive
+        {
+            get => States.GetOrCreate<PromotionDieState>(YachtAugmentRuntime.PromotionDieId).IsActive;
+            set => States.GetOrCreate<PromotionDieState>(YachtAugmentRuntime.PromotionDieId).IsActive = value;
+        }
+        public bool PromotionSkipNextGrowth
+        {
+            get => States.GetOrCreate<PromotionDieState>(YachtAugmentRuntime.PromotionDieId).SkipNextGrowth;
+            set => States.GetOrCreate<PromotionDieState>(YachtAugmentRuntime.PromotionDieId).SkipNextGrowth = value;
+        }
+        public int EquivalentExchangeUses
+        {
+            get => States.GetOrCreate<EquivalentExchangeState>(YachtAugmentRuntime.EquivalentExchangeId).Uses;
+            set => States.GetOrCreate<EquivalentExchangeState>(YachtAugmentRuntime.EquivalentExchangeId).Uses = value;
+        }
+        public int BountyTargetCategory
+        {
+            get => States.GetOrCreate<BountyHunterState>(YachtAugmentRuntime.BountyHunterId).TargetCategory;
+            set => States.GetOrCreate<BountyHunterState>(YachtAugmentRuntime.BountyHunterId).TargetCategory = value;
+        }
+        public int BountySuccesses
+        {
+            get => States.GetOrCreate<BountyHunterState>(YachtAugmentRuntime.BountyHunterId).Successes;
+            set => States.GetOrCreate<BountyHunterState>(YachtAugmentRuntime.BountyHunterId).Successes = value;
+        }
+        public int BountyScratches
+        {
+            get => States.GetOrCreate<BountyHunterState>(YachtAugmentRuntime.BountyHunterId).Scratches;
+            set => States.GetOrCreate<BountyHunterState>(YachtAugmentRuntime.BountyHunterId).Scratches = value;
+        }
+        public bool BountyRewarded
+        {
+            get => States.GetOrCreate<BountyHunterState>(YachtAugmentRuntime.BountyHunterId).Rewarded;
+            set => States.GetOrCreate<BountyHunterState>(YachtAugmentRuntime.BountyHunterId).Rewarded = value;
+        }
+        public int DuelRound
+        {
+            get => States.GetOrCreate<DuelState>(YachtAugmentRuntime.DuelId).DuelRound;
+            set => States.GetOrCreate<DuelState>(YachtAugmentRuntime.DuelId).DuelRound = value;
+        }
+        public bool DuelResolved
+        {
+            get => States.GetOrCreate<DuelState>(YachtAugmentRuntime.DuelId).DuelResolved;
+            set => States.GetOrCreate<DuelState>(YachtAugmentRuntime.DuelId).DuelResolved = value;
+        }
+        public int ProphetTurnsRemaining
+        {
+            get => States.GetOrCreate<ProphetState>(YachtAugmentRuntime.ProphetId).TurnsRemaining;
+            set => States.GetOrCreate<ProphetState>(YachtAugmentRuntime.ProphetId).TurnsRemaining = value;
+        }
+        public int[] ProphetTargets
+        {
+            get => States.GetOrCreate<ProphetState>(YachtAugmentRuntime.ProphetId).Targets;
+            set => States.GetOrCreate<ProphetState>(YachtAugmentRuntime.ProphetId).Targets = value ?? Array.Empty<int>();
+        }
+        public int GambitState
+        {
+            get => States.GetOrCreate<GambitState>(YachtAugmentRuntime.GambitId).State;
+            set => States.GetOrCreate<GambitState>(YachtAugmentRuntime.GambitId).State = value;
+        }
+        public bool DoubleDownUsed
+        {
+            get => States.GetOrCreate<DoubleDownState>(YachtAugmentRuntime.DoubleDownId).IsUsed;
+            set => States.GetOrCreate<DoubleDownState>(YachtAugmentRuntime.DoubleDownId).IsUsed = value;
+        }
+        public bool DoubleDownActive
+        {
+            get => States.GetOrCreate<DoubleDownState>(YachtAugmentRuntime.DoubleDownId).IsActive;
+            set => States.GetOrCreate<DoubleDownState>(YachtAugmentRuntime.DoubleDownId).IsActive = value;
+        }
+        public int PiggyBankBalance
+        {
+            get => States.GetOrCreate<PiggyBankState>(YachtAugmentRuntime.PiggyBankId).Balance;
+            set => States.GetOrCreate<PiggyBankState>(YachtAugmentRuntime.PiggyBankId).Balance = value;
+        }
+        public bool DiceAlchemyUsed
+        {
+            get => States.GetOrCreate<DiceAlchemyState>(YachtAugmentRuntime.DiceAlchemyId).IsUsed;
+            set => States.GetOrCreate<DiceAlchemyState>(YachtAugmentRuntime.DiceAlchemyId).IsUsed = value;
+        }
     }
 
     /// <summary>
@@ -486,19 +622,14 @@ namespace Tessera.Games.Yacht
             if (dice == null) return;
             YachtAugmentPlayerState player = state.AugmentPlayers[playerIndex];
             if (player.GambitState == 1 || player.GambitState == 2) return;
-            int next = 0;
-            AssignDice(state, playerIndex, dice, WeightedDiceId, YachtDieType.Heavy, 1, ref next);
-            AssignDice(state, playerIndex, dice, GoldenDieId, YachtDieType.Golden, 1, ref next);
-            AssignDice(state, playerIndex, dice, OctahedronId, YachtDieType.Octahedron, 2, ref next);
-            if (Owns(state, playerIndex, PromotionDieId) && player.PromotionActive && next < dice.Length)
+
+            var context = new AugmentDiceContext(state, playerIndex, null, dice);
+            List<IDiceLayoutProvider> providers = YachtAugmentDispatcher.Collect<IDiceLayoutProvider>(state, playerIndex);
+            for (int i = 0; i < providers.Count; i++)
             {
-                dice[next].Type = YachtDieType.Promotion;
-                dice[next].PromotionLevel = Math.Max(1, player.PromotionValue);
-                dice[next].Value = dice[next].PromotionLevel;
-                next++;
+                context.BindAugment(((IAugmentHandler)providers[i]).Id);
+                providers[i].ConfigureDice(context);
             }
-            AssignDice(state, playerIndex, dice, CoupleDiceId, YachtDieType.Couple, 2, ref next);
-            AssignDice(state, playerIndex, dice, SevensDiceId, YachtDieType.Sevens, 2, ref next);
         }
 
         public int RollValue(YachtDieState die, IRandomSource random, Func<int> baseRoll)
@@ -516,8 +647,14 @@ namespace Tessera.Games.Yacht
 
         public int GetDiceCount(YachtGameState state, int playerIndex, int defaultCount)
         {
-            int gambit = state.AugmentPlayers[playerIndex].GambitState;
-            return gambit == 1 ? 4 : gambit == 2 ? 6 : defaultCount;
+            var query = new AugmentQueryContext(state, playerIndex);
+            List<IDiceCountModifier> modifiers = YachtAugmentDispatcher.Collect<IDiceCountModifier>(state, playerIndex);
+            for (int i = 0; i < modifiers.Count; i++)
+            {
+                query.BindAugment(((IAugmentHandler)modifiers[i]).Id);
+                defaultCount = modifiers[i].ModifyDiceCount(query, defaultCount);
+            }
+            return defaultCount;
         }
 
         public string SelectPresetFile(IReadOnlyList<YachtDieState> dice, bool tableFlip)
@@ -580,13 +717,32 @@ namespace Tessera.Games.Yacht
             Dictionary<ScoreCategory, int> baseScores = CalculateScoringDiceScores(state, playerIndex, scoringDice);
             int diceBonus = YachtAugmentScoreEngine.CalculateDiceBonus(scoringDice);
             var result = new YachtScoreCandidate[YachtScoreCalculator.ScorableCategories.Length];
+            var queryContext = new AugmentQueryContext(state, playerIndex);
+            List<IScoreEnhancementModifier> modifiers = YachtAugmentDispatcher.Collect<IScoreEnhancementModifier>(state, playerIndex);
+
             for (int i = 0; i < result.Length; i++)
             {
                 ScoreCategory category = YachtScoreCalculator.ScorableCategories[i];
                 int baseScore = baseScores[category];
-                bool momentum = player.MomentumState == 1 && baseScore > 0;
-                bool doubleDown = player.DoubleDownActive && baseScore > 0;
-                float multiplier = momentum && doubleDown ? 2f : momentum || doubleDown ? 1.5f : 1f;
+                float multiplier = 1f;
+                string enhancementSource = null;
+
+                for (int m = 0; m < modifiers.Count; m++)
+                {
+                    queryContext.BindAugment(((IAugmentHandler)modifiers[m]).Id);
+                    if (modifiers[m].TryGetEnhancement(queryContext, category, baseScore, out float mult, out string source))
+                    {
+                        multiplier = multiplier > 1f ? 2f : mult;
+                        enhancementSource = enhancementSource != null ? $"{enhancementSource}+{source}" : source;
+                    }
+                }
+
+                if (player.DoubleDownActive && baseScore > 0 && (enhancementSource == null || !enhancementSource.Contains("DoubleDown")))
+                {
+                    multiplier = multiplier > 1f ? 2f : 1.5f;
+                    enhancementSource = enhancementSource != null ? $"{enhancementSource}+DoubleDown" : "DoubleDown";
+                }
+
                 int enhanced = (int)Math.Floor(baseScore * multiplier);
                 int finalScore = baseScore == 0 ? 0 : enhanced + diceBonus;
                 result[i] = new YachtScoreCandidate
@@ -596,8 +752,7 @@ namespace Tessera.Games.Yacht
                     DiceBonusScore = diceBonus,
                     Score = finalScore,
                     IsEnhanced = multiplier > 1f,
-                    EnhancementSource = momentum && doubleDown ? "Momentum+DoubleDown"
-                        : momentum ? "Momentum" : doubleDown ? "DoubleDown" : null
+                    EnhancementSource = enhancementSource
                 };
             }
             return result;
@@ -617,113 +772,7 @@ namespace Tessera.Games.Yacht
             int normalRollCount,
             ScoreCategory category)
         {
-            var events = new List<YachtGameEvent>();
-            if (Owns(state, playerIndex, NoTimeToWasteId))
-            {
-                YachtAugmentPlayerState progress = state.AugmentPlayers[playerIndex];
-                if (!progress.NoTimeRewarded && !progress.NoTimeFailed)
-                {
-                    if (normalRollCount != 1)
-                    {
-                        progress.NoTimeFailed = true;
-                        events.Add(new YachtGameEvent
-                        {
-                            Type = YachtGameEventType.AugmentTriggered,
-                            PlayerIndex = playerIndex,
-                            AugmentId = NoTimeToWasteId,
-                            Message = "낭비할 시간 없다 실패"
-                        });
-                    }
-                    else
-                    {
-                        progress.NoTimeRemaining = Math.Max(0, progress.NoTimeRemaining - 1);
-                        if (progress.NoTimeRemaining > 0)
-                        {
-                            events.Add(new YachtGameEvent
-                            {
-                                Type = YachtGameEventType.AugmentTriggered,
-                                PlayerIndex = playerIndex,
-                                AugmentId = NoTimeToWasteId,
-                                Score = progress.NoTimeRemaining,
-                                Message = $"낭비할 시간 없다: {progress.NoTimeRemaining}턴 남음"
-                            });
-                        }
-                        else
-                        {
-                            progress.NoTimeRewarded = true;
-                            state.Players[playerIndex].augmentBonusScore += 15;
-                            state.Players[playerIndex].RecalculateTotal();
-                            events.Add(new YachtGameEvent
-                            {
-                                Type = YachtGameEventType.AugmentTriggered,
-                                PlayerIndex = playerIndex,
-                                AugmentId = NoTimeToWasteId,
-                                Score = 15,
-                                Message = "낭비할 시간 없다 완료: +15점"
-                            });
-                        }
-                    }
-                }
-            }
-
-            if (Owns(state, playerIndex, StepByStepId))
-            {
-                YachtAugmentPlayerState progress = state.AugmentPlayers[playerIndex];
-                if (!progress.StepFailed && !progress.StepRewarded)
-                {
-                    int expectedCategory = progress.StepCategoryIndex;
-                    if ((int)category != expectedCategory)
-                    {
-                        progress.StepFailed = true;
-                        events.Add(new YachtGameEvent
-                        {
-                            Type = YachtGameEventType.AugmentTriggered,
-                            PlayerIndex = playerIndex,
-                            AugmentId = StepByStepId,
-                            Message = "차근차근 실패"
-                        });
-                    }
-                    else
-                    {
-                        progress.StepCategoryIndex++;
-                        if (progress.StepCategoryIndex >= 6)
-                        {
-                            progress.StepRewarded = true;
-                            state.Players[playerIndex].upperBonusThreshold = Math.Min(
-                                state.Players[playerIndex].upperBonusThreshold,
-                                StepByStepUpperBonusThreshold);
-                            TryGrantStepBonus(state, playerIndex);
-                            events.Add(new YachtGameEvent
-                            {
-                                Type = YachtGameEventType.AugmentTriggered,
-                                PlayerIndex = playerIndex,
-                                AugmentId = StepByStepId,
-                                Score = state.Players[playerIndex].stepBonusGranted ? 55 : 0,
-                                Message = state.Players[playerIndex].stepBonusGranted
-                                    ? "차근차근 완료: 상단 보너스 +55점"
-                                    : "차근차근 완료: 상단 보너스 기준 58점"
-                            });
-                        }
-                        else
-                        {
-                            events.Add(new YachtGameEvent
-                            {
-                                Type = YachtGameEventType.AugmentTriggered,
-                                PlayerIndex = playerIndex,
-                                AugmentId = StepByStepId,
-                                Score = progress.StepCategoryIndex,
-                                Message = $"차근차근: {progress.StepCategoryIndex}/6"
-                            });
-                        }
-                    }
-                }
-                else if (progress.StepRewarded)
-                {
-                    TryGrantStepBonus(state, playerIndex);
-                }
-            }
-
-            return events.ToArray();
+            return AfterScoreCommit(state, playerIndex, normalRollCount, category, 0, 0, Array.Empty<YachtDieState>(), new SystemRandomSource(0));
         }
 
         public YachtGameEvent[] AfterScoreCommit(
@@ -736,219 +785,81 @@ namespace Tessera.Games.Yacht
             IReadOnlyList<YachtDieState> dice,
             IRandomSource random)
         {
-            var events = new List<YachtGameEvent>(AfterScoreCommit(state, playerIndex, normalRollCount, category));
-            YachtAugmentPlayerState progress = state.AugmentPlayers[playerIndex];
-            int turnNumber = progress.TurnsTaken + 1;
-
-            if (Owns(state, playerIndex, FastStraightId) && !progress.FastRewarded && turnNumber <= 8)
+            var events = new List<YachtGameEvent>();
+            var commitContext = new AugmentCommitContext(state, playerIndex, random, events, category, baseScore, finalScore, normalRollCount, dice);
+            List<IAfterScoreCommit> commitHandlers = YachtAugmentDispatcher.Collect<IAfterScoreCommit>(state, playerIndex);
+            for (int i = 0; i < commitHandlers.Count; i++)
             {
-                if (category == ScoreCategory.SmallStraight && baseScore > 0) progress.FastSmallScored = true;
-                if (category == ScoreCategory.LargeStraight && baseScore > 0) progress.FastLargeScored = true;
-                if (progress.FastSmallScored && progress.FastLargeScored)
-                {
-                    progress.FastRewarded = true;
-                    GrantBonus(state, playerIndex, FastStraightId, 15, events);
-                }
+                commitContext.BindAugment(((IAugmentHandler)commitHandlers[i]).Id);
+                commitHandlers[i].AfterScoreCommit(commitContext);
             }
 
-            if (Owns(state, playerIndex, HoldoutId) && !progress.HoldoutRewarded
-                && turnNumber >= 9 && category == ScoreCategory.FullHouse && baseScore > 0)
-            {
-                progress.HoldoutRewarded = true;
-                GrantBonus(state, playerIndex, HoldoutId, 7, events);
-            }
-
-            if (Owns(state, playerIndex, CautiousStraightId) && !progress.CautiousFailed && !progress.CautiousRewarded)
-            {
-                if (category == ScoreCategory.LargeStraight && baseScore > 0 && !progress.CautiousSmallScored)
-                    progress.CautiousFailed = true;
-                else if (category == ScoreCategory.SmallStraight && baseScore > 0)
-                    progress.CautiousSmallScored = true;
-                else if (category == ScoreCategory.LargeStraight && baseScore > 0 && progress.CautiousSmallScored)
-                {
-                    progress.CautiousRewarded = true;
-                    GrantBonus(state, playerIndex, CautiousStraightId, 7, events);
-                }
-            }
-
-            if (Owns(state, playerIndex, EveryLittleId) && !progress.EveryLittleRewarded)
-            {
-                progress.EveryLittleCount += CountUsedOnes(category, baseScore, dice);
-                if (progress.EveryLittleCount >= 7)
-                {
-                    progress.EveryLittleRewarded = true;
-                    GrantBonus(state, playerIndex, EveryLittleId, 15, events);
-                }
-            }
-
-            if (Owns(state, playerIndex, CopycatId) && !progress.CopycatRewarded)
-            {
-                int opponent = playerIndex == 0 ? 1 : 0;
-                if (IsFilled(state.Players[opponent], category))
-                {
-                    int opponentBase = GetBaseScore(state.Players[opponent], category);
-                    bool immediate = (int)category >= (int)ScoreCategory.Choice && opponentBase == baseScore;
-                    progress.CopycatCount++;
-                    if (immediate || progress.CopycatCount >= 3)
-                    {
-                        progress.CopycatRewarded = true;
-                        GrantBonus(state, playerIndex, CopycatId, 10, events);
-                    }
-                }
-            }
-
-            if (Owns(state, playerIndex, DoublingId) && !progress.DoublingRewarded && baseScore != 0)
-            {
-                if (Contains(progress.RecordedBaseScores, baseScore))
-                {
-                    progress.DoublingRewarded = true;
-                    GrantBonus(state, playerIndex, DoublingId, 10, events);
-                }
-                else progress.RecordedBaseScores = Append(progress.RecordedBaseScores, baseScore);
-            }
-
-            if (Owns(state, playerIndex, NozdormuId) && !progress.NozdormuRewarded
-                && turnNumber >= progress.NozdormuTargetTurn)
-            {
-                progress.NozdormuRewarded = true;
-                GrantBonus(state, playerIndex, NozdormuId, 9, events);
-            }
-
-            if (Owns(state, playerIndex, MomentumId))
-            {
-                if (progress.MomentumState == 0 && baseScore == 0) progress.MomentumState = 1;
-                else if (progress.MomentumState == 1 && baseScore > 0) progress.MomentumState = 2;
-            }
-
-            ProcessYachtBank(state, playerIndex, dice);
-            if (progress.PromotionActive && progress.PromotionValue >= 6) progress.PromotionActive = false;
-
-            if (Owns(state, playerIndex, BountyHunterId) && !progress.BountyRewarded
-                && progress.BountyTargetCategory == (int)category)
-            {
-                progress.BountySuccesses++;
-                if (baseScore == 0) progress.BountyScratches++;
-                if (progress.BountySuccesses >= 3)
-                {
-                    progress.BountyRewarded = true;
-                    GrantBonus(state, playerIndex, BountyHunterId, Math.Max(0, 15 - progress.BountyScratches * 3), events);
-                }
-                progress.BountyTargetCategory = -1;
-            }
-
-            if (Owns(state, playerIndex, ProphetId) && progress.ProphetTurnsRemaining > 0)
-            {
-                if (Contains(progress.ProphetTargets, baseScore)) GrantBonus(state, playerIndex, ProphetId, 7, events);
-                progress.ProphetTurnsRemaining--;
-                progress.ProphetTargets = Array.Empty<int>();
-            }
-
-            if (progress.GambitState == 1) progress.GambitState = 2;
-            else if (progress.GambitState == 2) progress.GambitState = 3;
-            progress.DoubleDownActive = false;
-
-            if (Owns(state, playerIndex, PiggyBankId))
-            {
-                progress.PiggyBankBalance += state.RollsRemaining * 3;
-                while (progress.PiggyBankBalance >= 12)
-                {
-                    progress.PiggyBankBalance -= 12;
-                    GrantBonus(state, playerIndex, PiggyBankId, 12, events);
-                }
-            }
-
-            RecordAndResolveDuels(state, playerIndex, finalScore, events);
-            progress.TurnsTaken++;
+            Duel.RecordAndResolve(state, playerIndex, finalScore, events);
+            state.AugmentPlayers[playerIndex].TurnsTaken++;
             return events.ToArray();
         }
 
         public void PrepareTurn(YachtGameState state, int playerIndex, IRandomSource random, bool growPromotion)
         {
-            YachtAugmentPlayerState progress = state.AugmentPlayers[playerIndex];
-            if (progress.YachtBankPayoutPending && !progress.YachtBankPaid)
+            var context = new AugmentTurnContext(state, playerIndex, random, null, growPromotion);
+            List<IOnTurnStarted> handlers = YachtAugmentDispatcher.Collect<IOnTurnStarted>(state, playerIndex);
+            for (int i = 0; i < handlers.Count; i++)
             {
-                progress.YachtBankPaid = true;
-                progress.YachtBankPayoutPending = false;
-                state.Players[playerIndex].augmentBonusScore += progress.YachtBankBalance;
-                state.Players[playerIndex].RecalculateTotal();
+                context.BindAugment(((IAugmentHandler)handlers[i]).Id);
+                handlers[i].OnTurnStarted(context);
             }
-            if (progress.PromotionActive)
-            {
-                if (progress.PromotionSkipNextGrowth) progress.PromotionSkipNextGrowth = false;
-                else if (growPromotion) progress.PromotionValue = Math.Min(6, Math.Max(1, progress.PromotionValue) + 1);
-            }
-            if (Owns(state, playerIndex, BountyHunterId) && !progress.BountyRewarded && progress.BountyTargetCategory < 0)
-                progress.BountyTargetCategory = SelectEmptyCategory(state, playerIndex, random);
-            if (Owns(state, playerIndex, ProphetId) && progress.ProphetTurnsRemaining > 0 && progress.ProphetTargets.Length == 0)
-            {
-                progress.ProphetTargets = new[]
-                {
-                    random.NextInt(1, 31), random.NextInt(1, 31), random.NextInt(1, 31)
-                };
-            }
+
         }
 
         public float GetTurnDuration(YachtGameState state, int playerIndex, float defaultSeconds)
         {
-            YachtAugmentPlayerState progress = state.AugmentPlayers[playerIndex];
-            return Owns(state, playerIndex, NozdormuId) && !progress.NozdormuRewarded
-                && progress.TurnsTaken < progress.NozdormuTargetTurn ? 15f : defaultSeconds;
+            var query = new AugmentQueryContext(state, playerIndex);
+            List<ITurnDurationModifier> modifiers = YachtAugmentDispatcher.Collect<ITurnDurationModifier>(state, playerIndex);
+            for (int i = 0; i < modifiers.Count; i++)
+            {
+                defaultSeconds = modifiers[i].ModifyTurnDuration(query, defaultSeconds);
+            }
+            return defaultSeconds;
         }
 
         public void RecalculateStepBonus(YachtGameState state, int playerIndex)
         {
-            if (Owns(state, playerIndex, StepByStepId)) TryGrantStepBonus(state, playerIndex);
+            if (Owns(state, playerIndex, StepByStepId)) StepByStep.TryGrantStepBonus(state, playerIndex);
         }
 
         private static void TryGrantStepBonus(YachtGameState state, int playerIndex)
         {
-            YachtAugmentPlayerState progress = state.AugmentPlayers[playerIndex];
-            PlayerScoreData scores = state.Players[playerIndex];
-            if (progress.StepRewarded)
-            {
-                scores.upperBonusThreshold = Math.Min(scores.upperBonusThreshold, StepByStepUpperBonusThreshold);
-                if (!scores.stepBonusGranted && scores.CalculateUpperSum() >= StepByStepUpperBonusThreshold)
-                    scores.stepBonusGranted = true;
-            }
-            scores.RecalculateTotal();
+            StepByStep.TryGrantStepBonus(state, playerIndex);
         }
 
         public bool CanUseTableFlip(YachtGameState state, int playerIndex, out YachtCommandErrorCode code, out string message)
         {
-            code = YachtCommandErrorCode.None;
-            message = null;
-            if (!Owns(state, playerIndex, TableFlipId))
-                return Fail(YachtCommandErrorCode.AugmentRequired, "판 뒤집기 증강을 보유하지 않았습니다.", out code, out message);
-            if (state.AugmentPlayers[playerIndex].TableFlipUsed)
-                return Fail(YachtCommandErrorCode.AugmentAlreadyUsed, "판 뒤집기를 이미 사용했습니다.", out code, out message);
-            if (!state.HasRolled)
-                return Fail(YachtCommandErrorCode.RollRequired, "첫 굴림 후 판 뒤집기를 사용할 수 있습니다.", out code, out message);
-            return true;
+            var context = new AugmentActionContext(state, playerIndex, null, null);
+            context.BindAugment(TableFlipId);
+            return (YachtAugmentCatalog.Find(TableFlipId) as IManualActionAugment)?.CanUse(context, out code, out message)
+                ?? Fail(YachtCommandErrorCode.AugmentUnavailable, "미지원", out code, out message);
         }
 
-        public void MarkTableFlipUsed(YachtGameState state, int playerIndex) =>
-            state.AugmentPlayers[playerIndex].TableFlipUsed = true;
+        public void MarkTableFlipUsed(YachtGameState state, int playerIndex)
+        {
+            var context = new AugmentActionContext(state, playerIndex, null, null);
+            context.BindAugment(TableFlipId);
+            (YachtAugmentCatalog.Find(TableFlipId) as IManualActionAugment)?.Use(context);
+        }
 
         public bool CanUseEquivalentExchange(YachtGameState state, int playerIndex, out YachtCommandErrorCode code, out string message)
         {
-            code = YachtCommandErrorCode.None;
-            message = null;
-            YachtAugmentPlayerState player = state.AugmentPlayers[playerIndex];
-            if (!Owns(state, playerIndex, EquivalentExchangeId))
-                return Fail(YachtCommandErrorCode.AugmentRequired, "등가교환 증강을 보유하지 않았습니다.", out code, out message);
-            if (player.EquivalentExchangeUses >= 3)
-                return Fail(YachtCommandErrorCode.AugmentAlreadyUsed, "등가교환을 모두 사용했습니다.", out code, out message);
-            if (!state.HasRolled || state.RollsRemaining > 0)
-                return Fail(YachtCommandErrorCode.NoRollsRemaining, "기본 굴림을 모두 사용한 뒤 등가교환을 사용할 수 있습니다.", out code, out message);
-            return true;
+            var context = new AugmentActionContext(state, playerIndex, null, null);
+            context.BindAugment(EquivalentExchangeId);
+            return (YachtAugmentCatalog.Find(EquivalentExchangeId) as IManualActionAugment)?.CanUse(context, out code, out message)
+                ?? Fail(YachtCommandErrorCode.AugmentUnavailable, "미지원", out code, out message);
         }
 
         public void MarkEquivalentExchangeUsed(YachtGameState state, int playerIndex)
         {
-            YachtAugmentPlayerState player = state.AugmentPlayers[playerIndex];
-            player.EquivalentExchangeUses++;
-            state.Players[playerIndex].augmentBonusScore -= 5;
-            state.Players[playerIndex].RecalculateTotal();
+            var context = new AugmentActionContext(state, playerIndex, null, null);
+            context.BindAugment(EquivalentExchangeId);
+            (YachtAugmentCatalog.Find(EquivalentExchangeId) as IManualActionAugment)?.Use(context);
         }
 
         public bool TryActivateBeforeRoll(
@@ -958,32 +869,13 @@ namespace Tessera.Games.Yacht
             out YachtCommandErrorCode code,
             out string message)
         {
-            code = YachtCommandErrorCode.None;
-            message = null;
-            if (!Owns(state, playerIndex, augmentId))
-                return Fail(YachtCommandErrorCode.AugmentRequired, "해당 증강을 보유하지 않았습니다.", out code, out message);
-            if (state.HasRolled)
-                return Fail(YachtCommandErrorCode.InvalidPhase, "첫 굴림 전에만 사용할 수 있습니다.", out code, out message);
-
-            YachtAugmentPlayerState player = state.AugmentPlayers[playerIndex];
-            if (augmentId == GambitId)
-            {
-                if (player.GambitState != 0)
-                    return Fail(YachtCommandErrorCode.AugmentAlreadyUsed, "갬빗을 이미 사용했습니다.", out code, out message);
-                player.GambitState = 1;
-                return true;
-            }
-            if (augmentId == DoubleDownId)
-            {
-                if (player.DoubleDownUsed)
-                    return Fail(YachtCommandErrorCode.AugmentAlreadyUsed, "더블 다운을 이미 사용했습니다.", out code, out message);
-                if (player.TurnsTaken < 8)
-                    return Fail(YachtCommandErrorCode.AugmentUnavailable, "더블 다운은 아홉 번째 내 턴부터 사용할 수 있습니다.", out code, out message);
-                player.DoubleDownUsed = true;
-                player.DoubleDownActive = true;
-                return true;
-            }
-            return Fail(YachtCommandErrorCode.AugmentUnavailable, "굴림 전 발동 증강이 아닙니다.", out code, out message);
+            if (YachtAugmentCatalog.Find(augmentId) is not IManualActionAugment action)
+                return Fail(YachtCommandErrorCode.AugmentUnavailable, "굴림 전 발동 증강이 아닙니다.", out code, out message);
+            var context = new AugmentActionContext(state, playerIndex, null, null);
+            context.BindAugment(augmentId);
+            if (!action.CanUse(context, out code, out message)) return false;
+            action.Use(context);
+            return true;
         }
 
         public bool TryUseDiceAlchemy(
@@ -992,18 +884,12 @@ namespace Tessera.Games.Yacht
             out YachtCommandErrorCode code,
             out string message)
         {
-            code = YachtCommandErrorCode.None;
-            message = null;
-            YachtAugmentPlayerState player = state.AugmentPlayers[playerIndex];
-            if (!Owns(state, playerIndex, DiceAlchemyId))
-                return Fail(YachtCommandErrorCode.AugmentRequired, "주사위 연금술 증강을 보유하지 않았습니다.", out code, out message);
-            if (player.DiceAlchemyUsed)
-                return Fail(YachtCommandErrorCode.AugmentAlreadyUsed, "주사위 연금술을 이미 사용했습니다.", out code, out message);
-            if (!state.HasRolled)
-                return Fail(YachtCommandErrorCode.RollRequired, "첫 굴림 후 사용할 수 있습니다.", out code, out message);
-            for (int i = 0; i < state.Dice.Length; i++)
-                if (!state.Dice[i].IsKept) state.Dice[i].Value = Math.Max(1, state.Dice[i].Value - 1);
-            player.DiceAlchemyUsed = true;
+            if (YachtAugmentCatalog.Find(DiceAlchemyId) is not IManualActionAugment action)
+                return Fail(YachtCommandErrorCode.AugmentUnavailable, "미지원", out code, out message);
+            var context = new AugmentActionContext(state, playerIndex, null, null);
+            context.BindAugment(DiceAlchemyId);
+            if (!action.CanUse(context, out code, out message)) return false;
+            action.Use(context);
             return true;
         }
 
@@ -1069,16 +955,12 @@ namespace Tessera.Games.Yacht
             return false;
         }
 
-        private static int RequiredDiceSlots(string augmentId) => augmentId switch
+        private static int RequiredDiceSlots(string augmentId)
         {
-            WeightedDiceId => 1,
-            GoldenDieId => 1,
-            OctahedronId => 2,
-            PromotionDieId => 1,
-            CoupleDiceId => 2,
-            SevensDiceId => 2,
-            _ => 0
-        };
+            if (YachtAugmentCatalog.Find(augmentId) is IDiceLayoutProvider provider)
+                return provider.RequiredDiceSlots;
+            return 0;
+        }
 
         private void ApplyAugment(
             YachtGameState state,
@@ -1285,40 +1167,19 @@ namespace Tessera.Games.Yacht
             }
         }
 
-        private void AssignDice(
-            YachtGameState state,
-            int playerIndex,
-            IList<YachtDieState> dice,
-            string augmentId,
-            YachtDieType type,
-            int count,
-            ref int next)
-        {
-            if (!Owns(state, playerIndex, augmentId)) return;
-            for (int assigned = 0; assigned < count && next < dice.Count; assigned++, next++)
-                dice[next].Type = type;
-        }
-
         private IReadOnlyList<YachtDieState> GetScoringDice(
             YachtGameState state,
             int playerIndex,
             IReadOnlyList<YachtDieState> dice)
         {
-            YachtAugmentPlayerState player = state.AugmentPlayers[playerIndex];
-            if (!Owns(state, playerIndex, YachtBankId) || player.YachtBankRemainingTurns <= 0) return dice;
-            int excludedIndex = -1;
-            int lowestSlot = int.MaxValue;
-            for (int i = 0; i < (dice?.Count ?? 0); i++)
+            var context = new AugmentQueryContext(state, playerIndex);
+            List<IScoringDiceFilter> filters = YachtAugmentDispatcher.Collect<IScoringDiceFilter>(state, playerIndex);
+            IReadOnlyList<YachtDieState> result = dice;
+            for (int i = 0; i < filters.Count; i++)
             {
-                if (!dice[i].IsKept) continue;
-                int slot = dice[i].KeepSlotIndex >= 0 ? dice[i].KeepSlotIndex : i;
-                if (slot >= lowestSlot) continue;
-                lowestSlot = slot;
-                excludedIndex = i;
+                context.BindAugment(((IAugmentHandler)filters[i]).Id);
+                result = filters[i].FilterScoringDice(context, result);
             }
-            if (excludedIndex < 0) return dice;
-            var result = new List<YachtDieState>(dice.Count - 1);
-            for (int i = 0; i < dice.Count; i++) if (i != excludedIndex) result.Add(dice[i]);
             return result;
         }
 
@@ -1371,27 +1232,6 @@ namespace Tessera.Games.Yacht
             return scores.lowerBaseScores[lower] != -1 ? scores.lowerBaseScores[lower] : scores.lowerScores[lower];
         }
 
-        private void ProcessYachtBank(YachtGameState state, int playerIndex, IReadOnlyList<YachtDieState> dice)
-        {
-            YachtAugmentPlayerState player = state.AugmentPlayers[playerIndex];
-            if (!Owns(state, playerIndex, YachtBankId) || player.YachtBankRemainingTurns <= 0) return;
-
-            YachtDieState banked = null;
-            int lowestSlot = int.MaxValue;
-            for (int i = 0; i < (dice?.Count ?? 0); i++)
-            {
-                YachtDieState die = dice[i];
-                if (!die.IsKept) continue;
-                int slot = die.KeepSlotIndex >= 0 ? die.KeepSlotIndex : i;
-                if (slot >= lowestSlot) continue;
-                lowestSlot = slot;
-                banked = die;
-            }
-            if (banked != null) player.YachtBankBalance = Math.Min(15, player.YachtBankBalance + banked.Value);
-            player.YachtBankRemainingTurns--;
-            if (player.YachtBankRemainingTurns <= 0) player.YachtBankPayoutPending = true;
-        }
-
         private static int SelectEmptyCategory(YachtGameState state, int playerIndex, IRandomSource random)
         {
             var empty = new List<int>();
@@ -1401,32 +1241,6 @@ namespace Tessera.Games.Yacht
                 if (!IsFilled(state.Players[playerIndex], category)) empty.Add((int)category);
             }
             return empty.Count == 0 ? -1 : empty[random.NextInt(0, empty.Count)];
-        }
-
-        private void RecordAndResolveDuels(
-            YachtGameState state,
-            int playerIndex,
-            int finalScore,
-            ICollection<YachtGameEvent> events)
-        {
-            if (state.RoundScoresRound != state.CurrentRound)
-            {
-                state.RoundScoresRound = state.CurrentRound;
-                state.RoundScores = new[] { int.MinValue, int.MinValue };
-            }
-            state.RoundScores[playerIndex] = finalScore;
-            if (state.RoundScores[0] == int.MinValue || state.RoundScores[1] == int.MinValue) return;
-
-            for (int owner = 0; owner < state.AugmentPlayers.Length; owner++)
-            {
-                YachtAugmentPlayerState duel = state.AugmentPlayers[owner];
-                if (!Owns(state, owner, DuelId) || duel.DuelResolved || duel.DuelRound != state.CurrentRound) continue;
-                int opponent = owner == 0 ? 1 : 0;
-                int bonus = state.RoundScores[owner] > state.RoundScores[opponent] ? 10
-                    : state.RoundScores[owner] == state.RoundScores[opponent] ? 5 : 0;
-                duel.DuelResolved = true;
-                if (bonus > 0) GrantBonus(state, owner, DuelId, bonus, events);
-            }
         }
 
         private static bool Contains(IReadOnlyList<int> values, int target)
