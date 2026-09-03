@@ -267,21 +267,16 @@ public sealed class AugmentIconGalleryWindow : EditorWindow
 
     private static string KindLabel(YachtAugmentKind kind) => kind switch
     {
-        YachtAugmentKind.ScoreReplacement => "점수 대체",
-        YachtAugmentKind.Dice => "주사위",
-        YachtAugmentKind.Enhancement => "강화",
+        YachtAugmentKind.Modification => "변형",
+        YachtAugmentKind.Enhance => "강화",
         YachtAugmentKind.Quest => "퀘스트",
-        YachtAugmentKind.ManualAction => "수동 행동",
-        YachtAugmentKind.RandomReplacement => "무작위 교체",
         _ => kind.ToString()
     };
 
     private static Color IconColor(YachtAugmentKind kind) => kind switch
     {
+        YachtAugmentKind.Modification => new Color(0.66f, 0.42f, 0.83f),
         YachtAugmentKind.Quest => new Color(0.40f, 0.56f, 0.78f),
-        YachtAugmentKind.Dice => new Color(0.95f, 0.70f, 0.27f),
-        YachtAugmentKind.ManualAction => new Color(0.84f, 0.29f, 0.20f),
-        YachtAugmentKind.RandomReplacement => new Color(0.66f, 0.42f, 0.83f),
         _ => new Color(0.90f, 0.66f, 0.24f)
     };
 }

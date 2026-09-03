@@ -88,7 +88,8 @@ namespace Tessera.Games.AugmentedYacht
                 descriptionText.text = "표시 데이터를 찾을 수 없습니다.";
                 kindText.text = "미확인";
                 targetText.text = "대상 · 없음";
-                icon.sprite = overrideIcon ?? AugmentPixelIconFactory.Get(YachtAugmentKind.Enhancement);
+                icon.sprite = overrideIcon != null ? overrideIcon : AugmentPixelIconFactory.Get(YachtAugmentKind.Enhance);
+                icon.color = overrideIcon != null ? Color.white : IconColor(YachtAugmentKind.Enhance);
                 SetState(AugmentCardDisplayState.Disabled);
                 return;
             }
@@ -97,10 +98,10 @@ namespace Tessera.Games.AugmentedYacht
             descriptionText.text = Compact(definition.Description);
             kindText.text = KindLabel(definition.Kind);
             targetText.text = $"대상 · {TargetLabel(definition.Target)}";
-            icon.sprite = overrideIcon
-                ?? Resources.Load<Sprite>($"AugmentIcons/{definition.Id}")
-                ?? AugmentPixelIconFactory.Get(definition.Kind);
-            icon.color = IconColor(definition.Kind);
+            Sprite augmentIcon = overrideIcon ?? Resources.Load<Sprite>($"AugmentIcons/{definition.Id}");
+            icon.sprite = augmentIcon != null ? augmentIcon : AugmentPixelIconFactory.Get(definition.Kind);
+            // 증강 고유 아이콘은 앤틱 잉크색이 구워져 있으므로 틴트하지 않는다.
+            icon.color = augmentIcon != null ? Color.white : IconColor(definition.Kind);
             SetState(state);
         }
 
@@ -141,7 +142,6 @@ namespace Tessera.Games.AugmentedYacht
             stateText.color = accent;
             stateAccent.color = accent;
             header.color = Color.Lerp(Crimson, accent, state == AugmentCardDisplayState.Available ? 0f : 0.28f);
-            iconBacking.color = Color.Lerp(new Color(0.12f, 0.08f, 0.07f, 0.94f), accent, 0.12f);
             outline.effectColor = accent;
             outline.effectDistance = state is AugmentCardDisplayState.Selected or AugmentCardDisplayState.Conflict
                 ? new Vector2(2f, -2f)
@@ -229,7 +229,8 @@ namespace Tessera.Games.AugmentedYacht
             kindText = CreateText(contentRoot, "Kind Badge", "종류", new Vector2(-contentWidth * 0.29f, headerY), new Vector2(contentWidth * 0.36f, 28f), 14, TextAnchor.MiddleLeft, AntiqueGold);
             stateText = CreateText(contentRoot, "State Badge", "[선택 가능]", new Vector2(contentWidth * 0.29f, headerY), new Vector2(contentWidth * 0.36f, 28f), 13, TextAnchor.MiddleRight, AntiqueGold);
 
-            iconBacking = CreateImage(contentRoot, "Pixel Icon Backing", new Vector2(0f, contentHeight * 0.19f), new Vector2(56f, 56f), new Color(0.12f, 0.08f, 0.07f, 0.94f));
+            // 잉크 아이콘을 양피지 위에 직접 얹으므로 받침판은 배치 기준으로만 남기고 그리지 않는다.
+            iconBacking = CreateImage(contentRoot, "Pixel Icon Backing", new Vector2(0f, contentHeight * 0.19f), new Vector2(56f, 56f), Color.clear);
             iconBacking.raycastTarget = false;
             icon = CreateImage(iconBacking.transform, "Pixel Icon", Vector2.zero, new Vector2(-10f, -10f), AntiqueGold, true);
             icon.preserveAspect = true;
@@ -330,11 +331,8 @@ namespace Tessera.Games.AugmentedYacht
 
         private static string KindLabel(YachtAugmentKind kind) => kind switch
         {
-            YachtAugmentKind.ScoreReplacement => "족보 교체",
-            YachtAugmentKind.Dice => "특수 주사위",
+            YachtAugmentKind.Modification => "변형",
             YachtAugmentKind.Quest => "퀘스트",
-            YachtAugmentKind.ManualAction => "수동 행동",
-            YachtAugmentKind.RandomReplacement => "무작위 교체",
             _ => "강화"
         };
 
@@ -359,10 +357,8 @@ namespace Tessera.Games.AugmentedYacht
 
         private static Color IconColor(YachtAugmentKind kind) => kind switch
         {
+            YachtAugmentKind.Modification => new Color(0.66f, 0.42f, 0.83f, 1f),
             YachtAugmentKind.Quest => new Color(0.40f, 0.56f, 0.78f, 1f),
-            YachtAugmentKind.Dice => new Color(0.95f, 0.70f, 0.27f, 1f),
-            YachtAugmentKind.ManualAction => new Color(0.84f, 0.29f, 0.20f, 1f),
-            YachtAugmentKind.RandomReplacement => new Color(0.66f, 0.42f, 0.83f, 1f),
             _ => AntiqueGold
         };
     }
@@ -398,35 +394,16 @@ namespace Tessera.Games.AugmentedYacht
             Color32 white = new(255, 255, 255, 255);
             switch (kind)
             {
-                case YachtAugmentKind.ScoreReplacement:
+                case YachtAugmentKind.Modification:
                     FillDiamond(pixels, 32, 32, 24, white);
                     ClearDiamond(pixels, 32, 32, 12);
                     FillRect(pixels, 29, 18, 35, 46, white);
-                    break;
-                case YachtAugmentKind.Dice:
-                    FillRect(pixels, 13, 13, 50, 50, white);
-                    ClearRect(pixels, 17, 17, 46, 46);
-                    FillRect(pixels, 19, 19, 25, 25, white);
-                    FillRect(pixels, 38, 19, 44, 25, white);
-                    FillRect(pixels, 29, 29, 35, 35, white);
-                    FillRect(pixels, 19, 38, 25, 44, white);
-                    FillRect(pixels, 38, 38, 44, 44, white);
                     break;
                 case YachtAugmentKind.Quest:
                     FillDiamond(pixels, 32, 30, 25, white);
                     ClearDiamond(pixels, 32, 29, 15);
                     FillRect(pixels, 29, 26, 35, 43, white);
                     FillRect(pixels, 25, 37, 39, 43, white);
-                    break;
-                case YachtAugmentKind.ManualAction:
-                    FillRect(pixels, 10, 27, 40, 37, white);
-                    FillDiamond(pixels, 43, 32, 16, white);
-                    break;
-                case YachtAugmentKind.RandomReplacement:
-                    FillRect(pixels, 12, 22, 51, 49, white);
-                    ClearRect(pixels, 18, 28, 45, 43);
-                    FillRect(pixels, 18, 15, 45, 22, white);
-                    FillDiamond(pixels, 32, 14, 11, white);
                     break;
                 default:
                     FillDiamond(pixels, 32, 32, 25, white);

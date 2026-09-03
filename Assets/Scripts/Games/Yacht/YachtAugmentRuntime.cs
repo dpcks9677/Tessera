@@ -3,26 +3,17 @@ using System.Collections.Generic;
 
 namespace Tessera.Games.Yacht
 {
+    /// <summary>기획 기준 증강 분류입니다. 이식 매트릭스 3.1~3.3절의 세 묶음과 같습니다.</summary>
     public enum YachtAugmentKind
     {
-        ScoreReplacement,
-        Dice,
-        Enhancement,
-        Quest,
-        ManualAction,
-        RandomReplacement
-    }
+        /// <summary>족보·점수를 교체하는 변형 증강입니다.</summary>
+        Modification,
 
-    [Flags]
-    public enum YachtAugmentHook
-    {
-        None = 0,
-        OnSelected = 1 << 0,
-        BeforeRoll = 1 << 1,
-        BeforeScorePreview = 1 << 2,
-        AfterScoreCommit = 1 << 3,
-        ManualAction = 1 << 4,
-        AfterDraft = 1 << 5
+        /// <summary>주사위·수동 행동·상시 효과를 포함한 강화 증강입니다.</summary>
+        Enhance,
+
+        /// <summary>조건을 달성하면 보상을 주는 퀘스트 증강입니다.</summary>
+        Quest
     }
 
     [Serializable]
@@ -33,7 +24,6 @@ namespace Tessera.Games.Yacht
         public string Description;
         public string Target;
         public YachtAugmentKind Kind;
-        public YachtAugmentHook Hooks;
         public string[] Conflicts = Array.Empty<string>();
         public bool IsQuest;
         public bool PhaseOneOnly;
@@ -72,6 +62,13 @@ namespace Tessera.Games.Yacht
         public string[] OwnedIds = Array.Empty<string>();
         public int[] OwnedCardPresetIds = Array.Empty<int>();
         public int ExtraTurns;
+
+        /// <summary>
+        /// 증강별 전용 진행 상태입니다. M7.5 이후 새로 추가하는 증강은 아래의 개별 필드가 아니라
+        /// 자신의 <see cref="IAugmentState"/> 구현체를 여기에 보관합니다.
+        /// </summary>
+        public AugmentStateStore States = new();
+
         public int NoTimeRemaining;
         public bool NoTimeFailed;
         public bool NoTimeRewarded;
@@ -124,6 +121,7 @@ namespace Tessera.Games.Yacht
             OwnedIds = (string[])(OwnedIds?.Clone() ?? Array.Empty<string>()),
             OwnedCardPresetIds = (int[])(OwnedCardPresetIds?.Clone() ?? Array.Empty<int>()),
             ExtraTurns = ExtraTurns,
+            States = States?.Clone() ?? new AugmentStateStore(),
             NoTimeRemaining = NoTimeRemaining,
             NoTimeFailed = NoTimeFailed,
             NoTimeRewarded = NoTimeRewarded,
@@ -269,7 +267,7 @@ namespace Tessera.Games.Yacht
             Action(EquivalentExchangeId, "등가교환"),
             Quest(BountyHunterId, "현상금 사냥꾼"),
             Enhance(DuelId, "결투"),
-            new YachtAugmentDefinition { Id = RandomBoxId, DisplayName = "랜덤 박스", Description = Describe(RandomBoxId), Kind = YachtAugmentKind.RandomReplacement, Hooks = YachtAugmentHook.OnSelected | YachtAugmentHook.AfterDraft },
+            new YachtAugmentDefinition { Id = RandomBoxId, DisplayName = "랜덤 박스", Description = Describe(RandomBoxId), Kind = YachtAugmentKind.Enhance },
             Quest(ProphetId, "예지자"),
             Action(GambitId, "갬빗"),
             Action(DoubleDownId, "더블 다운"),
@@ -283,8 +281,7 @@ namespace Tessera.Games.Yacht
             DisplayName = name,
             Description = Describe(id),
             Target = target.ToString(),
-            Kind = YachtAugmentKind.ScoreReplacement,
-            Hooks = YachtAugmentHook.OnSelected | YachtAugmentHook.BeforeScorePreview,
+            Kind = YachtAugmentKind.Modification,
             PhaseOneOnly = phaseOneOnly
         };
 
@@ -295,7 +292,6 @@ namespace Tessera.Games.Yacht
             Description = Describe(id),
             Target = "Quest",
             Kind = YachtAugmentKind.Quest,
-            Hooks = YachtAugmentHook.OnSelected | YachtAugmentHook.AfterScoreCommit,
             IsQuest = true,
             PhaseOneOnly = phaseOneOnly
         };
@@ -305,8 +301,7 @@ namespace Tessera.Games.Yacht
             Id = id,
             DisplayName = name,
             Description = Describe(id),
-            Kind = YachtAugmentKind.Dice,
-            Hooks = YachtAugmentHook.OnSelected | YachtAugmentHook.BeforeRoll,
+            Kind = YachtAugmentKind.Enhance,
             Conflicts = conflicts ?? Array.Empty<string>()
         };
 
@@ -315,8 +310,7 @@ namespace Tessera.Games.Yacht
             Id = id,
             DisplayName = name,
             Description = Describe(id),
-            Kind = YachtAugmentKind.ManualAction,
-            Hooks = YachtAugmentHook.ManualAction,
+            Kind = YachtAugmentKind.Enhance,
             Conflicts = conflicts ?? Array.Empty<string>()
         };
 
@@ -325,8 +319,7 @@ namespace Tessera.Games.Yacht
             Id = id,
             DisplayName = name,
             Description = Describe(id),
-            Kind = YachtAugmentKind.Enhancement,
-            Hooks = YachtAugmentHook.OnSelected | YachtAugmentHook.BeforeScorePreview | YachtAugmentHook.AfterScoreCommit
+            Kind = YachtAugmentKind.Enhance
         };
 
         private static string Describe(string id) => id switch
@@ -1051,12 +1044,12 @@ namespace Tessera.Games.Yacht
             if (definition.IsGlobal && Contains(state.GlobalAugmentIds, augmentId)) return false;
             YachtAugmentPlayerState player = state.AugmentPlayers[playerIndex];
             if (Contains(player.OwnedIds, augmentId) || HasConflict(player, augmentId)) return false;
-            if (definition.Kind == YachtAugmentKind.ScoreReplacement)
+            if (definition.Kind == YachtAugmentKind.Modification)
             {
                 for (int i = 0; i < player.OwnedIds.Length; i++)
                 {
                     YachtAugmentDefinition owned = FindDefinition(player.OwnedIds[i]);
-                    if (owned?.Kind == YachtAugmentKind.ScoreReplacement
+                    if (owned?.Kind == YachtAugmentKind.Modification
                         && string.Equals(owned.Target, definition.Target, StringComparison.Ordinal)) return false;
                 }
             }
@@ -1130,7 +1123,7 @@ namespace Tessera.Games.Yacht
             {
                 ResetFilledTarget(state, playerIndex, ScoreCategory.Aces, runtime);
             }
-            else if (definition?.Kind == YachtAugmentKind.ScoreReplacement)
+            else if (definition?.Kind == YachtAugmentKind.Modification)
             {
                 if (Enum.TryParse(definition.Target, out ScoreCategory target)) ResetFilledTarget(state, playerIndex, target, runtime);
                 if (augmentId == DoubleLargeStraightId)

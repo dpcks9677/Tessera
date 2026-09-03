@@ -27,14 +27,14 @@ public sealed class AugmentCardViewTests
                 DisplayName = "럭키 세븐",
                 Description = "눈금 총합 조건을 만족하면 15점을 얻습니다.",
                 Target = "Aces",
-                Kind = YachtAugmentKind.ScoreReplacement
+                Kind = YachtAugmentKind.Modification
             };
 
             card.Bind(definition, AugmentCardDisplayState.Available);
 
             Assert.That(card.NameText.text, Is.EqualTo("럭키 세븐"));
             Assert.That(card.DescriptionText.text, Does.Contain("15점"));
-            Assert.That(card.KindText.text, Is.EqualTo("족보 교체"));
+            Assert.That(card.KindText.text, Is.EqualTo("변형"));
             Assert.That(card.TargetText.text, Is.EqualTo("대상 · 에이스"));
             Assert.That(card.StateText.text, Is.EqualTo("[선택 가능]"));
             Assert.That(card.Button.interactable, Is.True);
@@ -75,7 +75,7 @@ public sealed class AugmentCardViewTests
                 Id = YachtAugmentRuntime.LuckySevensId,
                 DisplayName = "럭키 세븐",
                 Description = "상태 표현 검증용 카드입니다.",
-                Kind = YachtAugmentKind.Enhancement
+                Kind = YachtAugmentKind.Enhance
             }, state);
 
             Assert.That(card.DisplayState, Is.EqualTo(state));
@@ -181,7 +181,7 @@ public sealed class AugmentCardViewTests
                 Id = YachtAugmentRuntime.LuckySevensId,
                 DisplayName = "럭키 세븐",
                 Description = "트레이 카드 상호작용 검증",
-                Kind = YachtAugmentKind.Enhancement
+                Kind = YachtAugmentKind.Enhance
             }, (int)AugmentParchmentPreset.BottomTear);
             view.SetVisible(true);
 
@@ -348,7 +348,7 @@ public sealed class AugmentCardViewTests
                 Id = YachtAugmentRuntime.WeightedDiceId,
                 DisplayName = "묵직한 주사위",
                 Description = "주사위 면 구성을 바꿉니다.",
-                Kind = YachtAugmentKind.Dice
+                Kind = YachtAugmentKind.Enhance
             }, AugmentCardDisplayState.Available);
 
             Texture2D texture = card.Icon.sprite.texture;
