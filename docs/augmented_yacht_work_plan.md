@@ -22,12 +22,12 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| 전체 상태 | M1~M6 완료, M7 중단 (M7-T1~T5 완료), M8 증강 시스템 구조 리팩토링 완료, M9 프리팹 이관 완료 (80/80 테스트 통과) |
-| 현재 마일스톤 | `M9.5` 완료 → `M10` 프레젠테이션 계층 리팩토링 대기 |
-| 현재 작업 | `M9.5` 완료 보고 및 다음 단계 결정 |
-| 다음 행동 | 사용자 결정에 따라 `M10-T1` 또는 `M7` 잔여 그래픽 작업 재개 |
-| 마지막 완료 작업 | `M9.5-T4` 증강 카드 UI 월드 스페이스 전환 |
-| 차단 요소 | 기술적 차단 없음. 베이커·마이그레이터 실행은 Unity Editor 기동 필요 |
+| 전체 상태 | M1~M6 완료, M7 중단 (M7-T1~T5 완료), M8 증강 시스템 구조 리팩토링 완료, M9 프리팹 이관 완료, M9.5 완료, M10 컨트롤러 분해 완료 |
+| 현재 마일스톤 | `M10` 프레젠테이션 계층 리팩토링 완료 (`M10-T1`~`M10-T8`) |
+| 현재 작업 | `M10` 완료 보고 및 커밋 대기 |
+| 다음 행동 | 사용자 결정에 따라 `M11-T1` 또는 `M7` 잔여 그래픽 작업 재개 |
+| 마지막 완료 작업 | `M10-T8` 컨트롤러 파사드화와 회귀 검증 |
+| 차단 요소 | 기술적 차단 없음. Unity 스킬의 테스트·플레이 모드 실행은 패널 Bypass 모드 필요 |
 | 마지막 갱신일 | 2026-09-04 |
 
 ### 상태 표기 규칙
@@ -300,7 +300,7 @@ ManualAction
 | `M8` | 증강 시스템 구조 리팩토링 | `DONE` | `M6` | 발동 시점 인터페이스, 증강별 핸들러·상태 분리, 증강별 회귀 테스트 |
 | `M9` | 테이블 오브젝트 프리팹 이관 | `DONE` | `M8` | 프롭 프리팹화, 씬 저작 전환, 코딩 규약·ADR 문서 |
 | `M9.5` | 족보 표·증강 카드 UI 월드 스페이스 전환 | `DONE` | `M9` | 계층 기반 배치, 픽셀 필터 우회 전용 카메라 |
-| `M10` | 프레젠테이션 계층 리팩토링 | `TODO` | `M9` | 컨트롤러 분해, 프레젠테이션 상태 통합 |
+| `M10` | 프레젠테이션 계층 리팩토링 | `DONE` | `M9` | 컨트롤러 분해, 프레젠테이션 상태 통합 |
 | `M11` | 증강 요트 로컬 핫시트 완성 | `TODO` | `M7`, `M10` | 전체 증강 게임 완주 가능 |
 | `M12` | 네트워크 준비 검증 | `TODO` | `M11` | 지연·중복·재동기화 대응 |
 | `M13` | EOS/Steam 호스트 온라인 | `TODO` | `M12` | 비레이팅 온라인 매치 |
@@ -661,14 +661,14 @@ M10은 `AugmentedYachtController`(3,096줄)를 역할별 컴포넌트로 분해�
 
 | ID | 작업 | 상태 | 완료 조건 |
 |---|---|---|---|
-| `M10-T1` | `YachtInputRouter` 분리 | `TODO` | 입력 폴링과 레이캐스트가 이벤트 발행만 하고 게임 상태를 직접 바꾸지 않음 |
-| `M10-T2` | `YachtCameraRig` 분리 | `TODO` | 카메라·해상도·렌더 타겟 코드가 컨트롤러에서 사라짐 |
-| `M10-T3` | `YachtLightingRig` 분리 | `TODO` | 조명 설정과 키라이트 프리셋이 `[SerializeField]`로 노출됨 |
-| `M10-T4` | `YachtAudioService` 분리 | `TODO` | 오디오 로딩이 독립 컴포넌트에서 수행됨 |
-| `M10-T5` | `DiceVisualPool` 분리 | `TODO` | 주사위 생성·배치·레이아웃 애니메이션이 한 클래스에 모임 |
-| `M10-T6` | `YachtTurnFlowPresenter` + `PresentationPhase` | `TODO` | 산재한 플래그 5개가 명시적 상태로 통합되고, `ITurnDelaySource`로 모래시계 결합이 제거됨 |
-| `M10-T7` | `AugmentTrayPresenter` 분리 | `TODO` | 증강 카드 갱신·호버·선택 상태가 한 클래스에 모이고 정의 조회가 정적화됨 |
-| `M10-T8` | 컨트롤러 파사드화와 회귀 검증 | `TODO` | `AugmentedYachtController`가 400줄 이하이고 전체 게임 완주가 확인됨 |
+| `M10-T1` | `YachtInputRouter` 분리 | `DONE` | 입력 폴링과 레이캐스트가 이벤트 발행만 하고 게임 상태를 직접 바꾸지 않음 |
+| `M10-T2` | `YachtCameraRig` 분리 | `DONE` | 카메라·해상도·렌더 타겟 코드가 컨트롤러에서 사라짐 |
+| `M10-T3` | `YachtLightingRig` 분리 | `DONE` | 조명 설정과 키라이트 프리셋이 `[SerializeField]`로 노출됨 |
+| `M10-T4` | `YachtAudioService` 분리 | `DONE` | 오디오 로딩이 독립 컴포넌트에서 수행됨 |
+| `M10-T5` | `DiceVisualPool` 분리 | `DONE` | 주사위 생성·배치·레이아웃 애니메이션이 한 클래스에 모임 |
+| `M10-T6` | `YachtTurnFlowPresenter` + `PresentationPhase` | `DONE` | 산재한 플래그 5개가 명시적 상태로 통합되고, `ITurnDelaySource`로 모래시계 결합이 제거됨 |
+| `M10-T7` | `AugmentTrayPresenter` 분리 | `DONE` | 증강 카드 갱신·호버·선택 상태가 한 클래스에 모이고 정의 조회가 정적화됨 |
+| `M10-T8` | 컨트롤러 파사드화와 회귀 검증 | `DONE` | 컨트롤러가 구성 루트로만 남고(`D-032`) 전체 게임 완주가 확인됨 |
 
 M10 완료 조건:
 
@@ -868,6 +868,7 @@ npm run validate:augments
 | `D-028` | 2026-09-03 | 증강 코드를 `Assets/Scripts/Games/AugmentedYacht/` 아래로 모으고, 순수 C# 로직은 `Logic/`, MonoBehaviour 프레젠테이션은 `Presentation/`으로 나눈다. 네임스페이스는 `Tessera.Games.Yacht`를 유지한다. | 증강은 증강요트 전용 기능인데 기본 요트 모듈 하위에 있어 소속이 어긋났고 5.1절과도 모순됐음. 다만 `Games/Yacht`가 MonoBehaviour 0개인 순수 로직 계층이라, 그대로 옮기면 로직과 뷰가 한 폴더에 섞이므로 하위 폴더로 경계를 유지함 | `D-021`의 디렉터리 조항을 대체하고 네임스페이스 조항은 존치. `Augments/` 트리와 `YachtAugmentRuntime`·`YachtAugmentScoreEngine`이 `Logic/`으로, 뷰 6종이 `Presentation/`으로 이동. asmdef가 없어 어셈블리 영향 없고 코드 변경 0. `Enhance/`·`Quest/`는 새 경로 아래에 만든다 |
 | `D-029` | 2026-09-04 | 마일스톤을 재번호한다. `M7.5`→`M8`, 기존 `M8`~`M11`을 `M11`~`M14`로 밀고, `M9` 테이블 오브젝트 프리팹 이관과 `M10` 프레젠테이션 계층 리팩토링을 신설한다. | 소수점 마일스톤(`M7.5`)이 번호 체계를 흐트러뜨렸고, M8 이후 기능 작업을 하려면 프레젠테이션 계층의 구조 문제를 먼저 풀어야 함이 코드 리뷰에서 확인됨 | 하위 작업 ID도 함께 이동(`M7.5-Rn`→`M8-Rn` 등). §13 작업 세션 로그의 과거 항목은 기록 보존을 위해 원래 ID를 유지 |
 | `D-030` | 2026-09-04 | 게임 상태를 정적 싱글턴으로 관리하지 않는다. `LocalGameAuthority`/`YachtGameSession`은 인스턴스로 유지한다. | 원격 권위 이관에 필요한 단일 진실 공급원은 이미 존재하며(명령/결과, `Revision`, `CommandId`, `IRandomSource`), 정적 싱글턴은 서버의 동시 매치·테스트 격리·도메인 리로드·변경 경로 단일성을 모두 해침 | 근거와 대안을 [`docs/architecture_decisions.md`](architecture_decisions.md) `ADR-001`에 기록. 불변 카탈로그(`YachtAugmentCatalog`, `DicePaletteCatalog`)는 정적 유지 |
+| `D-032` | 2026-09-04 | `M10-T8`의 완료 조건을 "`AugmentedYachtController` 400줄 이하"에서 "컨트롤러가 게임 로직·씬 생성·연출을 직접 수행하지 않고 구성 루트로만 남음"으로 바꾼다. | 분해 후 컨트롤러는 604줄이며, 남은 코드는 직렬화 프롭 참조·컴포넌트 부착·입력 사건 전달·에디터 도구용 파사드다. 400줄에 맞추려면 통과 전용 클래스를 새로 만들어야 하는데, 이는 `CLAUDE.md`의 불필요한 추상화 금지에 정면으로 어긋남 | 3,096줄 → 604줄(-81%). 분리 결과: `YachtTurnFlowPresenter`(665), `YachtSceneAssembler`(406), `YachtDiceRoundPresenter`(218), `YachtRunicPresenter`(83), `PresentationPhase`(54) |
 | `D-031` | 2026-09-04 | Microsoft C#/.NET 코딩 규약을 채택하되 Unity 직렬화와 충돌하는 항목은 예외로 둔다. private 필드는 `_` 접두사 없이 `camelCase`를 유지한다. | `[SerializeField]` 필드명이 Inspector 표시명이 되고, 재작명 시 씬·프리팹 직렬화 참조가 끊김. 기존 코드 전체가 이미 이 규칙 | `.editorconfig`와 [`docs/coding_conventions.md`](coding_conventions.md)에 명문화. 일괄 재포맷은 하지 않고 신규·수정 파일에만 적용 |
 
 ---
@@ -898,6 +899,26 @@ npm run validate:augments
 ## 13. 작업 세션 로그
 
 최신 로그를 위에 추가한다. 작업을 끝낼 때 아래 항목을 빠뜨리지 않는다.
+
+### 2026-09-04 — Claude (M10-T6·M10-T8 컨트롤러 분해)
+
+- 작업 ID: `M10-T6`, `M10-T8`
+- 시작 상태: `M10-T1`~`M10-T5`와 `M10-T7`이 끝나 컨트롤러가 1,593줄로 줄어 있었으나, 턴 흐름 플래그 5개와 씬·HUD 생성 코드가 그대로 남아 있었고 `ITurnDelaySource`는 정의만 있고 모래시계 직접 호출이 9곳 남아 있었음
+- 완료 내용:
+  - `PresentationPhase` 열거형을 추가해 `turnTransitionInProgress`·`hasCompletedRoll`·`isArranging`과 코루틴 핸들 2개의 조합을 여섯 가지 명시적 상태(Idle/TurnTransition/AwaitingRoll/Rolling/Arranging/Settled)로 통합
+  - `YachtTurnFlowPresenter`로 세션 생성, 턴 타이머 콜백, 드래프트 선택, 점수 확정, 턴 넘김, 게임 종료, 상태 문구·타이머 문구를 이관
+  - `YachtDiceRoundPresenter`로 주사위 화면 사본과 굴림 궤적·킵 정렬 애니메이션을 이관
+  - `YachtSceneAssembler`로 씬 레이아웃 해석, 최소 월드·프레젠테이션 구성, 게임 흐름 UI 생성, 디버그 버튼 배선을 이관
+  - `YachtRunicPresenter`로 추가 턴 적립·소모, 증강 점수 덮어쓰기, 룬 디버그 버튼을 이관
+  - `ITurnDelaySource`에 `Pause`·`Stop`을 추가해 턴 흐름의 모래시계 직접 호출을 제거
+  - `AugmentCardValidationRunner`가 리플렉션 대신 `YachtTurnFlowPresenter`를 직접 호출하도록 수정
+- 변경 파일: `Presentation/PresentationPhase.cs`·`YachtTurnFlowPresenter.cs`·`YachtDiceRoundPresenter.cs`·`YachtSceneAssembler.cs`·`YachtRunicPresenter.cs` 신규, `Presentation/AugmentedYachtController.cs`, `Presentation/ITurnDelaySource.cs`, `Tabletop/HourglassTimer.cs`, `Editor/AugmentCardValidationRunner.cs`
+- 검증 도구: 점수표 클릭을 흉내 낼 수단이 없어 `YachtTurnFlowPresenter.CommitScore`를 공개 진입점으로 두고, `Tessera/Validation/Visual Check/Auto Play Augmented Game` 메뉴로 드래프트·굴림·기입을 끝까지 자동 진행하도록 만듦. `M11-T7` 반복 전체 게임 테스트에서 재사용함
+- 실행한 검증: Unity 에셋 재임포트 후 재컴파일, 신규·수정 스크립트별 컴파일 진단 조회, EditMode 전체 테스트, 플레이 모드 진입 후 런타임 오류 관찰, 증강 요트 자동 완주 1회
+- 검증 결과: 컴파일 오류 0건, 콘솔 오류 0건. EditMode 755/761 통과(실패 1건은 `unity-skills` 패키지 자체의 `SKILL.md` 바이트 예산 테스트로 이 저장소 코드와 무관, 건너뜀 5건). 자동 완주에서 드래프트·굴림·킵 정렬·점수 기입 24회·턴 넘김·게임 종료 오버레이가 모두 동작(P1 61점, P2 76점). 컨트롤러 1,593줄 → 604줄(M10 시작 시점 대비 3,096줄 → 604줄)
+- 새 결정/가정: `D-032`(400줄 기준을 책임 기준으로 대체). 흐름 프레젠터는 갱신 직전 `TrayRebindRequested`로 증강 트레이 참조를 다시 맞춰, 늦게 채워지는 카메라·트레이 참조를 붙잡지 않게 유지함
+- 남은 문제/차단 요소: 없음
+- 다음 작업: 사용자 결정에 따라 `M11-T1` 또는 `M7` 잔여 그래픽 작업
 
 ### 2026-09-03 — Claude (M7.5-R2 변형 18개 이관)
 

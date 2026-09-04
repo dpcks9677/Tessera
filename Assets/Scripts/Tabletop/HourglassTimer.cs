@@ -208,7 +208,9 @@ namespace Tessera.Tabletop
         void ITurnDelaySource.Begin(float seconds, bool animate) => StartTimer(seconds, animate);
         void ITurnDelaySource.SetIdle(float seconds) => SetIdleState(seconds);
         void ITurnDelaySource.Reset(float seconds) => ResetTimer(seconds);
+        void ITurnDelaySource.Pause() => PauseTimer();
         void ITurnDelaySource.Resume() => ResumeTimer();
+        void ITurnDelaySource.Stop(bool hideVisual) => StopTimer(hideVisual);
 
         public void StartTimer(float duration = 60f, bool animateFlip = true)
         {

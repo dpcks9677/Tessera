@@ -21,6 +21,13 @@ namespace Tessera.Games.AugmentedYacht
         void Begin(float seconds, bool animate);
         void SetIdle(float seconds);
         void Reset(float seconds);
+        void Pause();
         void Resume();
+
+        /// <param name="hideVisual">
+        /// 남은 시간 표현까지 감출지 여부. 턴이 끝났을 뿐 다음 턴이 이어질 때는 <c>false</c>로 두어
+        /// 진행 연출을 유지하고, 게임이 끝났을 때만 <c>true</c>로 정리한다.
+        /// </param>
+        void Stop(bool hideVisual = true);
     }
 }
