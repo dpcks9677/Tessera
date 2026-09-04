@@ -10,14 +10,16 @@ Shader "DicePoC/PixelEdge"
     // 뎁스 임계값은 원본의 정규화 뎁스가 아니라 월드 유닛 기준이므로 프로퍼티로 노출한다.
     Properties
     {
-        _DepthEdgeStrength ("Depth Edge Strength", Range(0, 1)) = 0.4
-        _NormalEdgeStrength ("Normal Edge Strength", Range(0, 1)) = 0.3
-        _DepthEdgeThreshold ("Depth Edge Threshold (Min, Max)", Vector) = (0.05, 0.12, 0, 0)
+        _DepthEdgeStrength ("Depth Edge Strength", Range(0, 1)) = 0.85
+        _NormalEdgeStrength ("Normal Edge Strength", Range(0, 1)) = 0.55
+        _DepthEdgeThreshold ("Depth Edge Threshold (Min, Max)", Vector) = (0.18, 0.4, 0, 0)
         _NormalEdgeDepthBias ("Normal Edge Depth Bias", Range(0, 0.2)) = 0.01
         _NormalEdgeBias ("Normal Edge Bias", Vector) = (1, 1, 1, 0)
         _EdgeLuminanceSuppression ("Bright Pixel Outline Suppression", Range(0, 4)) = 0
-        _PixelEdgeVirtualResolution ("Virtual Resolution", Vector) = (640, 360, 0, 0)
     }
+
+    // _PixelEdgeVirtualResolution은 일부러 Properties에 두지 않는다. Properties에 있으면 재질의
+    // 기본값이 Shader.SetGlobalVector로 민 전역 값을 덮어써서 해상도 전환이 반영되지 않는다.
 
     SubShader
     {
@@ -31,6 +33,10 @@ Shader "DicePoC/PixelEdge"
             HLSLPROGRAM
             #pragma vertex Vert
             #pragma fragment Frag
+
+            // Deferred에서 _CameraNormalsTexture는 GBuffer의 옥타헤드론 인코딩 노멀이다.
+            // 이 키워드가 없으면 SampleSceneNormals가 디코딩 분기를 타지 않아 노멀이 어긋난다.
+            #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"

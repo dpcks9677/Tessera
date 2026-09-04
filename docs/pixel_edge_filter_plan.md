@@ -151,9 +151,14 @@ F1/F2 해상도 전환이 자동으로 반영된다.
 
 ### 2026-09-05 — 이식과 등록
 
-- Unity `6000.3.21f1`, URP `17.3.0`, Deferred, Render Graph 비활성(호환 모드).
-- 패스는 호환 모드 API(`Execute` + `CommandBuffer` + `Blitter.BlitCameraTexture`)로 작성했다.
-  임시 타깃은 `RenderingUtils.ReAllocateHandleIfNeeded`로 잡는다
+- Unity `6000.3.21f1`, URP `17.3.0`, Deferred, **Render Graph 활성**.
+  처음에는 `UniversalRenderPipelineGlobalSettings.asset`의 구 필드 `m_EnableRenderGraph: 0`을 보고
+  호환 모드로 판단해 레거시 API로만 작성했다. 실제로 URP 17이 읽는 값은 같은 파일의
+  `RenderGraphSettings.m_EnableRenderCompatibilityMode: 0`이며, 이것은 호환 모드가 **꺼져 있다**는
+  뜻이다. 8.5절에 경위를 남긴다.
+- 패스는 Render Graph 경로(`RecordRenderGraph`)를 주 경로로 쓰고, 호환 모드 경로
+  (`OnCameraSetup` + `Execute` + `Blitter.BlitCameraTexture`)도 함께 남겨 두었다.
+  호환 모드 임시 타깃은 `RenderingUtils.ReAllocateHandleIfNeeded`로 잡는다
   (URP 17에서 `ReAllocateIfNeeded`는 폐기됨).
 - 처음 `RenderPassEvent.AfterRenderingOpaque`로 적었다가 컴파일 오류로 잡혔다.
   실제 열거자 이름은 `AfterRenderingOpaques`이며, 배경 클리어 방식이 바뀌어도 안전하도록
@@ -165,34 +170,102 @@ F1/F2 해상도 전환이 자동으로 반영된다.
 
 | 날짜 | 값 | 근거 |
 |---|---|---|
-| 2026-09-05 | `_DepthEdgeThreshold = (0.05, 0.12)` | §3.3의 계산값. 실측 조정은 미완료 |
-| 2026-09-05 | `_DepthEdgeStrength = 0.4`, `_NormalEdgeStrength = 0.3` | 원본 기본값 |
+| 2026-09-05 | `_DepthEdgeThreshold = (0.05, 0.12)` | §3.3의 계산값. 실측 전 |
+| 2026-09-05 | `_DepthEdgeStrength = 0.4`, `_NormalEdgeStrength = 0.3` | 원본 기본값. 실측 전 |
+| 2026-09-05 | **`_DepthEdgeStrength = 0.85`, `_NormalEdgeStrength = 0.55`** | 원본은 밝은 씬을 전제한다. 이 프로젝트는 딥 챠콜 배경에 어두운 원목이라 곱셈 감쇠의 절대 변화량이 작다. 초기값에서는 최대 차이가 76/255에 그쳐 눈에 띄지 않았다 |
+| 2026-09-05 | **`_DepthEdgeThreshold = (0.18, 0.4)`** | 계산값 `(0.05, 0.12)`는 요트 트레이처럼 경사가 급한 면에서 곡면 전체에 외곽선이 서서 검은 링이 층층이 생겼다. 올려서 실루엣만 남겼다. 주사위 실루엣의 뎁스 단차는 이 값보다 훨씬 커서 그대로 잡힌다 |
 
-## 8. 알려진 문제 (2026-09-05 미해결)
+값은 `PC_Renderer.asset`과 `Mobile_Renderer.asset`의 피처, 셰이더 기본값, `PixelEdgeRendererFeature`의
+`[SerializeField]` 초기값 네 곳을 같이 맞춰 두었다.
 
-**HUD 디버그 버튼 두 개가 눌러도 반응하지 않는다.**
+검증 캡처는 `Assets/Screenshots/`에 있다. `edge_off.png`(피처 끔), `edge_strong.png`(임계값 조정 전),
+`edge_t18.png`(최종값).
 
-- `960 / 640` 해상도 전환 버튼 (`Debug`) — M10.5 이전부터 있던 버튼이다.
-- `Edge: ON/OFF` 픽셀 엣지 전환 버튼 (`PixelEdgeToggle`) — M10.5에서 추가했다.
+## 8. HUD 버튼 무반응 원인과 수정 (2026-09-05)
 
-두 버튼이 함께 죽어 있으므로 원인은 엣지 기능 자체가 아니라 디버그 버튼의 클릭 경로일 가능성이
-높다. 확인할 후보는 다음과 같다.
+`960 / 640` 해상도 버튼과 `Edge: ON/OFF` 버튼이 눌러도 반응하지 않는다는 보고가 있었다.
+버튼 클릭 경로 자체는 정상이었고, 원인은 **두 핸들러가 실제로는 아무것도 바꾸지 못하는 상태**였다.
+정적 분석으로 세 가지를 찾아 고쳤다. Unity Editor가 꺼져 있어 컴파일과 실행 검증은 아직 못 했다.
 
-- `Pixel Presentation` 캔버스가 `ScreenSpaceOverlay`인데 그 위에 전체 화면 `RawImage` 두 장
-  (`Point Upscale`, `Crisp UI Overlay`)이 형제로 놓여 있다. 둘 다 `raycastTarget = false`로
-  두고 있지만, 씬에 저장된 값이 코드와 어긋나면 버튼이 가려진다.
-- `EnsureEventSystem`이 만드는 `EventSystem` / `InputSystemUIInputModule`이 실제로 살아 있는지.
-- `BindPresentationActions`가 씬에 이미 있는 버튼을 이름으로 찾아 리스너를 다시 거는데,
-  `GameObject.Find`가 비활성 오브젝트를 못 찾으므로 씬에 저장된 버튼이 비활성이면 조용히 실패한다.
-- `AugmentedYachtController`가 `debugButtons`를 두 번 덮어쓰는 초기화 순서
-  (`BuildPresentation` 직후 `BindPresentationActions`) 때문에 리스너가 유실될 가능성.
+### 8.1 업스케일 재질이 만들어지지 않아 해상도 전환이 반영되지 않음
 
-키보드 경로(`F1` / `F2` / `F3`)는 버튼과 독립적인 `YachtInputRouter`를 타므로 별도로 확인해야 한다.
-이 문제가 남아 있는 동안 A/B 비교는 키보드로만 가능하다.
+`AugmentedYachtController.Awake`는 씬에 레이아웃이 이미 있으면 `BuildPresentation`을 건너뛴다.
+그런데 `EnsureUpscaleMaterial()`을 부르는 곳이 `BuildPresentation` 하나뿐이었다.
+그 결과 구워 둔 씬으로 플레이하면 `upscaleMaterial`이 계속 `null`이고,
+`ApplyRenderSettings()`의 `if (upscaleMaterial != null)` 가드가 조용히 통과해
+`_VirtualResolution`이 한 번도 갱신되지 않았다. 화면에는 씬에 저장된 재질의 `640×360`이 고정된다.
 
-## 8. 남은 확인
+버튼뿐 아니라 `F1` / `F2`도 같은 이유로 화면이 바뀌지 않았다. 즉 버튼 문제가 아니라
+해상도 전환 자체가 죽어 있었다.
 
-- `640×360`·`960×540` 양쪽에서 실루엣과 챔퍼가 읽히는지, 물리 회전 중 외곽선이
-  반짝이지(pixel crawl) 않는지 육안 확인. `Assets/Docs/Decision.md`에 열린 리스크로 적혀 있다.
-- 주사위·양피지 카드·족보 종이의 머티리얼이 `Transparent` 큐가 아닌지 확인. `Transparent`라면
-  이 패스 배치에서 외곽선을 받지 못한다.
+수정: `YachtCameraRig.CreateRenderTarget()`에서 `EnsureUpscaleMaterial()`을 부른다.
+두 초기화 경로가 모두 지나가는 지점이다.
+
+### 8.2 전역 유니폼을 Properties에 선언해 재질 기본값이 이김
+
+`_PixelEdgeVirtualResolution`은 `YachtCameraRig.ApplyRenderSettings()`가
+`Shader.SetGlobalVector`로 미는 값이다. 그런데 셰이더의 `Properties` 블록에도 선언돼 있었다.
+Properties에 있는 이름은 재질마다 값을 가지며 **재질 값이 전역 값을 덮어쓴다.**
+`CoreUtils.CreateEngineMaterial`이 만든 재질은 기본값 `(640, 360)`을 들고 있으므로,
+해상도를 `960×540`으로 바꿔도 엣지 격자는 `640×360`에 머물러 업스케일 격자와 어긋난다.
+
+수정: `Properties`에서 제거하고 HLSL 유니폼 선언만 남겼다. 테스트도
+`HasProperty("_PixelEdgeVirtualResolution") == false`를 확인하도록 뒤집어, 다시 Properties에
+들어가면 실패하게 했다.
+
+### 8.3 Deferred GBuffer 노멀 디코딩 키워드 누락
+
+이 프로젝트의 렌더러는 Deferred다. Deferred에서 `_CameraNormalsTexture`는
+`GBufferPass`가 넘겨주는 GBuffer 노멀이고, 옥타헤드론 인코딩이 적용돼 있다.
+`SampleSceneNormals`는 `_GBUFFER_NORMALS_OCT` 키워드가 켜져 있을 때만 디코딩 분기를 탄다.
+이 키워드는 전역이지만 셰이더가 해당 배리언트를 컴파일해 두지 않으면 항상 꺼진 쪽이 쓰인다.
+그래서 노멀이 통째로 어긋나 모서리 하이라이트가 엉뚱하게 나온다.
+
+수정: URP 자체 셰이더(`ScreenSpaceAmbientOcclusion.shader`, `Lit.shader` 등)와 같이
+`#pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT`를 추가했다.
+
+### 8.5 Render Graph 경로 미구현 — Edge 버튼 무반응의 진짜 원인 (2026-09-05, 2차)
+
+8.1~8.3을 고친 뒤에도 `Edge: ON/OFF` 버튼과 `F3`가 화면을 전혀 바꾸지 않는다는 보고가 이어졌다.
+원인은 **엣지 패스가 애초에 한 번도 실행되지 않은 것**이었다.
+
+`UniversalRenderPipelineGlobalSettings.asset`에는 비슷한 이름의 값이 둘 있다.
+
+| 위치 | 값 | 의미 |
+|---|---|---|
+| 최상위 `m_EnableRenderGraph` | `0` | 구 필드. URP 17은 읽지 않는다 |
+| `m_Settings`의 `RenderGraphSettings.m_EnableRenderCompatibilityMode` | `0` | **호환 모드 꺼짐 = Render Graph 켜짐** |
+
+앞의 값만 보고 호환 모드라고 판단해 `ScriptableRenderPass.Execute(ScriptableRenderContext, ref RenderingData)`만
+구현했다. Render Graph가 켜져 있으면 URP는 그 메서드를 부르지 않고 `RecordRenderGraph`를 부른다.
+`RecordRenderGraph`를 구현하지 않은 패스는 큐에 등록되어도 아무 일도 하지 않는다.
+그래서 켜든 끄든 화면이 같았다.
+
+수정: `RecordRenderGraph`를 구현했다.
+
+- 카메라 컬러와 같은 서술자로 임시 타깃을 만들고 `Blitter.BlitTexture`로 엣지를 합성한다.
+- 셰이더가 전역으로 묶인 뎁스·노멀을 읽으므로 `builder.UseTexture`로 두 텍스처를 입력으로 선언해
+  Render Graph가 생성 순서를 보장하게 한다.
+- 합성 결과를 `resourceData.cameraColor`로 바꿔 끼운다. 되돌려 쓰는 블릿이 한 번 줄고,
+  뒤따르는 반투명 패스가 그 위에 그려진다.
+
+호환 모드 경로도 남겨 두었다. 설정을 되돌렸을 때 같은 방식으로 기능이 조용히 사라지지 않게 하기 위함이다.
+
+### 8.4 아직 확인하지 못한 것
+
+Unity Editor를 켜고 다음을 확인해야 한다.
+
+`RecordRenderGraph` 구현 뒤 Editor에서 확인했다.
+
+- 컴파일 오류 0, Tessera EditMode 105/105 통과, 플레이 모드 런타임 오류 0.
+- 피처를 켠 화면과 끈 화면의 차분을 뽑으니 주사위 5개, 트레이 챔퍼, 점수판, 촛대, 모래시계,
+  룬 원반, 반지·브로치의 윤곽이 1픽셀 선으로 정확히 나타났다. 알고리즘은 정상 동작한다.
+- 코스믹 큐브의 유리 본체만 차분에 윤곽이 없다. 반투명 보호 계약이 의도대로 작동한다.
+- 다만 초기값에서는 변화량이 너무 작아 눈으로 구분되지 않았다. 그래서 "버튼이 안 먹는다"로
+  보였다. 이어지는 튜닝으로 해결했다.
+
+## 9. 남은 확인
+
+- 주사위를 실제로 굴리는 동안 외곽선이 반짝이지(pixel crawl) 않는지 확인.
+  `Assets/Docs/Decision.md`에 열린 리스크로 적혀 있다. 정지 화면 검증만 마쳤다.
+- `960×540`에서의 외형 확인. 지금까지의 캡처는 모두 기본값 `640×360` 기준이다.

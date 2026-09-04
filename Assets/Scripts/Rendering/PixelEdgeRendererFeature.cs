@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.Rendering.Universal;
 
 namespace Tessera.Rendering
@@ -22,9 +23,9 @@ namespace Tessera.Rendering
         private static readonly int depthEdgeThresholdId = Shader.PropertyToID("_DepthEdgeThreshold");
 
         [SerializeField] private Shader edgeShader;
-        [SerializeField, Range(0f, 1f)] private float depthEdgeStrength = 0.4f;
-        [SerializeField, Range(0f, 1f)] private float normalEdgeStrength = 0.3f;
-        [SerializeField] private Vector2 depthEdgeThreshold = new(0.05f, 0.12f);
+        [SerializeField, Range(0f, 1f)] private float depthEdgeStrength = 0.85f;
+        [SerializeField, Range(0f, 1f)] private float normalEdgeStrength = 0.55f;
+        [SerializeField] private Vector2 depthEdgeThreshold = new(0.18f, 0.4f);
         [SerializeField] private RenderPassEvent passEvent = RenderPassEvent.AfterRenderingSkybox;
 
         private PixelEdgePass pass;
@@ -96,6 +97,57 @@ namespace Tessera.Rendering
                 ConfigureInput(ScriptableRenderPassInput.Depth | ScriptableRenderPassInput.Normal);
             }
 
+            /// <summary>
+            /// Render Graph 경로. 이 프로젝트의 기본 설정이다
+            /// (<c>RenderGraphSettings.m_EnableRenderCompatibilityMode = 0</c>).
+            ///
+            /// 카메라 컬러를 임시 타깃에 엣지 합성으로 옮긴 뒤 그 타깃을 새 카메라 컬러로 삼는다.
+            /// 되돌려 쓰는 블릿이 한 번 줄고, 뒤따르는 반투명 패스가 자연스럽게 그 위에 그려진다.
+            /// </summary>
+            public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
+            {
+                if (material == null) return;
+
+                UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
+                if (resourceData.isActiveTargetBackBuffer) return;
+
+                TextureHandle source = resourceData.activeColorTexture;
+                if (!source.IsValid()) return;
+
+                TextureDesc descriptor = renderGraph.GetTextureDesc(source);
+                descriptor.name = "_PixelEdgeTemp";
+                descriptor.clearBuffer = false;
+                descriptor.filterMode = FilterMode.Point;
+                TextureHandle destination = renderGraph.CreateTexture(descriptor);
+
+                using (IRasterRenderGraphBuilder builder =
+                    renderGraph.AddRasterRenderPass(ProfilerTag, out PassData passData))
+                {
+                    passData.source = source;
+                    passData.material = material;
+
+                    builder.UseTexture(source);
+                    // 셰이더는 전역으로 묶인 뎁스·노멀을 읽는다. 여기서 의존성을 밝혀 두지 않으면
+                    // Render Graph가 두 텍스처를 이 패스보다 먼저 만들어 준다고 보장하지 않는다.
+                    if (resourceData.cameraDepthTexture.IsValid()) builder.UseTexture(resourceData.cameraDepthTexture);
+                    if (resourceData.cameraNormalsTexture.IsValid()) builder.UseTexture(resourceData.cameraNormalsTexture);
+                    builder.SetRenderAttachment(destination, 0);
+
+                    builder.SetRenderFunc((PassData data, RasterGraphContext context) =>
+                        Blitter.BlitTexture(context.cmd, data.source, new Vector4(1f, 1f, 0f, 0f), data.material, 0));
+                }
+
+                resourceData.cameraColor = destination;
+            }
+
+            private class PassData
+            {
+                public TextureHandle source;
+                public Material material;
+            }
+
+            // 아래 두 메서드는 호환 모드(Render Graph 비활성)에서만 쓰인다.
+            // 설정을 되돌렸을 때 기능이 조용히 사라지지 않도록 남겨 둔다.
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
             {
                 RenderTextureDescriptor descriptor = renderingData.cameraData.cameraTargetDescriptor;

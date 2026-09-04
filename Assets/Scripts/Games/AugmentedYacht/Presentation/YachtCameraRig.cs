@@ -146,6 +146,10 @@ namespace Tessera.Games.AugmentedYacht
             };
             lowResolutionTarget.Create();
             worldCamera.targetTexture = lowResolutionTarget;
+
+            // 씬이 이미 구성돼 있으면 BuildPresentation을 타지 않아 여기가 유일한 생성 지점이다.
+            // 재질이 없으면 ApplyRenderSettings가 조용히 건너뛰어 해상도 전환이 화면에 반영되지 않는다.
+            EnsureUpscaleMaterial();
             if (gameImage != null)
             {
                 gameImage.gameObject.SetActive(true);

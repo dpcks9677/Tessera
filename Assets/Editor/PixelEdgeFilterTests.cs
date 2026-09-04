@@ -31,7 +31,10 @@ namespace Tessera.Editor.Tests
                 Assert.That(material.HasProperty("_DepthEdgeStrength"), Is.True);
                 Assert.That(material.HasProperty("_NormalEdgeStrength"), Is.True);
                 Assert.That(material.HasProperty("_DepthEdgeThreshold"), Is.True);
-                Assert.That(material.HasProperty("_PixelEdgeVirtualResolution"), Is.True);
+
+                // 가상 해상도는 전역 유니폼이다. Properties에 있으면 재질 기본값이 전역 값을
+                // 덮어써서 해상도 전환이 반영되지 않으므로, 없는 것이 정상이다.
+                Assert.That(material.HasProperty("_PixelEdgeVirtualResolution"), Is.False);
             }
             finally
             {

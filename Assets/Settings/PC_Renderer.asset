@@ -70,9 +70,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Tessera.Rendering.PixelEdgeRendererFeature
   m_Active: 1
   edgeShader: {fileID: 4800000, guid: e7ec6a26638f22745a2c37f165319754, type: 3}
-  depthEdgeStrength: 0.4
-  normalEdgeStrength: 0.3
-  depthEdgeThreshold: {x: 0.05, y: 0.12}
+  depthEdgeStrength: 0.85
+  normalEdgeStrength: 0.55
+  depthEdgeThreshold: {x: 0.18, y: 0.4}
   passEvent: 400
 --- !u!114 &7833122117494664109
 MonoBehaviour:
