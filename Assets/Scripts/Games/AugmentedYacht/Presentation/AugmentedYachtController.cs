@@ -247,7 +247,6 @@ namespace Tessera.Games.AugmentedYacht
 
             ApplyRenderSettings();
             ConfigureLighting();
-            SyncTrayVisualMat();
             EnsureSingleAudioListener();
             InitializeAudio();
             InitializePresetCatalog();
@@ -317,8 +316,6 @@ namespace Tessera.Games.AugmentedYacht
 #if UNITY_EDITOR
             if (!Application.isPlaying)
             {
-                SyncTableBackground();
-                SyncTrayVisualMat();
                 ApplyRenderSettings();
             }
 #endif
@@ -329,13 +326,15 @@ namespace Tessera.Games.AugmentedYacht
         {
             if (!Application.isPlaying)
             {
-                SyncTableBackground();
-                SyncTrayVisualMat();
                 ApplyRenderSettings();
             }
         }
 #endif
 
+        // 자동 호출하지 않는다. 트레이 메시의 UV와 펠트 텍스처는 M9에서 에셋으로 구웠고,
+        // 이 메서드는 런타임 생성 텍스처를 머티리얼에 덮어써 구워둔 참조를 지운다.
+        // 형상을 다시 만들어야 할 때만 수동으로 실행한 뒤 프리팹을 다시 굽는다.
+        [ContextMenu("Regenerate Tray Visual Material (bake 전용)")]
         public void SyncTrayVisualMat()
         {
             GameObject trayObj = GameObject.Find("Yacht Tray Visual");
@@ -401,7 +400,6 @@ namespace Tessera.Games.AugmentedYacht
 
         private void Start()
         {
-            SyncTrayVisualMat();
             StartCoroutine(LoadSoundsAsync());
         }
 
@@ -1927,6 +1925,9 @@ namespace Tessera.Games.AugmentedYacht
             }
         }
 
+        // 자동 호출하지 않는다. 테이블이나 러너가 없으면 BuildTableLayout으로 전체를 재생성하는데,
+        // 프리팹 인스턴스로 전환된 뒤에는 그 경로가 씬 배치를 통째로 파괴한다.
+        [ContextMenu("Rebuild Table Background (bake 전용)")]
         public void SyncTableBackground()
         {
             EnsureLayoutRoot();

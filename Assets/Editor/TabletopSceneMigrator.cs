@@ -34,34 +34,22 @@ namespace Tessera.EditorTools
         [MenuItem("Tessera/Tabletop/Migrate Scene To Prefab Instances")]
         public static void Migrate()
         {
+            // 모달 다이얼로그를 쓰지 않는다. 이 메뉴는 REST(unity-skills)로도 실행되며,
+            // 모달이 뜨면 메인 스레드가 막혀 호출이 응답 없이 대기한다. 안전장치는 씬 사본이다.
             Scene scene = SceneManager.GetActiveScene();
             Transform layoutRoot = FindLayoutRoot();
             if (layoutRoot == null)
             {
-                EditorUtility.DisplayDialog(
-                    "씬 프리팹 전환",
-                    "씬에서 '" + LayoutRootName + "' 오브젝트를 찾지 못했습니다.",
-                    "확인");
+                Debug.LogError($"[TabletopSceneMigrator] 씬에서 '{LayoutRootName}' 오브젝트를 찾지 못했습니다.");
                 return;
             }
 
             string[] prefabPaths = AssetDatabase.FindAssets("t:Prefab", new[] { PrefabFolder });
             if (prefabPaths.Length == 0)
             {
-                EditorUtility.DisplayDialog(
-                    "씬 프리팹 전환",
-                    PrefabFolder + " 에 프리팹이 없습니다. 먼저 'Bake Tabletop Prefabs'를 실행하십시오.",
-                    "확인");
+                Debug.LogError($"[TabletopSceneMigrator] {PrefabFolder} 에 프리팹이 없습니다. 먼저 'Bake Tabletop Prefabs'를 실행하십시오.");
                 return;
             }
-
-            bool proceed = EditorUtility.DisplayDialog(
-                "씬 프리팹 전환",
-                $"'{scene.name}' 씬의 테이블 프롭을 프리팹 인스턴스로 교체합니다.\n" +
-                "실행 전에 씬 사본이 저장됩니다. 계속하시겠습니까?",
-                "실행",
-                "취소");
-            if (!proceed) return;
 
             if (!TrySaveBackup(scene)) return;
 
@@ -136,14 +124,14 @@ namespace Tessera.EditorTools
         {
             if (string.IsNullOrEmpty(scene.path))
             {
-                EditorUtility.DisplayDialog("씬 프리팹 전환", "저장되지 않은 씬입니다. 먼저 씬을 저장하십시오.", "확인");
+                Debug.LogError("[TabletopSceneMigrator] 저장되지 않은 씬입니다. 먼저 씬을 저장하십시오.");
                 return false;
             }
 
             string backupPath = scene.path.Replace(".unity", "_pre-prefab.unity");
             if (!EditorSceneManager.SaveScene(scene, backupPath, true))
             {
-                EditorUtility.DisplayDialog("씬 프리팹 전환", "씬 사본 저장에 실패했습니다. 중단합니다.", "확인");
+                Debug.LogError("[TabletopSceneMigrator] 씬 사본 저장에 실패했습니다. 중단합니다.");
                 return false;
             }
 

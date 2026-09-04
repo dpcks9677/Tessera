@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
@@ -51,10 +51,9 @@ namespace Tessera.EditorTools
             Transform layoutRoot = FindLayoutRoot();
             if (layoutRoot == null)
             {
-                EditorUtility.DisplayDialog(
-                    "테이블 프롭 굽기",
-                    "씬에서 '" + LayoutRootName + "' 오브젝트를 찾지 못했습니다. 메인 씬을 열고 다시 실행하십시오.",
-                    "확인");
+                // 모달 다이얼로그는 쓰지 않는다. 이 메뉴는 REST로도 실행되며 모달이 메인 스레드를 막는다.
+                Debug.LogError(
+                    $"[TabletopPrefabBaker] 씬에서 '{LayoutRootName}' 오브젝트를 찾지 못했습니다. 메인 씬을 열고 다시 실행하십시오.");
                 return;
             }
 
