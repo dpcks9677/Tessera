@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -112,6 +112,74 @@ namespace Tessera.EditorTools
             string path = scene.path;
             EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
             Debug.Log($"[TabletopSceneMigrator] 씬을 디스크에서 다시 읽었습니다: {path}");
+        }
+
+        /// <summary>
+        /// 픽셀 필터를 거치지 않는 UI 경로를 씬에 굽는다(M9.5).
+        ///
+        /// 월드 카메라의 컬링 마스크에서 CrispUI 레이어를 빼고, 전용 카메라와 합성용 RawImage를
+        /// 씬 오브젝트로 만든다. 렌더 타깃은 화면 해상도에 묶여 있어 런타임에 만들어진다.
+        /// </summary>
+        [MenuItem("Tessera/Tabletop/Setup Crisp UI Pipeline")]
+        public static void SetupCrispUiPipeline()
+        {
+            var controller = Object.FindFirstObjectByType<Tessera.Games.AugmentedYacht.AugmentedYachtController>();
+            if (controller == null)
+            {
+                Debug.LogError("[TabletopSceneMigrator] 씬에서 AugmentedYachtController를 찾지 못했습니다.");
+                return;
+            }
+
+            if (!controller.SetupCrispUiSceneObjects())
+            {
+                Debug.LogError("[TabletopSceneMigrator] 월드 카메라를 찾지 못해 Crisp UI 경로를 구성하지 못했습니다.");
+                return;
+            }
+
+            Scene scene = SceneManager.GetActiveScene();
+            EditorUtility.SetDirty(controller);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            HidePresentationCanvasInSceneView();
+            Debug.Log("[TabletopSceneMigrator] Crisp UI 카메라와 오버레이를 씬에 구성했습니다. 화면 UI 캔버스는 Scene View에서 숨겼습니다.");
+        }
+
+        private const string PresentationCanvasName = "Pixel Presentation";
+
+        /// <summary>
+        /// 화면 UI 캔버스를 Scene View에서 숨기거나 다시 보이게 한다.
+        ///
+        /// Screen Space Overlay 캔버스는 Scene View에서 화면 픽셀 크기(1920x1080)만 한
+        /// 월드 평면으로 그려진다. 테이블이 40단위 남짓이라 작업 화면을 통째로 가린다.
+        /// Scene Visibility는 에디터 표시에만 영향을 주고 플레이 모드와 빌드는 건드리지 않는다.
+        /// 하이어라키의 눈 아이콘과 같은 기능이며, 이 메뉴는 그 토글을 한 번에 적용한다.
+        /// </summary>
+        [MenuItem("Tessera/Tabletop/Toggle Presentation Canvas In Scene View")]
+        public static void TogglePresentationCanvasVisibility()
+        {
+            GameObject canvas = GameObject.Find(PresentationCanvasName);
+            if (canvas == null)
+            {
+                Debug.LogError($"[TabletopSceneMigrator] 씬에서 '{PresentationCanvasName}'을 찾지 못했습니다.");
+                return;
+            }
+
+            if (SceneVisibilityManager.instance.IsHidden(canvas))
+            {
+                SceneVisibilityManager.instance.Show(canvas, true);
+                Debug.Log($"[TabletopSceneMigrator] '{PresentationCanvasName}'을 Scene View에 다시 표시합니다.");
+            }
+            else
+            {
+                SceneVisibilityManager.instance.Hide(canvas, true);
+                Debug.Log($"[TabletopSceneMigrator] '{PresentationCanvasName}'을 Scene View에서 숨겼습니다. 플레이 모드와 빌드에는 영향이 없습니다.");
+            }
+        }
+
+        private static void HidePresentationCanvasInSceneView()
+        {
+            GameObject canvas = GameObject.Find(PresentationCanvasName);
+            if (canvas != null) SceneVisibilityManager.instance.Hide(canvas, true);
         }
 
         private static PropPose Capture(Transform source)

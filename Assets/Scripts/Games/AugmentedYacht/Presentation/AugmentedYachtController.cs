@@ -50,6 +50,14 @@ namespace Tessera.Games.AugmentedYacht
         private Camera presentationCamera;
         private RenderTexture lowResolutionTarget;
         private RawImage gameImage;
+
+        // 픽셀 필터를 거치지 않는 UI 경로(M9.5). 월드 카메라와 같은 투영으로 CrispUI 레이어만 그린다.
+        private const string CrispUiCameraName = "Crisp UI Camera";
+        private const string CrispUiOverlayName = "Crisp UI Overlay";
+        private Camera crispUiCamera;
+        private RenderTexture crispUiTarget;
+        private RawImage crispUiImage;
+        private Vector2Int crispUiScreenSize;
         private Material upscaleMaterial;
         private Text statusText;
         private RectTransform gameAreaRect;
@@ -637,8 +645,6 @@ namespace Tessera.Games.AugmentedYacht
         {
             if (augmentCardTray == null || worldCamera == null) return;
             Vector2 slotSize = augmentCardTray.CardSlotLocalSize;
-            Canvas presentationCanvas = GameObject.Find("Pixel Presentation")?.GetComponent<Canvas>()
-                ?? FindFirstObjectByType<Canvas>();
             int count = Mathf.Min(augmentOwnedCards.Length, augmentCardTray.SlotCount);
             for (int i = 0; i < count; i++)
             {
@@ -648,7 +654,7 @@ namespace Tessera.Games.AugmentedYacht
                 Transform existing = anchor.Find($"Owned Augment Card {i + 1}");
                 augmentOwnedCards[i] = existing != null
                     ? existing.GetComponent<AugmentTrayCardView>()
-                    : AugmentTrayCardView.Create(anchor, worldCamera, presentationCanvas, slotSize, i);
+                    : AugmentTrayCardView.Create(anchor, slotSize, i);
             }
         }
 
@@ -1588,6 +1594,23 @@ namespace Tessera.Games.AugmentedYacht
             UpdateDicePointer();
             UpdateTimerTextPosition();
             FitFullScreen();
+            SyncCrispUiTargetToScreen();
+        }
+
+        /// <summary>
+        /// 화면 크기가 바뀌면 Crisp UI 렌더 타깃을 다시 만든다.
+        /// 타깃 해상도가 화면과 어긋나면 월드 스페이스 캔버스의 클릭 위치가 밀린다.
+        /// </summary>
+        private void SyncCrispUiTargetToScreen()
+        {
+            if (crispUiCamera == null) return;
+
+            Vector2Int size = new(Screen.width, Screen.height);
+            if (size == crispUiScreenSize) return;
+
+            crispUiScreenSize = size;
+            EnsureCrispUiTarget();
+            EnsureCrispUiOverlay();
         }
 
         private void UpdateDicePointer()
@@ -1754,7 +1777,6 @@ namespace Tessera.Games.AugmentedYacht
             AugmentParchmentVisuals.PixelFilterResolution = resolution;
             RefreshDraftCardParchment();
             ApplyRenderSettings();
-            if (parchmentScoreSheet != null) parchmentScoreSheet.SyncOverlayTransform();
         }
 
         private bool ResolveEditableLayout()
@@ -2497,7 +2519,7 @@ keyLightToggleButton = CreateButton(canvasObject.transform, "KeyLightToggle", $"
             {
                 parchmentScoreSheet.EnsureStructure();
                 parchmentScoreSheet.RefreshAllScores();
-                parchmentScoreSheet.SyncOverlayTransform();
+                parchmentScoreSheet.BindEventCamera(crispUiCamera);
             }
         }
 
@@ -2610,6 +2632,182 @@ keyLightToggleButton = CreateButton(canvasObject.transform, "KeyLightToggle", $"
                 gameImage.texture = lowResolutionTarget;
             }
             FitFullScreen();
+            EnsureCrispUiPipeline();
+        }
+
+        /// <summary>
+        /// 픽셀 필터를 거치지 않는 UI 경로를 구성한다(M9.5).
+        ///
+        /// 월드 카메라는 <see cref="TesseraLayers.CrispUI"/> 레이어를 찍지 않고, 같은 투영을 쓰는
+        /// 전용 카메라가 그 레이어만 화면 해상도 렌더 타깃에 그린다. 결과를 픽셀 이미지 위에 겹치면
+        /// 배경은 픽셀아트로, 글자는 원본 해상도로 남는다.
+        ///
+        /// 두 카메라의 투영이 같으므로 월드 스페이스 UI는 별도 정렬 계산 없이 정확히 겹친다.
+        /// </summary>
+        private void EnsureCrispUiPipeline()
+        {
+            if (!SetupCrispUiSceneObjects()) return;
+
+            EnsureCrispUiTarget();
+            EnsureCrispUiOverlay();
+
+            // 프롭 UI가 이 카메라보다 먼저 만들어지므로 여기서 이벤트 카메라를 붙인다.
+            if (parchmentScoreSheet == null) parchmentScoreSheet = FindFirstObjectByType<ParchmentScoreSheet>();
+            if (parchmentScoreSheet != null) parchmentScoreSheet.BindEventCamera(crispUiCamera);
+        }
+
+        /// <summary>
+        /// 씬이 소유해야 하는 부분만 구성한다. 컬링 마스크와 카메라·오버레이 오브젝트가 여기 해당한다.
+        ///
+        /// 렌더 타깃은 화면 해상도에 묶여 있어 에셋으로 저장할 수 없으므로 제외한다.
+        /// 에디터 메뉴로 한 번 실행해 씬에 굽고, 이후에는 씬에 저장된 상태를 그대로 쓴다.
+        /// </summary>
+        [ContextMenu("Setup Crisp UI Pipeline")]
+        public bool SetupCrispUiSceneObjects()
+        {
+            if (worldCamera == null)
+            {
+                GameObject found = GameObject.Find("Full Field World Camera") ?? GameObject.Find("Low Resolution World Camera");
+                worldCamera = found != null ? found.GetComponent<Camera>() : null;
+            }
+            if (worldCamera == null) return false;
+
+            worldCamera.cullingMask &= ~TesseraLayers.Mask(TesseraLayers.CrispUI);
+
+            EnsureCrispUiCamera();
+
+            if (gameImageRect == null)
+            {
+                GameObject upscale = GameObject.Find("Point Upscale");
+                gameImageRect = upscale != null ? upscale.GetComponent<RectTransform>() : null;
+            }
+            EnsureCrispUiOverlay();
+            return true;
+        }
+
+        private void EnsureCrispUiCamera()
+        {
+            if (crispUiCamera == null)
+            {
+                Transform existing = worldCamera.transform.Find(CrispUiCameraName);
+                crispUiCamera = existing != null ? existing.GetComponent<Camera>() : null;
+            }
+
+            if (crispUiCamera == null)
+            {
+                GameObject cameraObject = new(CrispUiCameraName, typeof(Camera));
+                cameraObject.transform.SetParent(worldCamera.transform, false);
+                crispUiCamera = cameraObject.GetComponent<Camera>();
+            }
+
+            // 투영을 월드 카메라와 일치시킨 뒤 이 카메라만의 설정을 덮어쓴다.
+            crispUiCamera.CopyFrom(worldCamera);
+            crispUiCamera.transform.localPosition = Vector3.zero;
+            crispUiCamera.transform.localRotation = Quaternion.identity;
+            crispUiCamera.transform.localScale = Vector3.one;
+            crispUiCamera.cullingMask = TesseraLayers.Mask(TesseraLayers.CrispUI);
+            crispUiCamera.clearFlags = CameraClearFlags.SolidColor;
+            crispUiCamera.backgroundColor = new Color(0f, 0f, 0f, 0f);
+            crispUiCamera.depth = worldCamera.depth + 1f;
+
+            // CopyFrom은 월드 카메라의 렌더 타깃까지 복사한다. 그대로 두면 두 카메라가 같은
+            // 타깃을 공유해, 나중에 그리는 이쪽이 투명색으로 지우며 월드 화면을 통째로 날린다.
+            // 이 카메라는 언제나 자기 전용 타깃만 쓴다.
+            crispUiCamera.targetTexture = crispUiTarget;
+
+            // 전용 타깃이 없으면 끈다. 타깃 없이 켜 두면 화면에 직접 그리며 색을 지우고,
+            // URP Base 카메라는 Depth only 클리어를 지원하지 않아 켜 둔 채로는 피할 수 없다.
+            crispUiCamera.enabled = crispUiTarget != null;
+            crispUiCamera.allowHDR = false;
+            crispUiCamera.allowMSAA = false;
+
+            AudioListener listener = crispUiCamera.GetComponent<AudioListener>();
+            if (listener != null)
+            {
+                if (Application.isPlaying) Destroy(listener);
+                else DestroyImmediate(listener);
+            }
+        }
+
+        /// <summary>
+        /// Crisp UI 렌더 타깃을 화면 해상도로 맞춘다.
+        ///
+        /// 월드 스페이스 캔버스의 클릭 판정은 카메라의 <c>pixelRect</c>를 기준으로 하는데,
+        /// 렌더 타깃이 지정되면 그 크기가 곧 <c>pixelRect</c>가 된다. 따라서 화면과 1:1이 아니면
+        /// 클릭 위치가 어긋난다. 화면 크기가 바뀔 때마다 다시 만들어야 한다.
+        /// </summary>
+        private void EnsureCrispUiTarget()
+        {
+            int width = Mathf.Max(1, Screen.width);
+            int height = Mathf.Max(1, Screen.height);
+            if (crispUiTarget != null && crispUiTarget.width == width && crispUiTarget.height == height)
+            {
+                crispUiCamera.targetTexture = crispUiTarget;
+                crispUiCamera.enabled = true;
+                return;
+            }
+
+            if (crispUiCamera != null) crispUiCamera.targetTexture = null;
+            if (crispUiTarget != null)
+            {
+                crispUiTarget.Release();
+                if (Application.isPlaying) Destroy(crispUiTarget);
+                else DestroyImmediate(crispUiTarget);
+            }
+
+            crispUiTarget = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32)
+            {
+                name = $"Crisp UI {width}x{height}",
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp,
+                antiAliasing = 1,
+                useMipMap = false,
+                autoGenerateMips = false
+            };
+            crispUiTarget.Create();
+            crispUiCamera.targetTexture = crispUiTarget;
+            crispUiCamera.enabled = true;
+            crispUiScreenSize = new Vector2Int(width, height);
+            if (crispUiImage != null) crispUiImage.texture = crispUiTarget;
+        }
+
+        private void EnsureCrispUiOverlay()
+        {
+            if (gameImageRect == null) return;
+
+            if (crispUiImage == null)
+            {
+                Transform parent = gameImageRect.parent;
+                Transform existing = parent != null ? parent.Find(CrispUiOverlayName) : null;
+                if (existing != null)
+                {
+                    crispUiImage = existing.GetComponent<RawImage>();
+                }
+                else
+                {
+                    GameObject overlay = new(CrispUiOverlayName, typeof(RectTransform), typeof(RawImage));
+                    overlay.transform.SetParent(parent, false);
+                    crispUiImage = overlay.GetComponent<RawImage>();
+                }
+            }
+
+            // 픽셀 이미지 바로 다음 형제여야 그 위에 그려진다.
+            crispUiImage.transform.SetSiblingIndex(gameImageRect.GetSiblingIndex() + 1);
+
+            RectTransform rect = crispUiImage.rectTransform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = Vector2.zero;
+
+            // 전체 화면 이미지가 이벤트를 가로채면 아래 월드 스페이스 캔버스가 클릭을 못 받는다.
+            crispUiImage.raycastTarget = false;
+            crispUiImage.material = null;
+            crispUiImage.texture = crispUiTarget;
+            crispUiImage.gameObject.SetActive(true);
+            // 텍스처가 없는 RawImage는 흰색 불투명 사각형으로 그려져 화면 전체를 덮는다.
+            // 렌더 타깃은 런타임에만 만들어지므로 에디터에서는 꺼 둔다.
+            crispUiImage.enabled = crispUiTarget != null;
         }
 
         private void ApplyRenderSettings()
@@ -2648,6 +2846,13 @@ keyLightToggleButton = CreateButton(canvasObject.transform, "KeyLightToggle", $"
                 lowResolutionTarget.Release();
                 if (Application.isPlaying) Destroy(lowResolutionTarget);
                 else DestroyImmediate(lowResolutionTarget);
+            }
+            if (crispUiCamera != null) crispUiCamera.targetTexture = null;
+            if (crispUiTarget != null)
+            {
+                crispUiTarget.Release();
+                if (Application.isPlaying) Destroy(crispUiTarget);
+                else DestroyImmediate(crispUiTarget);
             }
             if (upscaleMaterial != null)
             {

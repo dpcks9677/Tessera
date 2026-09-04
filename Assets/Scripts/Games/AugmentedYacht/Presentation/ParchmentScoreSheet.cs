@@ -1,8 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
+using Tessera.Core;
 using Tessera.Games.Yacht;
 
 namespace Tessera.Games.AugmentedYacht
@@ -11,6 +12,14 @@ namespace Tessera.Games.AugmentedYacht
     public sealed class ParchmentScoreSheet : MonoBehaviour
     {
         private const int DecorationLayer = 11;
+
+        private const string OverlayName = "HighRes Score Sheet Overlay";
+
+        /// <summary>월드 1단위당 캔버스 좌표 단위. 폰트 크기를 픽셀 감각 그대로 쓰기 위한 배율이다.</summary>
+        private const float CanvasUnitsPerWorldUnit = 100f;
+
+        /// <summary>종이 표면과 캔버스 사이 z-fighting을 피하기 위한 최소 간격.</summary>
+        private const float OverlayLift = 0.004f;
 
         [Header("Parchment Dimensions")]
         [SerializeField] private float sheetWidth = 5.20f;
@@ -28,8 +37,6 @@ namespace Tessera.Games.AugmentedYacht
         private Vector3 topLayerBaseLocalPos;
         private Quaternion topLayerBaseLocalRot;
         private RectTransform highResOverlayRect;
-        private Canvas cachedCanvas;
-        private Camera targetWorldCamera;
 
         private readonly Text[] p1ScoreLabels = new Text[14];
         private readonly Text[] p2ScoreLabels = new Text[14];
@@ -87,8 +94,10 @@ namespace Tessera.Games.AugmentedYacht
 
         private void OnEnable()
         {
-            if (!Application.isPlaying) return;
+            // 에디터에서도 만든다. 오버레이는 DontSave라 씬을 더럽히지 않으므로,
+            // 종이를 배치하는 동안 표가 보이는 편이 낫다.
             EnsureStructure();
+            if (!Application.isPlaying) RefreshAllScores();
         }
 
         private void Start()
@@ -120,66 +129,74 @@ namespace Tessera.Games.AugmentedYacht
             topLayerBaseLocalPos = new Vector3(0f, sheetThickness * 3.5f + 0.08f, 0f);
             topLayerBaseLocalRot = Quaternion.identity;
 
-            cachedCanvas = GameObject.Find("Pixel Presentation")?.GetComponent<Canvas>() ?? FindFirstObjectByType<Canvas>();
-            if (cachedCanvas == null) return false;
-
-            targetWorldCamera = GameObject.Find("Full Field World Camera")?.GetComponent<Camera>()
-                ?? GameObject.Find("Low Resolution World Camera")?.GetComponent<Camera>()
-                ?? Camera.main;
+            // 오버레이는 이제 이 컴포넌트의 자식이다. 씬 전역 캔버스에 의존하지 않는다.
+            highResOverlayRect = topLayerObject.transform.Find(OverlayName) as RectTransform;
 
             return true;
         }
 
-        private void LateUpdate()
+        /// <summary>
+        /// 이전 구조가 남긴 오버레이를 걷어낸다.
+        ///
+        /// 예전에는 이 오버레이가 씬 전역의 "Pixel Presentation" 캔버스 아래에 있었고,
+        /// 이제는 이 컴포넌트의 자식이다. 두 위치를 모두 훑어야 중복 렌더링이 남지 않는다.
+        /// </summary>
+        private void DestroyStrayOverlays()
         {
-            if (!Application.isPlaying) return;
-            SyncOverlayTransform();
+            GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+            foreach (GameObject go in allObjects)
+            {
+                if (go == null || go.name != OverlayName) continue;
+#if UNITY_EDITOR
+                if (UnityEditor.EditorUtility.IsPersistent(go)) continue;
+#endif
+                go.SetActive(false);
+                if (Application.isPlaying) Destroy(go);
+                else DestroyImmediate(go);
+            }
         }
 
-        public void SyncOverlayTransform()
+        /// <summary>
+        /// 월드 스페이스 캔버스의 이벤트 기준 카메라. 픽셀 필터를 거치지 않는 전용 카메라다.
+        /// 아직 없으면 null을 돌려주고, 컨트롤러가 만든 뒤 <see cref="BindEventCamera"/>로 붙인다.
+        /// </summary>
+        private static Camera ResolveCrispUiCamera()
         {
-            if (highResOverlayRect == null || cachedCanvas == null)
+            return GameObject.Find("Crisp UI Camera")?.GetComponent<Camera>();
+        }
+
+        /// <summary>컨트롤러가 Crisp UI 카메라를 만든 뒤 호출해 캔버스에 연결한다.</summary>
+        public void BindEventCamera(Camera eventCamera)
+        {
+            if (highResOverlayRect == null) return;
+
+            Canvas worldCanvas = highResOverlayRect.GetComponent<Canvas>();
+            if (worldCanvas != null) worldCanvas.worldCamera = eventCamera;
+        }
+
+        private static void SetLayerRecursively(GameObject target, int layer)
+        {
+            target.layer = layer;
+            for (int i = 0; i < target.transform.childCount; i++)
             {
-                if (!ResolveExistingElements()) return;
+                SetLayerRecursively(target.transform.GetChild(i).gameObject, layer);
             }
-            if (topLayerObject == null) topLayerObject = transform.Find("Layer 5 - Top Game Score Sheet")?.gameObject;
-            if (topLayerObject == null || highResOverlayRect == null) return;
+        }
 
-            Transform visualT = topLayerObject.transform.Find("Visual Mesh");
-            if (visualT == null) return;
-
-            if (targetWorldCamera == null)
+        /// <summary>
+        /// 오버레이를 씬 직렬화 대상에서 뺀다.
+        ///
+        /// 이 UI는 <see cref="EnsureStructure"/>가 로드 때마다 다시 만든다. 에디터에서도 만들어
+        /// 종이를 배치하는 동안 표가 보이게 하되, 씬 파일과 프리팹에는 남기지 않는다.
+        /// hideFlags는 자식에게 상속되지 않으므로 재귀로 적용해야 한다.
+        /// </summary>
+        private static void MarkDontSaveRecursively(GameObject target)
+        {
+            target.hideFlags = HideFlags.DontSave;
+            for (int i = 0; i < target.transform.childCount; i++)
             {
-                targetWorldCamera = GameObject.Find("Full Field World Camera")?.GetComponent<Camera>()
-                    ?? GameObject.Find("Low Resolution World Camera")?.GetComponent<Camera>()
-                    ?? Camera.main;
+                MarkDontSaveRecursively(target.transform.GetChild(i).gameObject);
             }
-            if (targetWorldCamera == null) return;
-
-            // Visual Mesh 상단 표면(+Y: 0.5f)의 4개 로컬 코너 점을 실제 3D 월드 좌표로 정확히 변환
-            Vector3 p0 = visualT.TransformPoint(new Vector3(-0.5f, 0.5f, -0.5f));
-            Vector3 p1 = visualT.TransformPoint(new Vector3( 0.5f, 0.5f, -0.5f));
-            Vector3 p2 = visualT.TransformPoint(new Vector3( 0.5f, 0.5f,  0.5f));
-            Vector3 p3 = visualT.TransformPoint(new Vector3(-0.5f, 0.5f,  0.5f));
-
-            Vector3 s0 = targetWorldCamera.WorldToScreenPoint(p0);
-            Vector3 s1 = targetWorldCamera.WorldToScreenPoint(p1);
-            Vector3 s2 = targetWorldCamera.WorldToScreenPoint(p2);
-            Vector3 s3 = targetWorldCamera.WorldToScreenPoint(p3);
-
-            float minX = Mathf.Min(s0.x, s1.x, s2.x, s3.x);
-            float maxX = Mathf.Max(s0.x, s1.x, s2.x, s3.x);
-            float minY = Mathf.Min(s0.y, s1.y, s2.y, s3.y);
-            float maxY = Mathf.Max(s0.y, s1.y, s2.y, s3.y);
-
-            float width = maxX - minX;
-            float height = maxY - minY;
-            Vector3 screenCenter = new Vector3((minX + maxX) * 0.5f, (minY + maxY) * 0.5f, 0f);
-
-            highResOverlayRect.anchorMin = highResOverlayRect.anchorMax = new Vector2(0.5f, 0.5f);
-            highResOverlayRect.pivot = new Vector2(0.5f, 0.5f);
-            highResOverlayRect.position = screenCenter;
-            highResOverlayRect.sizeDelta = new Vector2(width, height);
         }
 
         public void Build3DLayeredParchments(bool force = true)
@@ -310,9 +327,6 @@ namespace Tessera.Games.AugmentedYacht
 
         public void BuildHighResScoreSheetUI()
         {
-            cachedCanvas = GameObject.Find("Pixel Presentation")?.GetComponent<Canvas>() ?? FindFirstObjectByType<Canvas>();
-            if (cachedCanvas == null) return;
-
             Array.Clear(p1ScoreLabels, 0, p1ScoreLabels.Length);
             Array.Clear(p2ScoreLabels, 0, p2ScoreLabels.Length);
             Array.Clear(p1ScoreSlots, 0, p1ScoreSlots.Length);
@@ -320,35 +334,35 @@ namespace Tessera.Games.AugmentedYacht
             Array.Clear(p1ScoreButtons, 0, p1ScoreButtons.Length);
             Array.Clear(p2ScoreButtons, 0, p2ScoreButtons.Length);
 
-            // 씬 전체의 모든 구버전 HighRes Score Sheet Overlay 전수 검색 및 즉시 비활성화 후 파괴 (중복 렌더링 원천 방지)
-            GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
-            foreach (GameObject go in allObjects)
-            {
-                if (go == null) continue;
-#if UNITY_EDITOR
-                if (UnityEditor.EditorUtility.IsPersistent(go)) continue;
-#endif
-                if (go.name == "HighRes Score Sheet Overlay")
-                {
-                    go.SetActive(false);
-                    if (Application.isPlaying) Destroy(go);
-                    else DestroyImmediate(go);
-                }
-            }
+            DestroyStrayOverlays();
 
-            // Screen Space Overlay Canvas 하위에 고해상도 오버레이 루트 생성 (픽셀 필터 완전 바이패스)
-            GameObject overlayObj = new("HighRes Score Sheet Overlay", typeof(RectTransform));
-            overlayObj.transform.SetParent(cachedCanvas.transform, false);
+            // 종이 최상단 레이어의 자식으로 월드 스페이스 캔버스를 만든다(M9.5).
+            // 계층 관계가 곧 위치이므로, 종이를 옮기거나 돌리면 표가 그대로 따라온다.
+            // 픽셀 필터는 CrispUI 레이어를 월드 카메라에서 제외하는 방식으로 우회한다.
+            if (topLayerObject == null) topLayerObject = transform.Find("Layer 5 - Top Game Score Sheet")?.gameObject;
+            if (topLayerObject == null) return;
+
+            GameObject overlayObj = new(OverlayName, typeof(RectTransform), typeof(Canvas), typeof(GraphicRaycaster));
+            // 이 UI는 로드할 때마다 다시 만들어진다. 씬에 저장하면 저장할 때마다 대량 diff가 난다.
+            overlayObj.hideFlags = HideFlags.DontSave;
+            overlayObj.transform.SetParent(topLayerObject.transform, false);
 
             highResOverlayRect = overlayObj.GetComponent<RectTransform>();
             highResOverlayRect.anchorMin = highResOverlayRect.anchorMax = new Vector2(0.5f, 0.5f);
             highResOverlayRect.pivot = new Vector2(0.5f, 0.5f);
 
-            targetWorldCamera = GameObject.Find("Full Field World Camera")?.GetComponent<Camera>()
-                ?? GameObject.Find("Low Resolution World Camera")?.GetComponent<Camera>()
-                ?? Camera.main;
+            // 캔버스 좌표를 픽셀 단위로 쓰고 0.01 배로 줄여 월드 단위에 맞춘다.
+            // 폰트 크기와 정규화 앵커 레이아웃을 그대로 유지하기 위한 관례다.
+            highResOverlayRect.sizeDelta = new Vector2(sheetWidth, sheetHeight) * CanvasUnitsPerWorldUnit;
+            highResOverlayRect.localScale = Vector3.one / CanvasUnitsPerWorldUnit;
+            highResOverlayRect.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            highResOverlayRect.localPosition = new Vector3(0f, sheetThickness * 0.5f + OverlayLift, 0f);
 
-            SyncOverlayTransform();
+            Canvas worldCanvas = overlayObj.GetComponent<Canvas>();
+            worldCanvas.renderMode = RenderMode.WorldSpace;
+            worldCanvas.worldCamera = ResolveCrispUiCamera();
+
+            SetLayerRecursively(overlayObj, TesseraLayers.CrispUI);
 
             // 폰트 로드 (Alagard)
             Font fontMain = scoreSheetFont;
@@ -468,6 +482,10 @@ namespace Tessera.Games.AugmentedYacht
             CreateLabel(overlayObj.transform, "Footer_Total", fontHeader, "TOTAL", new Vector2(u0, VBottom(14)), new Vector2(u1, VTop(14)), new Vector2(16f, 0f), new Vector2(-4f, 0f), 26, FontStyle.Normal, footerTextGold, TextAnchor.MiddleLeft);
             p1ScoreLabels[13] = CreateLabel(overlayObj.transform, "P1_Score_Label_13", fontHeader, "0", new Vector2(u1, VBottom(14)), new Vector2(u2, VTop(14)), Vector2.zero, Vector2.zero, 32, FontStyle.Normal, footerScoreGold, TextAnchor.MiddleCenter);
             p2ScoreLabels[13] = CreateLabel(overlayObj.transform, "P2_Score_Label_13", fontHeader, "0", new Vector2(u2, VBottom(14)), new Vector2(u3, VTop(14)), Vector2.zero, Vector2.zero, 32, FontStyle.Normal, footerScoreGold, TextAnchor.MiddleCenter);
+
+            // UI를 다 만든 뒤 레이어와 직렬화 제외를 자식까지 한 번에 적용한다.
+            SetLayerRecursively(overlayObj, TesseraLayers.CrispUI);
+            MarkDontSaveRecursively(overlayObj);
 
             RefreshAllScores();
         }

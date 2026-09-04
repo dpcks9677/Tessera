@@ -1,5 +1,6 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using NUnit.Framework;
+using Tessera.Core;
 using Tessera.Games.AugmentedYacht;
 using Tessera.Games.Yacht;
 using Tessera.Tabletop;
@@ -124,22 +125,18 @@ public sealed class AugmentCardViewTests
     public void TrayCard_고해상도오버레이와3D양피지를_슬롯에배치한다()
     {
         GameObject anchorObject = new("Tray Slot Anchor");
-        GameObject cameraObject = new("Tray Card Camera", typeof(Camera));
-        GameObject canvasObject = new("Pixel Presentation", typeof(Canvas));
         try
         {
-            Canvas overlayCanvas = canvasObject.GetComponent<Canvas>();
-            overlayCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
             Vector2 slotSize = new(4.58f, 2.58f);
-            AugmentTrayCardView view = AugmentTrayCardView.Create(
-                anchorObject.transform,
-                cameraObject.GetComponent<Camera>(),
-                overlayCanvas,
-                slotSize,
-                0);
+            AugmentTrayCardView view = AugmentTrayCardView.Create(anchorObject.transform, slotSize, 0);
 
-            Assert.That(view.GetComponentInChildren<Canvas>(true), Is.Null);
-            Assert.That(view.OverlayRect.parent, Is.EqualTo(overlayCanvas.transform));
+            // 카드 UI는 양피지 자식의 월드 스페이스 캔버스에 있다(M9.5).
+            // 트레이를 옮기거나 호버로 떠오르면 계층 관계로 따라온다.
+            Canvas worldCanvas = view.GetComponentInChildren<Canvas>(true);
+            Assert.That(worldCanvas, Is.Not.Null);
+            Assert.That(worldCanvas.renderMode, Is.EqualTo(RenderMode.WorldSpace));
+            Assert.That(view.OverlayRect.parent, Is.EqualTo(view.VisualRoot));
+            Assert.That(view.OverlayRect.gameObject.layer, Is.EqualTo(TesseraLayers.CrispUI));
             Assert.That(view.ScrollModel, Is.Not.Null);
             Assert.That(view.GetComponentsInChildren<MeshFilter>(true), Has.Length.GreaterThanOrEqualTo(6));
             Assert.That(view.ScrollModel.WaxRenderer, Is.Not.Null);
@@ -157,8 +154,6 @@ public sealed class AugmentCardViewTests
         finally
         {
             Object.DestroyImmediate(anchorObject);
-            Object.DestroyImmediate(cameraObject);
-            Object.DestroyImmediate(canvasObject);
         }
     }
 
@@ -166,16 +161,10 @@ public sealed class AugmentCardViewTests
     public void TrayCard_호버와클릭선택을_높이와상태로표현한다()
     {
         GameObject anchorObject = new("Interactive Tray Slot Anchor");
-        GameObject cameraObject = new("Interactive Tray Card Camera", typeof(Camera));
-        GameObject canvasObject = new("Interactive Card Overlay", typeof(Canvas));
         try
         {
             AugmentTrayCardView view = AugmentTrayCardView.Create(
-                anchorObject.transform,
-                cameraObject.GetComponent<Camera>(),
-                canvasObject.GetComponent<Canvas>(),
-                new Vector2(4.58f, 2.58f),
-                0);
+                anchorObject.transform, new Vector2(4.58f, 2.58f), 0);
             view.Bind(new YachtAugmentDefinition
             {
                 Id = YachtAugmentRuntime.LuckySevensId,
@@ -205,8 +194,6 @@ public sealed class AugmentCardViewTests
         finally
         {
             Object.DestroyImmediate(anchorObject);
-            Object.DestroyImmediate(cameraObject);
-            Object.DestroyImmediate(canvasObject);
         }
     }
 

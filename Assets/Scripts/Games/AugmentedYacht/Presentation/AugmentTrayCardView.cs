@@ -1,10 +1,16 @@
+﻿using Tessera.Core;
 using Tessera.Games.Yacht;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace Tessera.Games.AugmentedYacht
 {
-    /// <summary>3D 양피지 본체와 픽셀 필터를 우회하는 화면 오버레이를 함께 관리합니다.</summary>
+    /// <summary>
+    /// 3D 양피지 본체와, 그 위에 눕힌 월드 스페이스 카드 UI를 함께 관리한다.
+    ///
+    /// 카드 UI는 양피지의 자식이므로 트레이를 옮기거나 카드가 호버로 떠오를 때 자동으로 따라온다.
+    /// 픽셀 필터는 CrispUI 레이어를 월드 카메라에서 제외하는 방식으로 우회한다(M9.5).
+    /// </summary>
     public sealed class AugmentTrayCardView : MonoBehaviour
     {
         private const int DecorationLayer = 11;
@@ -14,12 +20,18 @@ namespace Tessera.Games.AugmentedYacht
         private const float HoverScale = 1.06f;
         private const float HoverSmoothTime = 0.12f;
 
+        /// <summary>월드 1단위당 캔버스 좌표 단위. 폰트 크기를 픽셀 감각 그대로 쓰기 위한 배율이다.</summary>
+        private const float CanvasUnitsPerWorldUnit = 100f;
+
+        /// <summary>양피지 표면과 캔버스 사이 z-fighting을 피하기 위한 최소 간격.</summary>
+        private const float OverlayLift = 0.004f;
+
         private Transform visualRoot;
         private AugmentScrollModel scrollModel;
         private RectTransform overlayRect;
+        private Canvas overlayCanvas;
         private AugmentCardView card;
         private BoxCollider pointerCollider;
-        private Camera worldCamera;
         private YachtAugmentDefinition definition;
         private Vector2 cardWorldSize;
         private Vector3 positionVelocity;
@@ -42,8 +54,6 @@ namespace Tessera.Games.AugmentedYacht
 
         public static AugmentTrayCardView Create(
             Transform slotAnchor,
-            Camera worldCamera,
-            Canvas overlayCanvas,
             Vector2 slotLocalSize,
             int slotIndex)
         {
@@ -54,7 +64,6 @@ namespace Tessera.Games.AugmentedYacht
             root.transform.localRotation = Quaternion.identity;
 
             AugmentTrayCardView view = root.AddComponent<AugmentTrayCardView>();
-            view.worldCamera = worldCamera;
             view.cardWorldSize = slotLocalSize;
             view.cardAspectRatio = slotLocalSize.y > 0f
                 ? slotLocalSize.x / slotLocalSize.y
@@ -69,24 +78,31 @@ namespace Tessera.Games.AugmentedYacht
             visualObject.transform.localPosition = new Vector3(0f, RestingHeight, 0f);
             view.visualRoot = visualObject.transform;
 
-            overlayCanvas ??= GameObject.Find("Pixel Presentation")?.GetComponent<Canvas>()
-                ?? Object.FindFirstObjectByType<Canvas>();
-            if (overlayCanvas != null)
-            {
-                GameObject overlayObject = new($"HighRes Owned Augment Card {slotIndex + 1}", typeof(RectTransform));
-                overlayObject.transform.SetParent(overlayCanvas.transform, false);
-                view.overlayRect = overlayObject.GetComponent<RectTransform>();
-                view.overlayRect.anchorMin = view.overlayRect.anchorMax = new Vector2(.5f, .5f);
-                view.overlayRect.pivot = new Vector2(.5f, .5f);
+            // 카드 UI는 양피지 자식으로 눕힌 월드 스페이스 캔버스에 그린다.
+            GameObject overlayObject = new(
+                $"HighRes Owned Augment Card {slotIndex + 1}",
+                typeof(RectTransform), typeof(Canvas));
+            overlayObject.transform.SetParent(visualObject.transform, false);
+            view.overlayRect = overlayObject.GetComponent<RectTransform>();
+            view.overlayRect.anchorMin = view.overlayRect.anchorMax = new Vector2(.5f, .5f);
+            view.overlayRect.pivot = new Vector2(.5f, .5f);
+            view.overlayRect.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            view.overlayRect.localScale = Vector3.one / CanvasUnitsPerWorldUnit;
 
-                // 선택 창과 같은 기준 크기·비율로 만든 뒤 균일 스케일만 적용해 정보 배치를 일치시킨다.
-                float cardPixelHeight = CardPixelWidth / view.CardAspectRatio;
-                view.card = AugmentCardView.Create(
-                    overlayObject.transform, "Card Content", Vector2.zero,
-                    new Vector2(CardPixelWidth, cardPixelHeight), new Vector2(.5f, .5f), null);
-                view.card.SetRaycastTargets(false);
-                view.card.SetParchmentPreset(AugmentParchmentPreset.GentleWave, true);
-            }
+            view.overlayCanvas = overlayObject.GetComponent<Canvas>();
+            view.overlayCanvas.renderMode = RenderMode.WorldSpace;
+            view.overlayCanvas.overrideSorting = true;
+
+            // 선택 창과 같은 기준 크기·비율로 만든 뒤 균일 스케일만 적용해 정보 배치를 일치시킨다.
+            float cardPixelHeight = CardPixelWidth / view.CardAspectRatio;
+            view.card = AugmentCardView.Create(
+                overlayObject.transform, "Card Content", Vector2.zero,
+                new Vector2(CardPixelWidth, cardPixelHeight), new Vector2(.5f, .5f), null);
+            view.card.SetRaycastTargets(false);
+            view.card.SetParchmentPreset(AugmentParchmentPreset.GentleWave, true);
+
+            SetLayerRecursively(overlayObject, TesseraLayers.CrispUI);
+            MarkDontSaveRecursively(overlayObject);
 
             view.ApplyPreset(AugmentParchmentPreset.GentleWave);
             view.SetVisible(false);
@@ -123,7 +139,8 @@ namespace Tessera.Games.AugmentedYacht
         public void SetHovered(bool hovered)
         {
             IsHovered = hovered;
-            if (hovered && overlayRect != null) overlayRect.SetAsLastSibling();
+            // 월드 스페이스에서는 형제 순서가 아니라 정렬 순서가 앞뒤를 정한다.
+            if (overlayCanvas != null) overlayCanvas.sortingOrder = hovered ? 1 : 0;
         }
 
         public void SetSelected(bool value)
@@ -136,7 +153,6 @@ namespace Tessera.Games.AugmentedYacht
         }
 
         private void Update() => TickHover(Time.unscaledDeltaTime);
-        private void LateUpdate() => SyncOverlayTransform();
 
         public void TickHover(float deltaTime)
         {
@@ -151,9 +167,16 @@ namespace Tessera.Games.AugmentedYacht
                 Mathf.Infinity, Mathf.Max(0f, deltaTime));
         }
 
+        /// <summary>
+        /// 카드 UI 사각형을 양피지 로컬 좌표에서 계산한다.
+        ///
+        /// 스크롤 모델의 앵커 4개는 글이 안전하게 들어갈 영역만 알려주므로,
+        /// <see cref="AugmentParchmentVisuals.ContentSafeRect"/>로 카드 전체 사각형을 역산해
+        /// 선택 창과 같은 좌표계를 쓴다. 화면 투영을 쓰지 않으므로 매 프레임 돌 필요가 없다.
+        /// </summary>
         public void SyncOverlayTransform()
         {
-            if (overlayRect == null || visualRoot == null || worldCamera == null || definition == null || !gameObject.activeInHierarchy)
+            if (overlayRect == null || visualRoot == null || definition == null || !gameObject.activeInHierarchy)
             {
                 if (overlayRect != null) overlayRect.gameObject.SetActive(false);
                 return;
@@ -162,37 +185,56 @@ namespace Tessera.Games.AugmentedYacht
             Vector3[] corners = new Vector3[4];
             if (scrollModel == null || !scrollModel.TryGetOverlayCorners(corners))
             {
-                if (overlayRect != null) overlayRect.gameObject.SetActive(false);
-                return;
-            }
-            Vector3 s0 = worldCamera.WorldToScreenPoint(corners[0]);
-            Vector3 s1 = worldCamera.WorldToScreenPoint(corners[1]);
-            Vector3 s2 = worldCamera.WorldToScreenPoint(corners[2]);
-            Vector3 s3 = worldCamera.WorldToScreenPoint(corners[3]);
-            if (s0.z <= 0f || s1.z <= 0f || s2.z <= 0f || s3.z <= 0f)
-            {
                 overlayRect.gameObject.SetActive(false);
                 return;
             }
 
-            overlayRect.gameObject.SetActive(true);
-            float minX = Mathf.Min(s0.x, s1.x, s2.x, s3.x);
-            float maxX = Mathf.Max(s0.x, s1.x, s2.x, s3.x);
-            float minY = Mathf.Min(s0.y, s1.y, s2.y, s3.y);
-            float maxY = Mathf.Max(s0.y, s1.y, s2.y, s3.y);
-            // 3D 앵커는 안전 영역만 알려주므로 카드 전체 사각형을 역산해 선택 창과 같은 좌표계를 쓴다.
+            // 앵커의 월드 좌표를 양피지 로컬 좌표로 되돌린다.
+            float minX = float.MaxValue, maxX = float.MinValue;
+            float minZ = float.MaxValue, maxZ = float.MinValue;
+            for (int i = 0; i < 4; i++)
+            {
+                Vector3 local = visualRoot.InverseTransformPoint(corners[i]);
+                minX = Mathf.Min(minX, local.x);
+                maxX = Mathf.Max(maxX, local.x);
+                minZ = Mathf.Min(minZ, local.z);
+                maxZ = Mathf.Max(maxZ, local.z);
+            }
+
             Rect safe = AugmentParchmentVisuals.ContentSafeRect;
             float cardWidth = (maxX - minX) / Mathf.Max(.01f, safe.width);
-            float cardHeight = (maxY - minY) / Mathf.Max(.01f, safe.height);
-            overlayRect.position = new Vector3(
+            float cardHeight = (maxZ - minZ) / Mathf.Max(.01f, safe.height);
+
+            overlayRect.gameObject.SetActive(true);
+            overlayRect.localPosition = new Vector3(
                 (minX + maxX) * .5f - (safe.center.x - .5f) * cardWidth,
-                (minY + maxY) * .5f - (safe.center.y - .5f) * cardHeight,
-                0f);
-            overlayRect.sizeDelta = new Vector2(cardWidth, cardHeight);
+                OverlayLift,
+                (minZ + maxZ) * .5f - (safe.center.y - .5f) * cardHeight);
+            overlayRect.sizeDelta = new Vector2(cardWidth, cardHeight) * CanvasUnitsPerWorldUnit;
+
             if (card != null)
             {
-                float scale = cardWidth / CardPixelWidth;
+                float scale = cardWidth * CanvasUnitsPerWorldUnit / CardPixelWidth;
                 card.transform.localScale = new Vector3(scale, scale, 1f);
+            }
+        }
+
+        private static void SetLayerRecursively(GameObject target, int layer)
+        {
+            target.layer = layer;
+            for (int i = 0; i < target.transform.childCount; i++)
+            {
+                SetLayerRecursively(target.transform.GetChild(i).gameObject, layer);
+            }
+        }
+
+        /// <summary>카드 UI는 런타임에 다시 만들므로 씬과 프리팹에 직렬화하지 않는다.</summary>
+        private static void MarkDontSaveRecursively(GameObject target)
+        {
+            target.hideFlags = HideFlags.DontSave;
+            for (int i = 0; i < target.transform.childCount; i++)
+            {
+                MarkDontSaveRecursively(target.transform.GetChild(i).gameObject);
             }
         }
 
