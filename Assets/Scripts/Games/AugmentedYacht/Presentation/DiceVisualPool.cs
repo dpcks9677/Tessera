@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using Tessera.Core;
 using Tessera.Dice;
@@ -251,6 +252,87 @@ namespace Tessera.Games.AugmentedYacht
                 else DestroyImmediate(dicePipMaterial);
                 dicePipMaterial = null;
             }
+        }
+        /// <summary>
+        /// 킵된 주사위와 활성 주사위를 각자 자리로 부드럽게 옮긴다(M10-T6a).
+        ///
+        /// 진행 단계 표시와 상태 문구 갱신은 호출한 쪽이 맡는다. 이 코루틴은 화면만 다룬다.
+        /// </summary>
+        public IEnumerator AnimateLayout(
+            float duration,
+            IReadOnlyList<GameObject> activeDice,
+            IReadOnlyList<bool> keptDice,
+            IReadOnlyList<int> keptSlotIndices,
+            IReadOnlyList<int> diceValues,
+            BakedDiceController bakedDiceController)
+        {
+
+            var diceTransforms = new Transform[activeDice.Count];
+            var targetPositions = new Vector3[activeDice.Count];
+            var targetRotations = new Quaternion[activeDice.Count];
+            var targetScales = new Vector3[activeDice.Count];
+
+            var unkeptIndices = new List<int>();
+
+            // 1. 킵된 주사위와 활성(킵되지 않은) 주사위 분류 및 카메라 정면 틸트 정렬 목표 회전 계산
+            for (int i = 0; i < activeDice.Count; i++)
+            {
+                diceTransforms[i] = activeDice[i] != null ? activeDice[i].transform : null;
+                float normalScale = DiceBoardMetrics.DieSize;
+
+                // 현재 주사위 루트의 착지 회전으로부터 윗면(Top)을 유지한 채 카메라 렌즈를 정면으로 바라보도록 회전 계산
+                Quaternion currentRot = activeDice[i] != null ? activeDice[i].transform.localRotation : Quaternion.identity;
+                Quaternion cameraFacingRot = DiceFaceOrientation.GetCameraFacingUprightRotation(currentRot, 75.0f);
+
+                if (keptDice[i])
+                {
+                    int slot = (keptSlotIndices.Count > i && keptSlotIndices[i] >= 0) ? keptSlotIndices[i] : 0;
+                    targetPositions[i] = DiceBoardMetrics.GetKeepPosition(slot);
+                    targetScales[i] = Vector3.one * (normalScale * DiceBoardMetrics.KeepDieScale);
+                    targetRotations[i] = cameraFacingRot;
+                }
+                else
+                {
+                    unkeptIndices.Add(i);
+                    targetRotations[i] = cameraFacingRot;
+                }
+            }
+
+            // 2. 킵되지 않은 활성 주사위들을 왼쪽부터 오른쪽으로 작은 눈 -> 큰 눈 오름차순 정렬
+            unkeptIndices.Sort((a, b) =>
+            {
+                int cmp = diceValues[a].CompareTo(diceValues[b]);
+                return cmp != 0 ? cmp : a.CompareTo(b);
+            });
+
+            for (int slot = 0; slot < unkeptIndices.Count; slot++)
+            {
+                int dieIndex = unkeptIndices[slot];
+                targetPositions[dieIndex] = DiceBoardMetrics.GetActivePosition(slot, unkeptIndices.Count);
+                targetScales[dieIndex] = Vector3.one * DiceBoardMetrics.ActiveDieSize;
+            }
+
+            // 3. 머티리얼 방식 렌더러 fallback
+            for (int i = 0; i < activeDice.Count; i++)
+            {
+                if (activeDice[i] == null) continue;
+                Transform visual = activeDice[i].transform.Find("Visual");
+                if (visual == null)
+                {
+                    DiceMaterialFactory.ApplyPredictedTopValue(activeDice[i].transform, targetRotations[i], diceValues[i]);
+                }
+            }
+
+            // 4. 부드러운 위치/회전/스케일 보간 애니메이션 수행 (순수 Yaw 수평 슬라이딩)
+            yield return bakedDiceController.AnimateKeptDice(
+                diceTransforms,
+                keptDice,
+                diceValues,
+                targetPositions,
+                targetRotations,
+                targetScales,
+                duration);
+
         }
     }
 }

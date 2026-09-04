@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace Tessera.Games.Yacht
@@ -485,7 +485,14 @@ namespace Tessera.Games.Yacht
             return result;
         }
 
-        public YachtAugmentDefinition FindDefinition(string augmentId)
+        public YachtAugmentDefinition FindDefinition(string augmentId) => Lookup(augmentId);
+
+        /// <summary>
+        /// 정의를 ID로 찾는다. 정의 목록은 정적이므로 인스턴스가 필요 없다.
+        ///
+        /// 프레젠테이션 쪽은 정의를 읽기만 하려고 런타임을 통째로 하나 더 만들고 있었다(M10-T7).
+        /// </summary>
+        public static YachtAugmentDefinition Lookup(string augmentId)
         {
             for (int i = 0; i < AllDefinitions.Length; i++)
                 if (string.Equals(AllDefinitions[i].Id, augmentId, StringComparison.Ordinal)) return AllDefinitions[i].Clone();

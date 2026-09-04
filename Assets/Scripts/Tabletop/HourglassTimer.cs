@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using Tessera.Core;
+using Tessera.Games.AugmentedYacht;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -15,7 +16,7 @@ namespace Tessera.Tabletop
     /// - 턴 시작 시 남은 모래의 정착 후 부드러운 180도 플립(Flip) 애니메이션 및 상/하단 모래 자동 스왑
     /// </summary>
     [ExecuteAlways]
-    public sealed class HourglassTimer : MonoBehaviour
+    public sealed class HourglassTimer : MonoBehaviour, ITurnDelaySource
     {
         private const int DecorationLayer = 11;
 
@@ -185,6 +186,30 @@ namespace Tessera.Tabletop
         /// <summary>
         /// 180도 플립 애니메이션과 함께 60초 타이머를 시작합니다.
         /// </summary>
+        // ITurnDelaySource 구현. 기존 API를 그대로 잇는다(M10-T6b).
+        event Action ITurnDelaySource.Started
+        {
+            add => OnTimerStarted += value;
+            remove => OnTimerStarted -= value;
+        }
+
+        event Action<float, float> ITurnDelaySource.Ticked
+        {
+            add => OnTimerTick += value;
+            remove => OnTimerTick -= value;
+        }
+
+        event Action ITurnDelaySource.Expired
+        {
+            add => OnTimerExpired += value;
+            remove => OnTimerExpired -= value;
+        }
+
+        void ITurnDelaySource.Begin(float seconds, bool animate) => StartTimer(seconds, animate);
+        void ITurnDelaySource.SetIdle(float seconds) => SetIdleState(seconds);
+        void ITurnDelaySource.Reset(float seconds) => ResetTimer(seconds);
+        void ITurnDelaySource.Resume() => ResumeTimer();
+
         public void StartTimer(float duration = 60f, bool animateFlip = true)
         {
             // 논리 타이머를 새 턴으로 갱신하기 전에, 화면에 남아 있는 실제 모래 비율을 보존한다.

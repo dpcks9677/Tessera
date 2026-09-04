@@ -67,5 +67,6 @@
         "*.sln": "*.csproj",
         "*.slnx": "*.csproj"
     },
-    "dotnet.defaultSolution": "Tessera.slnx"
+    "dotnet.defaultSolution": "Tessera.slnx",
+    "dotnet.preferCSharpExtension": true
 }

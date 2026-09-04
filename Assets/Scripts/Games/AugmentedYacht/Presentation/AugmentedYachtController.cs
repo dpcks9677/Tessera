@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.UI;
-using UnityEngine.Networking;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
 using Tessera.Core;
@@ -36,7 +34,6 @@ namespace Tessera.Games.AugmentedYacht
         private readonly List<int> diceValues = new();
         private readonly List<int> keptSlotIndices = new();
 
-
         private DicePresetCatalog presetCatalog;
         private BakedDiceController bakedDiceController;
         private YachtAudioService audioService;
@@ -48,7 +45,11 @@ namespace Tessera.Games.AugmentedYacht
         // 픽셀 필터를 거치지 않는 UI 경로(M9.5). 월드 카메라와 같은 투영으로 CrispUI 레이어만 그린다.
         private YachtInputRouter inputRouter;
         private YachtCameraRig cameraRig;
+        private AugmentTrayPresenter augmentTray;
         private DiceVisualPool dicePool;
+
+        /// <summary>턴 지연 연출의 출처. 지금은 모래시계가 맡는다(M10-T6b).</summary>
+        private ITurnDelaySource turnDelay;
         private Text statusText;
         private RectTransform gameAreaRect;
         private RectTransform gameImageRect;
@@ -69,33 +70,8 @@ namespace Tessera.Games.AugmentedYacht
         private YachtGameSession gameSession;
         private GameObject startGameOverlay;
         private GameObject gameResultOverlay;
-        private GameObject augmentDraftOverlay;
         private Text timerText;
         private Text resultText;
-        private Text augmentDraftTitle;
-        private Text augmentEffectText;
-        private Text augmentHoverDetailText;
-        private readonly Button[] augmentDraftButtons = new Button[YachtAugmentRuntime.DraftOptionCount];
-        private readonly AugmentCardView[] augmentDraftCards = new AugmentCardView[YachtAugmentRuntime.DraftOptionCount];
-        private readonly AugmentTrayCardView[] augmentOwnedCards = new AugmentTrayCardView[3];
-        private int displayedAugmentPlayer = -1;
-        private int hoveredAugmentSlot = -1;
-        private int selectedAugmentSlot = -1;
-        private static readonly string[] ManualAugmentIds =
-        {
-            YachtAugmentRuntime.TableFlipId,
-            YachtAugmentRuntime.EquivalentExchangeId,
-            YachtAugmentRuntime.GambitId,
-            YachtAugmentRuntime.DoubleDownId,
-            YachtAugmentRuntime.DiceAlchemyId
-        };
-        private static readonly string[] ManualAugmentLabels =
-        {
-            "판 뒤집기", "등가교환", "갬빗", "더블 다운", "주사위 연금술"
-        };
-        private readonly Button[] augmentActionButtons = new Button[ManualAugmentIds.Length];
-        private Button tableFlipButton;
-        private readonly YachtAugmentRuntime augmentViewCatalog = new();
         private bool turnTransitionInProgress;
         private string pendingTurnTransitionMessage;
         private YachtGameCommandResult pendingRollResult;
@@ -139,6 +115,18 @@ namespace Tessera.Games.AugmentedYacht
         private const int DecorationLayer = 11;
         private const float TurnDurationSeconds = YachtGameOptions.DefaultTurnDurationSeconds;
 
+        /// <summary>
+        /// 화면이 입력을 받을 수 있는 안정 상태인가(M10-T6c).
+        ///
+        /// 턴 전환 연출 중도 아니고, 굴림 코루틴도 돌지 않고, 주사위 정렬 중도 아닌 상태다.
+        /// 굴림 버튼·증강 행동 버튼·판 뒤집기가 모두 같은 조건을 보므로 한 곳에 모았다.
+        /// </summary>
+        private bool IsInteractive => !turnTransitionInProgress && rollRoutine == null && !isArranging;
+
+        /// <summary>
+        /// 주사위가 굴러 멈춘 뒤인가. 에디터 물리 검증 도구가 쓴다.
+        /// 턴 전환은 보지 않는다. 게임 흐름이 아니라 물리 안정화만 판정하기 때문이다.
+        /// </summary>
         public bool IsSettled => hasCompletedRoll && !isArranging && rollRoutine == null;
         public int KeptDieCount => keptDice.FindAll(kept => kept).Count;
 
@@ -197,8 +185,6 @@ namespace Tessera.Games.AugmentedYacht
             InitializeYachtGame();
         }
 
-
-
         private void OnValidate()
         {
             if (Application.isPlaying && activeDice.Count > 0)
@@ -229,49 +215,7 @@ namespace Tessera.Games.AugmentedYacht
         [ContextMenu("Regenerate Tray Visual Material (bake 전용)")]
         public void SyncTrayVisualMat()
         {
-            GameObject trayObj = GameObject.Find("Yacht Tray Visual");
-            if (trayObj == null) return;
-            MeshFilter mf = trayObj.GetComponent<MeshFilter>();
-            MeshRenderer mr = trayObj.GetComponent<MeshRenderer>();
-            if (mf == null || mr == null) return;
-
-            Mesh mesh = mf.sharedMesh;
-            if (mesh != null && (mesh.uv == null || mesh.uv.Length == 0))
-            {
-                Mesh copy = Instantiate(mesh);
-                Vector3[] verts = copy.vertices;
-                Vector3[] norms = copy.normals;
-                Vector2[] uvs = new Vector2[verts.Length];
-                for (int i = 0; i < verts.Length; i++)
-                {
-                    Vector3 v = verts[i];
-                    Vector3 n = (norms != null && i < norms.Length) ? norms[i] : Vector3.up;
-                    if (Mathf.Abs(n.y) >= 0.7f)
-                        uvs[i] = new Vector2(v.x * (1f / 50f), v.z * (1f / 50f));
-                    else
-                        uvs[i] = new Vector2((Mathf.Abs(n.x) > Mathf.Abs(n.z) ? v.z : v.x) * (1f / 50f), v.y * (1f / 50f));
-                }
-                copy.uv = uvs;
-                mf.sharedMesh = copy;
-            }
-
-            Texture2D corduroyTex = CreateBurgundyCorduroyTexture();
-            Material[] mats = mr.sharedMaterials;
-            if (mats != null && mats.Length >= 2)
-            {
-                Material felt = mats[1];
-                if (felt != null)
-                {
-                    felt.mainTexture = corduroyTex;
-                    if (felt.HasProperty("_BaseMap")) felt.SetTexture("_BaseMap", corduroyTex);
-                    if (felt.HasProperty("_MainTex")) felt.SetTexture("_MainTex", corduroyTex);
-                    if (felt.HasProperty("_BaseColor")) felt.SetColor("_BaseColor", Color.white);
-                    if (felt.HasProperty("_Color")) felt.SetColor("_Color", Color.white);
-                    felt.mainTextureScale = new Vector2(1f, 1f);
-                    felt.color = Color.white;
-                    felt.SetFloat("_Smoothness", 0.12f);
-                }
-            }
+            TabletopSurfaceBuilder.SyncTrayMaterial();
         }
 
         private void Start()
@@ -291,21 +235,23 @@ namespace Tessera.Games.AugmentedYacht
             parchmentScoreSheet.SetActivePlayer(-1, false);
             turnBalanceIndicator?.SetActiveSide(TurnSide.None, false);
 
-            if (hourglassTimer != null)
+            turnDelay = hourglassTimer;
+            if (turnDelay != null)
             {
-                hourglassTimer.OnTimerStarted -= OnTurnTimerStarted;
-                hourglassTimer.OnTimerTick -= OnTurnTimerTick;
-                hourglassTimer.OnTimerExpired -= OnTurnTimerExpired;
-                hourglassTimer.OnTimerStarted += OnTurnTimerStarted;
-                hourglassTimer.OnTimerTick += OnTurnTimerTick;
-                hourglassTimer.OnTimerExpired += OnTurnTimerExpired;
-                hourglassTimer.SetIdleState(TurnDurationSeconds);
+                turnDelay.Started -= OnTurnTimerStarted;
+                turnDelay.Ticked -= OnTurnTimerTick;
+                turnDelay.Expired -= OnTurnTimerExpired;
+                turnDelay.Started += OnTurnTimerStarted;
+                turnDelay.Ticked += OnTurnTimerTick;
+                turnDelay.Expired += OnTurnTimerExpired;
+                turnDelay.SetIdle(TurnDurationSeconds);
             }
 
             runicSlateMatrix?.SetRoundProgress(0);
             rerollCounterBar?.SetRollsRemaining(YachtGameSession.MaxRolls, YachtGameSession.MaxRolls);
             EnsureGameFlowUI();
-            EnsureOwnedCardViews();
+            EnsureAugmentTray();
+            augmentTray.EnsureOwnedCardViews();
             ResetDiceForTurn();
             SetTimerTextIdle();
             SetRollInteraction(false);
@@ -329,117 +275,62 @@ namespace Tessera.Games.AugmentedYacht
                 if (Application.isPlaying) Destroy(existingResult.gameObject);
                 else DestroyImmediate(existingResult.gameObject);
             }
-            Transform existingDraft = canvasObject.transform.Find("Yacht Augment Draft Overlay");
-            if (existingDraft != null)
-            {
-                if (Application.isPlaying) Destroy(existingDraft.gameObject);
-                else DestroyImmediate(existingDraft.gameObject);
-            }
             Transform existingTimer = canvasObject.transform.Find("Yacht Turn Timer Text");
             if (existingTimer != null)
             {
                 if (Application.isPlaying) Destroy(existingTimer.gameObject);
                 else DestroyImmediate(existingTimer.gameObject);
             }
-            string[] augmentPresentationNames =
-            {
-                "Yacht Augment Owned Text",
-                "Yacht Augment Effect Text",
-                "Yacht Augment Hover Detail Text",
-                "Use Table Flip",
-            };
-            foreach (string presentationName in augmentPresentationNames)
-            {
-                Transform existingPresentation = canvasObject.transform.Find(presentationName);
-                if (existingPresentation == null) continue;
-                if (Application.isPlaying) Destroy(existingPresentation.gameObject);
-                else DestroyImmediate(existingPresentation.gameObject);
-            }
 
-            timerText = CreateText(canvasObject.transform, "Yacht Turn Timer Text", "--", Vector2.zero,
+            timerText = YachtHudFactory.CreateText(canvasObject.transform, "Yacht Turn Timer Text", "--", Vector2.zero,
                 new Vector2(120f, 46f), new Vector2(0.5f, 0.5f), 30, TextAnchor.MiddleCenter);
             timerText.color = new Color32(255, 226, 151, 255);
 
-            startGameOverlay = CreateFullScreenOverlay(canvasObject.transform, "Yacht Game Start Overlay");
-            Text title = CreateText(startGameOverlay.transform, "Title", "요트 다이스", new Vector2(0f, 90f),
+            startGameOverlay = YachtHudFactory.CreateFullScreenOverlay(canvasObject.transform, "Yacht Game Start Overlay");
+            Text title = YachtHudFactory.CreateText(startGameOverlay.transform, "Title", "요트 다이스", new Vector2(0f, 90f),
                 new Vector2(620f, 90f), new Vector2(0.5f, 0.5f), 42, TextAnchor.MiddleCenter);
             title.color = new Color32(255, 222, 151, 255);
-            CreateButton(startGameOverlay.transform, "Start Normal Yacht Game", "일반 요트", new Vector2(0f, -5f),
+            YachtHudFactory.CreateButton(startGameOverlay.transform, "Start Normal Yacht Game", "일반 요트", new Vector2(0f, -5f),
                 new Vector2(260f, 64f), new Vector2(0.5f, 0.5f), () => StartNewGame(YachtGameMode.Normal));
-            CreateButton(startGameOverlay.transform, "Start Augmented Yacht Game", "증강 요트", new Vector2(0f, -85f),
+            YachtHudFactory.CreateButton(startGameOverlay.transform, "Start Augmented Yacht Game", "증강 요트", new Vector2(0f, -85f),
                 new Vector2(260f, 64f), new Vector2(0.5f, 0.5f), () => StartNewGame(YachtGameMode.Augmented));
 
-            gameResultOverlay = CreateFullScreenOverlay(canvasObject.transform, "Yacht Game Result Overlay");
-            resultText = CreateText(gameResultOverlay.transform, "Result", "", new Vector2(0f, 35f),
+            gameResultOverlay = YachtHudFactory.CreateFullScreenOverlay(canvasObject.transform, "Yacht Game Result Overlay");
+            resultText = YachtHudFactory.CreateText(gameResultOverlay.transform, "Result", "", new Vector2(0f, 35f),
                 new Vector2(720f, 150f), new Vector2(0.5f, 0.5f), 36, TextAnchor.MiddleCenter);
             resultText.color = new Color32(255, 222, 151, 255);
-            CreateButton(gameResultOverlay.transform, "Restart Yacht Game", "다시 시작", new Vector2(0f, -105f),
+            YachtHudFactory.CreateButton(gameResultOverlay.transform, "Restart Yacht Game", "다시 시작", new Vector2(0f, -105f),
                 new Vector2(240f, 64f), new Vector2(0.5f, 0.5f), StartNewGame);
             gameResultOverlay.SetActive(false);
 
-            augmentDraftOverlay = CreateFullScreenOverlay(canvasObject.transform, "Yacht Augment Draft Overlay");
+            EnsureAugmentTray();
             EnsureCameraRig();
             AugmentParchmentVisuals.PixelFilterResolution = cameraRig.InternalResolution;
-            float draftCardWidth = 460f;
-            float draftCardAspect = augmentCardTray != null
-                ? augmentCardTray.CardSlotAspectRatio
-                : AugmentCardView.TrayCardAspectRatio;
-            float draftCardHeight = draftCardWidth / Mathf.Max(1f, draftCardAspect);
-            float draftCardSpacing = draftCardWidth + 24f;
-            augmentDraftTitle = CreateText(augmentDraftOverlay.transform, "Draft Title", "증강 선택", new Vector2(0f, draftCardHeight * 0.5f + 72f),
-                new Vector2(760f, 60f), new Vector2(0.5f, 0.5f), 34, TextAnchor.MiddleCenter);
-            augmentDraftTitle.color = new Color32(255, 222, 151, 255);
-            for (int i = 0; i < augmentDraftButtons.Length; i++)
-            {
-                int optionIndex = i;
-                augmentDraftCards[i] = AugmentCardView.Create(
-                    augmentDraftOverlay.transform,
-                    $"Draft Option {i + 1}",
-                    new Vector2((i - 1) * draftCardSpacing, -8f),
-                    new Vector2(draftCardWidth, draftCardHeight),
-                    new Vector2(0.5f, 0.5f),
-                    () => SelectDraftOption(optionIndex));
-                augmentDraftCards[i].SetParchmentPreset((AugmentParchmentPreset)i);
-                augmentDraftButtons[i] = augmentDraftCards[i].Button;
-            }
-            augmentDraftOverlay.SetActive(false);
-
-            augmentEffectText = CreateText(canvasObject.transform, "Yacht Augment Effect Text", "", new Vector2(0f, 58f),
-                new Vector2(760f, 44f), new Vector2(0.5f, 0f), 18, TextAnchor.MiddleCenter);
-            augmentEffectText.color = new Color32(255, 205, 95, 255);
-            augmentHoverDetailText = CreateText(canvasObject.transform, "Yacht Augment Hover Detail Text", "", new Vector2(0f, 126f),
-                new Vector2(820f, 64f), new Vector2(0.5f, 0f), 16, TextAnchor.MiddleCenter);
-            augmentHoverDetailText.color = new Color32(255, 226, 151, 255);
-            augmentHoverDetailText.gameObject.SetActive(false);
-            for (int i = 0; i < augmentActionButtons.Length; i++)
-            {
-                string augmentId = ManualAugmentIds[i];
-                augmentActionButtons[i] = CreateButton(
-                    canvasObject.transform,
-                    $"Use {augmentId}",
-                    ManualAugmentLabels[i],
-                    new Vector2((i - 2) * 152f, 18f),
-                    new Vector2(142f, 48f),
-                    new Vector2(0.5f, 0f),
-                    () => UseAugmentAction(augmentId));
-                augmentActionButtons[i].gameObject.SetActive(false);
-            }
-            tableFlipButton = augmentActionButtons[0];
+            augmentTray.BuildUi(canvasObject.transform);
         }
 
-        private static GameObject CreateFullScreenOverlay(Transform parent, string name)
+        /// <summary>
+        /// 증강 카드 프레젠터를 붙이고 참조를 맞춘다(M10-T7).
+        ///
+        /// 트레이와 카메라는 씨 해석 순서에 따라 늦게 채워지므로 호출할 때마다 다시 넘긴다.
+        /// 한 번만 묶으면 첫 갱신 시점의 null을 그대로 부여잡는다.
+        /// </summary>
+        private void EnsureAugmentTray()
         {
-            GameObject overlay = new(name, typeof(RectTransform), typeof(Image));
-            overlay.transform.SetParent(parent, false);
-            RectTransform rect = overlay.GetComponent<RectTransform>();
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
-            Image image = overlay.GetComponent<Image>();
-            image.color = new Color(0.035f, 0.025f, 0.04f, 0.82f);
-            image.raycastTarget = true;
-            return overlay;
+            if (augmentTray == null)
+            {
+                augmentTray = GetComponent<AugmentTrayPresenter>() ?? gameObject.AddComponent<AugmentTrayPresenter>();
+                augmentTray.DraftOptionSelected += SelectDraftOption;
+                augmentTray.ActionRequested += UseAugmentAction;
+            }
+
+            augmentTray.Bind(augmentCardTray, worldCamera);
+        }
+
+        private void RefreshAugmentPresentation(string message = null)
+        {
+            EnsureAugmentTray();
+            augmentTray.Refresh(gameSession, IsInteractive, message);
         }
 
         private void StartNewGame()
@@ -539,156 +430,6 @@ namespace Tessera.Games.AugmentedYacht
             UpdateStatusText(message);
         }
 
-        private void RefreshAugmentPresentation(string message = null)
-        {
-            bool augmented = gameSession != null && gameSession.Mode == YachtGameMode.Augmented;
-            bool gameInProgress = augmented
-                && gameSession.Phase != YachtGamePhase.WaitingToStart
-                && gameSession.Phase != YachtGamePhase.GameOver;
-            if (augmentDraftOverlay != null)
-            {
-                bool showDraft = gameInProgress && gameSession.IsDrafting;
-                augmentDraftOverlay.SetActive(showDraft);
-                if (showDraft)
-                    augmentDraftOverlay.transform.SetAsLastSibling();
-            }
-            if (augmentEffectText != null)
-            {
-                augmentEffectText.gameObject.SetActive(augmented && !string.IsNullOrEmpty(message));
-                if (!string.IsNullOrEmpty(message)) augmentEffectText.text = message;
-            }
-            if (tableFlipButton != null)
-            {
-                tableFlipButton.interactable = gameInProgress && gameSession.CanUseTableFlip
-                    && !turnTransitionInProgress && rollRoutine == null && !isArranging;
-            }
-            for (int i = 0; i < augmentActionButtons.Length; i++)
-            {
-                Button button = augmentActionButtons[i];
-                if (button == null) continue;
-                bool owned = gameInProgress && !gameSession.IsDrafting
-                    && IsOwnedAugment(gameSession.CurrentPlayerIndex, ManualAugmentIds[i]);
-                button.gameObject.SetActive(owned);
-                if (i > 0) button.interactable = owned && !turnTransitionInProgress && rollRoutine == null && !isArranging;
-            }
-            RefreshOwnedCardTray(augmented, gameInProgress);
-            if (!augmented) return;
-
-            if (!gameSession.IsDrafting) return;
-
-            int playerIndex = gameSession.State.Draft.PlayerIndex;
-            if (augmentDraftTitle != null)
-                augmentDraftTitle.text = $"P{playerIndex + 1} 증강 선택 · {gameSession.CurrentRound}라운드";
-            string[] options = gameSession.State.Draft.Options;
-            for (int i = 0; i < augmentDraftButtons.Length; i++)
-            {
-                Button button = augmentDraftButtons[i];
-                if (button == null) continue;
-                bool active = i < options.Length;
-                button.gameObject.SetActive(active);
-                if (!active) continue;
-                YachtAugmentDefinition definition = augmentViewCatalog.FindDefinition(options[i]);
-                int presetId = i < (gameSession.State.Draft.OptionCardPresetIds?.Length ?? 0)
-                    ? gameSession.State.Draft.OptionCardPresetIds[i]
-                    : 0;
-                augmentDraftCards[i]?.SetParchmentPreset(AugmentParchmentVisuals.Normalize(presetId));
-                augmentDraftCards[i]?.Bind(definition, AugmentCardDisplayState.Available);
-            }
-        }
-
-        /// <summary>픽셀 격자가 바뀌면 선택 창 카드 본체를 새 격자로 다시 굽는다.</summary>
-        private void RefreshDraftCardParchment()
-        {
-            for (int i = 0; i < augmentDraftCards.Length; i++)
-                augmentDraftCards[i]?.SetParchmentPreset(augmentDraftCards[i].ParchmentPreset);
-        }
-
-        private void EnsureOwnedCardViews()
-        {
-            if (augmentCardTray == null || worldCamera == null) return;
-            Vector2 slotSize = augmentCardTray.CardSlotLocalSize;
-            int count = Mathf.Min(augmentOwnedCards.Length, augmentCardTray.SlotCount);
-            for (int i = 0; i < count; i++)
-            {
-                if (augmentOwnedCards[i] != null) continue;
-                Transform anchor = augmentCardTray.GetSlotAnchor(i);
-                if (anchor == null) continue;
-                Transform existing = anchor.Find($"Owned Augment Card {i + 1}");
-                augmentOwnedCards[i] = existing != null
-                    ? existing.GetComponent<AugmentTrayCardView>()
-                    : AugmentTrayCardView.Create(anchor, slotSize, i);
-            }
-        }
-
-        private void RefreshOwnedCardTray(bool augmented, bool gameInProgress)
-        {
-            if (!augmented || !gameInProgress)
-            {
-                for (int i = 0; i < augmentOwnedCards.Length; i++) augmentOwnedCards[i]?.SetVisible(false);
-                return;
-            }
-            EnsureOwnedCardViews();
-            int playerIndex = gameSession != null && gameSession.IsDrafting
-                ? gameSession.State.Draft.PlayerIndex
-                : gameSession?.CurrentPlayerIndex ?? -1;
-            if (displayedAugmentPlayer != playerIndex)
-            {
-                displayedAugmentPlayer = playerIndex;
-                selectedAugmentSlot = -1;
-                SetHoveredAugmentSlot(-1);
-            }
-
-            string[] owned = augmented && gameInProgress && playerIndex >= 0
-                ? gameSession.State.AugmentPlayers[playerIndex].OwnedIds
-                : Array.Empty<string>();
-            int[] presets = playerIndex >= 0
-                ? gameSession.State.AugmentPlayers[playerIndex].OwnedCardPresetIds
-                : Array.Empty<int>();
-            if (selectedAugmentSlot >= owned.Length) selectedAugmentSlot = -1;
-
-            for (int i = 0; i < augmentOwnedCards.Length; i++)
-            {
-                AugmentTrayCardView view = augmentOwnedCards[i];
-                if (view == null) continue;
-                bool visible = i < owned.Length;
-                view.SetVisible(visible);
-                if (!visible) continue;
-                int presetId = i < (presets?.Length ?? 0) ? presets[i] : 0;
-                view.Bind(augmentViewCatalog.FindDefinition(owned[i]), presetId);
-                view.SetSelected(i == selectedAugmentSlot);
-            }
-        }
-
-        private void SetHoveredAugmentSlot(int slotIndex)
-        {
-            if (hoveredAugmentSlot == slotIndex) return;
-            if (hoveredAugmentSlot >= 0 && hoveredAugmentSlot < augmentOwnedCards.Length)
-                augmentOwnedCards[hoveredAugmentSlot]?.SetHovered(false);
-
-            hoveredAugmentSlot = slotIndex;
-            YachtAugmentDefinition definition = null;
-            if (slotIndex >= 0 && slotIndex < augmentOwnedCards.Length)
-            {
-                AugmentTrayCardView view = augmentOwnedCards[slotIndex];
-                view?.SetHovered(true);
-                definition = view?.Definition;
-            }
-
-            if (augmentHoverDetailText == null) return;
-            bool show = definition != null;
-            augmentHoverDetailText.gameObject.SetActive(show);
-            if (show)
-                augmentHoverDetailText.text = $"{definition.DisplayName}\n{definition.Description}";
-        }
-
-        private bool IsOwnedAugment(int playerIndex, string augmentId)
-        {
-            if (gameSession?.State?.AugmentPlayers == null
-                || playerIndex < 0 || playerIndex >= gameSession.State.AugmentPlayers.Length) return false;
-            string[] owned = gameSession.State.AugmentPlayers[playerIndex].OwnedIds;
-            return Array.IndexOf(owned, augmentId) >= 0;
-        }
-
         private static string GetAugmentEventMessage(YachtGameCommandResult result)
         {
             if (result?.Events == null) return null;
@@ -702,7 +443,7 @@ namespace Tessera.Games.AugmentedYacht
             if (gameSession == null || gameSession.IsDrafting)
             {
                 turnTransitionInProgress = false;
-                hourglassTimer?.SetIdleState(TurnDurationSeconds);
+                turnDelay?.SetIdle(TurnDurationSeconds);
                 SetTimerTextIdle();
                 SetRollInteraction(false);
                 RefreshAugmentPresentation();
@@ -714,14 +455,8 @@ namespace Tessera.Games.AugmentedYacht
             float turnDuration = gameSession.CurrentTurnDurationSeconds;
             SetTimerText(turnDuration);
 
-            if (hourglassTimer != null)
-            {
-                hourglassTimer.StartTimer(turnDuration, true);
-            }
-            else
-            {
-                OnTurnTimerStarted();
-            }
+            if (turnDelay != null) turnDelay.Begin(turnDuration, true);
+            else OnTurnTimerStarted();
         }
 
         private void OnTurnTimerStarted()
@@ -761,11 +496,11 @@ namespace Tessera.Games.AugmentedYacht
                 turnBalanceIndicator?.SetActiveSide(MapPlayerToTurnSide(gameSession.CurrentPlayerIndex), true);
             }
 
-            if (advancedTurn && hourglassTimer != null)
+            if (advancedTurn && turnDelay != null)
             {
                 float turnDuration = gameSession.CurrentTurnDurationSeconds;
-                hourglassTimer.ResetTimer(turnDuration);
-                hourglassTimer.ResumeTimer();
+                turnDelay.Reset(turnDuration);
+                turnDelay.Resume();
                 SetTimerText(turnDuration);
             }
 
@@ -823,14 +558,8 @@ namespace Tessera.Games.AugmentedYacht
             SetRollInteraction(false);
             SetTimerText(TurnDurationSeconds);
 
-            if (hourglassTimer != null)
-            {
-                hourglassTimer.StartTimer(TurnDurationSeconds, true);
-            }
-            else
-            {
-                OnTurnTimerStarted();
-            }
+            if (turnDelay != null) turnDelay.Begin(TurnDurationSeconds, true);
+            else OnTurnTimerStarted();
         }
 
         private void FinishGame()
@@ -883,8 +612,7 @@ namespace Tessera.Games.AugmentedYacht
             }
 
             bool allKept = keptDice.Count > 0 && keptDice.TrueForAll(kept => kept);
-            bool canRoll = gameSession.CanRoll && !turnTransitionInProgress
-                && rollRoutine == null && !isArranging && !allKept;
+            bool canRoll = gameSession.CanRoll && IsInteractive && !allKept;
             SetRollInteraction(canRoll);
 
             if (gameSession.Phase == YachtGamePhase.ScoreSelection && !turnTransitionInProgress)
@@ -904,8 +632,7 @@ namespace Tessera.Games.AugmentedYacht
 
         private bool CanInitiateRoll()
         {
-            if (gameSession == null || !gameSession.CanRoll || turnTransitionInProgress) return false;
-            if (rollRoutine != null || isArranging) return false;
+            if (gameSession == null || !gameSession.CanRoll || !IsInteractive) return false;
             return keptDice.Count == 0 || !keptDice.TrueForAll(kept => kept);
         }
 
@@ -959,7 +686,6 @@ namespace Tessera.Games.AugmentedYacht
             }
         }
 
-
         private void EnsureDiceState()
         {
             if (activeDice.Count == diceCount && keptDice.Count == diceCount && diceValues.Count == diceCount)
@@ -990,13 +716,6 @@ namespace Tessera.Games.AugmentedYacht
             dicePool.ArrangeInitialPositions(activeDice, diceValues);
         }
 
-
-
-
-
-
-
-
         public void RollDice()
         {
             if (!CanInitiateRoll())
@@ -1024,7 +743,7 @@ namespace Tessera.Games.AugmentedYacht
 
         public void UseAugmentAction(string augmentId)
         {
-            if (gameSession == null || turnTransitionInProgress || rollRoutine != null || isArranging) return;
+            if (gameSession == null || !IsInteractive) return;
             if (!gameSession.TryUseAugmentAction(augmentId, out pendingRollResult))
             {
                 UpdateStatusText(pendingRollResult?.ErrorMessage);
@@ -1129,7 +848,10 @@ namespace Tessera.Games.AugmentedYacht
                 isMirrored);
 
             // 5. 굴림 완료 후 보드 중앙 정렬 (작은 눈 -> 큰 눈 오름차순)
-            yield return AnimateDiceLayout(0.45f);
+            isArranging = true;
+            yield return dicePool.AnimateLayout(0.45f, activeDice, keptDice, keptSlotIndices, diceValues, bakedDiceController);
+            isArranging = false;
+            UpdateStatusText();
 
             hasCompletedRoll = true;
             rollRoutine = null;
@@ -1143,8 +865,8 @@ namespace Tessera.Games.AugmentedYacht
 
         public bool SetDieKept(int index, bool kept)
         {
-            if (gameSession == null || !gameSession.CanKeepDice || turnTransitionInProgress) return false;
-            if (!hasCompletedRoll || isArranging || rollRoutine != null) return false;
+            if (gameSession == null || !gameSession.CanKeepDice) return false;
+            if (!IsInteractive || !hasCompletedRoll) return false;
             if (index < 0 || index >= keptDice.Count || activeDice[index] == null) return false;
             if (keptDice[index] == kept) return true;
 
@@ -1191,83 +913,12 @@ namespace Tessera.Games.AugmentedYacht
 
         private IEnumerator AnimateKeepToggleRoutine()
         {
-            yield return AnimateDiceLayout(0.32f);
-            keepRoutine = null;
-            RefreshGameInteraction();
-        }
-
-        private IEnumerator AnimateDiceLayout(float duration)
-        {
             isArranging = true;
-
-            var diceTransforms = new Transform[activeDice.Count];
-            var targetPositions = new Vector3[activeDice.Count];
-            var targetRotations = new Quaternion[activeDice.Count];
-            var targetScales = new Vector3[activeDice.Count];
-
-            var unkeptIndices = new List<int>();
-
-            // 1. 킵된 주사위와 활성(킵되지 않은) 주사위 분류 및 카메라 정면 틸트 정렬 목표 회전 계산
-            for (int i = 0; i < activeDice.Count; i++)
-            {
-                diceTransforms[i] = activeDice[i] != null ? activeDice[i].transform : null;
-                float normalScale = DiceBoardMetrics.DieSize;
-
-                // 현재 주사위 루트의 착지 회전으로부터 윗면(Top)을 유지한 채 카메라 렌즈를 정면으로 바라보도록 회전 계산
-                Quaternion currentRot = activeDice[i] != null ? activeDice[i].transform.localRotation : Quaternion.identity;
-                Quaternion cameraFacingRot = DiceFaceOrientation.GetCameraFacingUprightRotation(currentRot, 75.0f);
-
-                if (keptDice[i])
-                {
-                    int slot = (keptSlotIndices.Count > i && keptSlotIndices[i] >= 0) ? keptSlotIndices[i] : 0;
-                    targetPositions[i] = DiceBoardMetrics.GetKeepPosition(slot);
-                    targetScales[i] = Vector3.one * (normalScale * DiceBoardMetrics.KeepDieScale);
-                    targetRotations[i] = cameraFacingRot;
-                }
-                else
-                {
-                    unkeptIndices.Add(i);
-                    targetRotations[i] = cameraFacingRot;
-                }
-            }
-
-            // 2. 킵되지 않은 활성 주사위들을 왼쪽부터 오른쪽으로 작은 눈 -> 큰 눈 오름차순 정렬
-            unkeptIndices.Sort((a, b) =>
-            {
-                int cmp = diceValues[a].CompareTo(diceValues[b]);
-                return cmp != 0 ? cmp : a.CompareTo(b);
-            });
-
-            for (int slot = 0; slot < unkeptIndices.Count; slot++)
-            {
-                int dieIndex = unkeptIndices[slot];
-                targetPositions[dieIndex] = DiceBoardMetrics.GetActivePosition(slot, unkeptIndices.Count);
-                targetScales[dieIndex] = Vector3.one * DiceBoardMetrics.ActiveDieSize;
-            }
-
-            // 3. 머티리얼 방식 렌더러 fallback
-            for (int i = 0; i < activeDice.Count; i++)
-            {
-                if (activeDice[i] == null) continue;
-                Transform visual = activeDice[i].transform.Find("Visual");
-                if (visual == null)
-                {
-                    DiceMaterialFactory.ApplyPredictedTopValue(activeDice[i].transform, targetRotations[i], diceValues[i]);
-                }
-            }
-
-            // 4. 부드러운 위치/회전/스케일 보간 애니메이션 수행 (순수 Yaw 수평 슬라이딩)
-            yield return bakedDiceController.AnimateKeptDice(
-                diceTransforms,
-                keptDice,
-                diceValues,
-                targetPositions,
-                targetRotations,
-                targetScales,
-                duration);
-
+            yield return dicePool.AnimateLayout(0.32f, activeDice, keptDice, keptSlotIndices, diceValues, bakedDiceController);
             isArranging = false;
             UpdateStatusText();
+            keepRoutine = null;
+            RefreshGameInteraction();
         }
 
         /// <summary>
@@ -1413,22 +1064,12 @@ namespace Tessera.Games.AugmentedYacht
 
         private void OnAugmentCardHoverChanged(AugmentTrayCardView card)
         {
-            SetHoveredAugmentSlot(card == null ? -1 : Array.IndexOf(augmentOwnedCards, card));
+            augmentTray.SetHoveredCard(card);
         }
 
         private void OnAugmentCardClicked(AugmentTrayCardView card)
         {
-            int slot = Array.IndexOf(augmentOwnedCards, card);
-            if (slot < 0) return;
-
-            selectedAugmentSlot = selectedAugmentSlot == slot ? -1 : slot;
-            for (int i = 0; i < augmentOwnedCards.Length; i++)
-            {
-                if (augmentOwnedCards[i] != null && augmentOwnedCards[i].gameObject.activeSelf)
-                {
-                    augmentOwnedCards[i].SetSelected(i == selectedAugmentSlot);
-                }
-            }
+            augmentTray.ToggleSelection(card);
         }
 
         private void Update()
@@ -1438,7 +1079,6 @@ namespace Tessera.Games.AugmentedYacht
             cameraRig?.FitFullScreen();
             cameraRig?.SyncCrispUiTargetToScreen();
         }
-
 
         private void OnRollOrbClicked()
         {
@@ -1514,7 +1154,7 @@ namespace Tessera.Games.AugmentedYacht
         private void SetResolution(Vector2Int resolution)
         {
             AugmentParchmentVisuals.PixelFilterResolution = resolution;
-            RefreshDraftCardParchment();
+            augmentTray?.RefreshDraftCardParchment();
             EnsureCameraRig();
             cameraRig.SetInternalResolution(resolution);
         }
@@ -1619,7 +1259,7 @@ namespace Tessera.Games.AugmentedYacht
                 GameObject canvasObj = GameObject.Find("Pixel Presentation");
                 if (canvasObj != null)
                 {
-                    keyLightToggleButton = CreateButton(canvasObj.transform, "KeyLightToggle", $"Light: {KeyLightPresetName}", new Vector2(158f, -18f), new Vector2(165f, 38f), new Vector2(0f, 1f), ToggleKeyLightPreset);
+                    keyLightToggleButton = YachtHudFactory.CreateButton(canvasObj.transform, "KeyLightToggle", $"Light: {KeyLightPresetName}", new Vector2(158f, -18f), new Vector2(165f, 38f), new Vector2(0f, 1f), ToggleKeyLightPreset);
                 }
             }
             if (keyLightToggleButton != null)
@@ -1635,11 +1275,11 @@ namespace Tessera.Games.AugmentedYacht
             {
                 if (runeFxButton == null)
                 {
-                    runeFxButton = CreateButton(canvasObject.transform, "RuneFxDebug", "Runes: 0/12", new Vector2(333f, -18f), new Vector2(140f, 38f), new Vector2(0f, 1f), DebugAdvanceRuneLighting);
+                    runeFxButton = YachtHudFactory.CreateButton(canvasObject.transform, "RuneFxDebug", "Runes: 0/12", new Vector2(333f, -18f), new Vector2(140f, 38f), new Vector2(0f, 1f), DebugAdvanceRuneLighting);
                 }
                 if (runeStoneButton == null)
                 {
-                    runeStoneButton = CreateButton(canvasObject.transform, "RuneStoneDebug", "Stones: 0/4", new Vector2(483f, -18f), new Vector2(150f, 38f), new Vector2(0f, 1f), DebugCycleRuneStones);
+                    runeStoneButton = YachtHudFactory.CreateButton(canvasObject.transform, "RuneStoneDebug", "Stones: 0/4", new Vector2(483f, -18f), new Vector2(150f, 38f), new Vector2(0f, 1f), DebugCycleRuneStones);
                 }
             }
             if (runeFxButton != null)
@@ -1786,23 +1426,7 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             if (Application.isPlaying) return;
 
             EnsureLayoutRoot();
-            DestroyLayoutChild("3D Wood Planks Table");
-            DestroyLayoutChild("3D Fabric Runner");
-            DestroyLayoutChild("Yacht Tray Visual");
-
-            Create3DWoodPlanksTable();
-            Create3DFabricRunner();
-            CreateYachtTrayVisual();
-            SyncTrayVisualMat();
-        }
-
-        private void DestroyLayoutChild(string childName)
-        {
-            Transform child = layoutRoot != null ? layoutRoot.Find(childName) : null;
-            if (child == null) return;
-
-            if (Application.isPlaying) Destroy(child.gameObject);
-            else DestroyImmediate(child.gameObject);
+            TabletopSurfaceBuilder.Regenerate(layoutRoot, yachtTrayMesh, CenterSectionX, TrayVisualY, TrayScale);
         }
 
         private void EnsureLayoutRoot()
@@ -1818,304 +1442,6 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             GameObject root = new("Graphics Layout");
             root.transform.SetParent(transform, false);
             layoutRoot = root.transform;
-        }
-
-        private void Create3DWoodPlanksTable()
-        {
-            GameObject tableRoot = new("3D Wood Planks Table");
-            tableRoot.layer = DecorationLayer;
-            tableRoot.transform.SetParent(layoutRoot, false);
-            tableRoot.transform.position = Vector3.zero;
-
-            int plankCount = 4;
-            float totalHeight = 20.0f;
-            float plankHeight = 4.90f;
-            float gap = 0.10f;
-            float plankWidth = 38.0f;
-            float plankThickness = 0.60f;
-            float baseY = -0.72f;
-
-            // 0. 판자 틈새 그림자 역할의 언더레이어 밑판 (틈새로 배경이 비치지 않고 자연스러운 음영 연출)
-            GameObject underlay = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            underlay.name = "Table Shadow Underlay";
-            underlay.layer = DecorationLayer;
-            underlay.transform.SetParent(tableRoot.transform, false);
-            underlay.transform.position = new Vector3(CenterSectionX, baseY - 0.20f, 0f);
-            underlay.transform.localScale = new Vector3(plankWidth, 0.20f, totalHeight + 1.0f);
-
-            Collider underlayCol = underlay.GetComponent<Collider>();
-            if (underlayCol != null)
-            {
-                if (Application.isPlaying) Destroy(underlayCol);
-                else DestroyImmediate(underlayCol);
-            }
-
-            Material underlayMat = new(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"))
-            {
-                name = "Runtime Table Shadow Underlay Material",
-                color = new Color32(20, 15, 12, 255)
-            };
-            if (underlayMat.HasProperty("_BaseColor")) underlayMat.SetColor("_BaseColor", new Color32(20, 15, 12, 255));
-            if (underlayMat.HasProperty("_Color")) underlayMat.SetColor("_Color", new Color32(20, 15, 12, 255));
-            underlayMat.SetFloat("_Smoothness", 0.05f);
-            underlayMat.SetFloat("_Metallic", 0f);
-
-            MeshRenderer underlayMr = underlay.GetComponent<MeshRenderer>();
-            underlayMr.material = underlayMat;
-            underlayMr.shadowCastingMode = ShadowCastingMode.TwoSided;
-            underlayMr.receiveShadows = true;
-
-            Color[] plankColors = new Color[]
-            {
-                new Color32(110, 67, 42, 255), // Plank 1: #6e432a (Warm Honey Brown)
-                new Color32(120, 73, 46, 255), // Plank 2: #78492e (Amber Toast Brown)
-                new Color32(99, 60, 37, 255),  // Plank 3: #633c25 (Deep Toffee Walnut)
-                new Color32(115, 69, 43, 255)  // Plank 4: #73452b (Warm Walnut Brown)
-            };
-
-            // 판자마다 서로 다른 옹이(Knot)와 결 위치를 위한 UV Offset & Scale
-            Vector2[] uvOffsets = new Vector2[]
-            {
-                new(0.00f, 0.00f),
-                new(0.40f, 0.20f),
-                new(0.80f, 0.60f),
-                new(0.20f, 0.40f)
-            };
-
-            Texture2D woodTexture = null;
-#if UNITY_EDITOR
-            woodTexture = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Wood/wood_grain_knots.png");
-#endif
-
-            float startZ = -totalHeight * 0.5f + plankHeight * 0.5f;
-
-            for (int i = 0; i < plankCount; i++)
-            {
-                float z = startZ + i * (plankHeight + gap);
-                float yOffset = ((i % 2 == 0) ? 0.008f : -0.008f); // 판자 간 자연스러운 3D 높낮이 단차
-                Vector3 pos = new(CenterSectionX, baseY + yOffset, z);
-                Vector3 size = new(plankWidth, plankThickness, plankHeight);
-
-                GameObject plank = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                plank.name = $"Heavy Wood Plank {i + 1}";
-                plank.layer = DecorationLayer;
-                plank.transform.SetParent(tableRoot.transform, false);
-                plank.transform.position = pos;
-                plank.transform.localScale = size;
-
-                Collider col = plank.GetComponent<Collider>();
-                if (col != null)
-                {
-                    if (Application.isPlaying) Destroy(col);
-                    else DestroyImmediate(col);
-                }
-
-                Material mat = new(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"))
-                {
-                    name = $"Runtime Heavy Wood Plank {i + 1} Material",
-                    color = plankColors[i % plankColors.Length]
-                };
-
-                if (woodTexture != null)
-                {
-                    mat.mainTexture = woodTexture;
-                    if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", woodTexture);
-                    if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", woodTexture);
-
-                    Vector2 tiling = new(1.5f, 1.0f);
-                    Vector2 offset = uvOffsets[i % uvOffsets.Length];
-                    mat.mainTextureScale = tiling;
-                    mat.mainTextureOffset = offset;
-                    if (mat.HasProperty("_BaseMap"))
-                    {
-                        mat.SetTextureScale("_BaseMap", tiling);
-                        mat.SetTextureOffset("_BaseMap", offset);
-                    }
-                    if (mat.HasProperty("_MainTex"))
-                    {
-                        mat.SetTextureScale("_MainTex", tiling);
-                        mat.SetTextureOffset("_MainTex", offset);
-                    }
-                }
-
-                mat.SetFloat("_Smoothness", 0.20f);
-                mat.SetFloat("_Metallic", 0f);
-
-                MeshRenderer mr = plank.GetComponent<MeshRenderer>();
-                mr.material = mat;
-                mr.shadowCastingMode = ShadowCastingMode.TwoSided;
-                mr.receiveShadows = true;
-            }
-        }
-
-        private static Texture2D CreateBurgundyCorduroyTexture()
-        {
-            int width = 512;
-            int height = 512;
-            Texture2D tex = new(width, height, TextureFormat.RGBA32, true)
-            {
-                name = "Runtime Burgundy Corduroy Texture",
-                wrapMode = TextureWrapMode.Repeat,
-                filterMode = FilterMode.Bilinear
-            };
-
-            Color[] pixels = new Color[width * height];
-            int numRibs = 20; // 20개의 선명하고 굵은 가로 코듀로이 골
-
-            for (int y = 0; y < height; y++)
-            {
-                float v = (float)y / height;
-                float phase = v * numRibs * 2f * Mathf.PI;
-                float sinVal = Mathf.Sin(phase);
-                float ridgeProfile = Mathf.Sign(sinVal) * Mathf.Pow(Mathf.Abs(sinVal), 0.55f);
-                float tRidge = (ridgeProfile + 1f) * 0.5f;
-
-                for (int x = 0; x < width; x++)
-                {
-                    float u = (float)x / width;
-                    float s1 = Mathf.Sin(u * 3.7f * 2f * Mathf.PI + v * 2.1f * 2f * Mathf.PI) * Mathf.Cos(u * 1.9f * 2f * Mathf.PI - v * 3.4f * 2f * Mathf.PI);
-                    float s2 = Mathf.Sin(u * 8.3f * 2f * Mathf.PI - v * 6.5f * 2f * Mathf.PI) * 0.5f;
-                    float organicWave = (s1 + s2) / 1.5f;
-                    float toneBlend = Mathf.Clamp01(0.5f + 0.5f * organicWave);
-                    float microWeave = ((Mathf.Sin(x * 0.85f) + Mathf.Cos(y * 0.85f)) * 0.5f) * 0.04f;
-
-                    float r = Mathf.Clamp01((35f + 110f * tRidge + 35f * toneBlend + microWeave * 40f) / 255f);
-                    float g = Mathf.Clamp01((4f + 26f * tRidge + 18f * toneBlend + microWeave * 25f) / 255f);
-                    float b = Mathf.Clamp01((10f + 48f * tRidge + 24f * toneBlend + microWeave * 25f) / 255f);
-
-                    pixels[y * width + x] = new Color(r, g, b, 1f);
-                }
-            }
-
-            tex.SetPixels(pixels);
-            tex.Apply(true);
-            return tex;
-        }
-
-        private void Create3DFabricRunner()
-        {
-            GameObject runnerRoot = new("3D Fabric Runner");
-            runnerRoot.layer = DecorationLayer;
-            runnerRoot.transform.SetParent(layoutRoot, false);
-            runnerRoot.transform.position = new Vector3(CenterSectionX, -0.40f, 0.4f);
-            runnerRoot.transform.rotation = Quaternion.Euler(0f, 4.5f, 0f);
-
-            // 1. 딥 크림슨 펠트 본체 (로우폴리 스타일라이즈드 솔리드 메쉬)
-            GameObject feltBody = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            feltBody.name = "Crimson Felt Body";
-            feltBody.layer = DecorationLayer;
-            feltBody.transform.SetParent(runnerRoot.transform, false);
-            feltBody.transform.localPosition = Vector3.zero;
-            feltBody.transform.localScale = new Vector3(42.0f, 0.040f, 7.2f);
-
-            Collider bodyCol = feltBody.GetComponent<Collider>();
-            if (bodyCol != null)
-            {
-                if (Application.isPlaying) Destroy(bodyCol);
-                else DestroyImmediate(bodyCol);
-            }
-
-            Color crimsonColor = new Color32(136, 45, 34, 255); // #882d22 (Deep Crimson)
-            Material feltMat = new(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"))
-            {
-                name = "Runtime 3D LowPoly Crimson Felt Material",
-                color = crimsonColor
-            };
-            if (feltMat.HasProperty("_BaseColor")) feltMat.SetColor("_BaseColor", crimsonColor);
-            if (feltMat.HasProperty("_Color")) feltMat.SetColor("_Color", crimsonColor);
-            feltMat.SetFloat("_Smoothness", 0.12f);
-            feltMat.SetFloat("_Metallic", 0f);
-
-            MeshRenderer bodyMr = feltBody.GetComponent<MeshRenderer>();
-            bodyMr.material = feltMat;
-            bodyMr.shadowCastingMode = ShadowCastingMode.TwoSided;
-            bodyMr.receiveShadows = true;
-
-            // 2. 상/하 앤틱 골드 리본 트림 2줄 (안쪽 인셋 ±2.75f)
-            Color goldColor = new Color32(229, 169, 60, 255); // #e5a93c (Antique Gold)
-            Material goldMat = new(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"))
-            {
-                name = "Runtime 3D LowPoly Antique Gold Ribbon Material",
-                color = goldColor
-            };
-            if (goldMat.HasProperty("_BaseColor")) goldMat.SetColor("_BaseColor", goldColor);
-            if (goldMat.HasProperty("_Color")) goldMat.SetColor("_Color", goldColor);
-            goldMat.SetFloat("_Smoothness", 0.78f);
-            goldMat.SetFloat("_Metallic", 0.88f);
-
-            float[] trimZ = { -2.75f, 2.75f };
-            for (int t = 0; t < 2; t++)
-            {
-                GameObject trim = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                trim.name = $"Gold Trim {(t == 0 ? "Top" : "Bottom")}";
-                trim.layer = DecorationLayer;
-                trim.transform.SetParent(runnerRoot.transform, false);
-                trim.transform.localPosition = new Vector3(0f, 0.004f, trimZ[t]);
-                trim.transform.localScale = new Vector3(42.0f, 0.044f, 0.20f);
-
-                Collider trimCol = trim.GetComponent<Collider>();
-                if (trimCol != null)
-                {
-                    if (Application.isPlaying) Destroy(trimCol);
-                    else DestroyImmediate(trimCol);
-                }
-
-                MeshRenderer trimMr = trim.GetComponent<MeshRenderer>();
-                trimMr.material = goldMat;
-                trimMr.shadowCastingMode = ShadowCastingMode.TwoSided;
-                trimMr.receiveShadows = true;
-            }
-        }
-
-        private void CreateYachtTrayVisual()
-        {
-            if (yachtTrayMesh == null) return;
-            GameObject tray = new("Yacht Tray Visual", typeof(MeshFilter), typeof(MeshRenderer));
-            tray.transform.SetParent(layoutRoot, false);
-            tray.transform.localPosition = new Vector3(CenterSectionX, TrayVisualY, DiceBoardMetrics.TrayCenterZ);
-            tray.transform.localRotation = Quaternion.identity;
-            tray.transform.localScale = Vector3.one * TrayScale;
-
-            Mesh trayMeshInstance = yachtTrayMesh;
-            if (trayMeshInstance.uv == null || trayMeshInstance.uv.Length == 0)
-            {
-                trayMeshInstance = Instantiate(yachtTrayMesh);
-                Vector3[] verts = trayMeshInstance.vertices;
-                Vector3[] norms = trayMeshInstance.normals;
-                Vector2[] uvs = new Vector2[verts.Length];
-                for (int i = 0; i < verts.Length; i++)
-                {
-                    Vector3 v = verts[i];
-                    Vector3 n = (norms != null && i < norms.Length) ? norms[i] : Vector3.up;
-                    if (Mathf.Abs(n.y) >= 0.7f)
-                        uvs[i] = new Vector2(v.x * (1f / 50f), v.z * (1f / 50f));
-                    else
-                        uvs[i] = new Vector2((Mathf.Abs(n.x) > Mathf.Abs(n.z) ? v.z : v.x) * (1f / 50f), v.y * (1f / 50f));
-                }
-                trayMeshInstance.uv = uvs;
-            }
-            tray.GetComponent<MeshFilter>().sharedMesh = trayMeshInstance;
-
-            Material rim = new(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
-            rim.name = "Runtime Yacht Tray Rim Material";
-            rim.color = new Color(0.045f, 0.045f, 0.05f);
-            rim.SetFloat("_Smoothness", 0.22f);
-
-            Material felt = new(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
-            felt.name = "Runtime Yacht Tray Felt Material";
-            Texture2D corduroyTex = CreateBurgundyCorduroyTexture();
-            felt.mainTexture = corduroyTex;
-            if (felt.HasProperty("_BaseMap")) felt.SetTexture("_BaseMap", corduroyTex);
-            if (felt.HasProperty("_MainTex")) felt.SetTexture("_MainTex", corduroyTex);
-            if (felt.HasProperty("_BaseColor")) felt.SetColor("_BaseColor", Color.white);
-            if (felt.HasProperty("_Color")) felt.SetColor("_Color", Color.white);
-            felt.mainTextureScale = new Vector2(1f, 1f);
-            felt.color = Color.white;
-            felt.SetFloat("_Smoothness", 0.12f);
-
-            tray.GetComponent<MeshRenderer>().sharedMaterials = new[] { rim, felt };
-            tray.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.TwoSided;
-            tray.GetComponent<MeshRenderer>().receiveShadows = true;
         }
 
         public void DebugAdvanceRuneLighting()
@@ -2228,13 +1554,13 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             cameraRig.EnsureUpscaleMaterial();
             imageObject.SetActive(true);
 
-            CreateButton(canvasObject.transform, "Debug", "960 / 640", new Vector2(18f, -18f), new Vector2(130f, 38f), new Vector2(0f, 1f), ToggleResolution);
+            YachtHudFactory.CreateButton(canvasObject.transform, "Debug", "960 / 640", new Vector2(18f, -18f), new Vector2(130f, 38f), new Vector2(0f, 1f), ToggleResolution);
             
-            runeFxButton = CreateButton(canvasObject.transform, "RuneFxDebug", "Runes: 0/12", new Vector2(333f, -18f), new Vector2(140f, 38f), new Vector2(0f, 1f), DebugAdvanceRuneLighting);
-            runeStoneButton = CreateButton(canvasObject.transform, "RuneStoneDebug", "Stones: 0/4", new Vector2(483f, -18f), new Vector2(150f, 38f), new Vector2(0f, 1f), DebugCycleRuneStones);
-keyLightToggleButton = CreateButton(canvasObject.transform, "KeyLightToggle", $"Light: {KeyLightPresetName}", new Vector2(158f, -18f), new Vector2(165f, 38f), new Vector2(0f, 1f), ToggleKeyLightPreset);
+            runeFxButton = YachtHudFactory.CreateButton(canvasObject.transform, "RuneFxDebug", "Runes: 0/12", new Vector2(333f, -18f), new Vector2(140f, 38f), new Vector2(0f, 1f), DebugAdvanceRuneLighting);
+            runeStoneButton = YachtHudFactory.CreateButton(canvasObject.transform, "RuneStoneDebug", "Stones: 0/4", new Vector2(483f, -18f), new Vector2(150f, 38f), new Vector2(0f, 1f), DebugCycleRuneStones);
+keyLightToggleButton = YachtHudFactory.CreateButton(canvasObject.transform, "KeyLightToggle", $"Light: {KeyLightPresetName}", new Vector2(158f, -18f), new Vector2(165f, 38f), new Vector2(0f, 1f), ToggleKeyLightPreset);
 
-            statusText = CreateText(canvasObject.transform, "Status", "", new Vector2(0f, -20f), new Vector2(600f, 30f), new Vector2(0.5f, 1f), 15, TextAnchor.MiddleCenter);
+            statusText = YachtHudFactory.CreateText(canvasObject.transform, "Status", "", new Vector2(0f, -20f), new Vector2(600f, 30f), new Vector2(0.5f, 1f), 15, TextAnchor.MiddleCenter);
             Canvas.ForceUpdateCanvases();
             EnsureCameraRig();
             cameraRig.CreateRenderTarget();
@@ -2248,82 +1574,6 @@ keyLightToggleButton = CreateButton(canvasObject.transform, "KeyLightToggle", $"
             }
         }
 
-
-        private Button CreateButton(Transform parent, string name, string label, Vector2 position, Vector2 size, Vector2 anchor, UnityEngine.Events.UnityAction action)
-        {
-            GameObject buttonObject = new(name, typeof(RectTransform), typeof(Image), typeof(Button));
-            buttonObject.transform.SetParent(parent, false);
-            RectTransform rect = buttonObject.GetComponent<RectTransform>();
-            rect.anchorMin = rect.anchorMax = anchor;
-            rect.pivot = anchor;
-            rect.anchoredPosition = position;
-            rect.sizeDelta = size;
-
-            Image image = buttonObject.GetComponent<Image>();
-            image.color = new Color(0.06f, 0.4f, 0.46f, 0.94f);
-
-            Button button = buttonObject.GetComponent<Button>();
-            button.targetGraphic = image;
-            ColorBlock colors = button.colors;
-            colors.highlightedColor = new Color(1f, 0.82f, 0.3f, 1f);
-            colors.pressedColor = new Color(0.72f, 0.13f, 0.18f, 1f);
-            button.colors = colors;
-            button.onClick.AddListener(action);
-
-            CreateText(buttonObject.transform, "Label", label, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f), 15, TextAnchor.MiddleCenter, true);
-            return button;
-        }
-
-        private static Text CreateText(Transform parent, string name, string value, Vector2 position, Vector2 size, Vector2 anchor, int fontSize, TextAnchor alignment, bool stretch = false)
-        {
-            GameObject textObject = new(name, typeof(RectTransform), typeof(Text), typeof(Shadow));
-            textObject.transform.SetParent(parent, false);
-            RectTransform rect = textObject.GetComponent<RectTransform>();
-            if (stretch)
-            {
-                rect.anchorMin = Vector2.zero;
-                rect.anchorMax = Vector2.one;
-                rect.offsetMin = rect.offsetMax = Vector2.zero;
-            }
-            else
-            {
-                rect.anchorMin = rect.anchorMax = anchor;
-                rect.pivot = anchor;
-                rect.anchoredPosition = position;
-                rect.sizeDelta = size;
-            }
-
-            Text text = textObject.GetComponent<Text>();
-            Font font = null;
-#if UNITY_EDITOR
-            font = UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/alagard.ttf")
-                ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/m6x11.ttf");
-#endif
-            text.font = font ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            if (text.font != null && text.font.material != null && text.font.material.mainTexture != null)
-            {
-                text.font.material.mainTexture.filterMode = FilterMode.Point;
-            }
-            text.text = value;
-            text.fontSize = fontSize;
-            text.fontStyle = FontStyle.Normal;
-            text.alignment = alignment;
-            text.color = Color.white;
-            text.raycastTarget = false;
-            Shadow shadow = textObject.GetComponent<Shadow>();
-            shadow.effectColor = new Color(0f, 0f, 0f, 0.9f);
-            shadow.effectDistance = new Vector2(2f, -2f);
-            return text;
-        }
-
-
-
-
-
-
-
-
-
         private void OnDestroy()
         {
             if (parchmentScoreSheet != null)
@@ -2332,9 +1582,9 @@ keyLightToggleButton = CreateButton(canvasObject.transform, "KeyLightToggle", $"
             }
             if (hourglassTimer != null)
             {
-                hourglassTimer.OnTimerStarted -= OnTurnTimerStarted;
-                hourglassTimer.OnTimerTick -= OnTurnTimerTick;
-                hourglassTimer.OnTimerExpired -= OnTurnTimerExpired;
+                turnDelay.Started -= OnTurnTimerStarted;
+                turnDelay.Ticked -= OnTurnTimerTick;
+                turnDelay.Expired -= OnTurnTimerExpired;
             }
             cameraRig?.Dispose();
             dicePool?.Dispose();
