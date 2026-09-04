@@ -31,7 +31,6 @@ namespace Tessera.Games.AugmentedYacht
         [SerializeField, Min(1)] private int diceCount = 5;
         [SerializeField] private DieType selectedDieType = DieType.Normal;
         [SerializeField] private YachtGameMode launchMode = YachtGameMode.Normal;
-        [SerializeField] private bool editableLayoutBuilt;
 
         private readonly List<GameObject> activeDice = new();
         private readonly List<bool> keptDice = new();
@@ -57,16 +56,19 @@ namespace Tessera.Games.AugmentedYacht
         private RectTransform gameImageRect;
         private Transform layoutRoot;
         private Transform diceRoot;
-        private ParchmentScoreSheet parchmentScoreSheet;
-        private AugmentCardTray augmentCardTray;
-        private RollOrb rollOrb;
-        private RollCosmicCube rollCosmicCube;
-        private RerollCounterBar rerollCounterBar;
-        private HourglassTimer hourglassTimer;
-        private CozyCandleStand candleStand;
-        private RunicSlateMatrix runicSlateMatrix;
-        private TabletopTrinketCluster trinketCluster;
-        private TurnBalanceIndicator turnBalanceIndicator;
+        // 테이블 프롭은 Assets/Prefabs/Tabletop 의 프리팹 인스턴스이며 씬이 배치를 소유한다(M9).
+        // 컨트롤러는 참조만 들고, 생성도 배치도 하지 않는다. 참조가 비면 이름으로 한 번 찾아 붙인다.
+        [Header("Tabletop Props")]
+        [SerializeField] private ParchmentScoreSheet parchmentScoreSheet;
+        [SerializeField] private AugmentCardTray augmentCardTray;
+        [SerializeField] private RollOrb rollOrb;
+        [SerializeField] private RollCosmicCube rollCosmicCube;
+        [SerializeField] private RerollCounterBar rerollCounterBar;
+        [SerializeField] private HourglassTimer hourglassTimer;
+        [SerializeField] private CozyCandleStand candleStand;
+        [SerializeField] private RunicSlateMatrix runicSlateMatrix;
+        [SerializeField] private TabletopTrinketCluster trinketCluster;
+        [SerializeField] private TurnBalanceIndicator turnBalanceIndicator;
         private YachtGameSession gameSession;
         private GameObject startGameOverlay;
         private GameObject gameResultOverlay;
@@ -159,64 +161,6 @@ namespace Tessera.Games.AugmentedYacht
             return index >= 0 && index < diceValues.Count ? diceValues[index] : 0;
         }
 
-        public void BuildEditableLayout(bool forceRebuild = false)
-        {
-            if (Application.isPlaying) return;
-            if (!forceRebuild && editableLayoutBuilt && ResolveEditableLayout()) return;
-
-            if (upscaleShader == null)
-            {
-#if UNITY_EDITOR
-                upscaleShader = UnityEditor.AssetDatabase.LoadAssetAtPath<Shader>("Assets/Rendering/Shaders/DicePixelUpscale.shader")
-                    ?? Shader.Find("DicePoC/PixelUpscale");
-#else
-                upscaleShader = Shader.Find("DicePoC/PixelUpscale");
-#endif
-            }
-
-            // 부모 transform 아래의 기존 모든 프레젠테이션 및 레이아웃 오브젝트 전수 제거
-            List<GameObject> toDestroy = new();
-            for (int i = 0; i < transform.childCount; i++)
-            {
-                Transform child = transform.GetChild(i);
-                if (child != null && (child.name.Contains("Pixel Presentation") || child.name.Contains("Graphics Layout") || child.name.Contains("Display 1 Camera")))
-                {
-                    toDestroy.Add(child.gameObject);
-                }
-            }
-            foreach (GameObject go in toDestroy)
-            {
-                if (Application.isPlaying) Destroy(go);
-                else DestroyImmediate(go);
-            }
-
-            BuildWorld();
-            BuildPresentation();
-            editableLayoutBuilt = true;
-        }
-
-        public void UpgradeYachtTrayLayout(Mesh trayMesh)
-        {
-            if (Application.isPlaying || trayMesh == null) return;
-            yachtTrayMesh = trayMesh;
-            EnsureLayoutRoot();
-            CreateGameTray();
-            ApplyTopDownCamera();
-            ConfigureLighting();
-            editableLayoutBuilt = true;
-        }
-
-        private void CreateGameTray()
-        {
-            Transform existing = layoutRoot != null ? layoutRoot.Find("Yacht Tray Visual") : null;
-            if (existing != null)
-            {
-                if (Application.isPlaying) Destroy(existing.gameObject);
-                else DestroyImmediate(existing.gameObject);
-            }
-            CreateYachtTrayVisual();
-        }
-
         private void Awake()
         {
             QualitySettings.antiAliasing = 0;
@@ -233,8 +177,12 @@ namespace Tessera.Games.AugmentedYacht
 #endif
             }
 
-            if (!editableLayoutBuilt || !ResolveEditableLayout())
+            // 배치는 씬이 소유한다(M9). 여기서는 바인딩만 하고, 씬이 비어 있을 때만 최소 월드를 세운다.
+            if (!ResolveEditableLayout())
             {
+                Debug.LogWarning(
+                    "[AugmentedYachtController] 씬에서 레이아웃을 찾지 못해 카메라와 프레젠테이션만 생성합니다. " +
+                    "테이블 프롭은 Assets/Prefabs/Tabletop 의 프리팹을 씬에 배치해야 합니다.");
                 BuildWorld();
                 BuildPresentation();
             }
@@ -254,32 +202,7 @@ namespace Tessera.Games.AugmentedYacht
             EnsureDiceRoot();
             EnsureDiceState();
 
-            if (parchmentScoreSheet == null) parchmentScoreSheet = FindFirstObjectByType<ParchmentScoreSheet>();
-            if (parchmentScoreSheet != null)
-            {
-                parchmentScoreSheet.RefreshAllScores();
-            }
-
-            EnsureSingleRollCosmicCube();
-
-            if (rollOrb == null) rollOrb = FindFirstObjectByType<RollOrb>();
-            if (rollOrb != null)
-            {
-                rollOrb.EnsureGeometry();
-            }
-
-            if (rerollCounterBar == null) rerollCounterBar = FindFirstObjectByType<RerollCounterBar>();
-            if (rerollCounterBar != null)
-            {
-                rerollCounterBar.EnsureGeometry();
-                rerollCounterBar.SetRollsRemaining(3, 3);
-            }
-
-            if (hourglassTimer == null) hourglassTimer = FindFirstObjectByType<HourglassTimer>();
-            if (hourglassTimer != null)
-            {
-                hourglassTimer.EnsureGeometry();
-            }
+            BindTabletopProps();
 
             WarmUpRollAssets();
             ResolveRunicMatrix();
@@ -380,22 +303,6 @@ namespace Tessera.Games.AugmentedYacht
                     felt.SetFloat("_Smoothness", 0.12f);
                 }
             }
-        }
-
-        [ContextMenu("Rebuild Layout")]
-        public void RebuildLayoutMenu()
-        {
-            EnsureLayoutRoot();
-            BuildTableLayout();
-            ApplyTopDownCamera();
-            ConfigureLighting();
-            SyncTrayVisualMat();
-            if (parchmentScoreSheet != null)
-            {
-                parchmentScoreSheet.EnsureStructure();
-                parchmentScoreSheet.RefreshAllScores();
-            }
-            editableLayoutBuilt = true;
         }
 
         private void Start()
@@ -1880,8 +1787,7 @@ namespace Tessera.Games.AugmentedYacht
 
             EnsureSingleAudioListener();
 
-            // 씬 내 테이블 요소들 안전 바인딩 또는 누락분 생성 (파괴 없이)
-            EnsureTableLayoutElements();
+            BindTabletopProps();
 
             ApplyTopDownCamera();
             CreateRenderTarget();
@@ -1922,28 +1828,6 @@ namespace Tessera.Games.AugmentedYacht
                 AudioListener al = worldCamera.GetComponent<AudioListener>();
                 if (al == null) al = worldCamera.gameObject.AddComponent<AudioListener>();
                 al.enabled = true;
-            }
-        }
-
-        // 자동 호출하지 않는다. 테이블이나 러너가 없으면 BuildTableLayout으로 전체를 재생성하는데,
-        // 프리팹 인스턴스로 전환된 뒤에는 그 경로가 씬 배치를 통째로 파괴한다.
-        [ContextMenu("Rebuild Table Background (bake 전용)")]
-        public void SyncTableBackground()
-        {
-            EnsureLayoutRoot();
-            Transform existingMat = layoutRoot != null ? layoutRoot.Find("Solid Burgundy Game Mat") : null;
-            if (existingMat != null)
-            {
-                if (Application.isPlaying) Destroy(existingMat.gameObject);
-                else DestroyImmediate(existingMat.gameObject);
-            }
-
-            Transform existingTable = layoutRoot != null ? layoutRoot.Find("3D Wood Planks Table") : null;
-            Transform existingRunner = layoutRoot != null ? layoutRoot.Find("3D Fabric Runner") : null;
-
-            if (existingTable == null || existingRunner == null)
-            {
-                BuildTableLayout();
             }
         }
 
@@ -2062,7 +1946,6 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             lightObject.transform.rotation = Quaternion.Euler(60f, -35f, 0f);
             lightObject.transform.SetParent(layoutRoot, true);
 
-            BuildTableLayout();
             ConfigureLighting();
         }
 
@@ -2080,6 +1963,86 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             worldCamera.orthographicSize = 8.2f;
         }
 
+        /// <summary>
+        /// 씬에 배치된 테이블 프롭을 컨트롤러 참조에 연결한다.
+        /// 생성하지 않는다. 누락된 프롭은 경고로만 알리고, 프리팹을 씬에 배치해 해결한다.
+        /// </summary>
+        private void BindTabletopProps()
+        {
+            if (parchmentScoreSheet == null) parchmentScoreSheet = FindFirstObjectByType<ParchmentScoreSheet>();
+            if (augmentCardTray == null) augmentCardTray = FindFirstObjectByType<AugmentCardTray>();
+            if (rollOrb == null) rollOrb = FindFirstObjectByType<RollOrb>();
+            if (rollCosmicCube == null) rollCosmicCube = FindFirstObjectByType<RollCosmicCube>();
+            if (rerollCounterBar == null) rerollCounterBar = FindFirstObjectByType<RerollCounterBar>();
+            if (hourglassTimer == null) hourglassTimer = FindFirstObjectByType<HourglassTimer>();
+            if (candleStand == null) candleStand = FindFirstObjectByType<CozyCandleStand>();
+            if (runicSlateMatrix == null) runicSlateMatrix = FindFirstObjectByType<RunicSlateMatrix>();
+            if (trinketCluster == null) trinketCluster = FindFirstObjectByType<TabletopTrinketCluster>();
+            if (turnBalanceIndicator == null) turnBalanceIndicator = FindFirstObjectByType<TurnBalanceIndicator>();
+
+            WarnIfMissing(parchmentScoreSheet, nameof(ParchmentScoreSheet));
+            WarnIfMissing(augmentCardTray, nameof(AugmentCardTray));
+            WarnIfMissing(rollCosmicCube, nameof(RollCosmicCube));
+            WarnIfMissing(rerollCounterBar, nameof(RerollCounterBar));
+            WarnIfMissing(hourglassTimer, nameof(HourglassTimer));
+            WarnIfMissing(candleStand, nameof(CozyCandleStand));
+            WarnIfMissing(runicSlateMatrix, nameof(RunicSlateMatrix));
+            WarnIfMissing(trinketCluster, nameof(TabletopTrinketCluster));
+            WarnIfMissing(turnBalanceIndicator, nameof(TurnBalanceIndicator));
+
+            if (parchmentScoreSheet != null)
+            {
+                parchmentScoreSheet.EnsureStructure();
+                parchmentScoreSheet.RefreshAllScores();
+            }
+            if (rerollCounterBar != null) rerollCounterBar.SetRollsRemaining(3, 3);
+        }
+
+        private static void WarnIfMissing(UnityEngine.Object prop, string typeName)
+        {
+            if (prop == null)
+            {
+                Debug.LogWarning($"[AugmentedYachtController] 씬에 {typeName} 프롭이 없습니다. Assets/Prefabs/Tabletop 에서 배치하십시오.");
+            }
+        }
+
+        private static TurnSide MapPlayerToTurnSide(int playerIndex)
+        {
+            return playerIndex == 0 ? TurnSide.Left : TurnSide.Right;
+        }
+
+        /// <summary>
+        /// 테이블·러너·트레이를 절차적으로 다시 만든다. 자동 호출하지 않는다.
+        ///
+        /// 이 셋은 독립 컴포넌트가 없어 생성 코드가 여기에만 있다. 평소에는 프리팹이 형상을 소유하고
+        /// 배치는 씬이 소유하지만, 형상 자체를 바꿔야 할 때는 이걸 실행해 다시 만든 뒤
+        /// Tessera/Tabletop/Bake Tabletop Prefabs 로 프리팹을 다시 굽고 씬에 다시 배치한다.
+        /// </summary>
+        [ContextMenu("Regenerate Table Surfaces (bake 전용)")]
+        public void RegenerateTableSurfaces()
+        {
+            if (Application.isPlaying) return;
+
+            EnsureLayoutRoot();
+            DestroyLayoutChild("3D Wood Planks Table");
+            DestroyLayoutChild("3D Fabric Runner");
+            DestroyLayoutChild("Yacht Tray Visual");
+
+            Create3DWoodPlanksTable();
+            Create3DFabricRunner();
+            CreateYachtTrayVisual();
+            SyncTrayVisualMat();
+        }
+
+        private void DestroyLayoutChild(string childName)
+        {
+            Transform child = layoutRoot != null ? layoutRoot.Find(childName) : null;
+            if (child == null) return;
+
+            if (Application.isPlaying) Destroy(child.gameObject);
+            else DestroyImmediate(child.gameObject);
+        }
+
         private void EnsureLayoutRoot()
         {
             if (layoutRoot != null) return;
@@ -2093,359 +2056,6 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             GameObject root = new("Graphics Layout");
             root.transform.SetParent(transform, false);
             layoutRoot = root.transform;
-        }
-
-        private void EnsureTableLayoutElements()
-        {
-            EnsureLayoutRoot();
-
-            // 1. Table
-            Transform table = layoutRoot.Find("3D Wood Planks Table");
-            if (table == null) Create3DWoodPlanksTable();
-
-            // 2. Runner
-            Transform runner = layoutRoot.Find("3D Fabric Runner");
-            if (runner == null) Create3DFabricRunner();
-
-            // 3. Tray Visual
-            Transform tray = layoutRoot.Find("Yacht Tray Visual");
-            if (tray == null)
-            {
-                CreateGameTray();
-            }
-
-            // 4. Augment Card Tray
-            if (augmentCardTray == null)
-            {
-                augmentCardTray = layoutRoot.GetComponentInChildren<AugmentCardTray>() ?? FindFirstObjectByType<AugmentCardTray>();
-            }
-            if (augmentCardTray == null) CreateAugmentCardTray();
-
-            // 5. Parchment Score Sheet
-            if (parchmentScoreSheet == null)
-            {
-                parchmentScoreSheet = layoutRoot.GetComponentInChildren<ParchmentScoreSheet>() ?? FindFirstObjectByType<ParchmentScoreSheet>();
-            }
-            if (parchmentScoreSheet == null)
-            {
-                CreateScoreSheet();
-            }
-            else
-            {
-                parchmentScoreSheet.EnsureStructure();
-                parchmentScoreSheet.RefreshAllScores();
-            }
-
-            // 6. Inkwell and Quill
-            Transform inkwell = layoutRoot.Find("3D Inkwell and Quill Decoration");
-            if (inkwell == null) CreateInkwellAndQuill();
-
-            // 7. Paperweight
-            Transform paperweight = layoutRoot.Find("3D Parchment Paperweight");
-            if (paperweight == null) CreatePaperweight();
-
-            // 8. Reroll Counter Bar
-            if (rerollCounterBar == null)
-            {
-                rerollCounterBar = layoutRoot.GetComponentInChildren<RerollCounterBar>() ?? FindFirstObjectByType<RerollCounterBar>();
-            }
-            if (rerollCounterBar == null)
-            {
-                CreateRerollCounterBar();
-            }
-            else
-            {
-                rerollCounterBar.EnsureGeometry();
-                rerollCounterBar.SetRollsRemaining(3, 3);
-            }
-
-            // 9. 3D Roll Cosmic Cube (코스믹 큐브)
-            EnsureSingleRollCosmicCube();
-            if (rollCosmicCube == null)
-            {
-                CreateRollCosmicCube();
-            }
-            else
-            {
-                rollCosmicCube.EnsureGeometry();
-            }
-
-            // 10. Hourglass Timer
-            if (hourglassTimer == null)
-            {
-                hourglassTimer = layoutRoot.GetComponentInChildren<HourglassTimer>() ?? FindFirstObjectByType<HourglassTimer>();
-            }
-            if (hourglassTimer == null)
-            {
-                CreateHourglassTimer();
-            }
-            else
-            {
-                hourglassTimer.EnsureGeometry();
-            }
-
-            // 11. Cozy Candle Stand
-            if (candleStand == null)
-            {
-                candleStand = layoutRoot.GetComponentInChildren<CozyCandleStand>() ?? FindFirstObjectByType<CozyCandleStand>();
-            }
-            if (candleStand == null)
-            {
-                CreateCandleStand();
-            }
-            else
-            {
-                candleStand.EnsureGeometry();
-            }
-
-            // 12. Runic Slate & Crystal Matrix
-            if (runicSlateMatrix == null)
-            {
-                runicSlateMatrix = layoutRoot.GetComponentInChildren<RunicSlateMatrix>() ?? FindFirstObjectByType<RunicSlateMatrix>();
-            }
-            if (runicSlateMatrix == null)
-            {
-                CreateRunicSlateMatrix();
-            }
-            else
-            {
-                runicSlateMatrix.EnsureGeometry();
-            }
-
-            // 13. Trinket Cluster (Ring, Brooch, Crystal)
-            if (trinketCluster == null)
-            {
-                trinketCluster = layoutRoot.GetComponentInChildren<TabletopTrinketCluster>() ?? FindFirstObjectByType<TabletopTrinketCluster>();
-            }
-            if (trinketCluster == null)
-            {
-                CreateTrinketCluster();
-            }
-            else
-            {
-                trinketCluster.EnsureCluster();
-            }
-
-            // 14. Player Turn Balance
-            if (turnBalanceIndicator == null)
-            {
-                turnBalanceIndicator = layoutRoot.GetComponentInChildren<TurnBalanceIndicator>() ?? FindFirstObjectByType<TurnBalanceIndicator>();
-            }
-            if (turnBalanceIndicator == null)
-            {
-                CreateTurnBalanceIndicator();
-            }
-            else
-            {
-                turnBalanceIndicator.EnsureGeometry();
-            }
-        }
-
-        private void BuildTableLayout()
-        {
-            // 기존 layoutRoot 직계 자식 정리 (중복 생성 방지)
-            if (layoutRoot != null)
-            {
-                string[] cleanupKeywords = { "Paper", "Score Sheet", "Layered Parchment", "Game Info", "Burgundy", "3D Wood Planks Table", "3D Fabric Runner", "Medieval Wood Planks Table", "Emerald Wide Runner", "Emerald Ribbon Runner", "Solid Burgundy Game Mat", "Augment Card Tray", "Stone Augment Card Tray", "Roll Orb", "Roll Cosmic Cube", "Reroll Counter Bar", "Inkwell", "Quill", "Paperweight", "Hourglass", "Candle", "Runic Slate", "Crystal Matrix", "Trinket", "SilverRing", "Brooch", "ManaCrystal", "Turn Balance" };
-                List<GameObject> directChildrenToDelete = new();
-                for (int i = 0; i < layoutRoot.childCount; i++)
-                {
-                    Transform child = layoutRoot.GetChild(i);
-                    foreach (string kw in cleanupKeywords)
-                    {
-                        if (child.name.Contains(kw))
-                        {
-                            directChildrenToDelete.Add(child.gameObject);
-                            break;
-                        }
-                    }
-                }
-                foreach (GameObject go in directChildrenToDelete)
-                {
-                    if (go.GetComponent<RollCosmicCube>() != null) rollCosmicCube = null;
-                    if (go.GetComponent<TurnBalanceIndicator>() != null) turnBalanceIndicator = null;
-                    go.SetActive(false);
-                    if (Application.isPlaying)
-                    {
-                        go.transform.SetParent(null, false);
-                        Destroy(go);
-                    }
-                    else
-                    {
-                        DestroyImmediate(go);
-                    }
-                }
-            }
-
-            // Layer 1 (Bottom): 4개 대형 원목 판자 3D 테이블 생성 (옹이 및 나뭇결 텍스처 적용)
-            Create3DWoodPlanksTable();
-
-            // Layer 2 (Mid): 가로 기준 + 약 4.5도 사선 회전 3D 딥 크림슨 패브릭 러너 + 골드 트림 생성
-            Create3DFabricRunner();
-
-            // Layer 3 (Center): 주사위 트레이 배치
-            CreateGameTray();
-
-            // Layer 4 (Left): 좌측 3D 스톤 증강 카드 트레이 (카탄 3구 슬롯 + 하스스톤 스톤 룩앤필)
-            CreateAugmentCardTray();
-
-            // Layer 5 (Right): 우측 3D 레이어드 양피지 야추 족보 점수표 생성
-            CreateScoreSheet();
-
-            // Layer 6 (Bottom-Right): 우측 하단 3D 앤틱 원통형 황동 잉크통 & 2시 방향 깃펜 오브젝트 생성
-            CreateInkwellAndQuill();
-
-            // Layer 7 (Top-Parchment): 양피지 상단 3D 고풍스러운 다크 조약돌 누름돌(Paperweight) 생성
-            CreatePaperweight();
-
-            // Layer 8 (Tray Bottom-Right): 주사위 트레이 하단 우측 3D 스타일라이즈드 코스믹 큐브 롤 오브젝트
-            CreateRollCosmicCube();
-
-            // Layer 9 (Tray Bottom-Left): 주사위 트레이 하단 좌측 3D 남은 롤 횟수 안내 마나 크리스탈 바
-            CreateRerollCounterBar();
-
-            // Layer 10 (Tray Top): 주사위 트레이 상단 3D 스타일라이즈드 앤틱 모래시계 1분 타이머
-            CreateHourglassTimer();
-
-            // Layer 11 (Bottom-Left): 테이블 좌측 하단 3D 코지 밀랍 양초 데코레이션 생성
-            CreateCandleStand();
-
-            // Layer 12 (Hourglass Right): 고대 룬 석판과 동적 마나 수정진 생성
-            CreateRunicSlateMatrix();
-
-            // Layer 13 (Bottom-Left Side): 3종 장식 오브젝트 클러스터 생성 (은반지, 체인 브로치, 마나 크리스탈)
-            CreateTrinketCluster();
-
-            // Layer 14 (Runic Slate Right): 플레이어 턴을 표시하는 앤틱 실버 천칭
-            CreateTurnBalanceIndicator();
-        }
-
-        private void CreateTurnBalanceIndicator()
-        {
-            turnBalanceIndicator = TurnBalanceIndicator.Create(
-                layoutRoot,
-                TurnBalanceIndicator.DefaultPosition,
-                Quaternion.Euler(TurnBalanceIndicator.DefaultEulerAngles));
-            turnBalanceIndicator.SetActiveSide(TurnSide.None, false);
-        }
-
-        private void CreateTrinketCluster()
-        {
-            Vector3 trinketPos = new(-6.75f, 0f, -11.45f);
-            trinketCluster = TabletopTrinketCluster.Create(layoutRoot, trinketPos);
-        }
-
-        private void CreateRunicSlateMatrix()
-        {
-            Vector3 matrixPosition = new Vector3(-0.30f, 0.10f, 5.93f);
-            runicSlateMatrix = RunicSlateMatrix.Create(layoutRoot, matrixPosition, Quaternion.identity, Vector3.one * 1.3f);
-        }
-
-        private void CreateCandleStand()
-        {
-            Vector3 candlePos = new Vector3(-14f, 0.08f, -9.3f);
-            Quaternion candleRot = Quaternion.Euler(0f, 25f, 0f);
-            Vector3 candleScale = Vector3.one * 2.70f;
-            candleStand = CozyCandleStand.Create(layoutRoot, candlePos, candleRot, candleScale);
-        }
-
-        private void CreateHourglassTimer()
-        {
-            Vector3 timerPos = new Vector3(-3.30f, 0.12f, 5.73f);
-            Quaternion timerRot = Quaternion.Euler(0f, -40f, 0f);
-            Vector3 timerScale = Vector3.one * 1.1f;
-            hourglassTimer = HourglassTimer.Create(layoutRoot, timerPos, timerRot, timerScale);
-        }
-
-        private static TurnSide MapPlayerToTurnSide(int playerIndex)
-        {
-            return playerIndex == 0 ? TurnSide.Left : TurnSide.Right;
-        }
-
-        private void CreateRerollCounterBar()
-        {
-            Vector3 counterPos = new Vector3(-0.35f, 0.12f, -6.30f);
-            Vector3 counterScale = Vector3.one * 1.35f;
-            rerollCounterBar = RerollCounterBar.Create(layoutRoot, counterPos, null, counterScale);
-        }
-
-        private void CreateRollCosmicCube()
-        {
-            EnsureSingleRollCosmicCube();
-            if (rollCosmicCube != null) return;
-
-            Vector3 cubePos = new Vector3(-0.35f, 0.12f, -6.30f);
-            Vector3 cubeScale = Vector3.one * 1.35f;
-            rollCosmicCube = RollCosmicCube.Create(layoutRoot, cubePos, null, cubeScale);
-        }
-
-        private void EnsureSingleRollCosmicCube()
-        {
-            if (layoutRoot == null) return;
-
-            RollCosmicCube[] cubes = layoutRoot.GetComponentsInChildren<RollCosmicCube>(true);
-            RollCosmicCube primary = rollCosmicCube != null && rollCosmicCube.transform.IsChildOf(layoutRoot)
-                ? rollCosmicCube
-                : (cubes.Length > 0 ? cubes[0] : null);
-
-            foreach (RollCosmicCube cube in cubes)
-            {
-                if (cube == null || cube == primary) continue;
-
-                GameObject duplicate = cube.gameObject;
-                duplicate.SetActive(false);
-                if (Application.isPlaying)
-                {
-                    duplicate.transform.SetParent(null, false);
-                    Destroy(duplicate);
-                }
-                else
-                {
-                    DestroyImmediate(duplicate);
-                }
-            }
-
-            rollCosmicCube = primary;
-            if (rollCosmicCube != null) rollCosmicCube.EnsureGeometry();
-        }
-
-        // [기존 3D 수정구 보존] 필요 시 호출하여 전환 가능한 원본 롤 오브젝트
-        private void CreateRollOrb()
-        {
-            Vector3 orbPos = new Vector3(-0.35f, 0.12f, -6.30f);
-            Vector3 orbScale = Vector3.one * 1.35f;
-            rollOrb = RollOrb.Create(layoutRoot, orbPos, null, orbScale);
-        }
-
-        private void CreateAugmentCardTray()
-        {
-            Vector3 trayPos = new Vector3(-10f, 0.1f, -0.3f);
-            Vector3 trayScale = Vector3.one * 1.5f;
-            augmentCardTray = AugmentCardTray.Create(layoutRoot, trayPos, trayScale);
-        }
-
-        private void CreateScoreSheet()
-        {
-            Vector3 scoreSheetPos = new Vector3(8.8f, -0.38f, 0.03f);
-            Vector3 scoreSheetScale = Vector3.one * 1.5f;
-            parchmentScoreSheet = ParchmentScoreSheet.Create(layoutRoot, scoreSheetPos, scoreSheetScale);
-            parchmentScoreSheet.RefreshAllScores();
-        }
-
-        private void CreateInkwellAndQuill()
-        {
-            Vector3 inkwellPos = new Vector3(13.0f, 0.08f, -7.9f);
-            Quaternion inkwellRot = Quaternion.Euler(0f, 110f, 0f);
-            Vector3 inkwellScale = Vector3.one * 2.5f;
-            InkwellAndQuill.Create(layoutRoot, inkwellPos, inkwellRot, inkwellScale);
-        }
-
-        private void CreatePaperweight()
-        {
-            Vector3 weightPos = new Vector3(8.8f, -0.34f, 6.70f);
-            Quaternion weightRot = Quaternion.identity;
-            Vector3 weightScale = Vector3.one * 1.30f;
-            ParchmentPaperweight.Create(layoutRoot, weightPos, weightRot, weightScale);
         }
 
         private void Create3DWoodPlanksTable()

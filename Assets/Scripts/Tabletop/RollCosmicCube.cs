@@ -796,6 +796,18 @@ namespace Tessera.Tabletop
                 tesseractMesh = new Mesh { name = "Cosmic_Tesseract_Line_Mesh" };
                 filter.sharedMesh = tesseractMesh;
             }
+#if UNITY_EDITOR
+            else if (UnityEditor.EditorUtility.IsPersistent(tesseractMesh))
+            {
+                // 이 메시는 애니메이션으로 매 갱신마다 정점을 다시 쓴다.
+                // 프리팹으로 구운 뒤로는 sharedMesh가 에셋이라, 그대로 쓰면 에셋 파일을 계속 덮어쓴다.
+                // DontSave를 붙여 씬에도 직렬화되지 않게 한다. 없으면 EnsureGeometry가 다시 만든다.
+                tesseractMesh = Instantiate(tesseractMesh);
+                tesseractMesh.name = "Cosmic_Tesseract_Line_Mesh";
+                tesseractMesh.hideFlags = HideFlags.DontSave;
+                filter.sharedMesh = tesseractMesh;
+            }
+#endif
 
             tesseractMaterial = Application.isPlaying ? renderer.material : renderer.sharedMaterial;
             if (shader != null && (tesseractMaterial == null || tesseractMaterial.shader != shader))

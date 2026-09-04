@@ -46,6 +46,9 @@ namespace Tessera.Tabletop
         private void DelayEnsureCluster()
         {
             if (this == null || gameObject == null) return;
+            // 프리팹 에셋 안에서는 재생성하지 않는다. Unity가 에셋의 Transform 부모 변경을 금지하므로
+            // OnValidate가 프리팹 에셋에 대해 돌면 재생성이 실패하며 로그만 쏟아진다.
+            if (UnityEditor.EditorUtility.IsPersistent(this)) return;
             EnsureCluster();
         }
 #endif

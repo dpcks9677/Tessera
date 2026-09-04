@@ -22,11 +22,11 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| 전체 상태 | M1~M6 완료, M7 중단 (M7-T1~T5 완료), M8 증강 시스템 구조 리팩토링 완료 (80/80 테스트 통과); M9 프리팹 이관 진행 중 |
-| 현재 마일스톤 | `M9` 테이블 오브젝트 프리팹 이관 |
-| 현재 작업 | `M9-T3` 컨트롤러를 참조 전용으로 전환 |
-| 다음 행동 | `M9-T3` 생성 코드 제거 및 `[SerializeField]` 참조 전환 |
-| 마지막 완료 작업 | `M9-T4` 씬 프리팹 인스턴스 전환 (프롭 14종, 수용 기준 통과, Tessera 테스트 80/80) |
+| 전체 상태 | M1~M6 완료, M7 중단 (M7-T1~T5 완료), M8 증강 시스템 구조 리팩토링 완료, M9 프리팹 이관 완료 (80/80 테스트 통과) |
+| 현재 마일스톤 | `M9` 완료 → `M10` 프레젠테이션 계층 리팩토링 대기 |
+| 현재 작업 | `M9` 완료 보고 및 다음 단계 결정 |
+| 다음 행동 | 사용자 결정에 따라 `M10-T1` 또는 `M7` 잔여 그래픽 작업 재개 |
+| 마지막 완료 작업 | `M9-T3` 컨트롤러 참조 전용 전환 (컨트롤러 3,096 → 2,637줄) |
 | 차단 요소 | 기술적 차단 없음. 베이커·마이그레이터 실행은 Unity Editor 기동 필요 |
 | 마지막 갱신일 | 2026-09-04 |
 
@@ -298,7 +298,7 @@ ManualAction
 | `M6` | 증강 55개 전체 이식 및 명시적 제외 처리 | `DONE` | `M5` | 45개 구현·6개 삭제·4개 미구현 확정과 회귀 테스트 |
 | `M7` | 증강 시스템 그래픽 요소 추가 | `TODO` | `M6` | 카드·특수 주사위·발동 연출·상태 표시 완성 (M7-T1~T5 완료 후 `M8`을 위해 중단) |
 | `M8` | 증강 시스템 구조 리팩토링 | `DONE` | `M6` | 발동 시점 인터페이스, 증강별 핸들러·상태 분리, 증강별 회귀 테스트 |
-| `M9` | 테이블 오브젝트 프리팹 이관 | `DOING` | `M8` | 프롭 프리팹화, 씬 저작 전환, 코딩 규약·ADR 문서 |
+| `M9` | 테이블 오브젝트 프리팹 이관 | `DONE` | `M8` | 프롭 프리팹화, 씬 저작 전환, 코딩 규약·ADR 문서 |
 | `M10` | 프레젠테이션 계층 리팩토링 | `TODO` | `M9` | 컨트롤러 분해, 프레젠테이션 상태 통합 |
 | `M11` | 증강 요트 로컬 핫시트 완성 | `TODO` | `M7`, `M10` | 전체 증강 게임 완주 가능 |
 | `M12` | 네트워크 준비 검증 | `TODO` | `M11` | 지연·중복·재동기화 대응 |
@@ -565,7 +565,7 @@ Assets/Editor/TabletopSceneMigrator.cs    일회성 씬 전환
 | `M9-T0` | 코딩 규약과 ADR 문서 도입 | `DONE` | `.editorconfig`, `docs/coding_conventions.md`, `docs/architecture_decisions.md`(ADR-001)가 존재하고 `AGENTS.md`가 이를 참조함 |
 | `M9-T1` | 프리팹 베이커 작성 | `DONE` | 메뉴 실행 한 번으로 프롭 14종의 메시·머티리얼 에셋과 프리팹이 생성됨 |
 | `M9-T2` | 런타임 자동 재생성 무력화 | `DONE` | 플레이 모드 진입/이탈과 스크립트 재컴파일에서 프롭 transform이 변하지 않음 |
-| `M9-T3` | 컨트롤러를 참조 전용으로 전환 | `TODO` | `Create*()`·`BuildTableLayout()`·`EnsureTableLayoutElements()`가 제거되고 Inspector에 프롭 슬롯이 노출됨 |
+| `M9-T3` | 컨트롤러를 참조 전용으로 전환 | `DONE` | `Create*()`·`BuildTableLayout()`·`EnsureTableLayoutElements()`가 제거되고 Inspector에 프롭 슬롯이 노출됨 |
 | `M9-T4` | 씬 프리팹 인스턴스 전환 | `DONE` | 현재 배치를 보존한 채 프롭이 프리팹 인스턴스로 교체되고 컨트롤러 참조가 결선됨 |
 
 `M9-T2`에서 `EnsureGeometry()`는 제거하지 않았다. 이 메서드는 직렬화되지 않는 자식 `Transform` 참조를 재바인딩하는 역할을 겸하므로, 제거하면 프리팹을 불러온 뒤 컴포넌트 내부 참조가 비게 된다. 실제로 배치를 되돌리던 것은 좌표 재적용과 포즈 기반 재생성 판정이었고 그쪽만 제거했다.
@@ -587,6 +587,16 @@ Assets/Editor/TabletopSceneMigrator.cs    일회성 씬 전환
 - 텍스처는 `EncodeToPNG`를 직접 부르지 않고 `RenderTexture` Blit 후 읽어온다. `InkwellAndQuill`이 `Apply(false, true)`로 텍스처를 읽기 불가로 만들어 두었다.
 - 두 메뉴에서 모달 다이얼로그를 제거했다. REST(unity-skills)로 실행하면 모달이 Unity 메인 스레드를 막는다.
 - `SyncTrayVisualMat`과 `SyncTableBackground`를 생명주기 호출에서 떼어냈다. 전자는 런타임 생성 텍스처를 머티리얼에 덮어써 구워둔 텍스처 참조를 실제로 지웠고, 후자는 테이블이나 러너가 없을 때 `BuildTableLayout`으로 전체를 재생성해 프리팹 인스턴스를 파괴할 수 있었다.
+
+`M9-T3` 이후 컨트롤러는 3,096줄에서 2,637줄로 줄었고, 프롭 생성·배치 코드가 모두 사라졌다. 절차적 테이블·러너·트레이 생성기는 독립 컴포넌트가 없어 삭제하지 않고 `RegenerateTableSurfaces()` ContextMenu 하나로 묶어 재굽기용으로 남겼다.
+
+굽기 이후 드러난 회귀 3건도 함께 고쳤다. 모두 "런타임 코드가 이제 구워진 에셋을 직접 덮어쓴다"는 같은 부류다.
+
+| 증상 | 원인 | 조치 |
+|---|---|---|
+| `Yacht Tray Visual` 프리팹 인스턴스가 씬에서 사라짐 | `BuildDiceGraphicsPoC`가 `[InitializeOnLoad]`로 리로드마다 실행되며, 프롭 이름이 프리팹 안으로 이동해 씬 검사가 실패하자 씬을 열어 재생성하고 저장함 | 자동 재생성 훅과 관련 메뉴 3종 제거, `RebuildTableLayoutMenu.cs` 삭제 |
+| 콘솔에 "Setting the parent of a transform which resides in a Prefab Asset is disabled" 반복, 씬에 고아 오브젝트 생성 | `[ExecuteAlways]` 컴포넌트의 `OnValidate`가 프리팹 에셋 내부에서도 실행되어 지오메트리 재생성을 시도함 | `DelayEnsure*` 8곳에 `EditorUtility.IsPersistent` 가드 추가 |
+| 메시·머티리얼 에셋 파일이 계속 수정됨 | `RollCosmicCube`가 테서랙트 정점을 애니메이션으로 다시 쓰는데 `sharedMesh`가 이제 에셋임. `SyncTrayVisualMat`이 런타임 텍스처를 머티리얼에 덮어씀 | 에셋이면 `DontSave` 사본을 만들어 쓰도록 수정, `SyncTrayVisualMat`·`SyncTableBackground`를 생명주기에서 분리 |
 
 M9 완료 조건:
 

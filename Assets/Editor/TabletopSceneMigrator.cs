@@ -95,6 +95,25 @@ namespace Tessera.EditorTools
             }
         }
 
+        /// <summary>
+        /// 열려 있는 씬을 디스크 상태로 다시 읽어 메모리 변경을 버린다.
+        /// 전환 작업 중 잘못된 재생성으로 씬이 오염됐을 때 복구용으로 쓴다.
+        /// </summary>
+        [MenuItem("Tessera/Tabletop/Reload Scene From Disk")]
+        public static void ReloadSceneFromDisk()
+        {
+            Scene scene = SceneManager.GetActiveScene();
+            if (string.IsNullOrEmpty(scene.path))
+            {
+                Debug.LogError("[TabletopSceneMigrator] 저장된 적 없는 씬은 다시 읽을 수 없습니다.");
+                return;
+            }
+
+            string path = scene.path;
+            EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
+            Debug.Log($"[TabletopSceneMigrator] 씬을 디스크에서 다시 읽었습니다: {path}");
+        }
+
         private static PropPose Capture(Transform source)
         {
             return new PropPose
