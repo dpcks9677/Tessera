@@ -218,11 +218,29 @@ namespace Tessera.EditorTools
             }
         }
 
+        /// <summary>
+        /// 텍스처를 PNG로 저장한다.
+        ///
+        /// EncodeToPNG를 직접 부르지 않는다. 일부 생성 코드가 Apply(false, true)로 텍스처를
+        /// 읽기 불가 상태로 만들어 두어(InkwellAndQuill 등) 직접 인코딩이 실패한다.
+        /// RenderTexture로 Blit한 뒤 읽어오면 읽기 가능 여부와 압축 포맷에 상관없이 동작한다.
+        /// </summary>
         private static bool TryWritePng(Texture2D texture, string assetPath)
         {
+            RenderTexture temporary = RenderTexture.GetTemporary(
+                texture.width, texture.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            RenderTexture previous = RenderTexture.active;
+            Texture2D readable = null;
             try
             {
-                byte[] png = texture.EncodeToPNG();
+                Graphics.Blit(texture, temporary);
+                RenderTexture.active = temporary;
+
+                readable = new Texture2D(texture.width, texture.height, TextureFormat.RGBA32, false);
+                readable.ReadPixels(new Rect(0f, 0f, temporary.width, temporary.height), 0, 0);
+                readable.Apply(false, false);
+
+                byte[] png = readable.EncodeToPNG();
                 if (png == null || png.Length == 0) return false;
 
                 File.WriteAllBytes(Path.Combine(Directory.GetCurrentDirectory(), assetPath), png);
@@ -233,6 +251,12 @@ namespace Tessera.EditorTools
             {
                 Debug.LogWarning($"[TabletopPrefabBaker] PNG 인코딩 실패: {exception.Message}");
                 return false;
+            }
+            finally
+            {
+                RenderTexture.active = previous;
+                RenderTexture.ReleaseTemporary(temporary);
+                if (readable != null) UnityEngine.Object.DestroyImmediate(readable);
             }
         }
 
