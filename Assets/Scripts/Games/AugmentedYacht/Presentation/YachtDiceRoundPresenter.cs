@@ -21,6 +21,8 @@ namespace Tessera.Games.AugmentedYacht
         private readonly List<bool> keptDice = new();
         private readonly List<int> diceValues = new();
         private readonly List<int> keptSlotIndices = new();
+        // 주사위별 화면 종류. 권위 상태의 YachtDieType을 옮겨 담는다(M7-T5).
+        private readonly List<DieType> dieTypes = new();
 
         private DiceVisualPool dicePool;
         private BakedDiceController bakedDiceController;
@@ -71,13 +73,16 @@ namespace Tessera.Games.AugmentedYacht
             keptDice.Clear();
             diceValues.Clear();
             keptSlotIndices.Clear();
+            dieTypes.Clear();
 
+            dicePool.EnsureDiceRoot();
             for (int index = 0; index < diceCount; index++)
             {
                 activeDice.Add(dicePool.CreateVisualDie(index + 1));
                 keptDice.Add(false);
                 diceValues.Add(index + 1); // 기본 1~5 눈 설정
                 keptSlotIndices.Add(-1);
+                dieTypes.Add(dicePool.SelectedDieType);
             }
 
             dicePool.ArrangeInitialPositions(activeDice, diceValues);
@@ -92,7 +97,10 @@ namespace Tessera.Games.AugmentedYacht
             dicePool?.ArrangeInitialPositions(activeDice, diceValues);
         }
 
-        /// <summary>권위 계층이 확정한 눈과 킵 여부를 화면 사본에 복사한다.</summary>
+        /// <summary>
+        /// 권위 계층이 확정한 눈·킵 여부·주사위 종류를 화면 사본에 복사한다.
+        /// 종류가 바뀐 주사위만 다시 칠한다(M7-T5).
+        /// </summary>
         public void SyncFromAuthority(YachtDieState[] authorityDice)
         {
             if (authorityDice == null) return;
@@ -101,6 +109,12 @@ namespace Tessera.Games.AugmentedYacht
             {
                 keptDice[i] = authorityDice[i].IsKept;
                 diceValues[i] = authorityDice[i].Value;
+
+                DieType visual = YachtDieVisuals.Resolve(authorityDice[i].Type);
+                if (i >= dieTypes.Count || i >= activeDice.Count || dieTypes[i] == visual) continue;
+
+                dieTypes[i] = visual;
+                dicePool?.ApplyDieType(activeDice[i], visual);
             }
         }
 
@@ -113,6 +127,7 @@ namespace Tessera.Games.AugmentedYacht
 
         public void SetDieType(DieType type)
         {
+            for (int i = 0; i < dieTypes.Count; i++) dieTypes[i] = type;
             dicePool?.SetDieType(type, activeDice);
         }
 
@@ -185,26 +200,56 @@ namespace Tessera.Games.AugmentedYacht
             }
             Debug.Log($"<color=#2EA3FF>[주사위 굴림 #{rollIndex}]</color> Preset #{clipIndex + 1} (미러링: {isMirrored}) | 굴린 눈: [{string.Join(", ", rolledValues)}], 킵된 눈: [{string.Join(", ", keptValues)}], 전체 결과: [{string.Join(", ", diceValues)}]");
 
-            var diceTransforms = new Transform[activeDice.Count];
             for (int i = 0; i < activeDice.Count; i++)
             {
-                if (activeDice[i] != null)
-                {
-                    activeDice[i].transform.localScale = Vector3.one * DiceBoardMetrics.DieSize;
-                    diceTransforms[i] = activeDice[i].transform;
-                }
+                if (activeDice[i] != null) activeDice[i].transform.localScale = Vector3.one * DiceBoardMetrics.DieSize;
+            }
+
+            // 프리셋은 8면 주사위를 뒤쪽 슬롯에 굽는다(원본 presetBaker.js:242). 화면 사본은 앞쪽에 배정하므로
+            // 재생에 넘길 배열만 그 순서로 맞춘다. 화면 사본의 인덱스는 그대로 둔다.
+            int[] order = BuildPresetSlotOrder(dieTypes);
+            var diceTransforms = new Transform[order.Length];
+            var orderedKept = new bool[order.Length];
+            var orderedValues = new int[order.Length];
+            for (int slot = 0; slot < order.Length; slot++)
+            {
+                int i = order[slot];
+                diceTransforms[slot] = activeDice[i] != null ? activeDice[i].transform : null;
+                orderedKept[slot] = keptDice[i];
+                orderedValues[slot] = diceValues[i];
             }
 
             yield return bakedDiceController.Play(
                 diceTransforms,
                 clipIndex,
                 clip,
-                keptDice,
-                diceValues,
+                orderedKept,
+                orderedValues,
                 isMirrored);
 
             // 굴림 완료 후 보드 중앙 정렬 (작은 눈 -> 큰 눈 오름차순)
             yield return dicePool.AnimateLayout(0.45f, activeDice, keptDice, keptSlotIndices, diceValues, bakedDiceController);
+        }
+
+        /// <summary>
+        /// 굴림 프리셋의 슬롯 순서. 8면 주사위가 아닌 것을 앞에, 8면 주사위를 뒤에 둔다.
+        /// 프리셋을 구울 때 8면체를 뒤쪽 슬롯에서 던졌기 때문에 순서가 어긋나면 착지 궤적이 뒤바뀐다.
+        /// </summary>
+        public static int[] BuildPresetSlotOrder(IReadOnlyList<DieType> types)
+        {
+            var order = new int[types.Count];
+            int next = 0;
+
+            for (int i = 0; i < types.Count; i++)
+            {
+                if (types[i] == DieType.Octahedron) continue;
+                order[next++] = i;
+            }
+            for (int i = 0; i < types.Count; i++)
+            {
+                if (types[i] == DieType.Octahedron) order[next++] = i;
+            }
+            return order;
         }
 
         private IEnumerator AnimateKeepToggleRoutine()

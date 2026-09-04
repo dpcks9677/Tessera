@@ -19,6 +19,9 @@ namespace Tessera.Games.AugmentedYacht
     {
         [Header("Source assets")]
         [SerializeField] private GameObject diceModel;
+        // 몸체 형상이 다른 특수 주사위(M7-T5). Tessera/Bake/Dice Shapes 로 구운 프리팹이다.
+        [SerializeField] private GameObject octahedronDieModel;
+        [SerializeField] private GameObject sevensDieModel;
         [SerializeField] private Mesh yachtTrayMesh;
         [SerializeField] private Texture2D playmatTexture;
 
@@ -106,14 +109,24 @@ namespace Tessera.Games.AugmentedYacht
             Application.targetFrameRate = 60;
             Application.runInBackground = true;
 
-            EnsureDicePool();
-
             if (diceModel == null)
             {
 #if UNITY_EDITOR
                 diceModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Reference/normal_dice.fbx");
 #endif
             }
+#if UNITY_EDITOR
+            if (octahedronDieModel == null)
+            {
+                octahedronDieModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Dice/Die_Octahedron.prefab");
+            }
+            if (sevensDieModel == null)
+            {
+                sevensDieModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Dice/Die_Sevens.prefab");
+            }
+#endif
+
+            EnsureDicePool();
 
             // 배치는 씬이 소유한다(M9). 여기서는 바인딩만 하고, 씬이 비어 있을 때만 최소 월드를 세운다.
             if (!ResolveSceneLayout())
@@ -239,7 +252,9 @@ namespace Tessera.Games.AugmentedYacht
                 StartNormalGame = () => turnFlow?.StartNewGame(YachtGameMode.Normal),
                 StartAugmentedGame = () => turnFlow?.StartNewGame(YachtGameMode.Augmented),
                 RestartGame = () => turnFlow?.StartNewGame(),
-                KeyLightPresetName = () => KeyLightPresetName
+                TogglePixelEdge = TogglePixelEdgeFilter,
+                KeyLightPresetName = () => KeyLightPresetName,
+                PixelEdgeEnabled = () => cameraRig != null && cameraRig.EdgeFilterEnabled
             };
         }
 
@@ -311,6 +326,7 @@ namespace Tessera.Games.AugmentedYacht
             }
 
             dicePool.Bind(diceModel, sceneRefs.LayoutRoot, CenterSectionX, selectedDieType);
+            dicePool.BindSpecialModels(octahedronDieModel, sevensDieModel);
         }
 
         /// <summary>
@@ -330,6 +346,7 @@ namespace Tessera.Games.AugmentedYacht
 
             inputRouter.RollRequested += RollDice;
             inputRouter.ResolutionPresetRequested += OnResolutionPresetRequested;
+            inputRouter.PixelEdgeToggleRequested += TogglePixelEdgeFilter;
             inputRouter.DieTypeRequested += SetDieType;
             inputRouter.DieHoverChanged += OnDieHoverChanged;
             inputRouter.DieClicked += ToggleKeep;
@@ -512,6 +529,14 @@ namespace Tessera.Games.AugmentedYacht
             augmentTray?.RefreshDraftCardParchment();
             EnsureCameraRig();
             cameraRig.SetInternalResolution(resolution);
+        }
+
+        /// <summary>픽셀 엣지 필터를 켜고 끈다(F3). 끈 화면이 엣지 도입 이전의 픽셀 필터다.</summary>
+        public void TogglePixelEdgeFilter()
+        {
+            EnsureCameraRig();
+            cameraRig.ToggleEdgeFilter();
+            YachtSceneAssembler.SetPixelEdgeLabel(debugButtons, cameraRig.EdgeFilterEnabled);
         }
 
         /// <summary>

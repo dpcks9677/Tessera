@@ -1,4 +1,5 @@
 ﻿using Tessera.Core;
+using Tessera.Rendering;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -17,6 +18,7 @@ namespace Tessera.Games.AugmentedYacht
 
         private static readonly Vector2Int OutputResolution = new(1920, 1080);
         private static readonly Color DarkCharcoalBackground = new(0.06f, 0.05f, 0.07f);
+        private static readonly int pixelEdgeVirtualResolutionId = Shader.PropertyToID("_PixelEdgeVirtualResolution");
 
         private Camera worldCamera;
         private Camera presentationCamera;
@@ -32,6 +34,7 @@ namespace Tessera.Games.AugmentedYacht
         private RenderTexture crispUiTarget;
         private RawImage crispUiImage;
         private Vector2Int crispUiScreenSize;
+        private PixelEdgeCamera pixelEdgeCamera;
 
         private Vector2Int internalResolution = new(640, 360);
 
@@ -39,6 +42,9 @@ namespace Tessera.Games.AugmentedYacht
         public Camera PresentationCamera => presentationCamera;
         public Camera CrispUiCamera => crispUiCamera;
         public Vector2Int InternalResolution => internalResolution;
+
+        /// <summary>픽셀 엣지 필터가 켜져 있는지. 꺼져 있으면 엣지 이전의 픽셀 필터와 같은 화면이다.</summary>
+        public bool EdgeFilterEnabled => pixelEdgeCamera != null && pixelEdgeCamera.EdgeFilterEnabled;
 
         /// <summary>Crisp UI 카메라가 준비되면 알린다. 월드 스페이스 캔버스의 이벤트 카메라로 쓴다.</summary>
         public event System.Action<Camera> CrispUiCameraReady;
@@ -187,6 +193,7 @@ namespace Tessera.Games.AugmentedYacht
 
             worldCamera.cullingMask &= ~TesseraLayers.Mask(TesseraLayers.CrispUI);
 
+            EnsurePixelEdgeMarker();
             EnsureCrispUiCamera();
 
             if (gameImageRect == null)
@@ -196,6 +203,33 @@ namespace Tessera.Games.AugmentedYacht
             }
             EnsureCrispUiOverlay();
             return true;
+        }
+
+        /// <summary>
+        /// 픽셀 엣지 패스를 받을 카메라를 표시한다.
+        ///
+        /// 렌더러 피처는 렌더러 에셋 단위라 이 에셋을 쓰는 모든 카메라에서 후보가 된다.
+        /// 월드 카메라에만 이 표시를 달아 Crisp UI 카메라와 Display 1 카메라를 걸러 낸다.
+        /// <c>CopyFrom</c>은 컴포넌트를 복사하지 않으므로 Crisp UI 카메라로 번지지 않는다.
+        /// </summary>
+        private void EnsurePixelEdgeMarker()
+        {
+            if (worldCamera == null) return;
+
+            pixelEdgeCamera = worldCamera.GetComponent<PixelEdgeCamera>();
+            if (pixelEdgeCamera == null) pixelEdgeCamera = worldCamera.gameObject.AddComponent<PixelEdgeCamera>();
+        }
+
+        /// <summary>픽셀 엣지 필터를 켜고 끈다. 끄면 패스가 등록되지 않아 블릿 비용도 사라진다.</summary>
+        public void SetEdgeFilterEnabled(bool enabled)
+        {
+            EnsurePixelEdgeMarker();
+            if (pixelEdgeCamera != null) pixelEdgeCamera.EdgeFilterEnabled = enabled;
+        }
+
+        public void ToggleEdgeFilter()
+        {
+            SetEdgeFilterEnabled(!EdgeFilterEnabled);
         }
 
         private void EnsureCrispUiCamera()
@@ -325,11 +359,16 @@ namespace Tessera.Games.AugmentedYacht
 
         public void ApplyRenderSettings()
         {
+            Vector4 resolution = new(internalResolution.x, internalResolution.y, 0f, 0f);
             if (upscaleMaterial != null)
             {
                 if (upscaleMaterial.HasProperty("_Quantize")) upscaleMaterial.SetFloat("_Quantize", 0f);
-                upscaleMaterial.SetVector("_VirtualResolution", new Vector4(internalResolution.x, internalResolution.y, 0f, 0f));
+                upscaleMaterial.SetVector("_VirtualResolution", resolution);
             }
+
+            // 엣지 패스는 렌더러 피처가 소유해 여기서 재질을 직접 잡을 수 없다. 같은 격자를 써야
+            // 업스케일과 어긋나지 않으므로 전역 값으로 넘긴다.
+            Shader.SetGlobalVector(pixelEdgeVirtualResolutionId, resolution);
         }
 
         public void FitFullScreen()

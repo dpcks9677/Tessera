@@ -108,6 +108,19 @@ M5에서는 규칙 검증을 위한 최소 표시와 임시 리소스만 사용�
 
 ## 5. 단계 작업 기록
 
+### 2026-09-05 — M7-T5 8면 주사위 외형 작업 중단
+
+- 상태: `중단`
+- 사용자 요청/결정: 8면 주사위 구현 도중 작업을 멈추고, 픽셀 필터 개선(`M10.5`)을 먼저 진행한다. 중단 사실을 문서에 남기고 백업 커밋을 만든다.
+- 진행된 내용: `feature/yacht-dice-migration` 브랜치에서 팔면체 형상 베이킹과 면 값 매핑을 작업하던 중이다.
+  - `Assets/Editor/DiceShapeBaker.cs` — 팔면체 몸체·홈 메시 베이커
+  - `Assets/Scripts/Dice/DiceFaceValues.cs` — 주사위 종류별 면 값 표
+  - `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtDieVisuals.cs` — 주사위 비주얼 분리
+  - `Assets/Art/Generated/Dice/`, `Assets/Prefabs/Dice/` — 구운 메시와 프리팹
+  - 테스트: `DiceShapeAssetTests.cs`, `DiceFaceValueTests.cs`, `DiceVisualMappingTests.cs`, `OctahedronOrientationTests.cs`
+- 남은 문제/차단 요소: 8면 주사위 외형이 게임 안에서 최종 검수되지 않았다. `M7-T5`의 나머지 특수 주사위(황금, 무게, 프로모션, 커플, 세븐스)는 착수 전이다.
+- 다음 단계: 픽셀 필터 작업(`M10.5`)이 마무리된 뒤 재개. 사용자 지시 대기
+
 ### 2026-08-31 — M7-T4 선택 창·트레이 카드 UI 정합 및 선택 창 픽셀 필터 적용
 
 - 상태: `검증 대기`

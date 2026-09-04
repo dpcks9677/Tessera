@@ -13,7 +13,9 @@ namespace Tessera.Dice
         Sevens,      // 에메랄드 시안 (민트 바탕, 딥 틸 눈)
         Couple,      // 로즈 핑크 (핑크 바탕, 딥 버건디 눈)
         Promotion,   // 다크 슬레이트 (흑요석 바탕, 엠버 골드 눈)
-        Weird        // 아케인 퍼플 (보라 바탕, 민트 라임 눈)
+        Weird,       // 아케인 퍼플 (보라 바탕, 민트 라임 눈)
+        // 아래로만 추가한다. 씬이 selectedDieType을 정수로 직렬화하므로 중간에 끼우면 기존 값이 밀린다.
+        Octahedron   // 미드나잇 네이비 8면 (남색 바탕, 흰 눈)
     }
 
     public struct DiePaletteDefinition
@@ -117,6 +119,20 @@ namespace Tessera.Dice
                     new Color(0.65f, 0.95f, 0.80f),
                     0.10f,
                     0.60f)
+            },
+            // 9. 8면 주사위: 미드나잇 네이비 바탕 + 퓨어 화이트 눈 (원본 diceMaterials.js:16 #002F5E / #ffffff)
+            //    원본 색을 그대로 쓰면 이 씬의 앰버 조명 아래에서 반사광이 색을 덮어 회백색으로 보인다.
+            //    색조는 유지하고 명도만 올려(#0F427A 계열) 남색으로 읽히게 했다.
+            //    숫자는 순백 대신 옅은 하늘색으로 새긴다. 순백 자발광 획은 640x360 렌더에서 인접 픽셀까지
+            //    흰색으로 채워 8면체를 통째로 흰 덩어리로 만들었다.
+            {
+                DieType.Octahedron,
+                new DiePaletteDefinition(
+                    "Octahedron Navy",
+                    new Color(0.06f, 0.26f, 0.48f),
+                    new Color(0.92f, 0.94f, 0.98f),
+                    0.0f,
+                    0.18f)
             }
         };
 
@@ -171,8 +187,19 @@ namespace Tessera.Dice
             mat.SetFloat("_Smoothness", 0.3f);
             mat.SetFloat("_SpecularHighlights", 0f);
             mat.SetFloat("_EnvironmentReflections", 0f);
-            mat.EnableKeyword("_EMISSION");
-            mat.SetColor("_EmissionColor", def.PipColor);
+
+            // 8면 주사위의 눈은 음각 홈이 아니라 면 위에 얹은 숫자라, 자발광을 주면 밝기가 포화해
+            // 640x360 렌더에서 주사위를 통째로 흰 덩어리로 만든다. 이 종류만 자발광을 끈다.
+            if (type == DieType.Octahedron)
+            {
+                mat.DisableKeyword("_EMISSION");
+                mat.SetColor("_EmissionColor", Color.black);
+            }
+            else
+            {
+                mat.EnableKeyword("_EMISSION");
+                mat.SetColor("_EmissionColor", def.PipColor);
+            }
             mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
             // Pip 메시는 그림자를 캐스팅하지 않음 (그림자 구멍 차단)
             mat.SetShaderPassEnabled("ShadowCaster", false);

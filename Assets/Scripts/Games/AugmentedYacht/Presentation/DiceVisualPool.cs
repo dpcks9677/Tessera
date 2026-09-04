@@ -23,12 +23,12 @@ namespace Tessera.Games.AugmentedYacht
         private const int DiceLayer = TesseraLayers.Dice;
 
         private GameObject diceModel;
+        private GameObject octahedronModel;
+        private GameObject sevensModel;
         private Transform layoutRoot;
         private float centerSectionX;
 
         private DieType selectedDieType = DieType.Normal;
-        private Material diceBodyMaterial;
-        private Material dicePipMaterial;
         private Transform diceRoot;
 
         public Transform DiceRoot => diceRoot;
@@ -41,28 +41,82 @@ namespace Tessera.Games.AugmentedYacht
             layoutRoot = layout;
             centerSectionX = centerX;
             selectedDieType = initialDieType;
-            EnsureDiceMaterials();
         }
 
-        public void EnsureDiceMaterials()
+        /// <summary>형상이 다른 특수 주사위 모델을 넘겨준다(M7-T5). 없으면 기본 D6로 대체된다.</summary>
+        public void BindSpecialModels(GameObject octahedron, GameObject sevens)
         {
-            diceBodyMaterial = DicePaletteCatalog.GetBodyMaterial(selectedDieType);
-            dicePipMaterial = DicePaletteCatalog.GetPipMaterial(selectedDieType);
+            octahedronModel = octahedron;
+            sevensModel = sevens;
+        }
+
+        /// <summary>주사위 하나에 종류를 반영한다. 종류는 주사위마다 다를 수 있다(M7-T5).</summary>
+        public void ApplyDieType(GameObject die, DieType type)
+        {
+            if (die == null) return;
+
+            DiceKeepTarget target = die.GetComponent<DiceKeepTarget>();
+            DieType previous = target != null ? target.Type : DieType.Normal;
+            if (target != null) target.Type = type;
+
+            Transform visual = die.transform.Find("Visual");
+            if (visual == null || ModelFor(previous) != ModelFor(type))
+            {
+                visual = BuildVisual(die, type);
+            }
+
+            if (visual != null) ApplyDiceMaterialsToFbx(visual.gameObject, type);
+        }
+
+        /// <summary>종류별 형상 모델. 세븐스와 8면 주사위만 몸체가 다르다.</summary>
+        private GameObject ModelFor(DieType type)
+        {
+            return type switch
+            {
+                DieType.Octahedron => octahedronModel != null ? octahedronModel : diceModel,
+                DieType.Sevens => sevensModel != null ? sevensModel : diceModel,
+                _ => diceModel
+            };
+        }
+
+        /// <summary>모델 인스턴스를 새로 만들어 Visual 자리에 끼운다. 기존 Visual은 버린다.</summary>
+        private Transform BuildVisual(GameObject die, DieType type)
+        {
+            Transform existing = die.transform.Find("Visual");
+            if (existing != null)
+            {
+                if (Application.isPlaying) Destroy(existing.gameObject);
+                else DestroyImmediate(existing.gameObject);
+            }
+
+            GameObject model = ModelFor(type);
+            if (model == null) return null;
+
+            GameObject visual = Instantiate(model, die.transform);
+            visual.name = "Visual";
+            DisableImportedSceneComponents(visual);
+            visual.transform.localPosition = Vector3.zero;
+            visual.transform.localRotation = MeasureBaseCorrection(visual.transform, type);
+            NormalizeVisual(visual.transform, 1.0f);
+            SetLayerRecursively(die, DiceLayer);
+            return visual.transform;
+        }
+
+        /// <summary>
+        /// 모델 자체의 기울기를 직교로 되돌리는 회전.
+        /// 8면 주사위는 베이커가 이미 직교로 구웠고 눈이 축 방향에 있지도 않아 측정하지 않는다.
+        /// </summary>
+        private static Quaternion MeasureBaseCorrection(Transform visual, DieType type)
+        {
+            return type == DieType.Octahedron
+                ? Quaternion.identity
+                : DiceFaceOrientation.MeasureModelBasis(visual);
         }
 
         public void SetDieType(DieType type, System.Collections.Generic.IReadOnlyList<GameObject> activeDice)
         {
             selectedDieType = type;
-            EnsureDiceMaterials();
-            foreach (GameObject die in activeDice)
-            {
-                if (die == null) continue;
-                Transform visual = die.transform.Find("Visual");
-                if (visual != null)
-                {
-                    ApplyDiceMaterialsToFbx(visual.gameObject);
-                }
-            }
+            foreach (GameObject die in activeDice) ApplyDieType(die, type);
         }
 
         public void EnsureDiceRoot()
@@ -89,21 +143,11 @@ namespace Tessera.Games.AugmentedYacht
             root.transform.localRotation = Quaternion.identity;
             root.transform.localScale = Vector3.one * DiceBoardMetrics.DieSize;
 
-            if (diceModel != null)
+            // FBX 자체의 isometric 기울기(333, 318, 0)를 0도로 직교 보정하고 1단위 큐브로 정규화한다.
+            Transform visual = ModelFor(selectedDieType) != null ? BuildVisual(root, selectedDieType) : null;
+            if (visual != null)
             {
-                GameObject visual = Instantiate(diceModel, root.transform);
-                visual.name = "Visual";
-                DisableImportedSceneComponents(visual);
-                visual.transform.localPosition = Vector3.zero;
-
-                // FBX 자체의 isometric 기울기(333, 318, 0)를 0도로 직교 보정
-                Quaternion baseCorrection = DiceFaceOrientation.MeasureModelBasis(visual.transform);
-                visual.transform.localRotation = baseCorrection;
-
-                // 로컬 메쉬 바운드 기준으로 정확히 1단위 큐브로 정규화
-                NormalizeVisual(visual.transform, 1.0f);
-                ApplyDiceMaterialsToFbx(visual);
-                SetLayerRecursively(root, DiceLayer);
+                ApplyDiceMaterialsToFbx(visual.gameObject, selectedDieType);
             }
             else
             {
@@ -123,6 +167,7 @@ namespace Tessera.Games.AugmentedYacht
 
             DiceKeepTarget target = root.GetComponent<DiceKeepTarget>();
             target.Index = index - 1;
+            target.Type = selectedDieType;
 
             return root;
         }
@@ -135,9 +180,10 @@ namespace Tessera.Games.AugmentedYacht
             visual.localScale = Vector3.one * (targetLocalSize / rawBodySize);
         }
 
-        private void ApplyDiceMaterialsToFbx(GameObject visual)
+        private void ApplyDiceMaterialsToFbx(GameObject visual, DieType type)
         {
-            EnsureDiceMaterials();
+            Material diceBodyMaterial = DicePaletteCatalog.GetBodyMaterial(type);
+            Material dicePipMaterial = DicePaletteCatalog.GetPipMaterial(type);
 
             // 솔리드 그림자 프록시(ShadowProxy) 확인 및 설정 (음각 홈으로 인한 그림자 구멍 완전 차단)
             EnsureShadowProxy(visual.transform);
@@ -199,7 +245,20 @@ namespace Tessera.Games.AugmentedYacht
                 Vector3 targetPos = DiceBoardMetrics.GetActivePosition(i, activeDice.Count);
                 activeDice[i].transform.localPosition = targetPos;
                 activeDice[i].transform.localScale = Vector3.one * DiceBoardMetrics.ActiveDieSize;
-                Quaternion targetRot = DiceFaceOrientation.GetCameraFacingRotation(diceValues[i], 75.0f);
+                // 면 값이 1~6이 아닌 종류가 있어 값을 면 인덱스로 옮겨 넘긴다(M7-T5).
+                DieType dieType = DiceFaceValues.TypeOf(activeDice[i].transform);
+                int faceIndex = DiceFaceValues.FaceIndexOf(dieType, diceValues[i]);
+
+                if (dieType == DieType.Octahedron)
+                {
+                    activeDice[i].transform.localRotation = DiceFaceOrientation.GetOctaCameraFacingRotation(faceIndex, 75.0f);
+                    Transform octaVisual = activeDice[i].transform.Find("Visual");
+                    if (octaVisual != null) octaVisual.localRotation = Quaternion.identity;
+                    continue;
+                }
+
+                faceIndex = Mathf.Clamp(faceIndex, 1, 6);
+                Quaternion targetRot = DiceFaceOrientation.GetCameraFacingRotation(faceIndex, 75.0f);
                 activeDice[i].transform.localRotation = targetRot;
 
                 Transform visual = activeDice[i].transform.Find("Visual");
@@ -209,7 +268,7 @@ namespace Tessera.Games.AugmentedYacht
                 }
                 else
                 {
-                    DiceMaterialFactory.ApplyPredictedTopValue(activeDice[i].transform, targetRot, diceValues[i]);
+                    DiceMaterialFactory.ApplyPredictedTopValue(activeDice[i].transform, targetRot, faceIndex);
                 }
             }
         }
@@ -240,18 +299,9 @@ namespace Tessera.Games.AugmentedYacht
         /// <summary>주사위 재질을 해제한다. 컨트롤러의 OnDestroy에서 부른다.</summary>
         public void Dispose()
         {
-            if (diceBodyMaterial != null)
-            {
-                if (Application.isPlaying) Destroy(diceBodyMaterial);
-                else DestroyImmediate(diceBodyMaterial);
-                diceBodyMaterial = null;
-            }
-            if (dicePipMaterial != null)
-            {
-                if (Application.isPlaying) Destroy(dicePipMaterial);
-                else DestroyImmediate(dicePipMaterial);
-                dicePipMaterial = null;
-            }
+            // 재질은 종류별로 DicePaletteCatalog가 캐시한다. 개별 주사위가 소유하지 않으므로
+            // 여기서는 카탈로그 캐시만 비운다.
+            DicePaletteCatalog.ClearCache();
         }
         /// <summary>
         /// 킵된 주사위와 활성 주사위를 각자 자리로 부드럽게 옮긴다(M10-T6a).
@@ -282,7 +332,9 @@ namespace Tessera.Games.AugmentedYacht
 
                 // 현재 주사위 루트의 착지 회전으로부터 윗면(Top)을 유지한 채 카메라 렌즈를 정면으로 바라보도록 회전 계산
                 Quaternion currentRot = activeDice[i] != null ? activeDice[i].transform.localRotation : Quaternion.identity;
-                Quaternion cameraFacingRot = DiceFaceOrientation.GetCameraFacingUprightRotation(currentRot, 75.0f);
+                Quaternion cameraFacingRot = DiceFaceValues.TypeOf(diceTransforms[i]) == DieType.Octahedron
+                    ? DiceFaceOrientation.GetOctaCameraFacingRotation(DiceFaceOrientation.GetOctaTopFace(currentRot), 75.0f)
+                    : DiceFaceOrientation.GetCameraFacingUprightRotation(currentRot, 75.0f);
 
                 if (keptDice[i])
                 {
@@ -319,7 +371,9 @@ namespace Tessera.Games.AugmentedYacht
                 Transform visual = activeDice[i].transform.Find("Visual");
                 if (visual == null)
                 {
-                    DiceMaterialFactory.ApplyPredictedTopValue(activeDice[i].transform, targetRotations[i], diceValues[i]);
+                    DieType fallbackType = DiceFaceValues.TypeOf(activeDice[i].transform);
+                    int fallbackFace = Mathf.Clamp(DiceFaceValues.FaceIndexOf(fallbackType, diceValues[i]), 1, 6);
+                    DiceMaterialFactory.ApplyPredictedTopValue(activeDice[i].transform, targetRotations[i], fallbackFace);
                 }
             }
 

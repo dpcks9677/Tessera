@@ -49,7 +49,9 @@ namespace Tessera.Games.AugmentedYacht
             public Action StartNormalGame;
             public Action StartAugmentedGame;
             public Action RestartGame;
+            public Action TogglePixelEdge;
             public Func<string> KeyLightPresetName;
+            public Func<bool> PixelEdgeEnabled;
         }
 
         /// <summary>디버그 버튼 참조. 라벨을 갱신하려면 들고 있어야 한다.</summary>
@@ -58,6 +60,7 @@ namespace Tessera.Games.AugmentedYacht
             public Button KeyLightToggle;
             public Button RuneFx;
             public Button RuneStone;
+            public Button PixelEdgeToggle;
         }
 
         private const float CameraPitchAngle = 75.0f;
@@ -181,7 +184,9 @@ namespace Tessera.Games.AugmentedYacht
                 RuneStone = YachtHudFactory.CreateButton(canvasObject.transform, "RuneStoneDebug", "Stones: 0/4", new Vector2(483f, -18f),
                     new Vector2(150f, 38f), new Vector2(0f, 1f), () => actions.CycleRuneStones()),
                 KeyLightToggle = YachtHudFactory.CreateButton(canvasObject.transform, "KeyLightToggle", $"Light: {actions.KeyLightPresetName()}",
-                    new Vector2(158f, -18f), new Vector2(165f, 38f), new Vector2(0f, 1f), () => actions.ToggleKeyLight())
+                    new Vector2(158f, -18f), new Vector2(165f, 38f), new Vector2(0f, 1f), () => actions.ToggleKeyLight()),
+                PixelEdgeToggle = YachtHudFactory.CreateButton(canvasObject.transform, "PixelEdgeToggle", PixelEdgeLabel(actions),
+                    new Vector2(643f, -18f), new Vector2(135f, 38f), new Vector2(0f, 1f), () => actions.TogglePixelEdge())
             };
 
             refs.StatusText = YachtHudFactory.CreateText(canvasObject.transform, "Status", "", new Vector2(0f, -20f),
@@ -197,7 +202,8 @@ namespace Tessera.Games.AugmentedYacht
             {
                 KeyLightToggle = GameObject.Find("KeyLightToggle")?.GetComponent<Button>(),
                 RuneFx = GameObject.Find("RuneFxDebug")?.GetComponent<Button>(),
-                RuneStone = GameObject.Find("RuneStoneDebug")?.GetComponent<Button>()
+                RuneStone = GameObject.Find("RuneStoneDebug")?.GetComponent<Button>(),
+                PixelEdgeToggle = GameObject.Find("PixelEdgeToggle")?.GetComponent<Button>()
             };
 
             Button resolutionButton = GameObject.Find("Debug")?.GetComponent<Button>();
@@ -226,6 +232,12 @@ namespace Tessera.Games.AugmentedYacht
                     buttons.RuneStone = YachtHudFactory.CreateButton(canvasObject.transform, "RuneStoneDebug", "Stones: 0/4",
                         new Vector2(483f, -18f), new Vector2(150f, 38f), new Vector2(0f, 1f), () => actions.CycleRuneStones());
                 }
+                if (buttons.PixelEdgeToggle == null)
+                {
+                    buttons.PixelEdgeToggle = YachtHudFactory.CreateButton(canvasObject.transform, "PixelEdgeToggle",
+                        PixelEdgeLabel(actions), new Vector2(643f, -18f), new Vector2(135f, 38f), new Vector2(0f, 1f),
+                        () => actions.TogglePixelEdge());
+                }
             }
 
             if (buttons.KeyLightToggle != null)
@@ -244,6 +256,12 @@ namespace Tessera.Games.AugmentedYacht
             {
                 buttons.RuneStone.onClick.RemoveAllListeners();
                 buttons.RuneStone.onClick.AddListener(() => actions.CycleRuneStones());
+            }
+            if (buttons.PixelEdgeToggle != null)
+            {
+                buttons.PixelEdgeToggle.onClick.RemoveAllListeners();
+                buttons.PixelEdgeToggle.onClick.AddListener(() => actions.TogglePixelEdge());
+                SetPixelEdgeLabel(buttons, actions.PixelEdgeEnabled != null && actions.PixelEdgeEnabled());
             }
 
             GameObject quantizeObject = GameObject.Find("Quantize");
@@ -306,6 +324,23 @@ namespace Tessera.Games.AugmentedYacht
         {
             Text label = buttons?.KeyLightToggle != null ? buttons.KeyLightToggle.GetComponentInChildren<Text>() : null;
             if (label != null) label.text = $"Light: {presetName}";
+        }
+
+        /// <summary>픽셀 엣지 필터가 켜져 있는지 버튼 문구로 알린다. 기존 필터와 A/B로 비교할 때 쓴다.</summary>
+        public static void SetPixelEdgeLabel(DebugButtons buttons, bool enabled)
+        {
+            Text label = buttons?.PixelEdgeToggle != null ? buttons.PixelEdgeToggle.GetComponentInChildren<Text>() : null;
+            if (label != null) label.text = PixelEdgeLabel(enabled);
+        }
+
+        private static string PixelEdgeLabel(HudActions actions)
+        {
+            return PixelEdgeLabel(actions?.PixelEdgeEnabled != null && actions.PixelEdgeEnabled());
+        }
+
+        private static string PixelEdgeLabel(bool enabled)
+        {
+            return enabled ? "Edge: ON" : "Edge: OFF";
         }
 
         public static void EnsureEventSystem()

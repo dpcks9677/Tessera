@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Tessera.Dice;
 using Tessera.Games.AugmentedYacht;
 using Tessera.Games.Yacht;
 using UnityEditor;
@@ -25,10 +26,113 @@ public static class AugmentCardValidationRunner
         ResolveTurnFlow().StartNewGame(YachtGameMode.Augmented);
     }
 
+    /// <summary>드래프트 카드가 화면을 가리지 않는 상태로 주사위만 보고 싶을 때 쓴다.</summary>
+    [MenuItem("Tessera/Validation/Visual Check/Start Normal Game")]
+    public static void StartNormalGame()
+    {
+        ResolveTurnFlow().StartNewGame(YachtGameMode.Normal);
+    }
+
     [MenuItem("Tessera/Validation/Visual Check/Select First Augment")]
     public static void SelectFirstAugment()
     {
         ResolveTurnFlow().SelectDraftOption(0);
+    }
+
+    /// <summary>
+    /// 특수 주사위 증강이 제시될 때까지 새 게임을 다시 열고 그 증강을 고른다(M7-T5 검증).
+    ///
+    /// 권위 계층은 드래프트에 제시된 증강만 받아들이므로 임의로 부여할 수 없다.
+    /// 실제 굴림 경로(프리셋 슬롯 순서·착지 회전)를 확인하려면 정식으로 획득해야 한다.
+    /// </summary>
+    [MenuItem("Tessera/Validation/Visual Check/Draft Special Dice")]
+    public static void DraftSpecialDice()
+    {
+        if (!EditorApplication.isPlaying)
+        {
+            Debug.LogError("[검증] 플레이 모드에서만 실행할 수 있습니다.");
+            return;
+        }
+
+        // 8면 주사위를 가장 먼저 노린다. 형상까지 바뀌는 유일한 종류라 검증 가치가 크다.
+        string[] wanted = { "8-sided", "sevens-dice", "golden-die", "weighted-dice", "couple-dice", "promotion-die" };
+        YachtTurnFlowPresenter flow = ResolveTurnFlow();
+
+        for (int attempt = 1; attempt <= 300; attempt++)
+        {
+            flow.StartNewGame(YachtGameMode.Augmented);
+            YachtGameSession session = flow.Session;
+            if (session == null || !session.IsDrafting) continue;
+
+            string[] options = session.State.Draft.Options;
+            if (options == null) continue;
+
+            foreach (string target in wanted)
+            {
+                int index = System.Array.IndexOf(options, target);
+                if (index < 0) continue;
+
+                flow.SelectDraftOption(index);
+                Debug.Log($"[검증] {target} 증강을 {attempt}번째 드래프트에서 획득했습니다.");
+                return;
+            }
+        }
+
+        Debug.LogWarning("[검증] 300번 안에 특수 주사위 증강이 제시되지 않았습니다.");
+    }
+
+    /// <summary>굴림 한 번. 실제 굴림 경로를 통과시켜 착지 자세와 눈을 확인할 때 쓴다.</summary>
+    [MenuItem("Tessera/Validation/Visual Check/Roll Dice Once")]
+    public static void RollDiceOnce()
+    {
+        ResolveTurnFlow().RollDice();
+    }
+
+    /// <summary>
+    /// 특수 주사위 외형을 한 화면에 늘어놓는다(M7-T5 시각 검수).
+    ///
+    /// 화면 사본에만 종류를 강제로 입히므로 권위 상태는 바뀌지 않는다. 다음 굴림이나 턴 전환에서
+    /// 원래 종류로 되돌아가며, 그동안 스크린샷으로 6종을 한 번에 대조할 수 있다.
+    /// </summary>
+    [MenuItem("Tessera/Validation/Visual Check/Showcase Special Dice")]
+    public static void ShowcaseSpecialDice()
+    {
+        if (!EditorApplication.isPlaying)
+        {
+            Debug.LogError("[검증] 플레이 모드에서만 실행할 수 있습니다.");
+            return;
+        }
+
+        DiceVisualPool pool = Object.FindFirstObjectByType<DiceVisualPool>();
+        if (pool == null || pool.DiceRoot == null)
+        {
+            Debug.LogError("[검증] 주사위 비주얼 풀을 찾지 못했습니다.");
+            return;
+        }
+
+        DieType[] showcase =
+        {
+            DieType.Octahedron,
+            DieType.Golden,
+            DieType.HeavyRed,
+            DieType.Promotion,
+            DieType.Couple,
+            DieType.Sevens
+        };
+
+        int applied = 0;
+        foreach (Transform die in pool.DiceRoot)
+        {
+            if (applied >= showcase.Length) break;
+            pool.ApplyDieType(die.gameObject, showcase[applied]);
+            applied++;
+        }
+
+        // 종류가 바뀌면 면 값 표도 바뀐다. 다시 정렬해야 각 주사위가 제 눈을 위로 올린다.
+        YachtDiceRoundPresenter round = Object.FindFirstObjectByType<YachtDiceRoundPresenter>();
+        if (round != null) round.ResetForTurn(null);
+
+        Debug.Log($"[검증] 특수 주사위 {applied}종을 화면 사본에 적용했습니다. 주사위가 {showcase.Length}개보다 적으면 그만큼만 보입니다.");
     }
 
     private static void RunTests(string[] groupNames, string label)

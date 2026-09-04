@@ -31,6 +31,9 @@ namespace Tessera.Games.AugmentedYacht
 
         public event Action RollRequested;
         public event Action<int> ResolutionPresetRequested;
+
+        /// <summary>픽셀 엣지 필터를 켜고 끄는 요청. 기존 필터와 화면을 바로 비교할 때 쓴다.</summary>
+        public event Action PixelEdgeToggleRequested;
         public event Action<DieType> DieTypeRequested;
 
         /// <summary>가리킨 주사위 번호. 없으면 -1.</summary>
@@ -64,8 +67,9 @@ namespace Tessera.Games.AugmentedYacht
             if (keyboard.spaceKey.wasPressedThisFrame) RollRequested?.Invoke();
             if (keyboard.f1Key.wasPressedThisFrame) ResolutionPresetRequested?.Invoke(0);
             if (keyboard.f2Key.wasPressedThisFrame) ResolutionPresetRequested?.Invoke(1);
+            if (keyboard.f3Key.wasPressedThisFrame) PixelEdgeToggleRequested?.Invoke();
 
-            // 숫자키 1~8로 주사위 색상 팔레트 실시간 전환
+            // 숫자키 1~9로 주사위 색상 팔레트 실시간 전환
             if (keyboard.digit1Key.wasPressedThisFrame || keyboard.numpad1Key.wasPressedThisFrame) DieTypeRequested?.Invoke(DieType.Normal);
             if (keyboard.digit2Key.wasPressedThisFrame || keyboard.numpad2Key.wasPressedThisFrame) DieTypeRequested?.Invoke(DieType.HeavyRed);
             if (keyboard.digit3Key.wasPressedThisFrame || keyboard.numpad3Key.wasPressedThisFrame) DieTypeRequested?.Invoke(DieType.Golden);
@@ -74,6 +78,7 @@ namespace Tessera.Games.AugmentedYacht
             if (keyboard.digit6Key.wasPressedThisFrame || keyboard.numpad6Key.wasPressedThisFrame) DieTypeRequested?.Invoke(DieType.Couple);
             if (keyboard.digit7Key.wasPressedThisFrame || keyboard.numpad7Key.wasPressedThisFrame) DieTypeRequested?.Invoke(DieType.Promotion);
             if (keyboard.digit8Key.wasPressedThisFrame || keyboard.numpad8Key.wasPressedThisFrame) DieTypeRequested?.Invoke(DieType.Weird);
+            if (keyboard.digit9Key.wasPressedThisFrame || keyboard.numpad9Key.wasPressedThisFrame) DieTypeRequested?.Invoke(DieType.Octahedron);
         }
 
         private void PollAugmentCardPointer()
