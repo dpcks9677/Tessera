@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -320,7 +320,6 @@ namespace Tessera.Games.AugmentedYacht
                 SyncTableBackground();
                 SyncTrayVisualMat();
                 ApplyRenderSettings();
-                QueueEditorTurnBalanceIndicator();
             }
 #endif
         }
@@ -333,36 +332,7 @@ namespace Tessera.Games.AugmentedYacht
                 SyncTableBackground();
                 SyncTrayVisualMat();
                 ApplyRenderSettings();
-                QueueEditorTurnBalanceIndicator();
             }
-        }
-#endif
-
-#if UNITY_EDITOR
-        private void QueueEditorTurnBalanceIndicator()
-        {
-            UnityEditor.EditorApplication.delayCall -= EnsureEditorTurnBalanceIndicator;
-            UnityEditor.EditorApplication.delayCall += EnsureEditorTurnBalanceIndicator;
-        }
-
-        private void EnsureEditorTurnBalanceIndicator()
-        {
-            if (this == null || gameObject == null || Application.isPlaying || !editableLayoutBuilt) return;
-
-            EnsureLayoutRoot();
-            turnBalanceIndicator = layoutRoot.GetComponentInChildren<TurnBalanceIndicator>();
-            if (turnBalanceIndicator == null)
-            {
-                CreateTurnBalanceIndicator();
-                UnityEditor.EditorUtility.SetDirty(turnBalanceIndicator.gameObject);
-                UnityEditor.EditorUtility.SetDirty(gameObject);
-                UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(gameObject.scene);
-                return;
-            }
-
-            turnBalanceIndicator.EnsureGeometry();
-            turnBalanceIndicator.transform.localPosition = TurnBalanceIndicator.DefaultPosition;
-            turnBalanceIndicator.transform.localRotation = Quaternion.Euler(TurnBalanceIndicator.DefaultEulerAngles);
         }
 #endif
 
@@ -2142,10 +2112,6 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             {
                 CreateGameTray();
             }
-            else
-            {
-                tray.localPosition = new Vector3(CenterSectionX, TrayVisualY, DiceBoardMetrics.TrayCenterZ);
-            }
 
             // 4. Augment Card Tray
             if (augmentCardTray == null)
@@ -2215,7 +2181,6 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             else
             {
                 hourglassTimer.EnsureGeometry();
-                hourglassTimer.transform.localPosition = new Vector3(-3.30f, 0.12f, 5.73f);
             }
 
             // 11. Cozy Candle Stand
@@ -2244,7 +2209,6 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             else
             {
                 runicSlateMatrix.EnsureGeometry();
-                runicSlateMatrix.transform.localPosition = new Vector3(-0.30f, 0.10f, 5.93f);
             }
 
             // 13. Trinket Cluster (Ring, Brooch, Crystal)
@@ -2273,8 +2237,6 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             else
             {
                 turnBalanceIndicator.EnsureGeometry();
-                turnBalanceIndicator.transform.localPosition = TurnBalanceIndicator.DefaultPosition;
-                turnBalanceIndicator.transform.localRotation = Quaternion.Euler(TurnBalanceIndicator.DefaultEulerAngles);
             }
         }
 

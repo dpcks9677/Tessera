@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 
 namespace Tessera.Tabletop
@@ -13,8 +13,6 @@ namespace Tessera.Tabletop
     public sealed class TabletopTrinketCluster : MonoBehaviour
     {
         private const int DecorationLayer = 11;
-        private const float ClusterLocalX = -6.75f;
-        private const float ClusterLocalZ = -11.45f;
 
         [Header("Trinket References")]
         [SerializeField] private TabletopTrinketRing ring;
@@ -54,28 +52,26 @@ namespace Tessera.Tabletop
 
         public void EnsureCluster()
         {
-            Vector3 clusterPosition = transform.localPosition;
-            if (!Mathf.Approximately(clusterPosition.x, ClusterLocalX) ||
-                !Mathf.Approximately(clusterPosition.z, ClusterLocalZ))
-            {
-                transform.localPosition = new Vector3(ClusterLocalX, clusterPosition.y, ClusterLocalZ);
-            }
-
+            BindTrinkets();
             if (transform.childCount == 0 || IsClusterMissing())
             {
                 BuildCluster();
             }
         }
 
+        private void BindTrinkets()
+        {
+            if (ring == null) ring = GetComponentInChildren<TabletopTrinketRing>(true);
+            if (brooch == null) brooch = GetComponentInChildren<TabletopTrinketBrooch>(true);
+            if (manaCrystal == null) manaCrystal = GetComponentInChildren<TabletopTrinketManaCrystal>(true);
+        }
+
+        // 자식 존재 여부만 본다. 포즈로 판정하면 씬에서 옮긴 배치가 재생성으로 되돌아간다.
         private bool IsClusterMissing()
         {
-            Transform tRing = transform.Find("Trinket_SilverRing");
-            Transform tBrooch = transform.Find("Trinket_OvalBrooch");
-            Transform tCrystal = transform.Find("Trinket_ManaCrystal");
-            bool usesLegacyRingPose = tRing != null &&
-                (Mathf.Abs(tRing.localPosition.y - 0.42f) > 0.01f ||
-                 Quaternion.Angle(tRing.localRotation, Quaternion.Euler(62f, -25f, 0f)) > 1f);
-            return tRing == null || tBrooch == null || tCrystal == null || usesLegacyRingPose;
+            return transform.Find("Trinket_SilverRing") == null
+                || transform.Find("Trinket_OvalBrooch") == null
+                || transform.Find("Trinket_ManaCrystal") == null;
         }
 
         public static TabletopTrinketCluster Create(Transform parent, Vector3? worldPosition = null)
@@ -83,7 +79,7 @@ namespace Tessera.Tabletop
             GameObject root = new("3D Trinket Cluster (Ring, Brooch, Crystal)");
             root.layer = DecorationLayer;
             root.transform.SetParent(parent, false);
-            root.transform.localPosition = worldPosition ?? new Vector3(ClusterLocalX, 0f, ClusterLocalZ);
+            root.transform.localPosition = worldPosition ?? Vector3.zero;
             root.transform.localRotation = Quaternion.identity;
             root.transform.localScale = Vector3.one;
 
