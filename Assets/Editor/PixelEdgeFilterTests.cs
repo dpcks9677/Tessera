@@ -74,6 +74,53 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
+        public void 업스케일_셰이더는_양자화_프로퍼티를_가진다()
+        {
+            Shader shader = Shader.Find("DicePoC/PixelUpscale");
+            Assert.That(shader, Is.Not.Null, "DicePoC/PixelUpscale 셰이더를 찾지 못했습니다.");
+
+            Material material = new(shader);
+            try
+            {
+                Assert.That(material.HasProperty("_Quantize"), Is.True);
+                Assert.That(material.HasProperty("_ColorSteps"), Is.True);
+                Assert.That(material.HasProperty("_DitherStrength"), Is.True);
+                Assert.That(material.GetFloat("_Quantize"), Is.EqualTo(0f),
+                    "기본값은 꺼짐이어야 씬에 구워진 재질과 어긋나지 않습니다.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(material);
+            }
+        }
+
+        [Test]
+        public void 팔레트는_셰이더_배열에_들어가고_색이_겹치지_않는다()
+        {
+            Color[] palette = TesseraPixelPalette.Build();
+
+            Assert.That(palette.Length, Is.LessThanOrEqualTo(TesseraPixelPalette.MaxColors),
+                "팔레트가 셰이더 배열보다 크면 뒤쪽 색이 잘립니다.");
+
+            foreach (Color color in palette)
+            {
+                Assert.That(color.r, Is.InRange(0f, 1f));
+                Assert.That(color.g, Is.InRange(0f, 1f));
+                Assert.That(color.b, Is.InRange(0f, 1f));
+            }
+
+            var seen = new System.Collections.Generic.HashSet<Color32>();
+            foreach (Color color in palette)
+            {
+                Assert.That(seen.Add(color), Is.True, $"중복 색이 팔레트 칸을 낭비합니다: {color}");
+            }
+
+            Vector4[] shaderArray = TesseraPixelPalette.BuildShaderArray(out int count);
+            Assert.That(shaderArray.Length, Is.EqualTo(TesseraPixelPalette.MaxColors));
+            Assert.That(count, Is.EqualTo(palette.Length));
+        }
+
+        [Test]
         public void 표시가_없거나_꺼진_카메라는_엣지_패스를_받지_않는다()
         {
             GameObject cameraObject = new("Pixel Edge Test Camera", typeof(Camera));

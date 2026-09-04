@@ -38,6 +38,11 @@ namespace Tessera.Games.AugmentedYacht
 
         private Vector2Int internalResolution = new(640, 360);
 
+        /// <summary>0 끔, 1 채널 단계 양자화, 2 아트 가이드 팔레트. 셰이더의 <c>_Quantize</c>와 같은 값이다.</summary>
+        private int quantizeMode;
+        private Vector4[] paletteColors;
+        private int paletteCount;
+
         public Camera WorldCamera => worldCamera;
         public Camera PresentationCamera => presentationCamera;
         public Camera CrispUiCamera => crispUiCamera;
@@ -45,6 +50,16 @@ namespace Tessera.Games.AugmentedYacht
 
         /// <summary>픽셀 엣지 필터가 켜져 있는지. 꺼져 있으면 엣지 이전의 픽셀 필터와 같은 화면이다.</summary>
         public bool EdgeFilterEnabled => pixelEdgeCamera != null && pixelEdgeCamera.EdgeFilterEnabled;
+
+        public int QuantizeMode => quantizeMode;
+
+        /// <summary>디버그 버튼에 붙일 현재 양자화 모드 이름.</summary>
+        public string QuantizeModeName => quantizeMode switch
+        {
+            1 => "Steps",
+            2 => "Palette",
+            _ => "Off"
+        };
 
         /// <summary>Crisp UI 카메라가 준비되면 알린다. 월드 스페이스 캔버스의 이벤트 카메라로 쓴다.</summary>
         public event System.Action<Camera> CrispUiCameraReady;
@@ -361,13 +376,33 @@ namespace Tessera.Games.AugmentedYacht
             crispUiImage.enabled = crispUiTarget != null;
         }
 
+        /// <summary>
+        /// 팔레트를 재질에 넣는다. 아트 가이드 토큰에서 만들어지므로 한 번만 계산해 들고 있는다.
+        /// 배열 크기는 셰이더 선언과 같아야 하며, 첫 <c>SetVectorArray</c> 이후에는 바꿀 수 없다.
+        /// </summary>
+        private void ApplyPalette()
+        {
+            paletteColors ??= TesseraPixelPalette.BuildShaderArray(out paletteCount);
+
+            upscaleMaterial.SetVectorArray("_PaletteColors", paletteColors);
+            upscaleMaterial.SetFloat("_PaletteCount", paletteCount);
+        }
+
+        /// <summary>색 양자화 모드를 끔 → 단계 → 팔레트 순으로 돌린다(M10.6).</summary>
+        public void CycleQuantizeMode()
+        {
+            quantizeMode = (quantizeMode + 1) % 3;
+            ApplyRenderSettings();
+        }
+
         public void ApplyRenderSettings()
         {
             Vector4 resolution = new(internalResolution.x, internalResolution.y, 0f, 0f);
             if (upscaleMaterial != null)
             {
-                if (upscaleMaterial.HasProperty("_Quantize")) upscaleMaterial.SetFloat("_Quantize", 0f);
+                upscaleMaterial.SetFloat("_Quantize", quantizeMode);
                 upscaleMaterial.SetVector("_VirtualResolution", resolution);
+                ApplyPalette();
             }
 
             // 엣지 패스는 렌더러 피처가 소유해 여기서 재질을 직접 잡을 수 없다. 같은 격자를 써야

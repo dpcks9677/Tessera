@@ -11,7 +11,8 @@
 
 - `ROLL 5 DICE` or Space: throw five dice from screen-bottom toward playmat center
 - `960 / 640`, F1, F2: switch internal resolution
-- `QUANTIZE`, Q: toggle 6-step RGB quantization
+- `Edge: ON/OFF`, F3: toggle the depth-outline and normal-highlight pass
+- `Quant: Off/Steps/Palette`, Q: cycle colour quantization — off, per-channel steps in sRGB, or the art-guide palette
 
 The fixed 16:9 world camera renders the whole composition into a 1920x1080 `RenderTexture`. The full-screen presentation shader snaps samples to a selectable 960x540 or 640x360 virtual pixel grid, preserving the low-resolution look without reducing the usable screen area or adding integer-scale letterboxing.
 

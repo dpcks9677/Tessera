@@ -253,8 +253,10 @@ namespace Tessera.Games.AugmentedYacht
                 StartAugmentedGame = () => turnFlow?.StartNewGame(YachtGameMode.Augmented),
                 RestartGame = () => turnFlow?.StartNewGame(),
                 TogglePixelEdge = TogglePixelEdgeFilter,
+                CycleQuantize = CyclePixelQuantizeMode,
                 KeyLightPresetName = () => KeyLightPresetName,
-                PixelEdgeEnabled = () => cameraRig != null && cameraRig.EdgeFilterEnabled
+                PixelEdgeEnabled = () => cameraRig != null && cameraRig.EdgeFilterEnabled,
+                QuantizeModeName = () => cameraRig != null ? cameraRig.QuantizeModeName : "Off"
             };
         }
 
@@ -347,6 +349,7 @@ namespace Tessera.Games.AugmentedYacht
             inputRouter.RollRequested += RollDice;
             inputRouter.ResolutionPresetRequested += OnResolutionPresetRequested;
             inputRouter.PixelEdgeToggleRequested += TogglePixelEdgeFilter;
+            inputRouter.PixelQuantizeCycleRequested += CyclePixelQuantizeMode;
             inputRouter.DieTypeRequested += SetDieType;
             inputRouter.DieHoverChanged += OnDieHoverChanged;
             inputRouter.DieClicked += ToggleKeep;
@@ -537,6 +540,14 @@ namespace Tessera.Games.AugmentedYacht
             EnsureCameraRig();
             cameraRig.ToggleEdgeFilter();
             YachtSceneAssembler.SetPixelEdgeLabel(debugButtons, cameraRig.EdgeFilterEnabled);
+        }
+
+        /// <summary>색 양자화 모드를 끔 → 단계 → 팔레트 순으로 돌린다(Q).</summary>
+        public void CyclePixelQuantizeMode()
+        {
+            EnsureCameraRig();
+            cameraRig.CycleQuantizeMode();
+            YachtSceneAssembler.SetQuantizeLabel(debugButtons, cameraRig.QuantizeModeName);
         }
 
         /// <summary>

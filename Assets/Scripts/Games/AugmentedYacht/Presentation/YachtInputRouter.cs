@@ -34,6 +34,9 @@ namespace Tessera.Games.AugmentedYacht
 
         /// <summary>픽셀 엣지 필터를 켜고 끄는 요청. 기존 필터와 화면을 바로 비교할 때 쓴다.</summary>
         public event Action PixelEdgeToggleRequested;
+
+        /// <summary>색 양자화 모드를 끔 → 단계 → 팔레트 순으로 돌리는 요청.</summary>
+        public event Action PixelQuantizeCycleRequested;
         public event Action<DieType> DieTypeRequested;
 
         /// <summary>가리킨 주사위 번호. 없으면 -1.</summary>
@@ -68,6 +71,7 @@ namespace Tessera.Games.AugmentedYacht
             if (keyboard.f1Key.wasPressedThisFrame) ResolutionPresetRequested?.Invoke(0);
             if (keyboard.f2Key.wasPressedThisFrame) ResolutionPresetRequested?.Invoke(1);
             if (keyboard.f3Key.wasPressedThisFrame) PixelEdgeToggleRequested?.Invoke();
+            if (keyboard.qKey.wasPressedThisFrame) PixelQuantizeCycleRequested?.Invoke();
 
             // 숫자키 1~9로 주사위 색상 팔레트 실시간 전환
             if (keyboard.digit1Key.wasPressedThisFrame || keyboard.numpad1Key.wasPressedThisFrame) DieTypeRequested?.Invoke(DieType.Normal);

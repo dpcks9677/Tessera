@@ -50,8 +50,10 @@ namespace Tessera.Games.AugmentedYacht
             public Action StartAugmentedGame;
             public Action RestartGame;
             public Action TogglePixelEdge;
+            public Action CycleQuantize;
             public Func<string> KeyLightPresetName;
             public Func<bool> PixelEdgeEnabled;
+            public Func<string> QuantizeModeName;
         }
 
         /// <summary>디버그 버튼 참조. 라벨을 갱신하려면 들고 있어야 한다.</summary>
@@ -61,6 +63,7 @@ namespace Tessera.Games.AugmentedYacht
             public Button RuneFx;
             public Button RuneStone;
             public Button PixelEdgeToggle;
+            public Button QuantizeToggle;
         }
 
         private const float CameraPitchAngle = 75.0f;
@@ -186,7 +189,9 @@ namespace Tessera.Games.AugmentedYacht
                 KeyLightToggle = YachtHudFactory.CreateButton(canvasObject.transform, "KeyLightToggle", $"Light: {actions.KeyLightPresetName()}",
                     new Vector2(158f, -18f), new Vector2(165f, 38f), new Vector2(0f, 1f), () => actions.ToggleKeyLight()),
                 PixelEdgeToggle = YachtHudFactory.CreateButton(canvasObject.transform, "PixelEdgeToggle", PixelEdgeLabel(actions),
-                    new Vector2(643f, -18f), new Vector2(135f, 38f), new Vector2(0f, 1f), () => actions.TogglePixelEdge())
+                    new Vector2(643f, -18f), new Vector2(135f, 38f), new Vector2(0f, 1f), () => actions.TogglePixelEdge()),
+                QuantizeToggle = YachtHudFactory.CreateButton(canvasObject.transform, "QuantizeToggle", QuantizeLabel(actions),
+                    new Vector2(788f, -18f), new Vector2(155f, 38f), new Vector2(0f, 1f), () => actions.CycleQuantize())
             };
 
             refs.StatusText = YachtHudFactory.CreateText(canvasObject.transform, "Status", "", new Vector2(0f, -20f),
@@ -203,7 +208,8 @@ namespace Tessera.Games.AugmentedYacht
                 KeyLightToggle = GameObject.Find("KeyLightToggle")?.GetComponent<Button>(),
                 RuneFx = GameObject.Find("RuneFxDebug")?.GetComponent<Button>(),
                 RuneStone = GameObject.Find("RuneStoneDebug")?.GetComponent<Button>(),
-                PixelEdgeToggle = GameObject.Find("PixelEdgeToggle")?.GetComponent<Button>()
+                PixelEdgeToggle = GameObject.Find("PixelEdgeToggle")?.GetComponent<Button>(),
+                QuantizeToggle = GameObject.Find("QuantizeToggle")?.GetComponent<Button>()
             };
 
             Button resolutionButton = GameObject.Find("Debug")?.GetComponent<Button>();
@@ -238,6 +244,12 @@ namespace Tessera.Games.AugmentedYacht
                         PixelEdgeLabel(actions), new Vector2(643f, -18f), new Vector2(135f, 38f), new Vector2(0f, 1f),
                         () => actions.TogglePixelEdge());
                 }
+                if (buttons.QuantizeToggle == null)
+                {
+                    buttons.QuantizeToggle = YachtHudFactory.CreateButton(canvasObject.transform, "QuantizeToggle",
+                        QuantizeLabel(actions), new Vector2(788f, -18f), new Vector2(155f, 38f), new Vector2(0f, 1f),
+                        () => actions.CycleQuantize());
+                }
             }
 
             if (buttons.KeyLightToggle != null)
@@ -263,9 +275,13 @@ namespace Tessera.Games.AugmentedYacht
                 buttons.PixelEdgeToggle.onClick.AddListener(() => actions.TogglePixelEdge());
                 SetPixelEdgeLabel(buttons, actions.PixelEdgeEnabled != null && actions.PixelEdgeEnabled());
             }
+            if (buttons.QuantizeToggle != null)
+            {
+                buttons.QuantizeToggle.onClick.RemoveAllListeners();
+                buttons.QuantizeToggle.onClick.AddListener(() => actions.CycleQuantize());
+                SetQuantizeLabel(buttons, actions.QuantizeModeName != null ? actions.QuantizeModeName() : "Off");
+            }
 
-            GameObject quantizeObject = GameObject.Find("Quantize");
-            if (quantizeObject != null) quantizeObject.SetActive(false);
             return buttons;
         }
 
@@ -341,6 +357,18 @@ namespace Tessera.Games.AugmentedYacht
         private static string PixelEdgeLabel(bool enabled)
         {
             return enabled ? "Edge: ON" : "Edge: OFF";
+        }
+
+        /// <summary>색 양자화 모드를 버튼 문구로 알린다. 세 모드를 눈으로 비교할 때 쓴다.</summary>
+        public static void SetQuantizeLabel(DebugButtons buttons, string modeName)
+        {
+            Text label = buttons?.QuantizeToggle != null ? buttons.QuantizeToggle.GetComponentInChildren<Text>() : null;
+            if (label != null) label.text = $"Quant: {modeName}";
+        }
+
+        private static string QuantizeLabel(HudActions actions)
+        {
+            return $"Quant: {(actions?.QuantizeModeName != null ? actions.QuantizeModeName() : "Off")}";
         }
 
         public static void EnsureEventSystem()
