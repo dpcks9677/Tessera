@@ -14,6 +14,8 @@
   - 공통 시스템: `Tessera.Core`, `Tessera.Dice`, `Tessera.Tabletop`, `Tessera.Rendering`
   - 게임별 독립 모듈: `Tessera.Games.AugmentedYacht` (증강 요트 다이스), 향후 추가될 싱글 게임 모듈 등
   - 네트워크/멀티플레이어: `Tessera.Network`
+- **코딩 규약**: C# 코드는 [`docs/coding_conventions.md`](docs/coding_conventions.md)와 리포지토리 루트의 `.editorconfig`를 따릅니다. Microsoft C#/.NET 규약 기준이며 Unity 직렬화 관련 예외가 명시돼 있습니다. 규약은 신규 파일과 실제 수정하는 파일에만 적용하고, 기존 파일을 일괄 재포맷하지 않습니다.
+- **구조적 결정**: 상태 소유권·계층 경계 등 구조 판단은 [`docs/architecture_decisions.md`](docs/architecture_decisions.md)의 ADR을 먼저 확인합니다. 짧은 결정은 [`docs/augmented_yacht_work_plan.md`](docs/augmented_yacht_work_plan.md) §11에 있습니다.
 
 ---
 

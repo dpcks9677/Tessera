@@ -1,0 +1,145 @@
+# Tessera 코딩 규약
+# 근거와 Unity 예외 사유: docs/coding_conventions.md, 결정 기록 D-031
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{yml,yaml,json,md}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+# Unity가 생성·관리하는 파일은 건드리지 않는다.
+[*.{meta,unity,prefab,asset,mat,anim,controller,asmdef}]
+indent_style = unset
+indent_size = unset
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+
+[*.cs]
+indent_size = 4
+
+#### using 지시문 ####
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+csharp_using_directive_placement = outside_namespace:warning
+
+#### 네임스페이스 ####
+# Unity 기존 코드 전체가 블록 형식이다. 변환은 노이즈 diff만 만든다.
+csharp_style_namespace_declarations = block_scoped:warning
+
+#### 이름 규칙 ####
+# 타입·멤버는 PascalCase
+dotnet_naming_rule.types_and_members_pascal.severity = warning
+dotnet_naming_rule.types_and_members_pascal.symbols = types_and_members
+dotnet_naming_rule.types_and_members_pascal.style = pascal_case
+dotnet_naming_symbols.types_and_members.applicable_kinds = namespace,class,struct,enum,interface,delegate,method,property,event
+dotnet_naming_symbols.types_and_members.applicable_accessibilities = *
+
+# 인터페이스는 I 접두사
+dotnet_naming_rule.interfaces_prefixed.severity = warning
+dotnet_naming_rule.interfaces_prefixed.symbols = interfaces
+dotnet_naming_rule.interfaces_prefixed.style = i_prefixed
+dotnet_naming_symbols.interfaces.applicable_kinds = interface
+
+# 제네릭 타입 매개변수는 T 접두사
+dotnet_naming_rule.type_parameters_prefixed.severity = warning
+dotnet_naming_rule.type_parameters_prefixed.symbols = type_parameters
+dotnet_naming_rule.type_parameters_prefixed.style = t_prefixed
+dotnet_naming_symbols.type_parameters.applicable_kinds = type_parameter
+
+# 상수는 PascalCase
+dotnet_naming_rule.constants_pascal.severity = warning
+dotnet_naming_rule.constants_pascal.symbols = constants
+dotnet_naming_rule.constants_pascal.style = pascal_case
+dotnet_naming_symbols.constants.applicable_kinds = field
+dotnet_naming_symbols.constants.required_modifiers = const
+
+# public/protected 필드는 PascalCase
+dotnet_naming_rule.public_fields_pascal.severity = warning
+dotnet_naming_rule.public_fields_pascal.symbols = public_fields
+dotnet_naming_rule.public_fields_pascal.style = pascal_case
+dotnet_naming_symbols.public_fields.applicable_kinds = field
+dotnet_naming_symbols.public_fields.applicable_accessibilities = public,protected,protected_internal
+
+# private 필드는 접두사 없는 camelCase (Microsoft의 _camelCase 예외 — D-031)
+# [SerializeField] 필드명이 Inspector 표시명이 되고, 재작명은 씬·프리팹 직렬화 참조를 끊는다.
+dotnet_naming_rule.private_fields_camel.severity = warning
+dotnet_naming_rule.private_fields_camel.symbols = private_fields
+dotnet_naming_rule.private_fields_camel.style = camel_case
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private,internal
+
+# 지역 변수·매개변수는 camelCase
+dotnet_naming_rule.locals_camel.severity = warning
+dotnet_naming_rule.locals_camel.symbols = locals
+dotnet_naming_rule.locals_camel.style = camel_case
+dotnet_naming_symbols.locals.applicable_kinds = local,parameter
+
+dotnet_naming_style.pascal_case.capitalization = pascal_case
+dotnet_naming_style.camel_case.capitalization = camel_case
+dotnet_naming_style.i_prefixed.capitalization = pascal_case
+dotnet_naming_style.i_prefixed.required_prefix = I
+dotnet_naming_style.t_prefixed.capitalization = pascal_case
+dotnet_naming_style.t_prefixed.required_prefix = T
+
+#### this. 한정자 ####
+dotnet_style_qualification_for_field = false:warning
+dotnet_style_qualification_for_property = false:warning
+dotnet_style_qualification_for_method = false:warning
+dotnet_style_qualification_for_event = false:warning
+
+#### 언어 키워드 ####
+dotnet_style_predefined_type_for_locals_parameters_members = true:warning
+dotnet_style_predefined_type_for_member_access = true:warning
+
+#### var ####
+# 우변에서 타입이 명백할 때만 var
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+
+#### 표현식 ####
+dotnet_style_object_initializer = true:suggestion
+dotnet_style_collection_initializer = true:suggestion
+dotnet_style_null_propagation = true:suggestion
+dotnet_style_coalesce_expression = true:suggestion
+dotnet_style_prefer_conditional_expression_over_assignment = true:silent
+dotnet_style_prefer_conditional_expression_over_return = true:silent
+csharp_style_pattern_matching_over_is_with_cast_check = true:suggestion
+csharp_style_pattern_matching_over_as_with_null_check = true:suggestion
+csharp_prefer_simple_using_statement = true:suggestion
+csharp_style_prefer_switch_expression = true:suggestion
+
+#### 중괄호 ####
+# 단일 문 블록에도 중괄호를 쓴다. 한 줄 조기 반환(if (x) return;)만 예외.
+csharp_prefer_braces = when_multiline:warning
+
+#### 서식 ####
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_new_line_before_members_in_object_initializers = true
+csharp_new_line_before_members_in_anonymous_types = true
+csharp_indent_case_contents = true
+csharp_indent_switch_labels = true
+csharp_indent_labels = one_less_than_current
+csharp_space_after_cast = false
+csharp_space_after_keywords_in_control_flow_statements = true
+csharp_space_between_method_declaration_parameter_list_parentheses = false
+csharp_space_between_method_call_parameter_list_parentheses = false
+csharp_preserve_single_line_statements = false
+csharp_preserve_single_line_blocks = true
+
+#### 접근 한정자 명시 ####
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+csharp_preferred_modifier_order = public,private,protected,internal,static,extern,new,virtual,abstract,sealed,override,readonly,unsafe,volatile,async:warning
+dotnet_style_readonly_field = true:suggestion
