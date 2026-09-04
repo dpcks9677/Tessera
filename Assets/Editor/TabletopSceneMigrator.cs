@@ -74,6 +74,7 @@ namespace Tessera.EditorTools
                 GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
                 if (prefab == null) continue;
 
+                // 베이커가 프리팹 파일명을 씬 오브젝트 이름 그대로 쓰므로 루트 이름이 곧 조회 키다.
                 Transform existing = layoutRoot.Find(prefab.name);
                 if (existing == null)
                 {

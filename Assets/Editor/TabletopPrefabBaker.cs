@@ -96,8 +96,11 @@ namespace Tessera.EditorTools
 
         private static string BakeProp(Transform source)
         {
+            // 프리팹 파일명은 씬 오브젝트 이름을 그대로 쓴다.
+            // SaveAsPrefabAsset이 루트 GameObject 이름을 파일명으로 덮어쓰기 때문에,
+            // 파일명을 치환하면 프리팹 루트 이름이 씬 이름과 어긋나 이름 기반 조회가 전부 깨진다.
             string safeName = ToSafeName(source.name);
-            string prefabPath = $"{PrefabFolder}/{safeName}.prefab";
+            string prefabPath = $"{PrefabFolder}/{ToFileName(source.name)}.prefab";
 
             // 씬 원본을 건드리지 않도록 사본을 만들어 굽는다.
             GameObject clone = UnityEngine.Object.Instantiate(source.gameObject);
@@ -309,7 +312,24 @@ namespace Tessera.EditorTools
             return candidate;
         }
 
-        /// <summary>에셋 경로에 쓸 수 없는 문자를 걷어낸다. Instantiate가 붙이는 접미사도 제거한다.</summary>
+        /// <summary>
+        /// 파일 경로에서 실제로 금지된 문자만 치환한다. 공백·&amp;·괄호·쉼표는 유지한다.
+        /// 프리팹 파일명이 곧 루트 GameObject 이름이 되므로 씬 이름을 최대한 보존해야 한다.
+        /// </summary>
+        private static string ToFileName(string name)
+        {
+            char[] invalid = Path.GetInvalidFileNameChars();
+            char[] buffer = name.ToCharArray();
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                if (Array.IndexOf(invalid, buffer[i]) >= 0) buffer[i] = '_';
+            }
+
+            string result = new string(buffer).Trim();
+            return string.IsNullOrEmpty(result) ? "Unnamed" : result;
+        }
+
+        /// <summary>메시·머티리얼·텍스처 에셋 이름용. 내부 식별자이므로 보수적으로 치환한다.</summary>
         private static string ToSafeName(string name)
         {
             string trimmed = name.Replace("(Instance)", string.Empty).Replace("(Clone)", string.Empty).Trim();
