@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using Tessera.Core;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -146,9 +147,7 @@ namespace Tessera.Tabletop
                 : null;
             if (cubeRenderer != null)
             {
-                cosmicCubeMaterial = Application.isPlaying
-                    ? cubeRenderer.material
-                    : cubeRenderer.sharedMaterial;
+                cosmicCubeMaterial = RuntimeAssetGuard.GetWritableMaterial(cubeRenderer);
 
                 Shader volumeShader = Shader.Find("DicePoC/CosmicVolume");
                 if (volumeShader != null &&
@@ -172,9 +171,7 @@ namespace Tessera.Tabletop
             constellationRenderer = constellationTransform != null
                 ? constellationTransform.GetComponent<MeshRenderer>()
                 : null;
-            constellationMaterial = constellationRenderer != null
-                ? (Application.isPlaying ? constellationRenderer.material : constellationRenderer.sharedMaterial)
-                : null;
+            constellationMaterial = RuntimeAssetGuard.GetWritableMaterial(constellationRenderer);
 
             UpgradeInternalParticles();
             faceParticleSystems.Clear();
@@ -260,9 +257,7 @@ namespace Tessera.Tabletop
         private static Material GetRendererMaterial(Transform target)
         {
             if (target == null) return null;
-            MeshRenderer renderer = target.GetComponent<MeshRenderer>();
-            if (renderer == null) return null;
-            return Application.isPlaying ? renderer.material : renderer.sharedMaterial;
+            return RuntimeAssetGuard.GetWritableMaterial(target.GetComponent<MeshRenderer>());
         }
 
         public static RollCosmicCube Create(Transform parent, Vector3 worldPosition, Quaternion? rotation = null, Vector3? scale = null)
@@ -790,24 +785,13 @@ namespace Tessera.Tabletop
             if (filter == null) filter = tesseractRoot.gameObject.AddComponent<MeshFilter>();
             if (renderer == null) renderer = tesseractRoot.gameObject.AddComponent<MeshRenderer>();
 
-            tesseractMesh = filter.sharedMesh;
+            // 이 메시는 애니메이션으로 매 갱신마다 정점을 다시 쓴다. 에셋이면 사본으로 갈아 끼운다.
+            tesseractMesh = RuntimeAssetGuard.GetWritableMesh(filter);
             if (tesseractMesh == null)
             {
                 tesseractMesh = new Mesh { name = "Cosmic_Tesseract_Line_Mesh" };
                 filter.sharedMesh = tesseractMesh;
             }
-#if UNITY_EDITOR
-            else if (UnityEditor.EditorUtility.IsPersistent(tesseractMesh))
-            {
-                // 이 메시는 애니메이션으로 매 갱신마다 정점을 다시 쓴다.
-                // 프리팹으로 구운 뒤로는 sharedMesh가 에셋이라, 그대로 쓰면 에셋 파일을 계속 덮어쓴다.
-                // DontSave를 붙여 씬에도 직렬화되지 않게 한다. 없으면 EnsureGeometry가 다시 만든다.
-                tesseractMesh = Instantiate(tesseractMesh);
-                tesseractMesh.name = "Cosmic_Tesseract_Line_Mesh";
-                tesseractMesh.hideFlags = HideFlags.DontSave;
-                filter.sharedMesh = tesseractMesh;
-            }
-#endif
 
             tesseractMaterial = Application.isPlaying ? renderer.material : renderer.sharedMaterial;
             if (shader != null && (tesseractMaterial == null || tesseractMaterial.shader != shader))

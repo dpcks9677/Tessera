@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using Tessera.Core;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -113,27 +114,6 @@ namespace Tessera.Tabletop
         }
 #endif
 
-        /// <summary>
-        /// 모래 메시는 남은 시간에 따라 매 갱신마다 정점을 다시 쓴다.
-        /// 프리팹으로 구운 뒤로는 sharedMesh가 에셋이라, 그대로 쓰면 에셋 파일을 계속 덮어쓴다.
-        /// 에셋이면 DontSave 사본으로 바꿔 끼워 에셋과 씬을 모두 건드리지 않게 한다.
-        /// </summary>
-        private static Mesh MakeAnimatableMesh(Mesh source, MeshFilter filter)
-        {
-            if (source == null || filter == null) return source;
-#if UNITY_EDITOR
-            if (!UnityEditor.EditorUtility.IsPersistent(source)) return source;
-
-            Mesh clone = Instantiate(source);
-            clone.name = source.name;
-            clone.hideFlags = HideFlags.DontSave;
-            filter.sharedMesh = clone;
-            return clone;
-#else
-            return source;
-#endif
-        }
-
         public void EnsureGeometry()
         {
             if (!TryBindExistingGeometry())
@@ -162,11 +142,11 @@ namespace Tessera.Tabletop
             if (upperMesh == null || lowerMesh == null || glassMesh == null) return false;
 
             upperSand = HourglassMeshBuilder.BindSandMesh(
-                MakeAnimatableMesh(upperMesh, upperSandTransform.GetComponent<MeshFilter>()));
+                RuntimeAssetGuard.GetWritableMesh(upperSandTransform.GetComponent<MeshFilter>()));
             lowerSand = HourglassMeshBuilder.BindSandMesh(
-                MakeAnimatableMesh(lowerMesh, lowerSandTransform.GetComponent<MeshFilter>()));
-            sandMaterial = upperSandTransform.GetComponent<MeshRenderer>()?.sharedMaterial;
-            sandStreamMaterial = sandStreamTransform.GetComponent<MeshRenderer>()?.sharedMaterial;
+                RuntimeAssetGuard.GetWritableMesh(lowerSandTransform.GetComponent<MeshFilter>()));
+            sandMaterial = RuntimeAssetGuard.GetWritableMaterial(upperSandTransform.GetComponent<MeshRenderer>());
+            sandStreamMaterial = RuntimeAssetGuard.GetWritableMaterial(sandStreamTransform.GetComponent<MeshRenderer>());
             glassMaterial = unifiedGlass.GetComponent<MeshRenderer>()?.sharedMaterial;
             return upperSand != null && lowerSand != null;
         }
