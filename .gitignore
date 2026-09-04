@@ -131,3 +131,9 @@ yarn-error.log*
 # graphify 지식 그래프 산출물 (graphify update . 로 재생성)
 /graphify-out/
 
+
+# unity-skills 스킬 문서 (com.besty.unity-skills 패키지가 원본)
+# 패널의 AI Config > Install 이 패키지의 unity-skills~ 를 여기로 복사한다.
+# 패키지가 manifest.json 에 버전 고정돼 있으므로 사본을 추적하면 진실의 원천이 둘이 되고,
+# 설치할 때마다 내용 변경 없는 줄바꿈 diff 가 177개씩 생긴다.
+/.claude/skills/unity-skills/
