@@ -25,7 +25,6 @@ namespace Tessera.Games.AugmentedYacht
 
         [Header("Rendering")]
         [SerializeField] private Shader upscaleShader;
-        [SerializeField] private Vector2Int internalResolution = new(640, 360);
 
         [Header("Game Settings")]
         [SerializeField, Min(1)] private int diceCount = 5;
@@ -37,33 +36,23 @@ namespace Tessera.Games.AugmentedYacht
         private readonly List<int> diceValues = new();
         private readonly List<int> keptSlotIndices = new();
 
-        private Material diceBodyMaterial;
-        private Material dicePipMaterial;
 
         private DicePresetCatalog presetCatalog;
         private BakedDiceController bakedDiceController;
-        private AudioSource audioSource;
-        private readonly List<AudioClip> rollAudioClips = new();
-        private readonly List<AudioClip> impactAudioClips = new();
+        private YachtAudioService audioService;
 
         private Camera worldCamera;
         private Camera presentationCamera;
-        private RenderTexture lowResolutionTarget;
         private RawImage gameImage;
 
         // 픽셀 필터를 거치지 않는 UI 경로(M9.5). 월드 카메라와 같은 투영으로 CrispUI 레이어만 그린다.
-        private const string CrispUiCameraName = "Crisp UI Camera";
-        private const string CrispUiOverlayName = "Crisp UI Overlay";
-        private Camera crispUiCamera;
-        private RenderTexture crispUiTarget;
-        private RawImage crispUiImage;
-        private Vector2Int crispUiScreenSize;
-        private Material upscaleMaterial;
+        private YachtInputRouter inputRouter;
+        private YachtCameraRig cameraRig;
+        private DiceVisualPool dicePool;
         private Text statusText;
         private RectTransform gameAreaRect;
         private RectTransform gameImageRect;
         private Transform layoutRoot;
-        private Transform diceRoot;
         // 테이블 프롭은 Assets/Prefabs/Tabletop 의 프리팹 인스턴스이며 씬이 배치를 소유한다(M9).
         // 컨트롤러는 참조만 들고, 생성도 배치도 하지 않는다. 참조가 비면 이름으로 한 번 찾아 붙인다.
         [Header("Tabletop Props")]
@@ -134,20 +123,10 @@ namespace Tessera.Games.AugmentedYacht
         private bool isArranging;
         private int hoveredDieIndex = -1;
 
-        private readonly (string name, Color color, float intensity)[] keyLightPresets = new[]
-        {
-            ("Pure White", new Color(1.00f, 1.00f, 1.00f), 1.25f),
-            ("Warm Amber", new Color(1.00f, 0.62f, 0.23f), 1.50f),
-            ("Soft Neutral", new Color(1.00f, 0.88f, 0.74f), 1.35f),
-            ("Cool Moon", new Color(0.55f, 0.70f, 0.95f), 1.35f),
-            ("Cozy Candle", new Color(1.00f, 0.48f, 0.16f), 1.55f)
-        };
-        private int currentKeyLightPresetIndex = 1; // Warm Amber 기본 시작
+        private YachtLightingRig lightingRig;
 
         private static readonly Vector2Int ResolutionA = new(960, 540);
         private static readonly Vector2Int ResolutionB = new(640, 360);
-        private static readonly Vector2Int OutputResolution = new(1920, 1080);
-        private static readonly Color DarkCharcoalBackground = new(0.06f, 0.05f, 0.07f);
 
         private const float TableWidth = 15.6f;
         private const float LeftSectionWidth = TableWidth * 0.25f;
@@ -157,7 +136,6 @@ namespace Tessera.Games.AugmentedYacht
         private const float TrayScale = 0.05f;
         private const float RollSurfaceY = 0.2f;
         private const float TrayVisualY = RollSurfaceY + 10.283531f * TrayScale;
-        private const int DiceLayer = 8;
         private const int DecorationLayer = 11;
         private const float TurnDurationSeconds = YachtGameOptions.DefaultTurnDurationSeconds;
 
@@ -176,7 +154,7 @@ namespace Tessera.Games.AugmentedYacht
             Application.targetFrameRate = 60;
             Application.runInBackground = true;
 
-            EnsureDiceMaterials();
+            EnsureDicePool();
 
             if (diceModel == null)
             {
@@ -198,17 +176,19 @@ namespace Tessera.Games.AugmentedYacht
             {
                 EnsureEventSystem();
                 BindPresentationActions();
-                CreateRenderTarget();
+                EnsureCameraRig();
+            cameraRig.CreateRenderTarget();
             }
 
-            ApplyRenderSettings();
+            cameraRig?.ApplyRenderSettings();
             ConfigureLighting();
             EnsureSingleAudioListener();
-            InitializeAudio();
+            EnsureAudioService();
             InitializePresetCatalog();
             InitializeBakedController();
-            EnsureDiceRoot();
+            EnsureDicePool();
             EnsureDiceState();
+            EnsureInputRouter();
 
             BindTabletopProps();
 
@@ -217,26 +197,7 @@ namespace Tessera.Games.AugmentedYacht
             InitializeYachtGame();
         }
 
-        private void EnsureDiceMaterials()
-        {
-            diceBodyMaterial = DicePaletteCatalog.GetBodyMaterial(selectedDieType);
-            dicePipMaterial = DicePaletteCatalog.GetPipMaterial(selectedDieType);
-        }
 
-        public void SetDieType(DieType type)
-        {
-            selectedDieType = type;
-            EnsureDiceMaterials();
-            foreach (GameObject die in activeDice)
-            {
-                if (die == null) continue;
-                Transform visual = die.transform.Find("Visual");
-                if (visual != null)
-                {
-                    ApplyDiceMaterialsToFbx(visual.gameObject);
-                }
-            }
-        }
 
         private void OnValidate()
         {
@@ -247,7 +208,7 @@ namespace Tessera.Games.AugmentedYacht
 #if UNITY_EDITOR
             if (!Application.isPlaying)
             {
-                ApplyRenderSettings();
+                cameraRig?.ApplyRenderSettings();
             }
 #endif
         }
@@ -257,7 +218,7 @@ namespace Tessera.Games.AugmentedYacht
         {
             if (!Application.isPlaying)
             {
-                ApplyRenderSettings();
+                cameraRig?.ApplyRenderSettings();
             }
         }
 #endif
@@ -315,7 +276,7 @@ namespace Tessera.Games.AugmentedYacht
 
         private void Start()
         {
-            StartCoroutine(LoadSoundsAsync());
+            StartCoroutine(audioService.LoadClipsAsync());
         }
 
         private void InitializeYachtGame()
@@ -417,7 +378,8 @@ namespace Tessera.Games.AugmentedYacht
             gameResultOverlay.SetActive(false);
 
             augmentDraftOverlay = CreateFullScreenOverlay(canvasObject.transform, "Yacht Augment Draft Overlay");
-            AugmentParchmentVisuals.PixelFilterResolution = internalResolution;
+            EnsureCameraRig();
+            AugmentParchmentVisuals.PixelFilterResolution = cameraRig.InternalResolution;
             float draftCardWidth = 460f;
             float draftCardAspect = augmentCardTray != null
                 ? augmentCardTray.CardSlotAspectRatio
@@ -697,42 +659,6 @@ namespace Tessera.Games.AugmentedYacht
             }
         }
 
-        private void UpdateAugmentCardPointer()
-        {
-            Mouse mouse = Mouse.current;
-            if (mouse == null || worldCamera == null || gameSession == null
-                || gameSession.Mode != YachtGameMode.Augmented || gameSession.IsDrafting)
-            {
-                SetHoveredAugmentSlot(-1);
-                return;
-            }
-
-            Vector2 pointer = mouse.position.ReadValue();
-            Vector3 viewport = new(
-                Screen.width > 0 ? pointer.x / Screen.width : 0.5f,
-                Screen.height > 0 ? pointer.y / Screen.height : 0.5f,
-                0f);
-            Ray ray = worldCamera.ViewportPointToRay(viewport);
-            int hitSlot = -1;
-            RaycastHit[] hits = Physics.RaycastAll(ray, 50f);
-            for (int i = 0; i < hits.Length; i++)
-            {
-                AugmentTrayCardView view = hits[i].collider.GetComponentInParent<AugmentTrayCardView>();
-                if (view == null) continue;
-                hitSlot = Array.IndexOf(augmentOwnedCards, view);
-                if (hitSlot >= 0) break;
-            }
-
-            SetHoveredAugmentSlot(hitSlot);
-            if (hitSlot >= 0 && mouse.leftButton.wasPressedThisFrame)
-            {
-                selectedAugmentSlot = selectedAugmentSlot == hitSlot ? -1 : hitSlot;
-                for (int i = 0; i < augmentOwnedCards.Length; i++)
-                    if (augmentOwnedCards[i] != null && augmentOwnedCards[i].gameObject.activeSelf)
-                        augmentOwnedCards[i].SetSelected(i == selectedAugmentSlot);
-            }
-        }
-
         private void SetHoveredAugmentSlot(int slotIndex)
         {
             if (hoveredAugmentSlot == slotIndex) return;
@@ -933,7 +859,7 @@ namespace Tessera.Games.AugmentedYacht
             hasCompletedRoll = false;
             isArranging = false;
             hoveredDieIndex = -1;
-            ArrangeDiceInitialPositions();
+            dicePool.ArrangeInitialPositions(activeDice, diceValues);
         }
 
         private void SyncDiceStateFromAuthority()
@@ -1009,17 +935,6 @@ namespace Tessera.Games.AugmentedYacht
             if (screenPosition.z > 0f) timerText.rectTransform.position = screenPosition;
         }
 
-        private void InitializeAudio()
-        {
-            audioSource = GetComponent<AudioSource>();
-            if (audioSource == null)
-            {
-                audioSource = gameObject.AddComponent<AudioSource>();
-                audioSource.playOnAwake = false;
-                audioSource.spatialBlend = 0f;
-            }
-        }
-
         private void InitializePresetCatalog()
         {
             // 일반·혼합·판 뒤집기 프리셋의 인덱스를 먼저 읽고 실제 파일은 최초 사용 시 적재한다.
@@ -1044,70 +959,6 @@ namespace Tessera.Games.AugmentedYacht
             }
         }
 
-        private IEnumerator LoadSoundsAsync()
-        {
-            string soundsPath = Path.Combine(Application.streamingAssetsPath, "WebSource", "sounds");
-            if (!Directory.Exists(soundsPath)) yield break;
-
-            string[] rollFiles = { "dice_roll.mp3", "dice-throw-1.ogg", "dice-throw-2.ogg", "dice-throw-3.ogg" };
-            string[] impactFiles = { "die-throw-1.ogg", "die-throw-2.ogg", "die-throw-3.ogg", "die-throw-4.ogg" };
-
-            foreach (string file in rollFiles)
-            {
-                string path = Path.Combine(soundsPath, file);
-                if (File.Exists(path))
-                {
-                    yield return LoadAudioClip(path, clip => rollAudioClips.Add(clip));
-                }
-            }
-
-            foreach (string file in impactFiles)
-            {
-                string path = Path.Combine(soundsPath, file);
-                if (File.Exists(path))
-                {
-                    yield return LoadAudioClip(path, clip => impactAudioClips.Add(clip));
-                }
-            }
-
-            bakedDiceController.SetAudioSource(audioSource, rollAudioClips.ToArray(), impactAudioClips.ToArray());
-        }
-
-        private static IEnumerator LoadAudioClip(string filePath, Action<AudioClip> onLoaded)
-        {
-            string uri = "file://" + filePath.Replace("\\", "/");
-            AudioType audioType = filePath.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase)
-                ? AudioType.MPEG
-                : AudioType.OGGVORBIS;
-
-            using UnityWebRequest uwr = UnityWebRequestMultimedia.GetAudioClip(uri, audioType);
-            yield return uwr.SendWebRequest();
-
-            if (uwr.result == UnityWebRequest.Result.Success)
-            {
-                AudioClip clip = DownloadHandlerAudioClip.GetContent(uwr);
-                if (clip != null)
-                {
-                    clip.name = Path.GetFileNameWithoutExtension(filePath);
-                    onLoaded?.Invoke(clip);
-                }
-            }
-        }
-
-        private void EnsureDiceRoot()
-        {
-            if (diceRoot != null) return;
-            GameObject root = GameObject.Find("Dice Visual Root");
-            if (root == null)
-            {
-                root = new GameObject("Dice Visual Root");
-                root.transform.SetParent(layoutRoot != null ? layoutRoot : transform, false);
-                root.transform.position = new Vector3(CenterSectionX, 0f, 0f);
-                root.transform.rotation = Quaternion.identity;
-                root.transform.localScale = Vector3.one;
-            }
-            diceRoot = root.transform;
-        }
 
         private void EnsureDiceState()
         {
@@ -1125,10 +976,10 @@ namespace Tessera.Games.AugmentedYacht
             diceValues.Clear();
             keptSlotIndices.Clear();
 
-            EnsureDiceRoot();
+            EnsureDicePool();
             for (int index = 0; index < diceCount; index++)
             {
-                GameObject die = CreateVisualDie(index + 1);
+                GameObject die = dicePool.CreateVisualDie(index + 1);
                 activeDice.Add(die);
                 keptDice.Add(false);
                 diceValues.Add(index + 1); // 기본 1~5 눈 설정
@@ -1136,166 +987,15 @@ namespace Tessera.Games.AugmentedYacht
             }
 
             hasCompletedRoll = false;
-            ArrangeDiceInitialPositions();
+            dicePool.ArrangeInitialPositions(activeDice, diceValues);
         }
 
-        private GameObject CreateVisualDie(int index)
-        {
-            GameObject root = new($"Die_{index}", typeof(BoxCollider), typeof(DiceKeepTarget));
-            root.layer = DiceLayer;
-            root.transform.SetParent(diceRoot, false);
-            root.transform.localPosition = Vector3.zero;
-            root.transform.localRotation = Quaternion.identity;
-            root.transform.localScale = Vector3.one * DiceBoardMetrics.DieSize;
 
-            if (diceModel != null)
-            {
-                GameObject visual = Instantiate(diceModel, root.transform);
-                visual.name = "Visual";
-                DisableImportedSceneComponents(visual);
-                visual.transform.localPosition = Vector3.zero;
 
-                // FBX 자체의 isometric 기울기(333, 318, 0)를 0도로 직교 보정
-                Quaternion baseCorrection = DiceFaceOrientation.MeasureModelBasis(visual.transform);
-                visual.transform.localRotation = baseCorrection;
 
-                // 로컬 메쉬 바운드 기준으로 정확히 1단위 큐브로 정규화
-                NormalizeVisual(visual.transform, 1.0f);
-                ApplyDiceMaterialsToFbx(visual);
-                SetLayerRecursively(root, DiceLayer);
-            }
-            else
-            {
-                Mesh mesh = DiceMeshFactory.Create();
-                MeshFilter mf = root.AddComponent<MeshFilter>();
-                MeshRenderer mr = root.AddComponent<MeshRenderer>();
-                mf.sharedMesh = mesh;
-                mr.sharedMaterials = DiceMaterialFactory.GetNormalMaterials();
-                mr.shadowCastingMode = ShadowCastingMode.On;
-                mr.receiveShadows = false;
-                DiceMaterialFactory.AttachFaceOverlays(root.transform);
-            }
 
-            BoxCollider collider = root.GetComponent<BoxCollider>();
-            collider.size = Vector3.one;
-            collider.center = Vector3.zero;
 
-            DiceKeepTarget target = root.GetComponent<DiceKeepTarget>();
-            target.Index = index - 1;
 
-            return root;
-        }
-
-        private static void NormalizeVisual(Transform visual, float targetLocalSize = 1.0f)
-        {
-            visual.localPosition = Vector3.zero;
-            // 큐브 원본 규격 크기(DiceBoardMetrics.SourceDiceSize = 1.62f) 기준으로 고정 정규화하여 모델링 변경 시 크기 오차 방지
-            float rawBodySize = DiceBoardMetrics.SourceDiceSize;
-            visual.localScale = Vector3.one * (targetLocalSize / rawBodySize);
-        }
-
-        private void ApplyDiceMaterialsToFbx(GameObject visual)
-        {
-            EnsureDiceMaterials();
-
-            // 솔리드 그림자 프록시(ShadowProxy) 확인 및 설정 (음각 홈으로 인한 그림자 구멍 완전 차단)
-            EnsureShadowProxy(visual.transform);
-
-            foreach (Renderer renderer in visual.GetComponentsInChildren<Renderer>(true))
-            {
-                if (renderer.name.Equals("ShadowProxy", StringComparison.OrdinalIgnoreCase))
-                {
-                    renderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
-                    renderer.receiveShadows = false;
-                    renderer.sharedMaterial = diceBodyMaterial;
-                    continue;
-                }
-
-                if (renderer.name.StartsWith("Pip", StringComparison.OrdinalIgnoreCase))
-                {
-                    renderer.sharedMaterial = dicePipMaterial;
-                    renderer.shadowCastingMode = ShadowCastingMode.Off; // Pip 메시 그림자 캐스팅 제외
-                }
-                else
-                {
-                    // Plain_D6 몸체: 슬롯 0(바탕 Body), 슬롯 1(음각 홈 내부 Pip)
-                    if (renderer.sharedMaterials != null && renderer.sharedMaterials.Length > 1)
-                    {
-                        renderer.sharedMaterials = new Material[] { diceBodyMaterial, dicePipMaterial };
-                    }
-                    else
-                    {
-                        renderer.sharedMaterial = diceBodyMaterial;
-                    }
-                    renderer.shadowCastingMode = ShadowCastingMode.Off; // 시각 메시는 렌더 전용, 그림자는 프록시가 담당
-                }
-
-                renderer.receiveShadows = false;
-                renderer.lightProbeUsage = LightProbeUsage.Off;
-                renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
-            }
-        }
-
-        private static void EnsureShadowProxy(Transform visual)
-        {
-            Transform existing = visual.Find("ShadowProxy");
-            if (existing != null) return;
-
-            GameObject proxy = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            proxy.name = "ShadowProxy";
-            proxy.transform.SetParent(visual, false);
-            proxy.transform.localPosition = Vector3.zero;
-            proxy.transform.localRotation = Quaternion.identity;
-            proxy.transform.localScale = Vector3.one * DiceBoardMetrics.SourceDiceSize;
-
-            Collider col = proxy.GetComponent<Collider>();
-            if (col != null)
-            {
-                if (Application.isPlaying) Destroy(col);
-                else DestroyImmediate(col);
-            }
-
-            MeshRenderer mr = proxy.GetComponent<MeshRenderer>();
-            mr.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
-            mr.receiveShadows = false;
-        }
-
-        private static void SetLayerRecursively(GameObject root, int layer)
-        {
-            root.layer = layer;
-            foreach (Transform child in root.transform) SetLayerRecursively(child.gameObject, layer);
-        }
-
-        private static void DisableImportedSceneComponents(GameObject visual)
-        {
-            foreach (Camera cam in visual.GetComponentsInChildren<Camera>(true)) cam.enabled = false;
-            foreach (Light l in visual.GetComponentsInChildren<Light>(true)) l.enabled = false;
-            foreach (AudioListener al in visual.GetComponentsInChildren<AudioListener>(true)) al.enabled = false;
-            foreach (Collider c in visual.GetComponentsInChildren<Collider>(true)) Destroy(c);
-        }
-
-        private void ArrangeDiceInitialPositions()
-        {
-            for (int i = 0; i < activeDice.Count; i++)
-            {
-                if (activeDice[i] == null) continue;
-                Vector3 targetPos = DiceBoardMetrics.GetActivePosition(i, activeDice.Count);
-                activeDice[i].transform.localPosition = targetPos;
-                activeDice[i].transform.localScale = Vector3.one * DiceBoardMetrics.ActiveDieSize;
-                Quaternion targetRot = DiceFaceOrientation.GetCameraFacingRotation(diceValues[i], 75.0f);
-                activeDice[i].transform.localRotation = targetRot;
-
-                Transform visual = activeDice[i].transform.Find("Visual");
-                if (visual != null)
-                {
-                    visual.localRotation = DiceFaceOrientation.MeasureModelBasis(visual);
-                }
-                else
-                {
-                    DiceMaterialFactory.ApplyPredictedTopValue(activeDice[i].transform, targetRot, diceValues[i]);
-                }
-            }
-        }
 
         public void RollDice()
         {
@@ -1570,113 +1270,175 @@ namespace Tessera.Games.AugmentedYacht
             UpdateStatusText();
         }
 
-        private void Update()
-        {
-            Keyboard keyboard = Keyboard.current;
-            if (keyboard != null)
-            {
-                if (keyboard.spaceKey.wasPressedThisFrame) RollDice();
-                if (keyboard.f1Key.wasPressedThisFrame) SetResolution(ResolutionA);
-                if (keyboard.f2Key.wasPressedThisFrame) SetResolution(ResolutionB);
-
-                // 숫자키 1~8로 주사위 색상 팔레트 실시간 전환
-                if (keyboard.digit1Key.wasPressedThisFrame || keyboard.numpad1Key.wasPressedThisFrame) SetDieType(DieType.Normal);
-                if (keyboard.digit2Key.wasPressedThisFrame || keyboard.numpad2Key.wasPressedThisFrame) SetDieType(DieType.HeavyRed);
-                if (keyboard.digit3Key.wasPressedThisFrame || keyboard.numpad3Key.wasPressedThisFrame) SetDieType(DieType.Golden);
-                if (keyboard.digit4Key.wasPressedThisFrame || keyboard.numpad4Key.wasPressedThisFrame) SetDieType(DieType.Metal);
-                if (keyboard.digit5Key.wasPressedThisFrame || keyboard.numpad5Key.wasPressedThisFrame) SetDieType(DieType.Sevens);
-                if (keyboard.digit6Key.wasPressedThisFrame || keyboard.numpad6Key.wasPressedThisFrame) SetDieType(DieType.Couple);
-                if (keyboard.digit7Key.wasPressedThisFrame || keyboard.numpad7Key.wasPressedThisFrame) SetDieType(DieType.Promotion);
-                if (keyboard.digit8Key.wasPressedThisFrame || keyboard.numpad8Key.wasPressedThisFrame) SetDieType(DieType.Weird);
-            }
-
-            UpdateAugmentCardPointer();
-            UpdateDicePointer();
-            UpdateTimerTextPosition();
-            FitFullScreen();
-            SyncCrispUiTargetToScreen();
-        }
-
         /// <summary>
-        /// 화면 크기가 바뀌면 Crisp UI 렌더 타깃을 다시 만든다.
-        /// 타깃 해상도가 화면과 어긋나면 월드 스페이스 캔버스의 클릭 위치가 밀린다.
+        /// 입력 라우터를 붙이고 사건을 기존 처리에 연결한다(M10-T1).
+        /// 라우터는 무엇을 가리키고 눌렀는지만 알리고, 무엇을 할지는 여기서 정한다.
         /// </summary>
-        private void SyncCrispUiTargetToScreen()
+        private void EnsureInputRouter()
         {
-            if (crispUiCamera == null) return;
+            if (inputRouter != null) return;
 
-            Vector2Int size = new(Screen.width, Screen.height);
-            if (size == crispUiScreenSize) return;
+            inputRouter = GetComponent<YachtInputRouter>() ?? gameObject.AddComponent<YachtInputRouter>();
+            inputRouter.WorldCamera = worldCamera;
+            inputRouter.DicePointerEnabled = () => activeDice.Count > 0;
+            inputRouter.AugmentPointerEnabled = () => gameSession != null
+                && gameSession.Mode == YachtGameMode.Augmented
+                && !gameSession.IsDrafting;
 
-            crispUiScreenSize = size;
-            EnsureCrispUiTarget();
-            EnsureCrispUiOverlay();
+            inputRouter.RollRequested += RollDice;
+            inputRouter.ResolutionPresetRequested += OnResolutionPresetRequested;
+            inputRouter.DieTypeRequested += SetDieType;
+            inputRouter.DieHoverChanged += OnDieHoverChanged;
+            inputRouter.DieClicked += ToggleKeep;
+            inputRouter.RollTriggerHoverChanged += OnRollTriggerHoverChanged;
+            inputRouter.RollTriggerClicked += OnRollOrbClicked;
+            inputRouter.AugmentCardHoverChanged += OnAugmentCardHoverChanged;
+            inputRouter.AugmentCardClicked += OnAugmentCardClicked;
         }
 
-        private void UpdateDicePointer()
+        /// <summary>주사위 비주얼 풀을 붙인다(M10-T5).</summary>
+        private void EnsureDicePool()
         {
-            Mouse mouse = Mouse.current;
-            if (mouse == null || worldCamera == null || activeDice.Count == 0)
+            if (dicePool == null)
             {
-                hoveredDieIndex = -1;
-                return;
+                dicePool = GetComponent<DiceVisualPool>() ?? gameObject.AddComponent<DiceVisualPool>();
             }
 
-            Vector2 pointer = mouse.position.ReadValue();
-            Vector3 viewport = new(
-                Screen.width > 0 ? pointer.x / Screen.width : 0.5f,
-                Screen.height > 0 ? pointer.y / Screen.height : 0.5f,
-                0f);
-            Ray ray = worldCamera.ViewportPointToRay(viewport);
-            int hitIndex = -1;
-            bool hitOrb = false;
-            if (Physics.Raycast(ray, out RaycastHit hit, 50f))
+            dicePool.Bind(diceModel, layoutRoot, CenterSectionX, selectedDieType);
+        }
+
+        /// <summary>주사위 색상 팔레트를 바꾼다. 입력 라우터와 모드 전환이 호출한다.</summary>
+        public void SetDieType(DieType type)
+        {
+            selectedDieType = type;
+            EnsureDicePool();
+            dicePool.SetDieType(type, activeDice);
+        }
+
+        /// <summary>렌더 파이프라인 리그를 붙이고 씬 구성 요소를 넘긴다(M10-T2).</summary>
+        private void EnsureCameraRig()
+        {
+            if (cameraRig == null)
             {
-                DiceKeepTarget target = hit.collider.GetComponentInParent<DiceKeepTarget>();
-                if (target != null) hitIndex = target.Index;
+                cameraRig = GetComponent<YachtCameraRig>() ?? gameObject.AddComponent<YachtCameraRig>();
+                cameraRig.CrispUiCameraReady += OnCrispUiCameraReady;
+            }
 
-                RollCosmicCube cube = hit.collider.GetComponentInParent<RollCosmicCube>();
-                RollOrb orb = hit.collider.GetComponentInParent<RollOrb>();
-                if (cube != null || orb != null) hitOrb = true;
+            cameraRig.Bind(worldCamera, presentationCamera, gameImage, gameImageRect, layoutRoot, upscaleShader);
+        }
 
-                if (mouse.leftButton.wasPressedThisFrame)
+        private void OnCrispUiCameraReady(Camera eventCamera)
+        {
+            if (parchmentScoreSheet == null) parchmentScoreSheet = FindFirstObjectByType<ParchmentScoreSheet>();
+            if (parchmentScoreSheet != null) parchmentScoreSheet.BindEventCamera(eventCamera);
+        }
+
+        /// <summary>에디터 메뉴가 호출한다. Crisp UI 경로를 씬에 굽는다.</summary>
+        public bool SetupCrispUiSceneObjects()
+        {
+            EnsureCameraRig();
+            return cameraRig.SetupCrispUiSceneObjects();
+        }
+
+        /// <summary>조명·오디오 서비스를 붙인다(M10-T3, M10-T4).</summary>
+        private void EnsureLightingRig()
+        {
+            if (lightingRig != null) return;
+
+            lightingRig = GetComponent<YachtLightingRig>() ?? gameObject.AddComponent<YachtLightingRig>();
+            lightingRig.PresetChanged += OnKeyLightPresetChanged;
+        }
+
+        private void EnsureAudioService()
+        {
+            if (audioService != null) return;
+
+            audioService = GetComponent<YachtAudioService>() ?? gameObject.AddComponent<YachtAudioService>();
+            audioService.EnsureSource();
+            audioService.ClipsReady += OnAudioClipsReady;
+        }
+
+        private void OnAudioClipsReady(AudioSource source, AudioClip[] rollClips, AudioClip[] impactClips)
+        {
+            if (bakedDiceController != null) bakedDiceController.SetAudioSource(source, rollClips, impactClips);
+        }
+
+        private void OnKeyLightPresetChanged(string presetName)
+        {
+            if (keyLightToggleButton == null) return;
+
+            Text label = keyLightToggleButton.GetComponentInChildren<Text>();
+            if (label != null) label.text = $"Light: {presetName}";
+        }
+
+        /// <summary>버튼 라벨용 현재 조명 프리셋 이름.</summary>
+        private string KeyLightPresetName
+        {
+            get
+            {
+                EnsureLightingRig();
+                return lightingRig.CurrentPresetName;
+            }
+        }
+
+        /// <summary>조명 프리셋 전환 버튼이 호출한다.</summary>
+        public void ToggleKeyLightPreset()
+        {
+            EnsureLightingRig();
+            lightingRig.TogglePreset();
+        }
+
+        private void ConfigureLighting()
+        {
+            EnsureLightingRig();
+            lightingRig.Configure();
+        }
+
+        private void OnResolutionPresetRequested(int presetIndex)
+        {
+            SetResolution(presetIndex == 0 ? ResolutionA : ResolutionB);
+        }
+
+        private void OnDieHoverChanged(int dieIndex)
+        {
+            hoveredDieIndex = dieIndex;
+            UpdateStatusText();
+        }
+
+        private void OnRollTriggerHoverChanged(bool hovered)
+        {
+            if (rollCosmicCube != null) rollCosmicCube.SetHovered(hovered);
+            if (rollOrb != null) rollOrb.SetHovered(hovered);
+        }
+
+        private void OnAugmentCardHoverChanged(AugmentTrayCardView card)
+        {
+            SetHoveredAugmentSlot(card == null ? -1 : Array.IndexOf(augmentOwnedCards, card));
+        }
+
+        private void OnAugmentCardClicked(AugmentTrayCardView card)
+        {
+            int slot = Array.IndexOf(augmentOwnedCards, card);
+            if (slot < 0) return;
+
+            selectedAugmentSlot = selectedAugmentSlot == slot ? -1 : slot;
+            for (int i = 0; i < augmentOwnedCards.Length; i++)
+            {
+                if (augmentOwnedCards[i] != null && augmentOwnedCards[i].gameObject.activeSelf)
                 {
-                    TabletopTrinketRing ringHit = hit.collider.GetComponentInParent<TabletopTrinketRing>();
-                    if (ringHit != null) ringHit.TriggerRattle();
-
-                    TabletopTrinketBrooch broochHit = hit.collider.GetComponentInParent<TabletopTrinketBrooch>();
-                    if (broochHit != null) broochHit.TriggerRattle();
-
-                    TabletopTrinketManaCrystal crystalHit = hit.collider.GetComponentInParent<TabletopTrinketManaCrystal>();
-                    if (crystalHit != null) crystalHit.TriggerGlow();
+                    augmentOwnedCards[i].SetSelected(i == selectedAugmentSlot);
                 }
             }
-
-            if (rollCosmicCube != null)
-            {
-                rollCosmicCube.SetHovered(hitOrb);
-            }
-            if (rollOrb != null)
-            {
-                rollOrb.SetHovered(hitOrb);
-            }
-
-            if (hoveredDieIndex != hitIndex)
-            {
-                hoveredDieIndex = hitIndex;
-                UpdateStatusText();
-            }
-
-            if (hitOrb && mouse.leftButton.wasPressedThisFrame)
-            {
-                OnRollOrbClicked();
-            }
-
-            if (hitIndex >= 0 && mouse.leftButton.wasPressedThisFrame)
-            {
-                ToggleKeep(hitIndex);
-            }
         }
+
+        private void Update()
+        {
+            // 입력은 YachtInputRouter가 읽어 사건으로 알린다(M10-T1).
+            UpdateTimerTextPosition();
+            cameraRig?.FitFullScreen();
+            cameraRig?.SyncCrispUiTargetToScreen();
+        }
+
 
         private void OnRollOrbClicked()
         {
@@ -1745,38 +1507,16 @@ namespace Tessera.Games.AugmentedYacht
 
         public void ToggleResolution()
         {
-            SetResolution(internalResolution == ResolutionA ? ResolutionB : ResolutionA);
-        }
-
-        public void ToggleKeyLightPreset()
-        {
-            currentKeyLightPresetIndex = (currentKeyLightPresetIndex + 1) % keyLightPresets.Length;
-            ApplyKeyLightPreset();
-        }
-
-        public void ApplyKeyLightPreset()
-        {
-            var preset = keyLightPresets[currentKeyLightPresetIndex];
-            Light key = GameObject.Find("Key Light")?.GetComponent<Light>();
-            if (key != null)
-            {
-                key.color = preset.color;
-                key.intensity = preset.intensity;
-            }
-
-            if (keyLightToggleButton != null)
-            {
-                Text label = keyLightToggleButton.GetComponentInChildren<Text>();
-                if (label != null) label.text = $"Light: {preset.name}";
-            }
+            EnsureCameraRig();
+            SetResolution(cameraRig.InternalResolution == ResolutionA ? ResolutionB : ResolutionA);
         }
 
         private void SetResolution(Vector2Int resolution)
         {
-            internalResolution = resolution;
             AugmentParchmentVisuals.PixelFilterResolution = resolution;
             RefreshDraftCardParchment();
-            ApplyRenderSettings();
+            EnsureCameraRig();
+            cameraRig.SetInternalResolution(resolution);
         }
 
         private bool ResolveEditableLayout()
@@ -1800,7 +1540,6 @@ namespace Tessera.Games.AugmentedYacht
             gameImageRect = imageObject.GetComponent<RectTransform>();
             gameImage = imageObject.GetComponent<RawImage>();
             statusText = statusObject != null ? statusObject.GetComponent<Text>() : null;
-            upscaleMaterial = gameImage != null ? gameImage.material : null;
 
             if (imageObject != null)
             {
@@ -1812,8 +1551,9 @@ namespace Tessera.Games.AugmentedYacht
             BindTabletopProps();
 
             ApplyTopDownCamera();
-            CreateRenderTarget();
-            ApplyRenderSettings();
+            EnsureCameraRig();
+            cameraRig.CreateRenderTarget();
+            cameraRig?.ApplyRenderSettings();
             return worldCamera != null && presentationCamera != null && gameImage != null;
         }
 
@@ -1879,7 +1619,7 @@ namespace Tessera.Games.AugmentedYacht
                 GameObject canvasObj = GameObject.Find("Pixel Presentation");
                 if (canvasObj != null)
                 {
-                    keyLightToggleButton = CreateButton(canvasObj.transform, "KeyLightToggle", $"Light: {keyLightPresets[currentKeyLightPresetIndex].name}", new Vector2(158f, -18f), new Vector2(165f, 38f), new Vector2(0f, 1f), ToggleKeyLightPreset);
+                    keyLightToggleButton = CreateButton(canvasObj.transform, "KeyLightToggle", $"Light: {KeyLightPresetName}", new Vector2(158f, -18f), new Vector2(165f, 38f), new Vector2(0f, 1f), ToggleKeyLightPreset);
                 }
             }
             if (keyLightToggleButton != null)
@@ -1887,7 +1627,7 @@ namespace Tessera.Games.AugmentedYacht
                 keyLightToggleButton.onClick.RemoveAllListeners();
                 keyLightToggleButton.onClick.AddListener(ToggleKeyLightPreset);
                 Text label = keyLightToggleButton.GetComponentInChildren<Text>();
-                if (label != null) label.text = $"Light: {keyLightPresets[currentKeyLightPresetIndex].name}";
+                if (label != null) label.text = $"Light: {KeyLightPresetName}";
             }
             
             GameObject canvasObject = GameObject.Find("Pixel Presentation");
@@ -2378,24 +2118,6 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             tray.GetComponent<MeshRenderer>().receiveShadows = true;
         }
 
-        private void ConfigureLighting()
-        {
-            RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.16f, 0.12f, 0.09f);
-            Light key = GameObject.Find("Key Light")?.GetComponent<Light>();
-            if (key != null)
-            {
-                key.enabled = true;
-                key.transform.rotation = Quaternion.Euler(60f, -35f, 0f);
-                key.cullingMask |= 1 << DiceLayer;
-                key.shadows = LightShadows.Soft;
-                key.shadowStrength = 0.58f;
-                key.shadowBias = 0.005f;
-                key.shadowNormalBias = 0.03f;
-                ApplyKeyLightPreset();
-            }
-        }
-
         public void DebugAdvanceRuneLighting()
         {
             ResolveRunicMatrix();
@@ -2482,7 +2204,9 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
 
-            CreatePresentationCamera();
+            EnsureCameraRig();
+            cameraRig.CreatePresentationCamera();
+            presentationCamera = cameraRig.PresentationCamera;
 
             GameObject gameArea = new("Game Area", typeof(RectTransform));
             gameArea.transform.SetParent(canvasObject.transform, false);
@@ -2499,19 +2223,21 @@ if (quantizeObject != null) quantizeObject.SetActive(false);
             gameImage = imageObject.GetComponent<RawImage>();
             gameImage.raycastTarget = false;
 
-            upscaleMaterial = new Material(upscaleShader != null ? upscaleShader : Shader.Find("UI/Default"));
-            gameImage.material = upscaleMaterial;
+            EnsureCameraRig();
+            cameraRig.SetGameImage(gameImage, gameImageRect);
+            cameraRig.EnsureUpscaleMaterial();
             imageObject.SetActive(true);
 
             CreateButton(canvasObject.transform, "Debug", "960 / 640", new Vector2(18f, -18f), new Vector2(130f, 38f), new Vector2(0f, 1f), ToggleResolution);
             
             runeFxButton = CreateButton(canvasObject.transform, "RuneFxDebug", "Runes: 0/12", new Vector2(333f, -18f), new Vector2(140f, 38f), new Vector2(0f, 1f), DebugAdvanceRuneLighting);
             runeStoneButton = CreateButton(canvasObject.transform, "RuneStoneDebug", "Stones: 0/4", new Vector2(483f, -18f), new Vector2(150f, 38f), new Vector2(0f, 1f), DebugCycleRuneStones);
-keyLightToggleButton = CreateButton(canvasObject.transform, "KeyLightToggle", $"Light: {keyLightPresets[currentKeyLightPresetIndex].name}", new Vector2(158f, -18f), new Vector2(165f, 38f), new Vector2(0f, 1f), ToggleKeyLightPreset);
+keyLightToggleButton = CreateButton(canvasObject.transform, "KeyLightToggle", $"Light: {KeyLightPresetName}", new Vector2(158f, -18f), new Vector2(165f, 38f), new Vector2(0f, 1f), ToggleKeyLightPreset);
 
             statusText = CreateText(canvasObject.transform, "Status", "", new Vector2(0f, -20f), new Vector2(600f, 30f), new Vector2(0.5f, 1f), 15, TextAnchor.MiddleCenter);
             Canvas.ForceUpdateCanvases();
-            CreateRenderTarget();
+            EnsureCameraRig();
+            cameraRig.CreateRenderTarget();
             BindPresentationActions();
 
             if (parchmentScoreSheet == null) parchmentScoreSheet = FindFirstObjectByType<ParchmentScoreSheet>();
@@ -2519,25 +2245,9 @@ keyLightToggleButton = CreateButton(canvasObject.transform, "KeyLightToggle", $"
             {
                 parchmentScoreSheet.EnsureStructure();
                 parchmentScoreSheet.RefreshAllScores();
-                parchmentScoreSheet.BindEventCamera(crispUiCamera);
             }
         }
 
-        private void CreatePresentationCamera()
-        {
-            GameObject cameraObject = new("Display 1 Camera", typeof(Camera));
-            cameraObject.transform.SetParent(layoutRoot, false);
-            presentationCamera = cameraObject.GetComponent<Camera>();
-            presentationCamera.targetDisplay = 0;
-            presentationCamera.clearFlags = CameraClearFlags.SolidColor;
-            presentationCamera.backgroundColor = DarkCharcoalBackground;
-            presentationCamera.cullingMask = 0;
-            presentationCamera.depth = -100f;
-            presentationCamera.nearClipPlane = 0.01f;
-            presentationCamera.farClipPlane = 1f;
-            presentationCamera.allowHDR = false;
-            presentationCamera.allowMSAA = false;
-        }
 
         private Button CreateButton(Transform parent, string name, string label, Vector2 position, Vector2 size, Vector2 anchor, UnityEngine.Events.UnityAction action)
         {
@@ -2606,227 +2316,13 @@ keyLightToggleButton = CreateButton(canvasObject.transform, "KeyLightToggle", $"
             return text;
         }
 
-        private void CreateRenderTarget()
-        {
-            if (worldCamera != null) worldCamera.targetTexture = null;
-            if (lowResolutionTarget != null)
-            {
-                lowResolutionTarget.Release();
-                Destroy(lowResolutionTarget);
-            }
 
-            lowResolutionTarget = new RenderTexture(OutputResolution.x, OutputResolution.y, 24, RenderTextureFormat.ARGB32)
-            {
-                name = $"Dice PoC Full Field {OutputResolution.x}x{OutputResolution.y}",
-                filterMode = FilterMode.Point,
-                wrapMode = TextureWrapMode.Clamp,
-                antiAliasing = 1,
-                useMipMap = false,
-                autoGenerateMips = false
-            };
-            lowResolutionTarget.Create();
-            worldCamera.targetTexture = lowResolutionTarget;
-            if (gameImage != null)
-            {
-                gameImage.gameObject.SetActive(true);
-                gameImage.texture = lowResolutionTarget;
-            }
-            FitFullScreen();
-            EnsureCrispUiPipeline();
-        }
 
-        /// <summary>
-        /// 픽셀 필터를 거치지 않는 UI 경로를 구성한다(M9.5).
-        ///
-        /// 월드 카메라는 <see cref="TesseraLayers.CrispUI"/> 레이어를 찍지 않고, 같은 투영을 쓰는
-        /// 전용 카메라가 그 레이어만 화면 해상도 렌더 타깃에 그린다. 결과를 픽셀 이미지 위에 겹치면
-        /// 배경은 픽셀아트로, 글자는 원본 해상도로 남는다.
-        ///
-        /// 두 카메라의 투영이 같으므로 월드 스페이스 UI는 별도 정렬 계산 없이 정확히 겹친다.
-        /// </summary>
-        private void EnsureCrispUiPipeline()
-        {
-            if (!SetupCrispUiSceneObjects()) return;
 
-            EnsureCrispUiTarget();
-            EnsureCrispUiOverlay();
 
-            // 프롭 UI가 이 카메라보다 먼저 만들어지므로 여기서 이벤트 카메라를 붙인다.
-            if (parchmentScoreSheet == null) parchmentScoreSheet = FindFirstObjectByType<ParchmentScoreSheet>();
-            if (parchmentScoreSheet != null) parchmentScoreSheet.BindEventCamera(crispUiCamera);
-        }
 
-        /// <summary>
-        /// 씬이 소유해야 하는 부분만 구성한다. 컬링 마스크와 카메라·오버레이 오브젝트가 여기 해당한다.
-        ///
-        /// 렌더 타깃은 화면 해상도에 묶여 있어 에셋으로 저장할 수 없으므로 제외한다.
-        /// 에디터 메뉴로 한 번 실행해 씬에 굽고, 이후에는 씬에 저장된 상태를 그대로 쓴다.
-        /// </summary>
-        [ContextMenu("Setup Crisp UI Pipeline")]
-        public bool SetupCrispUiSceneObjects()
-        {
-            if (worldCamera == null)
-            {
-                GameObject found = GameObject.Find("Full Field World Camera") ?? GameObject.Find("Low Resolution World Camera");
-                worldCamera = found != null ? found.GetComponent<Camera>() : null;
-            }
-            if (worldCamera == null) return false;
 
-            worldCamera.cullingMask &= ~TesseraLayers.Mask(TesseraLayers.CrispUI);
 
-            EnsureCrispUiCamera();
-
-            if (gameImageRect == null)
-            {
-                GameObject upscale = GameObject.Find("Point Upscale");
-                gameImageRect = upscale != null ? upscale.GetComponent<RectTransform>() : null;
-            }
-            EnsureCrispUiOverlay();
-            return true;
-        }
-
-        private void EnsureCrispUiCamera()
-        {
-            if (crispUiCamera == null)
-            {
-                Transform existing = worldCamera.transform.Find(CrispUiCameraName);
-                crispUiCamera = existing != null ? existing.GetComponent<Camera>() : null;
-            }
-
-            if (crispUiCamera == null)
-            {
-                GameObject cameraObject = new(CrispUiCameraName, typeof(Camera));
-                cameraObject.transform.SetParent(worldCamera.transform, false);
-                crispUiCamera = cameraObject.GetComponent<Camera>();
-            }
-
-            // 투영을 월드 카메라와 일치시킨 뒤 이 카메라만의 설정을 덮어쓴다.
-            crispUiCamera.CopyFrom(worldCamera);
-            crispUiCamera.transform.localPosition = Vector3.zero;
-            crispUiCamera.transform.localRotation = Quaternion.identity;
-            crispUiCamera.transform.localScale = Vector3.one;
-            crispUiCamera.cullingMask = TesseraLayers.Mask(TesseraLayers.CrispUI);
-            crispUiCamera.clearFlags = CameraClearFlags.SolidColor;
-            crispUiCamera.backgroundColor = new Color(0f, 0f, 0f, 0f);
-            crispUiCamera.depth = worldCamera.depth + 1f;
-
-            // CopyFrom은 월드 카메라의 렌더 타깃까지 복사한다. 그대로 두면 두 카메라가 같은
-            // 타깃을 공유해, 나중에 그리는 이쪽이 투명색으로 지우며 월드 화면을 통째로 날린다.
-            // 이 카메라는 언제나 자기 전용 타깃만 쓴다.
-            crispUiCamera.targetTexture = crispUiTarget;
-
-            // 전용 타깃이 없으면 끈다. 타깃 없이 켜 두면 화면에 직접 그리며 색을 지우고,
-            // URP Base 카메라는 Depth only 클리어를 지원하지 않아 켜 둔 채로는 피할 수 없다.
-            crispUiCamera.enabled = crispUiTarget != null;
-            crispUiCamera.allowHDR = false;
-            crispUiCamera.allowMSAA = false;
-
-            AudioListener listener = crispUiCamera.GetComponent<AudioListener>();
-            if (listener != null)
-            {
-                if (Application.isPlaying) Destroy(listener);
-                else DestroyImmediate(listener);
-            }
-        }
-
-        /// <summary>
-        /// Crisp UI 렌더 타깃을 화면 해상도로 맞춘다.
-        ///
-        /// 월드 스페이스 캔버스의 클릭 판정은 카메라의 <c>pixelRect</c>를 기준으로 하는데,
-        /// 렌더 타깃이 지정되면 그 크기가 곧 <c>pixelRect</c>가 된다. 따라서 화면과 1:1이 아니면
-        /// 클릭 위치가 어긋난다. 화면 크기가 바뀔 때마다 다시 만들어야 한다.
-        /// </summary>
-        private void EnsureCrispUiTarget()
-        {
-            int width = Mathf.Max(1, Screen.width);
-            int height = Mathf.Max(1, Screen.height);
-            if (crispUiTarget != null && crispUiTarget.width == width && crispUiTarget.height == height)
-            {
-                crispUiCamera.targetTexture = crispUiTarget;
-                crispUiCamera.enabled = true;
-                return;
-            }
-
-            if (crispUiCamera != null) crispUiCamera.targetTexture = null;
-            if (crispUiTarget != null)
-            {
-                crispUiTarget.Release();
-                if (Application.isPlaying) Destroy(crispUiTarget);
-                else DestroyImmediate(crispUiTarget);
-            }
-
-            crispUiTarget = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32)
-            {
-                name = $"Crisp UI {width}x{height}",
-                filterMode = FilterMode.Bilinear,
-                wrapMode = TextureWrapMode.Clamp,
-                antiAliasing = 1,
-                useMipMap = false,
-                autoGenerateMips = false
-            };
-            crispUiTarget.Create();
-            crispUiCamera.targetTexture = crispUiTarget;
-            crispUiCamera.enabled = true;
-            crispUiScreenSize = new Vector2Int(width, height);
-            if (crispUiImage != null) crispUiImage.texture = crispUiTarget;
-        }
-
-        private void EnsureCrispUiOverlay()
-        {
-            if (gameImageRect == null) return;
-
-            if (crispUiImage == null)
-            {
-                Transform parent = gameImageRect.parent;
-                Transform existing = parent != null ? parent.Find(CrispUiOverlayName) : null;
-                if (existing != null)
-                {
-                    crispUiImage = existing.GetComponent<RawImage>();
-                }
-                else
-                {
-                    GameObject overlay = new(CrispUiOverlayName, typeof(RectTransform), typeof(RawImage));
-                    overlay.transform.SetParent(parent, false);
-                    crispUiImage = overlay.GetComponent<RawImage>();
-                }
-            }
-
-            // 픽셀 이미지 바로 다음 형제여야 그 위에 그려진다.
-            crispUiImage.transform.SetSiblingIndex(gameImageRect.GetSiblingIndex() + 1);
-
-            RectTransform rect = crispUiImage.rectTransform;
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.anchoredPosition = Vector2.zero;
-            rect.sizeDelta = Vector2.zero;
-
-            // 전체 화면 이미지가 이벤트를 가로채면 아래 월드 스페이스 캔버스가 클릭을 못 받는다.
-            crispUiImage.raycastTarget = false;
-            crispUiImage.material = null;
-            crispUiImage.texture = crispUiTarget;
-            crispUiImage.gameObject.SetActive(true);
-            // 텍스처가 없는 RawImage는 흰색 불투명 사각형으로 그려져 화면 전체를 덮는다.
-            // 렌더 타깃은 런타임에만 만들어지므로 에디터에서는 꺼 둔다.
-            crispUiImage.enabled = crispUiTarget != null;
-        }
-
-        private void ApplyRenderSettings()
-        {
-            if (upscaleMaterial != null)
-            {
-                if (upscaleMaterial.HasProperty("_Quantize")) upscaleMaterial.SetFloat("_Quantize", 0f);
-                upscaleMaterial.SetVector("_VirtualResolution", new Vector4(internalResolution.x, internalResolution.y, 0f, 0f));
-            }
-        }
-
-        private void FitFullScreen()
-        {
-            if (gameImageRect == null) return;
-            gameImageRect.anchorMin = Vector2.zero;
-            gameImageRect.anchorMax = Vector2.one;
-            gameImageRect.anchoredPosition = Vector2.zero;
-            gameImageRect.sizeDelta = Vector2.zero;
-        }
 
         private void OnDestroy()
         {
@@ -2840,35 +2336,8 @@ keyLightToggleButton = CreateButton(canvasObject.transform, "KeyLightToggle", $"
                 hourglassTimer.OnTimerTick -= OnTurnTimerTick;
                 hourglassTimer.OnTimerExpired -= OnTurnTimerExpired;
             }
-            if (worldCamera != null) worldCamera.targetTexture = null;
-            if (lowResolutionTarget != null)
-            {
-                lowResolutionTarget.Release();
-                if (Application.isPlaying) Destroy(lowResolutionTarget);
-                else DestroyImmediate(lowResolutionTarget);
-            }
-            if (crispUiCamera != null) crispUiCamera.targetTexture = null;
-            if (crispUiTarget != null)
-            {
-                crispUiTarget.Release();
-                if (Application.isPlaying) Destroy(crispUiTarget);
-                else DestroyImmediate(crispUiTarget);
-            }
-            if (upscaleMaterial != null)
-            {
-                if (Application.isPlaying) Destroy(upscaleMaterial);
-                else DestroyImmediate(upscaleMaterial);
-            }
-            if (diceBodyMaterial != null)
-            {
-                if (Application.isPlaying) Destroy(diceBodyMaterial);
-                else DestroyImmediate(diceBodyMaterial);
-            }
-            if (dicePipMaterial != null)
-            {
-                if (Application.isPlaying) Destroy(dicePipMaterial);
-                else DestroyImmediate(dicePipMaterial);
-            }
+            cameraRig?.Dispose();
+            dicePool?.Dispose();
         }
     }
 }

@@ -1,0 +1,256 @@
+﻿using System;
+using System.Collections.Generic;
+using Tessera.Core;
+using Tessera.Dice;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+namespace Tessera.Games.AugmentedYacht
+{
+    /// <summary>
+    /// 주사위 시각 오브젝트를 만들고 재질과 초기 배치를 관리한다(M10-T5).
+    ///
+    /// 주사위의 개수·킵 여부·눈금 값 같은 게임 상태는 컨트롤러가 계속 소유한다.
+    /// 이 클래스는 그 상태를 인자로 받아 화면에 반영만 한다. 상태를 나눠 갖지 않는 편이
+    /// 턴 흐름을 읽을 때 혼란이 적다.
+    ///
+    /// 굴림 애니메이션(<c>AnimateDiceLayout</c>)은 아직 컨트롤러에 있다.
+    /// 진행 단계 플래그와 상태 문구 갱신에 얽혀 있어 M10-T6에서 함께 옮긴다.
+    /// </summary>
+    public sealed class DiceVisualPool : MonoBehaviour
+    {
+        private const int DiceLayer = TesseraLayers.Dice;
+
+        private GameObject diceModel;
+        private Transform layoutRoot;
+        private float centerSectionX;
+
+        private DieType selectedDieType = DieType.Normal;
+        private Material diceBodyMaterial;
+        private Material dicePipMaterial;
+        private Transform diceRoot;
+
+        public Transform DiceRoot => diceRoot;
+        public DieType SelectedDieType => selectedDieType;
+
+        /// <summary>컨트롤러가 모델과 배치 기준을 넘겨준다.</summary>
+        public void Bind(GameObject model, Transform layout, float centerX, DieType initialDieType)
+        {
+            diceModel = model;
+            layoutRoot = layout;
+            centerSectionX = centerX;
+            selectedDieType = initialDieType;
+            EnsureDiceMaterials();
+        }
+
+        public void EnsureDiceMaterials()
+        {
+            diceBodyMaterial = DicePaletteCatalog.GetBodyMaterial(selectedDieType);
+            dicePipMaterial = DicePaletteCatalog.GetPipMaterial(selectedDieType);
+        }
+
+        public void SetDieType(DieType type, System.Collections.Generic.IReadOnlyList<GameObject> activeDice)
+        {
+            selectedDieType = type;
+            EnsureDiceMaterials();
+            foreach (GameObject die in activeDice)
+            {
+                if (die == null) continue;
+                Transform visual = die.transform.Find("Visual");
+                if (visual != null)
+                {
+                    ApplyDiceMaterialsToFbx(visual.gameObject);
+                }
+            }
+        }
+
+        public void EnsureDiceRoot()
+        {
+            if (diceRoot != null) return;
+            GameObject root = GameObject.Find("Dice Visual Root");
+            if (root == null)
+            {
+                root = new GameObject("Dice Visual Root");
+                root.transform.SetParent(layoutRoot != null ? layoutRoot : transform, false);
+                root.transform.position = new Vector3(centerSectionX, 0f, 0f);
+                root.transform.rotation = Quaternion.identity;
+                root.transform.localScale = Vector3.one;
+            }
+            diceRoot = root.transform;
+        }
+
+        public GameObject CreateVisualDie(int index)
+        {
+            GameObject root = new($"Die_{index}", typeof(BoxCollider), typeof(DiceKeepTarget));
+            root.layer = DiceLayer;
+            root.transform.SetParent(diceRoot, false);
+            root.transform.localPosition = Vector3.zero;
+            root.transform.localRotation = Quaternion.identity;
+            root.transform.localScale = Vector3.one * DiceBoardMetrics.DieSize;
+
+            if (diceModel != null)
+            {
+                GameObject visual = Instantiate(diceModel, root.transform);
+                visual.name = "Visual";
+                DisableImportedSceneComponents(visual);
+                visual.transform.localPosition = Vector3.zero;
+
+                // FBX 자체의 isometric 기울기(333, 318, 0)를 0도로 직교 보정
+                Quaternion baseCorrection = DiceFaceOrientation.MeasureModelBasis(visual.transform);
+                visual.transform.localRotation = baseCorrection;
+
+                // 로컬 메쉬 바운드 기준으로 정확히 1단위 큐브로 정규화
+                NormalizeVisual(visual.transform, 1.0f);
+                ApplyDiceMaterialsToFbx(visual);
+                SetLayerRecursively(root, DiceLayer);
+            }
+            else
+            {
+                Mesh mesh = DiceMeshFactory.Create();
+                MeshFilter mf = root.AddComponent<MeshFilter>();
+                MeshRenderer mr = root.AddComponent<MeshRenderer>();
+                mf.sharedMesh = mesh;
+                mr.sharedMaterials = DiceMaterialFactory.GetNormalMaterials();
+                mr.shadowCastingMode = ShadowCastingMode.On;
+                mr.receiveShadows = false;
+                DiceMaterialFactory.AttachFaceOverlays(root.transform);
+            }
+
+            BoxCollider collider = root.GetComponent<BoxCollider>();
+            collider.size = Vector3.one;
+            collider.center = Vector3.zero;
+
+            DiceKeepTarget target = root.GetComponent<DiceKeepTarget>();
+            target.Index = index - 1;
+
+            return root;
+        }
+
+        private static void NormalizeVisual(Transform visual, float targetLocalSize = 1.0f)
+        {
+            visual.localPosition = Vector3.zero;
+            // 큐브 원본 규격 크기(DiceBoardMetrics.SourceDiceSize = 1.62f) 기준으로 고정 정규화하여 모델링 변경 시 크기 오차 방지
+            float rawBodySize = DiceBoardMetrics.SourceDiceSize;
+            visual.localScale = Vector3.one * (targetLocalSize / rawBodySize);
+        }
+
+        private void ApplyDiceMaterialsToFbx(GameObject visual)
+        {
+            EnsureDiceMaterials();
+
+            // 솔리드 그림자 프록시(ShadowProxy) 확인 및 설정 (음각 홈으로 인한 그림자 구멍 완전 차단)
+            EnsureShadowProxy(visual.transform);
+
+            foreach (Renderer renderer in visual.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer.name.Equals("ShadowProxy", StringComparison.OrdinalIgnoreCase))
+                {
+                    renderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+                    renderer.receiveShadows = false;
+                    renderer.sharedMaterial = diceBodyMaterial;
+                    continue;
+                }
+
+                if (renderer.name.StartsWith("Pip", StringComparison.OrdinalIgnoreCase))
+                {
+                    renderer.sharedMaterial = dicePipMaterial;
+                    renderer.shadowCastingMode = ShadowCastingMode.Off; // Pip 메시 그림자 캐스팅 제외
+                }
+                else
+                {
+                    // Plain_D6 몸체: 슬롯 0(바탕 Body), 슬롯 1(음각 홈 내부 Pip)
+                    if (renderer.sharedMaterials != null && renderer.sharedMaterials.Length > 1)
+                    {
+                        renderer.sharedMaterials = new Material[] { diceBodyMaterial, dicePipMaterial };
+                    }
+                    else
+                    {
+                        renderer.sharedMaterial = diceBodyMaterial;
+                    }
+                    renderer.shadowCastingMode = ShadowCastingMode.Off; // 시각 메시는 렌더 전용, 그림자는 프록시가 담당
+                }
+
+                renderer.receiveShadows = false;
+                renderer.lightProbeUsage = LightProbeUsage.Off;
+                renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
+            }
+        }
+
+        private static void SetLayerRecursively(GameObject root, int layer)
+        {
+            root.layer = layer;
+            foreach (Transform child in root.transform) SetLayerRecursively(child.gameObject, layer);
+        }
+
+        private static void DisableImportedSceneComponents(GameObject visual)
+        {
+            foreach (Camera cam in visual.GetComponentsInChildren<Camera>(true)) cam.enabled = false;
+            foreach (Light l in visual.GetComponentsInChildren<Light>(true)) l.enabled = false;
+            foreach (AudioListener al in visual.GetComponentsInChildren<AudioListener>(true)) al.enabled = false;
+            foreach (Collider c in visual.GetComponentsInChildren<Collider>(true)) Destroy(c);
+        }
+
+        public void ArrangeInitialPositions(System.Collections.Generic.IReadOnlyList<GameObject> activeDice, System.Collections.Generic.IReadOnlyList<int> diceValues)
+        {
+            for (int i = 0; i < activeDice.Count; i++)
+            {
+                if (activeDice[i] == null) continue;
+                Vector3 targetPos = DiceBoardMetrics.GetActivePosition(i, activeDice.Count);
+                activeDice[i].transform.localPosition = targetPos;
+                activeDice[i].transform.localScale = Vector3.one * DiceBoardMetrics.ActiveDieSize;
+                Quaternion targetRot = DiceFaceOrientation.GetCameraFacingRotation(diceValues[i], 75.0f);
+                activeDice[i].transform.localRotation = targetRot;
+
+                Transform visual = activeDice[i].transform.Find("Visual");
+                if (visual != null)
+                {
+                    visual.localRotation = DiceFaceOrientation.MeasureModelBasis(visual);
+                }
+                else
+                {
+                    DiceMaterialFactory.ApplyPredictedTopValue(activeDice[i].transform, targetRot, diceValues[i]);
+                }
+            }
+        }
+        private static void EnsureShadowProxy(Transform visual)
+        {
+            Transform existing = visual.Find("ShadowProxy");
+            if (existing != null) return;
+
+            GameObject proxy = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            proxy.name = "ShadowProxy";
+            proxy.transform.SetParent(visual, false);
+            proxy.transform.localPosition = Vector3.zero;
+            proxy.transform.localRotation = Quaternion.identity;
+            proxy.transform.localScale = Vector3.one * DiceBoardMetrics.SourceDiceSize;
+
+            Collider col = proxy.GetComponent<Collider>();
+            if (col != null)
+            {
+                if (Application.isPlaying) Destroy(col);
+                else DestroyImmediate(col);
+            }
+
+            MeshRenderer mr = proxy.GetComponent<MeshRenderer>();
+            mr.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+            mr.receiveShadows = false;
+        }
+
+        /// <summary>주사위 재질을 해제한다. 컨트롤러의 OnDestroy에서 부른다.</summary>
+        public void Dispose()
+        {
+            if (diceBodyMaterial != null)
+            {
+                if (Application.isPlaying) Destroy(diceBodyMaterial);
+                else DestroyImmediate(diceBodyMaterial);
+                diceBodyMaterial = null;
+            }
+            if (dicePipMaterial != null)
+            {
+                if (Application.isPlaying) Destroy(dicePipMaterial);
+                else DestroyImmediate(dicePipMaterial);
+                dicePipMaterial = null;
+            }
+        }
+    }
+}
