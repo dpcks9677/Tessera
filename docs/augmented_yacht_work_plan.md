@@ -756,7 +756,10 @@ M10.6 완료 조건:
 | 고유 색 수 | 같은 크롭 기준 Off 616색 → Steps 55색 → Palette 30색 |
 | 붉은 물듦 | 재발 없음. sRGB 공간 처리로 원본 웜톤 색상 유지 확인 |
 | 팔레트 한계 | 아트 가이드 토큰에 중성색·시안이 없어 흰 주사위가 베이지로, 코스믹 큐브 시안이 인디고로 흡수됨 |
-| 남은 작업 | 채택 모드 결정, `M10.6-T4` 엣지 강도 재조정, 필요하면 중성·시안 토큰 보강 |
+| 주사위 가독성 | `480×270`에서 던지는 주사위가 12.8칸이라 눈이 읽히지 않아 `DieSize`를 0.78에서 0.897로 15% 확대(14.7칸). 정렬 크기는 유지해야 해 `ActiveScaleMultiplier`를 고정값 대신 `ArrangedDieSize / DieSize`로 역산하도록 바꿈 |
+| 눈 선명도 | 눈은 음각 홈이라 경사벽이 몸체와 눈 사이의 중간 밝기(118/89/47)를 만들어 안티앨리어싱처럼 읽혔음. 눈 재질을 URP Lit에서 Unlit 평면색으로 바꿔 두 값(118/23 이하)으로 정리 |
+| 검증 도구 고장 발견 | `Tools > Tessera > Run Physics And Keep Validation`이 `DieSize` 변경 전 기준선에서도 `Timed out waiting for first roll to settle`로 실패함. `controller.IsSettled`가 M10 이후 `turnFlow.Phase`에 묶여 게임 세션이 시작되지 않으면 도달하지 못하는 것으로 보임. 주사위 확대는 육안 확인으로 대체함 |
+| 남은 작업 | 채택 모드 결정, `M10.6-T4` 엣지 강도 재조정, 물리 검증 도구 복구, 필요하면 중성·시안 토큰 보강 |
 
 셰이더 공식, 색공간 버그 분석, 팔레트 구성 근거, 조작법은 [`docs/pixel_edge_filter_plan.md`](pixel_edge_filter_plan.md) 9절에 있다.
 

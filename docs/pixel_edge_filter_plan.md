@@ -178,8 +178,8 @@ F1/F2 해상도 전환이 자동으로 반영된다.
 값은 `PC_Renderer.asset`과 `Mobile_Renderer.asset`의 피처, 셰이더 기본값, `PixelEdgeRendererFeature`의
 `[SerializeField]` 초기값 네 곳을 같이 맞춰 두었다.
 
-검증 캡처는 `Assets/Screenshots/`에 있다. `edge_off.png`(피처 끔), `edge_strong.png`(임계값 조정 전),
-`edge_t18.png`(최종값).
+검증 캡처는 플레이 모드에서 그때그때 다시 만든다. `Assets/Screenshots/`는 확인용 임시 폴더이며
+저장소에 넣지 않는다.
 
 ## 8. HUD 버튼 무반응 원인과 수정 (2026-09-05)
 
@@ -341,7 +341,6 @@ Bayer 4×4 임계 행렬을 **가상 격자 좌표**(`floor(uv * _VirtualResolut
 | Palette | **30** | 색면이 가장 깔끔하고 픽셀아트로 가장 잘 읽힘 |
 
 컴파일 오류 0, Tessera EditMode 107/107 통과, 플레이 모드 런타임 오류 0.
-비교 캡처는 `Assets/Screenshots/quant_1.png`, `quant_2.png`, `quant_compare.png`에 있다.
 
 ### 9.7 팔레트 모드의 알려진 한계
 

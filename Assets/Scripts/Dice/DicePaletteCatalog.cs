@@ -175,7 +175,14 @@ namespace Tessera.Dice
             if (PipMaterialCache.TryGetValue(type, out Material mat) && mat != null) return mat;
 
             DiePaletteDefinition def = GetDefinition(type);
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+
+            // 눈은 조명을 받지 않는 평면색으로 그린다.
+            //
+            // 눈은 음각 홈 메시라 홈의 경사벽이 면과 다른 각도로 빛을 받는다. 조명을 받으면
+            // 그 벽이 몸체와 홈 바닥 사이의 중간 밝기가 되는데, 픽셀 격자에서 한 칸을 차지하면
+            // 안티앨리어싱처럼 흐릿하게 읽힌다. Unlit으로 두면 벽과 바닥이 같은 색이 되어
+            // 몸체와 눈 두 값만 남고 경계가 또렷해진다.
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
             mat = new Material(shader)
             {
                 name = $"Dice_Pip_{type}",
@@ -183,23 +190,7 @@ namespace Tessera.Dice
             };
 
             mat.SetColor("_BaseColor", def.PipColor);
-            mat.SetFloat("_Metallic", 0f);
-            mat.SetFloat("_Smoothness", 0.3f);
-            mat.SetFloat("_SpecularHighlights", 0f);
-            mat.SetFloat("_EnvironmentReflections", 0f);
-
-            // 8면 주사위의 눈은 음각 홈이 아니라 면 위에 얹은 숫자라, 자발광을 주면 밝기가 포화해
-            // 640x360 렌더에서 주사위를 통째로 흰 덩어리로 만든다. 이 종류만 자발광을 끈다.
-            if (type == DieType.Octahedron)
-            {
-                mat.DisableKeyword("_EMISSION");
-                mat.SetColor("_EmissionColor", Color.black);
-            }
-            else
-            {
-                mat.EnableKeyword("_EMISSION");
-                mat.SetColor("_EmissionColor", def.PipColor);
-            }
+            if (mat.HasProperty("_Color")) mat.SetColor("_Color", def.PipColor);
             mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
             // Pip 메시는 그림자를 캐스팅하지 않음 (그림자 구멍 차단)
             mat.SetShaderPassEnabled("ShadowCaster", false);

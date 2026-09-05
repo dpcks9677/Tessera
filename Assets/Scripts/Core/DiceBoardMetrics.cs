@@ -5,16 +5,24 @@ namespace Tessera.Core
     public static class DiceBoardMetrics
     {
         public const float SourceDiceSize = 1.62f;
-        public const float DieSize = 0.78f;
-        public const float DieHalfSize = DieSize * 0.5f; // 0.39f
 
-        // 정렬 시 1.3배 스케일업 규격
-        public const float ActiveScaleMultiplier = 1.3f;
-        public const float ActiveDieSize = DieSize * ActiveScaleMultiplier; // ~1.014f
+        // 던지는 주사위 크기. 480x270 픽셀 격자에서 12.8칸이라 눈이 읽히지 않아 0.78에서 15% 키웠다.
+        //
+        // 프리셋 착지 좌표는 SourceToUnityScale을 통해 이 값에 비례해 함께 퍼진다. 프리셋 400개의
+        // 최종 정지 프레임 기준 최외곽 중심은 소스단위 4.567이고, 외접반경까지 더한 필요 반폭은
+        // 0.78에서 2.87, 0.897에서 3.30이다. 트레이 외곽 반폭이 3.875이므로 여기가 현실적인 상한이다.
+        public const float DieSize = 0.897f;
+        public const float DieHalfSize = DieSize * 0.5f;
+
+        // 정렬 크기는 확대 전과 같게 유지한다. DieSize를 키우면 ActiveDieSize가 함께 커지므로
+        // 배율을 고정하지 않고 목표 정렬 크기에서 역산한다.
+        public const float ArrangedDieSize = 1.014f;
+        public const float ActiveScaleMultiplier = ArrangedDieSize / DieSize;
+        public const float ActiveDieSize = ArrangedDieSize;
         public const float ActiveDieHalfSize = ActiveDieSize * 0.5f;        // ~0.507f
 
-        // 원본 프리셋 좌표(SourceDiceSize 1.62)를 현재 프로젝트 크기(0.78)로 스케일링하는 비율
-        public const float SourceToUnityScale = DieSize / SourceDiceSize; // ~0.4814815f
+        // 원본 프리셋 좌표(SourceDiceSize 1.62)를 현재 프로젝트 크기(DieSize)로 스케일링하는 비율
+        public const float SourceToUnityScale = DieSize / SourceDiceSize;
 
         public const float PresetFloorY = -0.528f;
         public const float TrayScale = 0.05f;
