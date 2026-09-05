@@ -52,6 +52,7 @@ namespace Tessera.Games.AugmentedYacht
             public Action TogglePixelEdge;
             public Action CycleQuantize;
             public Func<string> KeyLightPresetName;
+            public Func<string> ResolutionPresetLabel;
             public Func<bool> PixelEdgeEnabled;
             public Func<string> QuantizeModeName;
         }
@@ -177,7 +178,7 @@ namespace Tessera.Games.AugmentedYacht
             cameraRig.EnsureUpscaleMaterial();
             imageObject.SetActive(true);
 
-            YachtHudFactory.CreateButton(canvasObject.transform, "Debug", "960 / 640", new Vector2(18f, -18f),
+            YachtHudFactory.CreateButton(canvasObject.transform, "Debug", ResolutionLabel(actions), new Vector2(18f, -18f),
                 new Vector2(130f, 38f), new Vector2(0f, 1f), () => actions.ToggleResolution());
 
             var buttons = new DebugButtons
@@ -217,6 +218,10 @@ namespace Tessera.Games.AugmentedYacht
             {
                 resolutionButton.onClick.RemoveAllListeners();
                 resolutionButton.onClick.AddListener(() => actions.ToggleResolution());
+
+                // 씬에 구워진 문구는 옛 프리셋 값이다. 프리셋에서 파생한 문구로 덮어쓴다.
+                Text resolutionLabel = resolutionButton.GetComponentInChildren<Text>();
+                if (resolutionLabel != null) resolutionLabel.text = ResolutionLabel(actions);
             }
 
             GameObject canvasObject = GameObject.Find("Pixel Presentation");
@@ -364,6 +369,11 @@ namespace Tessera.Games.AugmentedYacht
         {
             Text label = buttons?.QuantizeToggle != null ? buttons.QuantizeToggle.GetComponentInChildren<Text>() : null;
             if (label != null) label.text = $"Quant: {modeName}";
+        }
+
+        private static string ResolutionLabel(HudActions actions)
+        {
+            return actions?.ResolutionPresetLabel != null ? actions.ResolutionPresetLabel() : "Resolution";
         }
 
         private static string QuantizeLabel(HudActions actions)

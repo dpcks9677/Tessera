@@ -10,13 +10,13 @@
 ## Controls
 
 - `ROLL 5 DICE` or Space: throw five dice from screen-bottom toward playmat center
-- `960 / 640`, F1, F2: switch internal resolution
+- `640 / 480`, F1, F2: switch internal resolution
 - `Edge: ON/OFF`, F3: toggle the depth-outline and normal-highlight pass
 - `Quant: Off/Steps/Palette`, Q: cycle colour quantization — off, per-channel steps in sRGB, or the art-guide palette
 
-The fixed 16:9 world camera renders the whole composition into a 1920x1080 `RenderTexture`. The full-screen presentation shader snaps samples to a selectable 960x540 or 640x360 virtual pixel grid, preserving the low-resolution look without reducing the usable screen area or adding integer-scale letterboxing.
+The fixed 16:9 world camera renders the whole composition into a 1920x1080 `RenderTexture`. The full-screen presentation shader snaps samples to a selectable 640x360 or 480x270 virtual pixel grid, preserving the low-resolution look without reducing the usable screen area or adding integer-scale letterboxing.
 
-At 1920x1080, the default virtual 640x360 grid produces exact 3x3 screen-pixel blocks. The burgundy 3D mat extends beyond the camera footprint so no separate background is exposed. The tabletop is divided left/center/right at 25%/45%/30%: blank game-info paper, dice tray, and blank score-sheet paper. Dice follow staggered upward arcs over the tray's south rim; invisible tray safety colliders contain rebounds.
+At 1920x1080, the startup 480x270 grid produces exact 4x4 screen-pixel blocks and 640x360 produces 3x3. Only widths that divide 1920 exactly are usable: anything else mixes 3- and 4-pixel blocks and breaks the grid. The burgundy 3D mat extends beyond the camera footprint so no separate background is exposed. The tabletop is divided left/center/right at 25%/45%/30%: blank game-info paper, dice tray, and blank score-sheet paper. Dice follow staggered upward arcs over the tray's south rim; invisible tray safety colliders contain rebounds.
 
 Dice launching ports the `augmented-dice` ingress pattern into Unity. The supplied `yacht-tray.stl` is converted to a two-material Unity mesh (dark rim and burgundy felt) at 0.05 scale, while one thick inner floor and non-overlapping box walls provide predictable tray collision without a concave MeshCollider. During launch, a real runway and the long side/back boundaries are active; the inner front wall is restored only after every current collider bound is fully inside it.
 

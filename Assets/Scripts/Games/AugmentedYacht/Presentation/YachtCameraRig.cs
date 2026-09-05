@@ -36,7 +36,8 @@ namespace Tessera.Games.AugmentedYacht
         private Vector2Int crispUiScreenSize;
         private PixelEdgeCamera pixelEdgeCamera;
 
-        private Vector2Int internalResolution = new(640, 360);
+        // 시작 해상도. F1은 640×360, F2는 480×270이며 게임은 더 굵은 쪽으로 시작한다.
+        private Vector2Int internalResolution = new(480, 270);
 
         /// <summary>0 끔, 1 채널 단계 양자화, 2 아트 가이드 팔레트. 셰이더의 <c>_Quantize</c>와 같은 값이다.</summary>
         private int quantizeMode;
