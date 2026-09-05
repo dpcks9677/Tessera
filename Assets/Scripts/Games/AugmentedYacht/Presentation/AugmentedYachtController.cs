@@ -73,9 +73,6 @@ namespace Tessera.Games.AugmentedYacht
         private const float CenterSectionWidth = TableWidth * 0.45f;
         private const float RightSectionWidth = TableWidth * 0.3f;
         private const float CenterSectionX = -TableWidth * 0.5f + LeftSectionWidth + CenterSectionWidth * 0.5f;
-        private const float TrayScale = 0.05f;
-        private const float RollSurfaceY = 0.2f;
-        private const float TrayVisualY = RollSurfaceY + 10.283531f * TrayScale;
         private const int DecorationLayer = 11;
 
         public ParchmentScoreSheet ScoreSheet => parchmentScoreSheet;
@@ -615,7 +612,7 @@ namespace Tessera.Games.AugmentedYacht
             if (Application.isPlaying) return;
 
             sceneRefs.LayoutRoot = YachtSceneAssembler.EnsureLayoutRoot(sceneRefs.LayoutRoot, transform);
-            TabletopSurfaceBuilder.Regenerate(sceneRefs.LayoutRoot, yachtTrayMesh, CenterSectionX, TrayVisualY, TrayScale);
+            TabletopSurfaceBuilder.Regenerate(sceneRefs.LayoutRoot, yachtTrayMesh, CenterSectionX, DiceBoardMetrics.TrayVisualY, DiceBoardMetrics.TrayScale);
         }
 
         /// <summary>룬 슬레이트 창구를 붙인다(M10-T8).</summary>
