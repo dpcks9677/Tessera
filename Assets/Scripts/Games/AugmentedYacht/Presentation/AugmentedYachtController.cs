@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using Tessera.Core;
 using Tessera.Dice;
 using Tessera.Games.Yacht;
+using Tessera.Rendering;
 using Tessera.Tabletop;
 
 namespace Tessera.Games.AugmentedYacht
@@ -53,6 +54,13 @@ namespace Tessera.Games.AugmentedYacht
         private YachtInputRouter inputRouter;
         private YachtCameraRig cameraRig;
         private YachtLightingRig lightingRig;
+
+        /// <summary>
+        /// 테이블·러너·소품의 Lit 재질을 셀로 바꾸고 되돌린다(M10.8-T4).
+        /// 주사위는 <see cref="dicePool"/>이, 렌더 타깃은 <see cref="cameraRig"/>가 따로 관리한다.
+        /// </summary>
+        private readonly CelStyleSwitcher celStyleSwitcher = new();
+        private RenderStyle renderStyle = RenderStyle.Baseline;
         private AugmentTrayPresenter augmentTray;
         private DiceVisualPool dicePool;
         private YachtDiceRoundPresenter diceRound;
@@ -253,10 +261,12 @@ namespace Tessera.Games.AugmentedYacht
                 RestartGame = () => turnFlow?.StartNewGame(),
                 TogglePixelEdge = TogglePixelEdgeFilter,
                 CycleQuantize = CyclePixelQuantizeMode,
+                ToggleRenderStyle = ToggleRenderStyle,
                 ResolutionPresetLabel = () => $"{ResolutionA.x} / {ResolutionB.x}",
                 KeyLightPresetName = () => KeyLightPresetName,
                 PixelEdgeEnabled = () => cameraRig != null && cameraRig.EdgeFilterEnabled,
-                QuantizeModeName = () => cameraRig != null ? cameraRig.QuantizeModeName : "Off"
+                QuantizeModeName = () => cameraRig != null ? cameraRig.QuantizeModeName : "Off",
+                RenderStyleName = () => cameraRig != null ? cameraRig.RenderStyleName : "Baseline"
             };
         }
 
@@ -350,6 +360,7 @@ namespace Tessera.Games.AugmentedYacht
             inputRouter.ResolutionPresetRequested += OnResolutionPresetRequested;
             inputRouter.PixelEdgeToggleRequested += TogglePixelEdgeFilter;
             inputRouter.PixelQuantizeCycleRequested += CyclePixelQuantizeMode;
+            inputRouter.RenderStyleToggleRequested += ToggleRenderStyle;
             inputRouter.DieTypeRequested += SetDieType;
             inputRouter.DieHoverChanged += OnDieHoverChanged;
             inputRouter.DieClicked += ToggleKeep;
@@ -548,6 +559,33 @@ namespace Tessera.Games.AugmentedYacht
             EnsureCameraRig();
             cameraRig.CycleQuantizeMode();
             YachtSceneAssembler.SetQuantizeLabel(debugButtons, cameraRig.QuantizeModeName);
+        }
+
+        /// <summary>
+        /// Baseline과 Cel 연출 방식을 왕복한다(V, M10.8).
+        ///
+        /// 재료·조명·SSAO·렌더 타깃이 한 번에 따라간다. 기본값이 Baseline이라 아무것도 채택하지
+        /// 않은 상태가 M10.7까지의 화면과 같다.
+        /// </summary>
+        public void ToggleRenderStyle()
+        {
+            SetRenderStyle(renderStyle == RenderStyle.Cel ? RenderStyle.Baseline : RenderStyle.Cel);
+        }
+
+        private void SetRenderStyle(RenderStyle style)
+        {
+            renderStyle = style;
+
+            EnsureCameraRig();
+            cameraRig.SetRenderStyle(style);
+            lightingRig?.SetRenderStyle(style);
+            dicePool?.SetRenderStyle(style);
+
+            // 주사위는 풀이, Crisp UI는 별도 카메라가 담당하므로 두 레이어는 제외한다.
+            int excluded = TesseraLayers.Mask(TesseraLayers.Dice) | TesseraLayers.Mask(TesseraLayers.CrispUI);
+            celStyleSwitcher.Apply(sceneRefs.LayoutRoot, style, excluded);
+
+            YachtSceneAssembler.SetRenderStyleLabel(debugButtons, cameraRig.RenderStyleName);
         }
 
         /// <summary>

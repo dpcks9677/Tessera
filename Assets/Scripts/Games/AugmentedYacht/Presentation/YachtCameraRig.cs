@@ -41,6 +41,9 @@ namespace Tessera.Games.AugmentedYacht
 
         /// <summary>0 끔, 1 채널 단계 양자화, 2 아트 가이드 팔레트. 셰이더의 <c>_Quantize</c>와 같은 값이다.</summary>
         private int quantizeMode;
+
+        /// <summary>연출 방식(M10.8). 기본값은 Baseline이라 채택 전까지 화면이 그대로다.</summary>
+        private RenderStyle renderStyle = RenderStyle.Baseline;
         private Vector4[] paletteColors;
         private int paletteCount;
 
@@ -53,6 +56,18 @@ namespace Tessera.Games.AugmentedYacht
         public bool EdgeFilterEnabled => pixelEdgeCamera != null && pixelEdgeCamera.EdgeFilterEnabled;
 
         public int QuantizeMode => quantizeMode;
+
+        public RenderStyle RenderStyle => renderStyle;
+
+        /// <summary>디버그 버튼에 붙일 현재 연출 방식 이름.</summary>
+        public string RenderStyleName => renderStyle == RenderStyle.Cel ? "Cel" : "Baseline";
+
+        /// <summary>
+        /// 실제 렌더 타깃 크기. Baseline은 1920x1080으로 렌더한 뒤 업스케일 셰이더가 격자 중심만
+        /// 점 샘플링한다. Cel은 내부 해상도로 직접 렌더해 셰이딩과 절차적 디테일이 픽셀 크기로
+        /// 자동 필터링되게 한다(M10.8-T6).
+        /// </summary>
+        private Vector2Int TargetResolution => renderStyle == RenderStyle.Cel ? internalResolution : OutputResolution;
 
         /// <summary>디버그 버튼에 붙일 현재 양자화 모드 이름.</summary>
         public string QuantizeModeName => quantizeMode switch
@@ -84,10 +99,27 @@ namespace Tessera.Games.AugmentedYacht
             gameImageRect = imageRect;
         }
 
-        /// <summary>픽셀아트 내부 해상도를 바꾼다. 실제 렌더 타깃 크기는 그대로다.</summary>
+        /// <summary>
+        /// 픽셀아트 내부 해상도를 바꾼다. Baseline에서는 격자만 바뀌고 렌더 타깃 크기는 그대로지만,
+        /// Cel에서는 렌더 타깃 자체가 이 크기라 다시 만들어야 한다.
+        /// </summary>
         public void SetInternalResolution(Vector2Int resolution)
         {
             internalResolution = resolution;
+            if (renderStyle == RenderStyle.Cel && lowResolutionTarget != null) CreateRenderTarget();
+            ApplyRenderSettings();
+        }
+
+        /// <summary>
+        /// 연출 방식을 바꾼다(M10.8). 렌더 타깃 크기와 엣지 임계값이 함께 따라간다.
+        /// 재질·조명·SSAO는 컨트롤러가 각 리그에 나눠 전달한다.
+        /// </summary>
+        public void SetRenderStyle(RenderStyle style)
+        {
+            if (renderStyle == style) return;
+            renderStyle = style;
+
+            if (lowResolutionTarget != null) CreateRenderTarget();
             ApplyRenderSettings();
         }
 
@@ -151,9 +183,10 @@ namespace Tessera.Games.AugmentedYacht
                 Destroy(lowResolutionTarget);
             }
 
-            lowResolutionTarget = new RenderTexture(OutputResolution.x, OutputResolution.y, 24, RenderTextureFormat.ARGB32)
+            Vector2Int size = TargetResolution;
+            lowResolutionTarget = new RenderTexture(size.x, size.y, 24, RenderTextureFormat.ARGB32)
             {
-                name = $"Dice PoC Full Field {OutputResolution.x}x{OutputResolution.y}",
+                name = $"Dice PoC Field {size.x}x{size.y} ({RenderStyleName})",
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Clamp,
                 antiAliasing = 1,
@@ -409,6 +442,10 @@ namespace Tessera.Games.AugmentedYacht
             // 엣지 패스는 렌더러 피처가 소유해 여기서 재질을 직접 잡을 수 없다. 같은 격자를 써야
             // 업스케일과 어긋나지 않으므로 전역 값으로 넘긴다.
             Shader.SetGlobalVector(pixelEdgeVirtualResolutionId, resolution);
+
+            // Cel에서는 엣지 패스가 내부 해상도에서 네이티브로 돌기 때문에 1920 기준으로 맞춘
+            // 임계값이 그대로 맞지 않는다. 에셋 값을 건드리지 않고 런타임에만 덮어쓴다.
+            PixelEdgeRendererFeature.CelOverrideEnabled = renderStyle == RenderStyle.Cel;
         }
 
         public void FitFullScreen()

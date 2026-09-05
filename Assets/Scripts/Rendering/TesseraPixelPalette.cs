@@ -35,6 +35,13 @@ namespace Tessera.Rendering
         /// </summary>
         private static readonly float[] ValueScales = { 0.35f, 0.65f, 1.0f, 1.45f };
 
+        /// <summary>
+        /// 같은 명도 램프를 셀 셰이더의 <c>_RampValues</c>로 넘기기 위한 형태(M10.8).
+        /// 포스트 팔레트와 재료 단계 밴드가 같은 값을 쓰게 해, 두 경로를 겹쳐도 색이 어긋나지 않는다.
+        /// </summary>
+        public static Vector4 RampVector =>
+            new(ValueScales[0], ValueScales[1], ValueScales[2], ValueScales[3]);
+
         /// <summary>토큰마다 명암 램프를 펼친 팔레트를 만든다. 길이는 항상 토큰 수 × 램프 단계 수다.</summary>
         public static Color[] Build()
         {

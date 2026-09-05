@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Tessera.Rendering;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -137,11 +138,54 @@ namespace Tessera.Dice
         };
 
         private static readonly Dictionary<DieType, Material> BodyMaterialCache = new();
+        private static readonly Dictionary<DieType, Material> CelBodyMaterialCache = new();
         private static readonly Dictionary<DieType, Material> PipMaterialCache = new();
 
         public static DiePaletteDefinition GetDefinition(DieType type)
         {
             return Definitions.TryGetValue(type, out var def) ? def : Definitions[DieType.Normal];
+        }
+
+        /// <summary>
+        /// 몸체 재질. <see cref="RenderStyle.Cel"/>이면 셀 램프 재질을, 아니면 기존 URP Lit 재질을 준다(M10.8).
+        ///
+        /// 채택 여부가 정해질 때까지 두 경로를 모두 살려 둔다. 캐시도 따로 두어 전환이 즉시 왕복한다.
+        /// </summary>
+        public static Material GetBodyMaterial(DieType type, RenderStyle style)
+        {
+            return style == RenderStyle.Cel ? GetCelBodyMaterial(type) : GetBodyMaterial(type);
+        }
+
+        /// <summary>
+        /// 셀 몸체 재질. 주사위는 면이 오브젝트 축에 정렬돼 있어 노멀 스냅을 켠다. 스냅하지 않으면
+        /// 휜 노멀 위에 동심원 밴드가 생겨 포스트 양자화와 같은 실패를 재현한다.
+        /// </summary>
+        private static Material GetCelBodyMaterial(DieType type)
+        {
+            if (CelBodyMaterialCache.TryGetValue(type, out Material cached) && cached != null) return cached;
+
+            DiePaletteDefinition def = GetDefinition(type);
+            Material celMaterial = CelMaterialFactory.Create(
+                $"Dice_Body_Cel_{type}",
+                def.BodyColor,
+                BandsFor(def),
+                snapNormal: true);
+
+            // 셀 셰이더를 찾지 못하면 기존 재질로 떨어진다. 화면이 비는 것보다 낫다.
+            if (celMaterial == null) return GetBodyMaterial(type);
+
+            celMaterial.SetShaderPassEnabled("ShadowCaster", true);
+            CelBodyMaterialCache[type] = celMaterial;
+            return celMaterial;
+        }
+
+        /// <summary>
+        /// 금속으로 읽히길 원하던 타입은 밴드를 하나 더 준다. 스페큘러가 사라진 자리를 밝은 밴드가 대신한다.
+        /// 새 필드를 두지 않고 기존 Metallic 값에서 파생시켜 Baseline 경로의 데이터를 건드리지 않는다.
+        /// </summary>
+        private static int BandsFor(DiePaletteDefinition def)
+        {
+            return def.Metallic > 0.5f ? CelMaterialFactory.MetallicBands : CelMaterialFactory.DiffuseBands;
         }
 
         public static Material GetBodyMaterial(DieType type)
@@ -205,11 +249,16 @@ namespace Tessera.Dice
             {
                 if (mat != null) Object.DestroyImmediate(mat);
             }
+            foreach (var mat in CelBodyMaterialCache.Values)
+            {
+                if (mat != null) Object.DestroyImmediate(mat);
+            }
             foreach (var mat in PipMaterialCache.Values)
             {
                 if (mat != null) Object.DestroyImmediate(mat);
             }
             BodyMaterialCache.Clear();
+            CelBodyMaterialCache.Clear();
             PipMaterialCache.Clear();
         }
     }

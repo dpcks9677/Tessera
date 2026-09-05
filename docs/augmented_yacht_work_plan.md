@@ -23,10 +23,10 @@
 | 항목 | 현재 값 |
 |---|---|
 | 전체 상태 | M1~M6 완료, M7 중단 (M7-T1~T5 완료), M8 증강 시스템 구조 리팩토링 완료, M9 프리팹 이관 완료, M9.5 완료, M10 컨트롤러 분해 완료, M10.5·M10.6 구현 완료(`M10.6-T4`는 `M10.8-T6`으로 이관), M10.7·M10.9 완료 |
-| 현재 마일스톤 | `M10.9` Unity 물리 기반 주사위 프리셋 베이커 완료, `M10.8` 셀 셰이딩 전환 대기 |
-| 현재 작업 | `M10.7`·`M10.9` 커밋 대기 |
-| 다음 행동 | 커밋 후 `M10.8-T0` 기준선 캡처와 토글 골격 |
-| 마지막 완료 작업 | `M10.9-T6` 프리셋 베이커 문서화 |
+| 현재 마일스톤 | `M10.8` 셀 셰이딩 전환과 픽셀 격자 정합 (`DOING`) |
+| 현재 작업 | `M10.8-T11` Unity 검증 대기. 코드·문서는 `T7`을 뺀 전부 반영됨 |
+| 다음 행동 | Unity에서 컴파일과 EditMode 테스트를 돌리고, `V`로 Baseline ↔ Cel을 눈으로 비교 |
+| 마지막 완료 작업 | `M10.8-T10` 셀 셰이딩 상세 문서 작성 |
 | 차단 요소 | 기술적 차단 없음. Unity 스킬의 테스트·플레이 모드 실행은 패널 Bypass 모드 필요 |
 | 마지막 갱신일 | 2026-09-06 |
 
@@ -304,7 +304,7 @@ ManualAction
 | `M10.5` | 픽셀 필터 엣지 검출 도입 | `TODO` | `M10` | 뎁스 외곽선·노멀 하이라이트, 기존 필터와 A/B 전환 |
 | `M10.6` | 픽셀 필터 색 양자화 | `TODO` | `M10.5` | sRGB 포스터라이즈·아트 가이드 팔레트·Bayer 디더, 3단 모드 전환 |
 | `M10.7` | 트레이 확대와 보드 좌표 상수 단일화 | `DONE` | `M10.6` | 트레이 배율 0.06, 좌표 상수가 `DiceBoardMetrics` 한 곳에서만 정의됨 |
-| `M10.8` | 셀 셰이딩 전환과 픽셀 격자 정합 | `TODO` | `M10.7` | 재료 단계 셀 램프, 저해상도 실렌더, Baseline/Cel 런타임 A/B |
+| `M10.8` | 셀 셰이딩 전환과 픽셀 격자 정합 | `DOING` | `M10.7` | 재료 단계 셀 램프, 저해상도 실렌더, Baseline/Cel 런타임 A/B |
 | `M10.9` | Unity 물리 기반 주사위 프리셋 베이커 | `DONE` | `M10.7` | 프리셋을 Unity PhysX로 굽고 분포·인식도·판정 시간으로 평가 |
 | `M11` | 증강 요트 로컬 핫시트 완성 | `TODO` | `M7`, `M10` | 전체 증강 게임 완주 가능 |
 | `M12` | 네트워크 준비 검증 | `TODO` | `M11` | 지연·중복·재동기화 대응 |
@@ -814,17 +814,18 @@ M10.7 완료 조건:
 
 | ID | 작업 | 상태 | 완료 조건 |
 |---|---|---|---|
-| `M10.8-T0` | 기준선 캡처와 토글 골격 | `TODO` | `RenderStyle` 전환이 동작하고 화면은 아직 동일함 |
-| `M10.8-T1` | 렌더러를 Forward로 전환 | `TODO` | Baseline 외형이 전환 전후로 동일하고 엣지 필터가 유지됨 |
-| `M10.8-T2` | 공용 셀 셰이더 작성 | `TODO` | 노멀 축 스냅과 밴드 램프로 주사위 한 면이 단일 값이 됨 |
-| `M10.8-T3` | 주사위 재료 셀 분기 | `TODO` | 9종 전부 Cel/Baseline 즉시 왕복, 스페큘러 이동 없음 |
-| `M10.8-T4` | 테이블·러너·소품 셀 분기 | `TODO` | Cel 화면에 시점 의존 하이라이트가 없음 |
-| `M10.8-T5` | 그림자·SSAO 하드화 | `TODO` | Cel에서 반그림자와 연속 AO가 사라지고 Baseline에서 복귀함 |
-| `M10.8-T6` | 저해상도 실렌더 전환 | `TODO` | Cel에서 렌더 타깃이 내부 해상도와 같은 크기로 생성됨 |
-| `M10.8-T7` | 특수 연출 셰이더 축소 | `TODO` | 코스믹·오브 계열의 연속 항이 밴드로 바뀌고 토글로 되돌아감 |
-| `M10.8-T8` | 검증 도구와 지표 교체 | `TODO` | 한 번 실행으로 Baseline·Cel 정적·동적 지표를 표로 비교함 |
-| `M10.8-T9` | quantize 기본 Off | `TODO` | 시작 모드가 Off이고 `Q` 순환은 비교용으로 남음 |
-| `M10.8-T10` | 문서화 | `TODO` | 상세 문서 작성과 마일스톤 요약 반영 |
+| `M10.8-T0` | 연출 방식 토글 골격 | `DONE` | `RenderStyle` 열거형과 `V`·HUD 전환이 붙고 기본값이 Baseline임 |
+| `M10.8-T1` | 렌더러를 Forward로 전환 | `DONE` | `PC_Renderer`의 `m_RenderingMode`가 `0`이고 계약 테스트가 고정함 |
+| `M10.8-T2` | 공용 셀 셰이더 작성 | `DONE` | 노멀 축 스냅과 밴드 램프, ShadowCaster·DepthNormals 패스 구현 |
+| `M10.8-T3` | 주사위 재료 셀 분기 | `DONE` | Lit 경로를 남긴 채 Cel 오버로드와 별도 캐시 추가 |
+| `M10.8-T4` | 테이블·러너·소품 셀 전환 | `DONE` | `CelStyleSwitcher`가 Lit 재질을 교체하고 원본으로 복구함 |
+| `M10.8-T5` | 그림자·SSAO 하드화 | `DONE` | Cel에서 `LightShadows.Hard`, SSAO 피처 비활성. 에셋 값은 그대로 |
+| `M10.8-T6` | 저해상도 실렌더 전환 | `DONE` | Cel에서 렌더 타깃이 내부 해상도로 생성되고 엣지 임계값이 런타임 덮어쓰기로 갈림 |
+| `M10.8-T7` | 특수 연출 셰이더 축소 | `TODO` | 착수 전 축소 수준을 사용자와 확인. 연출 자산 소모가 가장 큼 |
+| `M10.8-T8` | 검증 도구와 지표 교체 | `DONE` | `PixelReadabilityMetrics` 세 지표와 Baseline·Cel 동시 측정 도구 |
+| `M10.8-T9` | quantize 기본 Off | `DONE` | 시작 모드가 이미 Off였음을 확인. `Q` 순환은 비교용으로 유지 |
+| `M10.8-T10` | 문서화 | `DONE` | `docs/cel_shading_pixel_plan.md` 작성과 마일스톤 요약 반영 |
+| `M10.8-T11` | Unity 검증 | `TODO` | 컴파일·EditMode 테스트·플레이 확인. 아직 실행하지 않음 |
 
 M10.8 완료 조건:
 
@@ -835,7 +836,25 @@ M10.8 완료 조건:
 - 되돌릴 수 없는 에셋 변경의 원래 값이 문서에 기록되어 있다.
 - 기존 에디터 테스트가 모두 통과한다.
 
-셰이딩 규약, 비교와 롤백 구조, 되돌리기 값 표는 [`docs/cel_shading_pixel_plan.md`](cel_shading_pixel_plan.md)에 둔다.
+### M10.8 실행 기록 (2026-09-06)
+
+| 항목 | 결과 |
+|---|---|
+| 렌더 경로 | `PC_Renderer`의 `m_RenderingMode` `2`(Deferred) → `0`(Forward). 셀 셰이더가 GBuffer를 채우지 않아 Deferred에서는 엣지 피처가 읽을 노멀이 비기 때문. 광원이 하나라 Deferred 이점도 없음 |
+| 셀 셰이더 | `Tessera/CelSurface` 신설. `UniversalForward`·`ShadowCaster`·`DepthNormals` 세 패스가 공유 include로 같은 상수 버퍼를 선언 |
+| 노멀 축 스냅 | 프래그먼트에서 오브젝트 공간 지배 축으로 스냅. 이것이 없으면 휜 노멀 위에 동심원 밴드가 생겨 M10.6과 같은 실패를 재현함. FBX와 절차적 폴백 메시의 스무딩 차이도 함께 사라짐 |
+| 밴드 램프 | `TesseraPixelPalette.ValueScales`를 `RampVector`로 노출해 재사용. 재료 단계 밴드와 포스트 팔레트가 같은 값을 쓰게 됨. 밴드 수는 새 필드 없이 기존 `Metallic > 0.5f`에서 파생 |
+| 주사위 재료 | `GetBodyMaterial(DieType)`은 그대로 두고 `(DieType, RenderStyle)` 오버로드와 별도 캐시 추가. Baseline 경로 무손상 |
+| 테이블·소품 | 계획은 빌더마다 분기를 넣는 것이었으나 `CelStyleSwitcher`가 이미 만들어진 렌더러의 Lit 재질을 교체하고 원본을 들고 있다가 복구하는 방식으로 바꿈. 재질 생성 지점이 열 곳 넘어 분기를 흩뿌리면 롤백 지점이 그만큼 늘어남 |
+| 그림자·SSAO | `keyLight.shadows`를 Soft ↔ Hard로, SSAO 피처를 `SetActive`로 토글. URP 에셋의 `m_SoftShadowsSupported`·그림자맵 해상도는 결국 건드리지 않아 되돌릴 에셋 변경이 렌더 경로 한 건으로 줄었음 |
+| 저해상도 실렌더 | Cel에서 월드 카메라 렌더 타깃이 내부 해상도(480x270 / 640x360)로 생성됨. 엣지 임계값은 에셋을 두고 `PixelEdgeRendererFeature.CelOverrideEnabled`로만 덮어씀 |
+| 지표 | `PixelReadabilityMetrics` 신설(밝기 밴드 수, 최대 동일색 연결 영역 비율, 프레임 간 변화 셀 비율). 순수 함수라 합성 입력으로 검증. 연결 영역은 4방향으로 세어 디더 체커보드가 큰 영역으로 잡히지 않게 함 |
+| 검증 도구 | `Tools/Tessera/Run Pixel Readability Validation`이 한 실행에서 Baseline과 Cel을 모두 재고 표로 출력. 타깃 크기가 달라 캡처를 가상 격자로 리샘플한 뒤 비교 |
+| 되돌릴 수 없는 변경 | `PC_Renderer.m_RenderingMode` 한 건. 원래 값 `2` |
+| 미검증 | **Unity 컴파일·테스트·플레이를 아직 실행하지 않았다.** 이 세션에서는 Editor를 띄우지 않았으므로 셰이더 컴파일, 엣지 임계값 시작값, 화면 결과가 모두 미확인이다 |
+| 남은 작업 | `M10.8-T7` 특수 연출 셰이더 축소(착수 전 확인 필요), `M10.8-T11` Unity 검증, 엣지 임계값 재조정 |
+
+셰이딩 규약, 비교와 롤백 구조, 되돌리기 값 표는 [`docs/cel_shading_pixel_plan.md`](cel_shading_pixel_plan.md)에 있다.
 
 ## M10.9. Unity 물리 기반 주사위 프리셋 베이커
 
@@ -1145,6 +1164,24 @@ npm run validate:augments
 - 새 결정/가정: 프리셋 생산 경로를 `preset-studio`에서 Unity 에디터로 옮김. `preset-studio`는 트레이 STL 원본 생성 코드를 품고 있어 삭제하지 않고 그대로 둠
 - 남은 문제/차단 요소: 판 뒤집기 프리셋 재생 길이가 원본 2.65초에서 2.0초 이하로 짧아짐. 판정 시간 상한을 맞추기 위한 의도된 변화지만 연출 강도는 실제 플레이에서 재확인 필요
 - 다음 작업: `M10.8-T0` 기준선 캡처와 토글 골격
+
+### 2026-09-06 — Claude (M10.8 셀 셰이딩 전환 구현)
+
+- 작업 ID: `M10.8-T0`~`M10.8-T6`, `M10.8-T8`~`M10.8-T10`
+- 시작 상태: `M10.7`·`M10.9` 커밋 완료. 화면이 여전히 "픽셀 필터를 씌운 3D 렌더"로 읽히고, M10.6의 포스트 색 양자화는 고유 색을 30색까지 줄이고도 이 문제를 풀지 못한 상태
+- 완료 내용:
+  - `Tessera/CelSurface` 셀 셰이더와 공유 include 신설. 노멀 축 스냅, 밴드 램프, 하드 그림자 계단, 하드 림
+  - `PC_Renderer`를 Deferred에서 Forward로 전환. 셀 셰이더가 GBuffer를 채우지 않아 엣지 피처의 노멀 공급원이 `DepthNormals` 패스가 되기 때문
+  - `RenderStyle { Baseline, Cel }` 런타임 토글을 `V` 키와 HUD `Style:` 버튼에 연결. 재료·조명·SSAO·렌더 타깃·엣지 임계값이 한 번에 따라감
+  - 주사위 재료를 Lit 경로를 남긴 채 Cel 오버로드로 분기. 테이블·소품은 `CelStyleSwitcher`가 이미 만들어진 렌더러를 훑어 교체·복구
+  - Cel에서 월드 카메라 렌더 타깃을 내부 해상도로 직접 생성. 가짜 픽셀화(1920 렌더 후 점 샘플링)를 실제 저해상도 렌더로 교체
+  - `PixelReadabilityMetrics` 세 지표와 Baseline·Cel 동시 측정 도구 신설. M10.6의 "고유 색 수" 지표를 대체
+  - 상세 문서 `docs/cel_shading_pixel_plan.md` 작성
+- 변경 파일: `Rendering/Shaders/CelSurface.shader`·`CelSurfaceShading.hlsl` 신규, `Scripts/Rendering/RenderStyle.cs`·`CelMaterialFactory.cs`·`CelStyleSwitcher.cs`·`PixelReadabilityMetrics.cs` 신규, `Editor/CelSurfaceTests.cs`·`PixelReadabilityMetricsTests.cs`·`RunPixelReadabilityValidation.cs` 신규, `Scripts/Rendering/TesseraPixelPalette.cs`·`PixelEdgeRendererFeature.cs`, `Scripts/Dice/DicePaletteCatalog.cs`, `Scripts/Games/AugmentedYacht/Presentation/`의 `AugmentedYachtController.cs`·`YachtCameraRig.cs`·`YachtLightingRig.cs`·`YachtInputRouter.cs`·`YachtSceneAssembler.cs`·`DiceVisualPool.cs`, `Settings/PC_Renderer.asset`, `docs/cel_shading_pixel_plan.md` 신규
+- 실행한 검증: 정적 검토만. URP 패키지 소스에서 `unity_AmbientSky` 선언과 `DepthNormalsPass`의 비-OCT 출력 규약(`half4(normalWS, 0.0)`)을 확인해 셰이더 계약을 맞춤
+- 새 결정/가정: 테이블·소품은 빌더에 분기를 넣지 않고 렌더러 순회 교체로 처리(롤백 지점을 한 곳으로 모으고 Baseline 경로를 무손상으로 유지). 밴드 수는 새 필드 없이 기존 `Metallic`에서 파생
+- 남은 문제/차단 요소: **Unity 컴파일·테스트·플레이를 실행하지 않았다.** 셰이더 컴파일, 엣지 임계값 시작값, 화면 결과가 모두 미확인. `M10.8-T7` 특수 연출 셰이더 축소는 착수 전 확인 필요
+- 다음 작업: `M10.8-T11` Unity 검증
 
 ### 2026-09-06 — Claude (M10.7 트레이 확대·상수 단일화, M10.8 계획 수립)
 

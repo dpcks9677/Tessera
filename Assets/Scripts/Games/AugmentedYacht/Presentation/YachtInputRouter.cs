@@ -37,6 +37,9 @@ namespace Tessera.Games.AugmentedYacht
 
         /// <summary>색 양자화 모드를 끔 → 단계 → 팔레트 순으로 돌리는 요청.</summary>
         public event Action PixelQuantizeCycleRequested;
+
+        /// <summary>Baseline과 Cel 연출 방식을 왕복한다(M10.8).</summary>
+        public event Action RenderStyleToggleRequested;
         public event Action<DieType> DieTypeRequested;
 
         /// <summary>가리킨 주사위 번호. 없으면 -1.</summary>
@@ -72,6 +75,7 @@ namespace Tessera.Games.AugmentedYacht
             if (keyboard.f2Key.wasPressedThisFrame) ResolutionPresetRequested?.Invoke(1);
             if (keyboard.f3Key.wasPressedThisFrame) PixelEdgeToggleRequested?.Invoke();
             if (keyboard.qKey.wasPressedThisFrame) PixelQuantizeCycleRequested?.Invoke();
+            if (keyboard.vKey.wasPressedThisFrame) RenderStyleToggleRequested?.Invoke();
 
             // 숫자키 1~9로 주사위 색상 팔레트 실시간 전환
             if (keyboard.digit1Key.wasPressedThisFrame || keyboard.numpad1Key.wasPressedThisFrame) DieTypeRequested?.Invoke(DieType.Normal);

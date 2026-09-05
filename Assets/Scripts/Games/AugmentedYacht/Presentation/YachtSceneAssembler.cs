@@ -51,10 +51,12 @@ namespace Tessera.Games.AugmentedYacht
             public Action RestartGame;
             public Action TogglePixelEdge;
             public Action CycleQuantize;
+            public Action ToggleRenderStyle;
             public Func<string> KeyLightPresetName;
             public Func<string> ResolutionPresetLabel;
             public Func<bool> PixelEdgeEnabled;
             public Func<string> QuantizeModeName;
+            public Func<string> RenderStyleName;
         }
 
         /// <summary>디버그 버튼 참조. 라벨을 갱신하려면 들고 있어야 한다.</summary>
@@ -65,6 +67,7 @@ namespace Tessera.Games.AugmentedYacht
             public Button RuneStone;
             public Button PixelEdgeToggle;
             public Button QuantizeToggle;
+            public Button RenderStyleToggle;
         }
 
         private const float CameraPitchAngle = 75.0f;
@@ -192,7 +195,9 @@ namespace Tessera.Games.AugmentedYacht
                 PixelEdgeToggle = YachtHudFactory.CreateButton(canvasObject.transform, "PixelEdgeToggle", PixelEdgeLabel(actions),
                     new Vector2(643f, -18f), new Vector2(135f, 38f), new Vector2(0f, 1f), () => actions.TogglePixelEdge()),
                 QuantizeToggle = YachtHudFactory.CreateButton(canvasObject.transform, "QuantizeToggle", QuantizeLabel(actions),
-                    new Vector2(788f, -18f), new Vector2(155f, 38f), new Vector2(0f, 1f), () => actions.CycleQuantize())
+                    new Vector2(788f, -18f), new Vector2(155f, 38f), new Vector2(0f, 1f), () => actions.CycleQuantize()),
+                RenderStyleToggle = YachtHudFactory.CreateButton(canvasObject.transform, "RenderStyleToggle", RenderStyleLabel(actions),
+                    new Vector2(953f, -18f), new Vector2(175f, 38f), new Vector2(0f, 1f), () => actions.ToggleRenderStyle())
             };
 
             refs.StatusText = YachtHudFactory.CreateText(canvasObject.transform, "Status", "", new Vector2(0f, -20f),
@@ -210,7 +215,8 @@ namespace Tessera.Games.AugmentedYacht
                 RuneFx = GameObject.Find("RuneFxDebug")?.GetComponent<Button>(),
                 RuneStone = GameObject.Find("RuneStoneDebug")?.GetComponent<Button>(),
                 PixelEdgeToggle = GameObject.Find("PixelEdgeToggle")?.GetComponent<Button>(),
-                QuantizeToggle = GameObject.Find("QuantizeToggle")?.GetComponent<Button>()
+                QuantizeToggle = GameObject.Find("QuantizeToggle")?.GetComponent<Button>(),
+                RenderStyleToggle = GameObject.Find("RenderStyleToggle")?.GetComponent<Button>()
             };
 
             Button resolutionButton = GameObject.Find("Debug")?.GetComponent<Button>();
@@ -255,6 +261,12 @@ namespace Tessera.Games.AugmentedYacht
                         QuantizeLabel(actions), new Vector2(788f, -18f), new Vector2(155f, 38f), new Vector2(0f, 1f),
                         () => actions.CycleQuantize());
                 }
+                if (buttons.RenderStyleToggle == null)
+                {
+                    buttons.RenderStyleToggle = YachtHudFactory.CreateButton(canvasObject.transform, "RenderStyleToggle",
+                        RenderStyleLabel(actions), new Vector2(953f, -18f), new Vector2(175f, 38f), new Vector2(0f, 1f),
+                        () => actions.ToggleRenderStyle());
+                }
             }
 
             if (buttons.KeyLightToggle != null)
@@ -285,6 +297,12 @@ namespace Tessera.Games.AugmentedYacht
                 buttons.QuantizeToggle.onClick.RemoveAllListeners();
                 buttons.QuantizeToggle.onClick.AddListener(() => actions.CycleQuantize());
                 SetQuantizeLabel(buttons, actions.QuantizeModeName != null ? actions.QuantizeModeName() : "Off");
+            }
+            if (buttons.RenderStyleToggle != null)
+            {
+                buttons.RenderStyleToggle.onClick.RemoveAllListeners();
+                buttons.RenderStyleToggle.onClick.AddListener(() => actions.ToggleRenderStyle());
+                SetRenderStyleLabel(buttons, actions.RenderStyleName != null ? actions.RenderStyleName() : "Baseline");
             }
 
             return buttons;
@@ -379,6 +397,18 @@ namespace Tessera.Games.AugmentedYacht
         private static string QuantizeLabel(HudActions actions)
         {
             return $"Quant: {(actions?.QuantizeModeName != null ? actions.QuantizeModeName() : "Off")}";
+        }
+
+        /// <summary>연출 방식을 버튼 문구로 알린다. Baseline과 Cel을 눈으로 비교할 때 쓴다(M10.8).</summary>
+        public static void SetRenderStyleLabel(DebugButtons buttons, string styleName)
+        {
+            Text label = buttons?.RenderStyleToggle != null ? buttons.RenderStyleToggle.GetComponentInChildren<Text>() : null;
+            if (label != null) label.text = $"Style: {styleName}";
+        }
+
+        private static string RenderStyleLabel(HudActions actions)
+        {
+            return $"Style: {(actions?.RenderStyleName != null ? actions.RenderStyleName() : "Baseline")}";
         }
 
         public static void EnsureEventSystem()

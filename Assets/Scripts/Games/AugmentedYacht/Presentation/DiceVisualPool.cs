@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Tessera.Core;
 using Tessera.Dice;
+using Tessera.Rendering;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -30,9 +31,32 @@ namespace Tessera.Games.AugmentedYacht
 
         private DieType selectedDieType = DieType.Normal;
         private Transform diceRoot;
+        private RenderStyle renderStyle = RenderStyle.Baseline;
 
         public Transform DiceRoot => diceRoot;
         public DieType SelectedDieType => selectedDieType;
+        public RenderStyle RenderStyle => renderStyle;
+
+        /// <summary>
+        /// 연출 방식을 바꾸고 이미 만들어진 주사위에도 즉시 반영한다(M10.8).
+        /// 주사위는 풀에서 재사용되므로 새로 만드는 경로만 고쳐서는 화면이 바뀌지 않는다.
+        /// </summary>
+        public void SetRenderStyle(RenderStyle style)
+        {
+            if (renderStyle == style) return;
+            renderStyle = style;
+
+            if (diceRoot == null) return;
+            foreach (Transform die in diceRoot)
+            {
+                foreach (Transform visual in die)
+                {
+                    // 절차적 폴백 경로의 면 오버레이 쿼드는 몸체가 아니므로 건너뛴다.
+                    if (visual.name.EndsWith("Overlay", StringComparison.OrdinalIgnoreCase)) continue;
+                    ApplyDiceMaterialsToFbx(visual.gameObject, selectedDieType);
+                }
+            }
+        }
 
         /// <summary>컨트롤러가 모델과 배치 기준을 넘겨준다.</summary>
         public void Bind(GameObject model, Transform layout, float centerX, DieType initialDieType)
@@ -182,7 +206,7 @@ namespace Tessera.Games.AugmentedYacht
 
         private void ApplyDiceMaterialsToFbx(GameObject visual, DieType type)
         {
-            Material diceBodyMaterial = DicePaletteCatalog.GetBodyMaterial(type);
+            Material diceBodyMaterial = DicePaletteCatalog.GetBodyMaterial(type, renderStyle);
             Material dicePipMaterial = DicePaletteCatalog.GetPipMaterial(type);
 
             // 솔리드 그림자 프록시(ShadowProxy) 확인 및 설정 (음각 홈으로 인한 그림자 구멍 완전 차단)

@@ -1,7 +1,9 @@
 ﻿using System;
 using Tessera.Core;
+using Tessera.Rendering;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 namespace Tessera.Games.AugmentedYacht
 {
@@ -46,6 +48,9 @@ namespace Tessera.Games.AugmentedYacht
         [SerializeField] private int currentPresetIndex = 1;
         private Light keyLight;
 
+        /// <summary>연출 방식(M10.8). Cel에서는 그림자를 하드로 바꾸고 SSAO를 끈다.</summary>
+        private RenderStyle renderStyle = RenderStyle.Baseline;
+
         /// <summary>현재 프리셋 이름. 버튼 라벨에 쓴다.</summary>
         public string CurrentPresetName =>
             presets.Length == 0 ? string.Empty : presets[currentPresetIndex].Name;
@@ -64,11 +69,45 @@ namespace Tessera.Games.AugmentedYacht
             keyLight.enabled = true;
             keyLight.transform.rotation = Quaternion.Euler(keyLightEulerAngles);
             keyLight.cullingMask |= TesseraLayers.Mask(TesseraLayers.Dice);
-            keyLight.shadows = LightShadows.Soft;
+            keyLight.shadows = ShadowsForCurrentStyle();
             keyLight.shadowStrength = shadowStrength;
             keyLight.shadowBias = shadowBias;
             keyLight.shadowNormalBias = shadowNormalBias;
             ApplyCurrentPreset();
+        }
+
+        /// <summary>
+        /// 연출 방식을 바꾼다(M10.8-T5).
+        ///
+        /// 소프트 반그림자와 SSAO는 둘 다 연속 그라데이션이라 픽셀 격자에서 되살릴 방법이 없다.
+        /// 에셋 기본값은 Baseline 값으로 두고 여기서만 바꿔, 되돌리면 원래 화면이 그대로 돌아온다.
+        /// </summary>
+        public void SetRenderStyle(RenderStyle style)
+        {
+            if (renderStyle == style) return;
+            renderStyle = style;
+
+            if (TryResolveKeyLight()) keyLight.shadows = ShadowsForCurrentStyle();
+            SetAmbientOcclusionEnabled(style == RenderStyle.Baseline);
+        }
+
+        private LightShadows ShadowsForCurrentStyle()
+        {
+            return renderStyle == RenderStyle.Cel ? LightShadows.Hard : LightShadows.Soft;
+        }
+
+        /// <summary>
+        /// SSAO 렌더 피처를 켜고 끈다. 피처는 렌더러 에셋이 소유해 참조 경로가 없으므로
+        /// 이미 로드된 것 중에서 찾는다. 에셋의 직렬화 값은 건드리지 않는다.
+        /// </summary>
+        private static void SetAmbientOcclusionEnabled(bool enabled)
+        {
+            foreach (ScriptableRendererFeature feature in Resources.FindObjectsOfTypeAll<ScriptableRendererFeature>())
+            {
+                if (feature == null) continue;
+                if (feature.GetType().Name != "ScreenSpaceAmbientOcclusion") continue;
+                feature.SetActive(enabled);
+            }
         }
 
         public void TogglePreset()

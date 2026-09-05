@@ -33,6 +33,19 @@ namespace Tessera.Rendering
 
         public RenderPassEvent PassEvent => passEvent;
 
+        /// <summary>
+        /// Cel 모드용 임계값 덮어쓰기(M10.8-T6). 직렬화된 값은 1920 렌더 기준으로 맞춘 Baseline 값이라
+        /// 그대로 두고, 내부 해상도로 직접 렌더할 때만 런타임에 다른 값을 밀어 넣는다.
+        /// 에셋을 건드리지 않으므로 되돌리려면 <see cref="CelOverrideEnabled"/>를 끄면 된다.
+        ///
+        /// 미완: 아래 값은 손으로 맞춘 시작값이다. 화면 확인 후 재조정이 필요하다.
+        /// </summary>
+        public static bool CelOverrideEnabled { get; set; }
+
+        public static float CelDepthEdgeStrength { get; set; } = 0.70f;
+        public static float CelNormalEdgeStrength { get; set; } = 0.40f;
+        public static Vector2 CelDepthEdgeThreshold { get; set; } = new(0.35f, 0.80f);
+
         /// <summary>이 카메라가 엣지 패스를 받을 대상인지. 테스트가 이 조건을 직접 확인한다.</summary>
         public static bool ShouldRender(Camera camera)
         {
@@ -63,9 +76,13 @@ namespace Tessera.Rendering
             if (pass == null || material == null) return;
             if (!ShouldRender(renderingData.cameraData.camera)) return;
 
-            material.SetFloat(depthEdgeStrengthId, depthEdgeStrength);
-            material.SetFloat(normalEdgeStrengthId, normalEdgeStrength);
-            material.SetVector(depthEdgeThresholdId, new Vector4(depthEdgeThreshold.x, depthEdgeThreshold.y, 0f, 0f));
+            float depthStrength = CelOverrideEnabled ? CelDepthEdgeStrength : depthEdgeStrength;
+            float normalStrength = CelOverrideEnabled ? CelNormalEdgeStrength : normalEdgeStrength;
+            Vector2 threshold = CelOverrideEnabled ? CelDepthEdgeThreshold : depthEdgeThreshold;
+
+            material.SetFloat(depthEdgeStrengthId, depthStrength);
+            material.SetFloat(normalEdgeStrengthId, normalStrength);
+            material.SetVector(depthEdgeThresholdId, new Vector4(threshold.x, threshold.y, 0f, 0f));
 
             pass.Setup(passEvent);
             renderer.EnqueuePass(pass);
