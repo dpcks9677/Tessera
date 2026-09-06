@@ -61,6 +61,9 @@ namespace Tessera.Games.AugmentedYacht
         /// </summary>
         private readonly CelStyleSwitcher celStyleSwitcher = new();
         private RenderStyle renderStyle = RenderStyle.Baseline;
+
+        /// <summary>셀 전환이 실제로 몇 개의 렌더러를 바꿨는지. 검증 도구가 전환 여부를 확인할 때 읽는다.</summary>
+        public int CelConvertedRendererCount => celStyleSwitcher.ConvertedRendererCount;
         private AugmentTrayPresenter augmentTray;
         private DiceVisualPool dicePool;
         private YachtDiceRoundPresenter diceRound;

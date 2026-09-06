@@ -43,6 +43,19 @@ public static class RunPixelReadabilityValidation
     private static double lastCaptureAt;
     private static Texture2D captureBuffer;
 
+    // 연출 방식을 바꾸면 렌더 타깃을 다시 만든다. 그 직후 한두 프레임은 아직 그려지지 않은 내용을
+    // 읽어 모든 셀이 달라진 것처럼 보인다. 실제로 Cel 변화율이 100.00%로 나왔다. 워밍업으로 버린다.
+    private const int CaptureWarmupFrames = 2;
+
+    private static int captureWarmupLeft;
+
+    // 주사위만 잘라 낸 지표. 화면 전체는 나무결 베이스맵과 아직 셀로 바꾸지 않은 특수 연출 셰이더가
+    // 밴드 수를 지배해서, 셰이딩이 실제로 계단화됐는지를 가리지 못한다. 판단 근거는 이쪽이다.
+    private static Color32[] baselineDiceCrop;
+    private static Color32[] celDiceCrop;
+    private static RectInt diceCropRect;
+    private static int celConvertedRenderers;
+
     static RunPixelReadabilityValidation()
     {
         EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
@@ -78,7 +91,12 @@ public static class RunPixelReadabilityValidation
             rollingPrevious = null;
             baselineCrawl = 0f;
             celCrawl = 0f;
+            baselineDiceCrop = null;
+            celDiceCrop = null;
+            diceCropRect = default;
+            celConvertedRenderers = 0;
             lastCaptureAt = 0.0;
+            captureWarmupLeft = 0;
             EnterPhase(1);
             Debug.Log("--- Starting Pixel Readability Validation ---");
         }
@@ -116,8 +134,10 @@ public static class RunPixelReadabilityValidation
                 if (controller.IsSettled)
                 {
                     baselineStill = Capture(rig);
+                    baselineDiceCrop = CaptureDiceCrop(rig);
                     controller.ResetAndRollDice();
                     rollingPrevious = null;
+                    captureWarmupLeft = CaptureWarmupFrames;
                     EnterPhase(3);
                 }
                 else if (elapsed > SettleTimeoutSeconds)
@@ -145,6 +165,7 @@ public static class RunPixelReadabilityValidation
                     controller.ToggleRenderStyle();
                     controller.ResetAndRollDice();
                     rollingPrevious = null;
+                    captureWarmupLeft = CaptureWarmupFrames;
                     EnterPhase(4);
                 }
                 else if (elapsed > SettleTimeoutSeconds)
@@ -169,6 +190,8 @@ public static class RunPixelReadabilityValidation
                 else if (rollingPrevious != null)
                 {
                     celStill = Capture(rig);
+                    celDiceCrop = CaptureDiceCrop(rig);
+                    celConvertedRenderers = controller.CelConvertedRendererCount;
                     Report(rig);
                 }
                 else if (elapsed > SettleTimeoutSeconds)
@@ -234,6 +257,102 @@ public static class RunPixelReadabilityValidation
         return SampleToGrid(captureBuffer.GetPixels32(), target.width, target.height, gridSize);
     }
 
+    /// <summary>
+    /// 주사위가 차지하는 영역만 잘라 낸다.
+    ///
+    /// 화면 전체를 재면 나무결 베이스맵처럼 알베도가 연속으로 변하는 표면과 아직 셀로 바꾸지 않은
+    /// 특수 연출 셰이더가 밴드 수를 지배해, 조명 응답이 실제로 계단화됐는지를 가리지 못한다.
+    /// 주사위는 단색 바디라 셀 셰이딩의 효과가 그대로 드러난다.
+    /// </summary>
+    private static Color32[] CaptureDiceCrop(YachtCameraRig rig)
+    {
+        Color32[] frame = Capture(rig);
+        if (frame == null) return null;
+
+        if (!TryBuildDiceRect(rig, out diceCropRect)) return null;
+
+        Color32[] crop = new Color32[diceCropRect.width * diceCropRect.height];
+        for (int y = 0; y < diceCropRect.height; y++)
+        {
+            int sourceRow = (diceCropRect.y + y) * gridSize.x;
+            int targetRow = y * diceCropRect.width;
+            for (int x = 0; x < diceCropRect.width; x++)
+            {
+                crop[targetRow + x] = frame[sourceRow + diceCropRect.x + x];
+            }
+        }
+        return crop;
+    }
+
+    /// <summary>
+    /// 주사위 전체를 감싸는 격자 사각형을 만든다. 직교 카메라라 주사위 중심을 뷰포트로 옮기고
+    /// 반지름만큼 넓히면 충분하다.
+    /// </summary>
+    private static bool TryBuildDiceRect(YachtCameraRig rig, out RectInt rect)
+    {
+        rect = default;
+
+        DiceVisualPool pool = Object.FindFirstObjectByType<DiceVisualPool>();
+        Transform diceRoot = pool != null ? pool.DiceRoot : null;
+        Camera camera = rig.WorldCamera;
+        if (diceRoot == null || camera == null || diceRoot.childCount == 0) return false;
+
+        float minX = float.PositiveInfinity, minY = float.PositiveInfinity;
+        float maxX = float.NegativeInfinity, maxY = float.NegativeInfinity;
+        bool any = false;
+
+        foreach (Transform die in diceRoot)
+        {
+            if (!die.gameObject.activeInHierarchy) continue;
+
+            // 대각선 반지름이라 어느 자세에서도 주사위가 사각형 밖으로 나가지 않는다.
+            float radius = die.lossyScale.x * 0.87f;
+            Vector3 center = die.position;
+
+            foreach (Vector3 corner in Corners(camera, center, radius))
+            {
+                Vector3 viewport = camera.WorldToViewportPoint(corner);
+                minX = Mathf.Min(minX, viewport.x);
+                maxX = Mathf.Max(maxX, viewport.x);
+                minY = Mathf.Min(minY, viewport.y);
+                maxY = Mathf.Max(maxY, viewport.y);
+                any = true;
+            }
+        }
+
+        if (!any) return false;
+
+        int x0 = Mathf.Clamp(Mathf.FloorToInt(minX * gridSize.x), 0, gridSize.x - 1);
+        int x1 = Mathf.Clamp(Mathf.CeilToInt(maxX * gridSize.x), 0, gridSize.x - 1);
+        int y0 = Mathf.Clamp(Mathf.FloorToInt(minY * gridSize.y), 0, gridSize.y - 1);
+        int y1 = Mathf.Clamp(Mathf.CeilToInt(maxY * gridSize.y), 0, gridSize.y - 1);
+
+        if (x1 <= x0 || y1 <= y0) return false;
+
+        rect = new RectInt(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+        return true;
+    }
+
+    /// <summary>
+    /// 카메라의 화면 축으로 네 귀퉁이를 만든다.
+    ///
+    /// 월드 X/Y로 만들면 안 된다. 이 카메라는 테이블을 내려다보게 기울어져 있어 월드 Y 오프셋이
+    /// 화면에서 크게 눌린다. 실제로 그렇게 재 봤더니 주사위 크롭이 129x10셀로 납작하게 나왔다.
+    /// </summary>
+    private static Vector3[] Corners(Camera camera, Vector3 center, float radius)
+    {
+        Vector3 right = camera.transform.right * radius;
+        Vector3 up = camera.transform.up * radius;
+
+        return new[]
+        {
+            center - right - up,
+            center + right - up,
+            center - right + up,
+            center + right + up
+        };
+    }
+
     /// <summary>고정 간격이 지났을 때만 캡처한다. 두 연출 방식이 같은 간격을 써야 비교가 성립한다.</summary>
     private static Color32[] CaptureThrottled(YachtCameraRig rig)
     {
@@ -241,6 +360,14 @@ public static class RunPixelReadabilityValidation
         if (now - lastCaptureAt < CaptureIntervalSeconds) return null;
 
         lastCaptureAt = now;
+
+        if (captureWarmupLeft > 0)
+        {
+            captureWarmupLeft--;
+            Capture(rig);
+            return null;
+        }
+
         return Capture(rig);
     }
 
@@ -277,10 +404,14 @@ public static class RunPixelReadabilityValidation
         StringBuilder report = new();
         report.AppendLine("--- Pixel Readability Validation ---");
         report.AppendLine($"Grid: {gridSize.x}x{gridSize.y}, Quantize: {rig.QuantizeModeName}");
+        report.AppendLine($"Cel converted renderers: {celConvertedRenderers}");
+        report.AppendLine($"Dice crop: {diceCropRect.width}x{diceCropRect.height} cells at ({diceCropRect.x}, {diceCropRect.y})");
         report.AppendLine("| Metric | Baseline | Cel |");
         report.AppendLine("|---|---|---|");
-        report.AppendLine($"| Luminance bands | {Bands(baselineStill)} | {Bands(celStill)} |");
-        report.AppendLine($"| Largest flat region | {Region(baselineStill):P2} | {Region(celStill):P2} |");
+        report.AppendLine($"| Dice bands (primary) | {Bands(baselineDiceCrop)} | {Bands(celDiceCrop)} |");
+        report.AppendLine($"| Dice largest flat region | {CropRegion(baselineDiceCrop):P2} | {CropRegion(celDiceCrop):P2} |");
+        report.AppendLine($"| Full frame bands | {Bands(baselineStill)} | {Bands(celStill)} |");
+        report.AppendLine($"| Full frame largest flat region | {Region(baselineStill):P2} | {Region(celStill):P2} |");
         report.AppendLine($"| Peak changed cells while rolling | {baselineCrawl:P2} | {celCrawl:P2} |");
         Debug.Log(report.ToString());
 
@@ -295,6 +426,12 @@ public static class RunPixelReadabilityValidation
     private static float Region(Color32[] pixels)
     {
         return pixels == null ? 0f : PixelReadabilityMetrics.LargestUniformRegionRatio(pixels, gridSize.x, gridSize.y);
+    }
+
+    private static float CropRegion(Color32[] pixels)
+    {
+        if (pixels == null || diceCropRect.width <= 0) return 0f;
+        return PixelReadabilityMetrics.LargestUniformRegionRatio(pixels, diceCropRect.width, diceCropRect.height);
     }
 
     private static void Fail(string message)
