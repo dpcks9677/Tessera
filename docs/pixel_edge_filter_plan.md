@@ -403,7 +403,16 @@ Bayer 4×4 임계 행렬을 **가상 격자 좌표**(`floor(uv * _VirtualResolut
 
 재발 방지로 계약 테스트를 하나 두었다. `PixelEdgeFilterTests.씬에_구워진_업스케일_재질이_게임_시작값과_같다`가 씬을 열어 재질 값을 `PixelFilterSettings.StartResolution`과 비교한다. 시작값을 다시 바꾸면 이 테스트가 먼저 깨진다.
 
-### 11.4 남은 확인
+### 11.4 검증 (2026-09-06)
 
-- 편집 모드에서 엣지 패스가 실제로 도는지 눈으로 확인하지 못했다. `PixelEdgeCamera` 표시를 씬에 저장한 뒤 Game 뷰에서 외곽선이 보여야 한다.
-- `PixelFilterPreview`가 씬을 더럽히는 경우는 표시를 처음 붙일 때 한 번뿐이어야 한다. 씬을 열 때마다 더러워진다면 저장이 안 된 것이다.
+Unity에서 확인했다.
+
+- 도메인 리로드 직후 `PixelFilterPreview`가 자동 실행돼 `[PixelFilterPreview] 프리뷰를 게임 시작값으로 맞췄습니다. 480x270, Quantize 0.` 을 남겼다.
+- 그 실행이 씬을 더럽힌 원인은 `PixelEdgeCamera` 표시 추가 하나였다. 업스케일 재질은 이미 480x270이라 건드리지 않았다. "바꿀 것이 있을 때만 더럽힌다"가 의도대로 동작한다.
+- 씬을 저장해 표시를 남겼다. `Full Field World Camera`에 `Tessera.Rendering.PixelEdgeCamera`(`edgeFilterEnabled: 1`)가 붙었다.
+- `PixelEdgeFilterTests`의 씬 재질 계약 테스트를 포함해 Tessera EditMode 121/121이 통과했다.
+
+### 11.5 남은 확인
+
+- 편집 모드 Game 뷰에서 외곽선이 실제로 보이는지는 눈으로 보지 않았다. 표시가 씬에 남았으므로 조건은 갖춰졌다.
+- 표시를 저장한 이상 `PixelFilterPreview`가 다시 씬을 더럽히지 않아야 한다. 씬을 열 때마다 더러워진다면 저장이 반영되지 않은 것이다.
