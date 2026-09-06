@@ -20,6 +20,17 @@ namespace Tessera.Games.AugmentedYacht
     {
         private const float PointerRayDistance = 50f;
 
+        /// <summary>
+        /// 증강 카드 레이캐스트 결과를 담을 고정 버퍼.
+        ///
+        /// <c>Physics.RaycastAll</c>은 호출마다 배열을 새로 만든다. 이 경로는 매 프레임 도는 <c>Update</c>
+        /// 안이라 그대로 두면 GC 할당이 계속 쌓인다. 카드가 겹쳐도 이 정도면 충분하고, 넘치면 가장 가까운
+        /// 것부터 잘리지 않으므로 아래에서 거리로 다시 고른다.
+        /// </summary>
+        private const int PointerHitBufferSize = 16;
+
+        private readonly RaycastHit[] pointerHits = new RaycastHit[PointerHitBufferSize];
+
         /// <summary>레이캐스트 기준 카메라. 컨트롤러가 넣어 준다.</summary>
         public Camera WorldCamera { get; set; }
 
@@ -98,14 +109,20 @@ namespace Tessera.Games.AugmentedYacht
                 return;
             }
 
+            // 히트 순서는 보장되지 않는다. 첫 히트를 그대로 쓰면 카드가 겹쳤을 때 뒤쪽이 잡힐 수 있으므로
+            // 가장 가까운 것을 고른다.
             AugmentTrayCardView hitCard = null;
-            RaycastHit[] hits = Physics.RaycastAll(ray, PointerRayDistance);
-            for (int i = 0; i < hits.Length; i++)
+            float nearestDistance = float.PositiveInfinity;
+            int hitCount = Physics.RaycastNonAlloc(ray, pointerHits, PointerRayDistance);
+            for (int i = 0; i < hitCount; i++)
             {
-                AugmentTrayCardView view = hits[i].collider.GetComponentInParent<AugmentTrayCardView>();
+                if (pointerHits[i].distance >= nearestDistance) continue;
+
+                AugmentTrayCardView view = pointerHits[i].collider.GetComponentInParent<AugmentTrayCardView>();
                 if (view == null) continue;
+
+                nearestDistance = pointerHits[i].distance;
                 hitCard = view;
-                break;
             }
 
             RaiseAugmentHover(hitCard);

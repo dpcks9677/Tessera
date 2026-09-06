@@ -34,6 +34,15 @@ public static class RunPixelReadabilityValidation
     private static float celCrawl;
     private static Vector2Int gridSize;
 
+    // 캡처는 텍스처 생성과 GPU->CPU 동기 읽기를 함께 일으킨다. 매 틱 하면 프레임이 느려지고,
+    // 하필 이 도구가 재는 지표가 "프레임 간 변화율"이라 측정이 측정 대상을 흔든다. 게다가
+    // Baseline 쪽 렌더 타깃이 훨씬 커서 편향이 한쪽으로만 생긴다. 고정 간격으로 제한하고
+    // 텍스처는 크기별로 재사용한다.
+    private const double CaptureIntervalSeconds = 0.1;
+
+    private static double lastCaptureAt;
+    private static Texture2D captureBuffer;
+
     static RunPixelReadabilityValidation()
     {
         EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
@@ -69,6 +78,7 @@ public static class RunPixelReadabilityValidation
             rollingPrevious = null;
             baselineCrawl = 0f;
             celCrawl = 0f;
+            lastCaptureAt = 0.0;
             EnterPhase(1);
             Debug.Log("--- Starting Pixel Readability Validation ---");
         }
@@ -119,12 +129,15 @@ public static class RunPixelReadabilityValidation
             case 3: // Baseline 굴림 중 프레임 간 변화율
                 if (!controller.IsSettled)
                 {
-                    Color32[] current = Capture(rig);
-                    if (rollingPrevious != null)
+                    Color32[] current = CaptureThrottled(rig);
+                    if (current != null)
                     {
-                        baselineCrawl = Mathf.Max(baselineCrawl, PixelReadabilityMetrics.ChangedCellRatio(rollingPrevious, current));
+                        if (rollingPrevious != null)
+                        {
+                            baselineCrawl = Mathf.Max(baselineCrawl, PixelReadabilityMetrics.ChangedCellRatio(rollingPrevious, current));
+                        }
+                        rollingPrevious = current;
                     }
-                    rollingPrevious = current;
                 }
                 else if (rollingPrevious != null)
                 {
@@ -143,12 +156,15 @@ public static class RunPixelReadabilityValidation
             case 4: // Cel 굴림 중 변화율, 이어서 정지 프레임
                 if (!controller.IsSettled)
                 {
-                    Color32[] current = Capture(rig);
-                    if (rollingPrevious != null)
+                    Color32[] current = CaptureThrottled(rig);
+                    if (current != null)
                     {
-                        celCrawl = Mathf.Max(celCrawl, PixelReadabilityMetrics.ChangedCellRatio(rollingPrevious, current));
+                        if (rollingPrevious != null)
+                        {
+                            celCrawl = Mathf.Max(celCrawl, PixelReadabilityMetrics.ChangedCellRatio(rollingPrevious, current));
+                        }
+                        rollingPrevious = current;
                     }
-                    rollingPrevious = current;
                 }
                 else if (rollingPrevious != null)
                 {
@@ -197,22 +213,42 @@ public static class RunPixelReadabilityValidation
         RenderTexture target = rig.WorldCamera != null ? rig.WorldCamera.targetTexture : null;
         if (target == null) return null;
 
+        if (captureBuffer == null || captureBuffer.width != target.width || captureBuffer.height != target.height)
+        {
+            if (captureBuffer != null) Object.DestroyImmediate(captureBuffer);
+            captureBuffer = new Texture2D(target.width, target.height, TextureFormat.RGBA32, false);
+        }
+
         RenderTexture previous = RenderTexture.active;
-        Texture2D full = new(target.width, target.height, TextureFormat.RGBA32, false);
         try
         {
             RenderTexture.active = target;
-            full.ReadPixels(new Rect(0, 0, target.width, target.height), 0, 0);
-            full.Apply(false, false);
+            captureBuffer.ReadPixels(new Rect(0, 0, target.width, target.height), 0, 0);
+            captureBuffer.Apply(false, false);
         }
         finally
         {
             RenderTexture.active = previous;
         }
 
-        Color32[] source = full.GetPixels32();
-        Object.DestroyImmediate(full);
-        return SampleToGrid(source, target.width, target.height, gridSize);
+        return SampleToGrid(captureBuffer.GetPixels32(), target.width, target.height, gridSize);
+    }
+
+    /// <summary>고정 간격이 지났을 때만 캡처한다. 두 연출 방식이 같은 간격을 써야 비교가 성립한다.</summary>
+    private static Color32[] CaptureThrottled(YachtCameraRig rig)
+    {
+        double now = EditorApplication.timeSinceStartup;
+        if (now - lastCaptureAt < CaptureIntervalSeconds) return null;
+
+        lastCaptureAt = now;
+        return Capture(rig);
+    }
+
+    private static void ReleaseCaptureBuffer()
+    {
+        if (captureBuffer == null) return;
+        Object.DestroyImmediate(captureBuffer);
+        captureBuffer = null;
     }
 
     private static Color32[] SampleToGrid(Color32[] source, int width, int height, Vector2Int grid)
@@ -236,6 +272,7 @@ public static class RunPixelReadabilityValidation
     private static void Report(YachtCameraRig rig)
     {
         SessionState.SetBool(RunningKey, false);
+        ReleaseCaptureBuffer();
 
         StringBuilder report = new();
         report.AppendLine("--- Pixel Readability Validation ---");
@@ -263,6 +300,7 @@ public static class RunPixelReadabilityValidation
     private static void Fail(string message)
     {
         SessionState.SetBool(RunningKey, false);
+        ReleaseCaptureBuffer();
         Debug.LogError($"Pixel Readability Validation failed: {message}");
         EditorApplication.isPlaying = false;
     }

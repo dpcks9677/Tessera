@@ -73,6 +73,24 @@ namespace Tessera.Rendering
         }
 
         /// <summary>
+        /// 만들어 둔 셀 재질을 파괴하고 원본 재질을 되돌린다. 컨트롤러의 OnDestroy에서 부른다.
+        /// 부르지 않으면 도메인 리로드 전까지 재질이 남는다.
+        /// </summary>
+        public void Dispose()
+        {
+            RestoreOriginals();
+
+            foreach (Material material in celByOriginal.Values)
+            {
+                if (material == null) continue;
+                if (Application.isPlaying) Object.Destroy(material);
+                else Object.DestroyImmediate(material);
+            }
+            celByOriginal.Clear();
+            currentStyle = RenderStyle.Baseline;
+        }
+
+        /// <summary>
         /// Lit 재질 하나에 대응하는 셀 재질을 만들거나 캐시에서 준다. Lit이 아니면 null을 준다.
         /// 이미 Unlit인 재질(촛대·룬 슬레이트 채널 등)은 두 모드 공용이라 그대로 둔다.
         /// </summary>

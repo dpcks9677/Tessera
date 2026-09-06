@@ -668,6 +668,7 @@ namespace Tessera.Games.AugmentedYacht
             }
             cameraRig?.Dispose();
             dicePool?.Dispose();
+            celStyleSwitcher.Dispose();
         }
     }
 }

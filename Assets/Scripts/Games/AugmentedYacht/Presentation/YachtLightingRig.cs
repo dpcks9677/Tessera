@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Tessera.Core;
 using Tessera.Rendering;
 using UnityEngine;
@@ -16,6 +17,9 @@ namespace Tessera.Games.AugmentedYacht
     public sealed class YachtLightingRig : MonoBehaviour
     {
         private const string KeyLightName = "Key Light";
+
+        /// <summary>URP의 SSAO 피처 타입 이름. 어셈블리 참조 없이 찾기 위해 문자열로 비교한다.</summary>
+        private const string AmbientOcclusionFeatureTypeName = "ScreenSpaceAmbientOcclusion";
 
         [Serializable]
         public struct KeyLightPreset
@@ -50,6 +54,16 @@ namespace Tessera.Games.AugmentedYacht
 
         /// <summary>연출 방식(M10.8). Cel에서는 그림자를 하드로 바꾸고 SSAO를 끈다.</summary>
         private RenderStyle renderStyle = RenderStyle.Baseline;
+
+        /// <summary>
+        /// SSAO 피처를 끄기 전의 활성 상태. 반드시 되돌려야 한다.
+        ///
+        /// <see cref="ScriptableRendererFeature"/>의 활성 플래그는 직렬화 필드다. 씬 오브젝트와 달리
+        /// 에셋의 런타임 변경은 플레이 모드를 나가도 되돌아오지 않으므로, 끈 채로 플레이를 멈추면
+        /// 렌더러 에셋에 그대로 저장된다. Baseline으로 되돌리면 기준선 화면이 그대로 돌아온다는
+        /// 이 마일스톤의 계약이 거기서 깨진다.
+        /// </summary>
+        private readonly Dictionary<ScriptableRendererFeature, bool> ambientOcclusionOriginalStates = new();
 
         /// <summary>현재 프리셋 이름. 버튼 라벨에 쓴다.</summary>
         public string CurrentPresetName =>
@@ -88,7 +102,9 @@ namespace Tessera.Games.AugmentedYacht
             renderStyle = style;
 
             if (TryResolveKeyLight()) keyLight.shadows = ShadowsForCurrentStyle();
-            SetAmbientOcclusionEnabled(style == RenderStyle.Baseline);
+
+            if (style == RenderStyle.Cel) DisableAmbientOcclusion();
+            else RestoreAmbientOcclusion();
         }
 
         private LightShadows ShadowsForCurrentStyle()
@@ -97,17 +113,37 @@ namespace Tessera.Games.AugmentedYacht
         }
 
         /// <summary>
-        /// SSAO 렌더 피처를 켜고 끈다. 피처는 렌더러 에셋이 소유해 참조 경로가 없으므로
-        /// 이미 로드된 것 중에서 찾는다. 에셋의 직렬화 값은 건드리지 않는다.
+        /// SSAO 렌더 피처를 끈다. 피처는 렌더러 에셋이 소유해 참조 경로가 없으므로 이미 로드된 것
+        /// 중에서 찾는다. 끄기 전 상태를 기억해 두고 <see cref="RestoreAmbientOcclusion"/>에서 되돌린다.
         /// </summary>
-        private static void SetAmbientOcclusionEnabled(bool enabled)
+        private void DisableAmbientOcclusion()
         {
             foreach (ScriptableRendererFeature feature in Resources.FindObjectsOfTypeAll<ScriptableRendererFeature>())
             {
                 if (feature == null) continue;
-                if (feature.GetType().Name != "ScreenSpaceAmbientOcclusion") continue;
-                feature.SetActive(enabled);
+                if (feature.GetType().Name != AmbientOcclusionFeatureTypeName) continue;
+                if (ambientOcclusionOriginalStates.ContainsKey(feature)) continue;
+
+                ambientOcclusionOriginalStates[feature] = feature.isActive;
+                feature.SetActive(false);
             }
+        }
+
+        /// <summary>꺼 둔 SSAO 피처를 원래 상태로 되돌린다. 되돌리지 않으면 에셋에 그대로 남는다.</summary>
+        private void RestoreAmbientOcclusion()
+        {
+            foreach (KeyValuePair<ScriptableRendererFeature, bool> entry in ambientOcclusionOriginalStates)
+            {
+                if (entry.Key == null) continue;
+                entry.Key.SetActive(entry.Value);
+            }
+            ambientOcclusionOriginalStates.Clear();
+        }
+
+        /// <summary>플레이 모드를 나가거나 오브젝트가 꺼질 때도 반드시 되돌린다.</summary>
+        private void OnDisable()
+        {
+            RestoreAmbientOcclusion();
         }
 
         public void TogglePreset()
