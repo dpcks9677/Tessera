@@ -109,6 +109,13 @@ namespace Tessera.Tabletop
 
         private void Update()
         {
+            // 편집 모드에서는 연출을 돌리지 않는다. 이 애니메이션은 트랜스폼과 컴포넌트 값 같은
+            // 직렬화 대상에 매 틱 쓰기 때문에, 편집 모드에서 돌리면 씬이 계속 더러운 상태가 된다.
+            // 그러면 씬을 저장할 때마다 관련 없는 오버라이드가 diff에 섞이고 테스트 실행이
+            // "dirty scene"으로 막힌다. [ExecuteAlways]는 BuildGeometry 컨텍스트 메뉴와
+            // OnValidate 미리보기 때문에 그대로 둔다.
+            if (!Application.isPlaying) return;
+
             float t = Time.time * flickerSpeed;
             float noiseA = Mathf.PerlinNoise(t, 0f);
             float noiseB = Mathf.PerlinNoise(0f, t * 1.3f);

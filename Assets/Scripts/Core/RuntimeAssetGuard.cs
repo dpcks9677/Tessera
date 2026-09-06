@@ -32,6 +32,12 @@ namespace Tessera.Core
 #endif
 
         /// <summary>
+        /// 이 헬퍼가 쓰기용으로 갈라 준 메시. 같은 필터가 다시 물어보면 복제하지 않고 그대로 돌려준다.
+        /// 에디터 전용이 아니다. 빌드에서 소유권을 판단하는 유일한 근거가 이 집합이다.
+        /// </summary>
+        private static readonly HashSet<Mesh> writableMeshes = new();
+
+        /// <summary>
         /// 값을 바꿔도 되는 머티리얼을 돌려준다.
         /// 에셋을 가리키고 있으면 씬에도 저장되지 않는 사본으로 갈아 끼운다.
         /// </summary>
@@ -64,14 +70,28 @@ namespace Tessera.Core
             if (filter == null) return null;
 
             Mesh shared = filter.sharedMesh;
+            if (shared == null) return null;
+
+            // 이 헬퍼가 이미 갈라 준 메시면 다시 복제하지 않는다.
+            if (writableMeshes.Contains(shared)) return shared;
+
+#if UNITY_EDITOR
+            // 에디터에서는 에셋 여부를 직접 물어볼 수 있다. 프롭이 절차적으로 방금 만든 메시는
+            // 그 프롭만 쓰므로 복제할 이유가 없다.
             if (!IsAsset(shared)) return shared;
+#endif
+            // 빌드에는 IsPersistent가 없어 위 판정을 할 수 없다. 대신 소유권 집합만 보고,
+            // 아직 갈라 주지 않은 메시라면 한 번 복제한다. 프리팹에서 온 메시는 인스턴스끼리
+            // 공유되므로, 복제하지 않으면 같은 프롭을 둘 이상 놓았을 때 두 인스턴스가
+            // 같은 정점 버퍼를 서로 덮어쓴다. 에디터에서는 재현되지 않는 빌드 전용 버그가 된다.
 
             Mesh clone = Object.Instantiate(shared);
             clone.name = shared.name;
             clone.hideFlags = HideFlags.DontSave;
             filter.sharedMesh = clone;
+            writableMeshes.Add(clone);
 #if UNITY_EDITOR
-            if (!Application.isPlaying)
+            if (!Application.isPlaying && IsAsset(shared))
             {
                 meshAssets[filter] = shared;
                 meshClones[filter] = clone;

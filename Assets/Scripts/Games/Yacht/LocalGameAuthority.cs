@@ -48,6 +48,11 @@ namespace Tessera.Games.Yacht
             ResetGameState(false);
         }
 
+        /// <summary>
+        /// 권위 계층 자신과 그 테스트 하네스가 쓰는 내부 상태 핸들이다. 의도적으로 구체 타입이다.
+        /// 테스트가 시나리오를 조립하려면 상태를 직접 세울 수 있어야 하고, 여기는 상태의 안쪽이다.
+        /// 화면이 읽는 경로는 <see cref="YachtGameSession.State"/>이며 그쪽은 읽기 전용 뷰다.
+        /// </summary>
         public YachtGameState CurrentState => state;
         public YachtGameOptions Options => options.Clone();
         public IYachtRuleSet RuleSet => rules;
@@ -382,6 +387,12 @@ namespace Tessera.Games.Yacht
 
         private void ResetGameState(bool startImmediately)
         {
+            // 중복 명령 방지 집합은 한 게임 안에서만 의미가 있다. 새 게임을 시작할 때 비우지 않으면
+            // 판을 거듭할수록 계속 자라기만 한다. 원격 클라이언트가 명령 ID를 정하게 되는 M18
+            // 이후에는 이 집합이 클라이언트 입력에 따라 무한히 커지는 구조가 되므로 지금 끊어 둔다.
+            // revision은 계속 증가하므로, 옛 명령이 다시 들어와도 ExpectedRevision 검사에서 걸린다.
+            acceptedCommandIds.Clear();
+
             for (int i = 0; i < state.Players.Length; i++) state.Players[i].Reset();
             state.Mode = options.Mode;
             state.CurrentPlayerIndex = 0;
@@ -538,6 +549,22 @@ namespace Tessera.Games.Yacht
         private readonly LocalGameAuthority authority;
         private long nextCommandId;
 
+        /// <summary>
+        /// 점수표를 권위가 직접 소유하는 기본 경로다.
+        ///
+        /// 예전에는 <c>ParchmentScoreSheet</c>가 <c>PlayerScoreData</c>를 직렬화 필드로 들고
+        /// 그것을 권위에 넘겼다. 그러면 화면 컴포넌트가 권위 데이터의 저장소를 겸하게 되어
+        /// 소유권이 갈라진다. 이제 화면은 <see cref="State"/>의 읽기 전용 뷰만 본다.
+        /// </summary>
+        public YachtGameSession(
+            YachtGameOptions options = null,
+            IRandomSource random = null,
+            IRandomSource visualRandom = null)
+            : this(new PlayerScoreData(), new PlayerScoreData(), options, random, visualRandom)
+        {
+        }
+
+        /// <summary>점수표 인스턴스를 밖에서 넘기는 경로다. 테스트가 결과를 직접 들여다볼 때 쓴다.</summary>
         public YachtGameSession(
             PlayerScoreData playerOne,
             PlayerScoreData playerTwo,
@@ -552,29 +579,38 @@ namespace Tessera.Games.Yacht
             }, visualRandom: visualRandom);
         }
 
-        public YachtGameState State => authority.CurrentState;
-        public YachtGamePhase Phase => State.Phase;
-        public YachtGameMode Mode => State.Mode;
-        public int CurrentPlayerIndex => State.CurrentPlayerIndex;
-        public int CurrentRound => State.CurrentRound;
-        public int RollsRemaining => State.RollsRemaining;
-        public bool HasRolled => State.HasRolled;
+        /// <summary>
+        /// 화면이 읽는 권위 상태다. 스냅샷이 아니라 같은 객체를 가리키는 읽기 전용 뷰이므로
+        /// 읽기 비용은 없고, 대신 화면 쪽에서의 쓰기가 컴파일 시점에 막힌다.
+        /// 상태를 바꾸려면 이 클래스의 <c>Try*</c> 명령을 거쳐야 한다.
+        /// </summary>
+        public IReadOnlyYachtGameState State => authority.CurrentState;
+
+        /// <summary>세션 내부 계산용. 읽기 전용 뷰에 없는 값(후보·점수 등)까지 본다.</summary>
+        private YachtGameState AuthorityState => authority.CurrentState;
+
+        public YachtGamePhase Phase => AuthorityState.Phase;
+        public YachtGameMode Mode => AuthorityState.Mode;
+        public int CurrentPlayerIndex => AuthorityState.CurrentPlayerIndex;
+        public int CurrentRound => AuthorityState.CurrentRound;
+        public int RollsRemaining => AuthorityState.RollsRemaining;
+        public bool HasRolled => AuthorityState.HasRolled;
         public bool IsDrafting => Phase == YachtGamePhase.Draft;
         public float CurrentTurnDurationSeconds => authority.CurrentTurnDurationSeconds;
         public YachtGameCommandResult LastCommandResult { get; private set; }
         public bool CanRoll => (Phase == YachtGamePhase.TurnReady || Phase == YachtGamePhase.ScoreSelection) && RollsRemaining > 0;
         public bool CanKeepDice => Phase == YachtGamePhase.ScoreSelection && HasRolled;
         public bool CanUseTableFlip => Phase == YachtGamePhase.ScoreSelection
-            && State.AugmentPlayers != null
-            && CurrentPlayerIndex < State.AugmentPlayers.Length
-            && !State.AugmentPlayers[CurrentPlayerIndex].TableFlipUsed
+            && AuthorityState.AugmentPlayers != null
+            && CurrentPlayerIndex < AuthorityState.AugmentPlayers.Length
+            && !AuthorityState.AugmentPlayers[CurrentPlayerIndex].TableFlipUsed
             && ContainsOwnedAugment(CurrentPlayerIndex, YachtAugmentRuntime.TableFlipId);
         public IReadOnlyDictionary<ScoreCategory, int> CurrentCandidates
         {
             get
             {
                 var result = new Dictionary<ScoreCategory, int>();
-                for (int i = 0; i < State.Candidates.Length; i++) result[State.Candidates[i].Category] = State.Candidates[i].Score;
+                for (int i = 0; i < AuthorityState.Candidates.Length; i++) result[AuthorityState.Candidates[i].Category] = AuthorityState.Candidates[i].Score;
                 return result;
             }
         }
@@ -582,7 +618,7 @@ namespace Tessera.Games.Yacht
         public void StartNewGame() => LastCommandResult = Execute(YachtCommandType.StartGame, 0);
         public bool TrySelectAugment(string augmentId, out YachtGameCommandResult result)
         {
-            int playerIndex = State.Draft?.PlayerIndex ?? -1;
+            int playerIndex = AuthorityState.Draft?.PlayerIndex ?? -1;
             result = playerIndex >= 0
                 ? Execute(YachtCommandType.SelectAugment, playerIndex, augmentId: augmentId)
                 : new YachtGameCommandResult { Accepted = false, ErrorCode = YachtCommandErrorCode.NotDrafting };
@@ -605,8 +641,8 @@ namespace Tessera.Games.Yacht
         }
         public bool TrySetDieKept(int dieIndex, bool kept)
         {
-            if (dieIndex < 0 || dieIndex >= State.Dice.Length) return false;
-            LastCommandResult = Execute(YachtCommandType.SetDieKept, CurrentPlayerIndex, State.Dice[dieIndex].Id, kept);
+            if (dieIndex < 0 || dieIndex >= AuthorityState.Dice.Length) return false;
+            LastCommandResult = Execute(YachtCommandType.SetDieKept, CurrentPlayerIndex, AuthorityState.Dice[dieIndex].Id, kept);
             return LastCommandResult.Accepted;
         }
         public bool TryCommitScore(ScoreCategory category, out YachtTurnResult result)
@@ -631,10 +667,10 @@ namespace Tessera.Games.Yacht
             return LastCommandResult.Accepted;
         }
         public bool IsCategoryFilled(int playerIndex, ScoreCategory category) => authority.IsCategoryFilled(playerIndex, category);
-        public PlayerScoreData GetPlayer(int playerIndex)
+        public IReadOnlyPlayerScoreData GetPlayer(int playerIndex)
         {
-            if (playerIndex < 0 || playerIndex >= State.Players.Length) throw new ArgumentOutOfRangeException(nameof(playerIndex));
-            return State.Players[playerIndex];
+            if (playerIndex < 0 || playerIndex >= AuthorityState.Players.Length) throw new ArgumentOutOfRangeException(nameof(playerIndex));
+            return AuthorityState.Players[playerIndex];
         }
 
         private YachtGameCommandResult Execute(
@@ -648,7 +684,7 @@ namespace Tessera.Games.Yacht
             return authority.Execute(new YachtGameCommand
             {
                 CommandId = $"local-{++nextCommandId}",
-                ExpectedRevision = State.Revision,
+                ExpectedRevision = AuthorityState.Revision,
                 PlayerIndex = playerIndex,
                 Type = type,
                 DieId = dieId,
@@ -660,7 +696,7 @@ namespace Tessera.Games.Yacht
 
         private bool ContainsOwnedAugment(int playerIndex, string augmentId)
         {
-            string[] owned = State.AugmentPlayers[playerIndex].OwnedIds;
+            string[] owned = AuthorityState.AugmentPlayers[playerIndex].OwnedIds;
             for (int i = 0; i < owned.Length; i++)
                 if (string.Equals(owned[i], augmentId, StringComparison.Ordinal)) return true;
             return false;

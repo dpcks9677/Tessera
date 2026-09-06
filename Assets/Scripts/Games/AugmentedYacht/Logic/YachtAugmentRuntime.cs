@@ -38,7 +38,7 @@ namespace Tessera.Games.Yacht
     }
 
     [Serializable]
-    public sealed class YachtDraftState
+    public sealed class YachtDraftState : IReadOnlyYachtDraftState
     {
         public bool IsActive;
         public int PlayerIndex = -1;
@@ -54,10 +54,17 @@ namespace Tessera.Games.Yacht
             OptionCardPresetIds = (int[])(OptionCardPresetIds?.Clone() ?? Array.Empty<int>()),
             SelectionCounts = (int[])(SelectionCounts?.Clone() ?? Array.Empty<int>())
         };
+
+        // 읽기 전용 뷰. 필드와 이름이 겹치므로 명시적 구현을 쓴다.
+        bool IReadOnlyYachtDraftState.IsActive => IsActive;
+        int IReadOnlyYachtDraftState.PlayerIndex => PlayerIndex;
+        IReadOnlyList<string> IReadOnlyYachtDraftState.Options => Options;
+        IReadOnlyList<int> IReadOnlyYachtDraftState.OptionCardPresetIds => OptionCardPresetIds;
+        IReadOnlyList<int> IReadOnlyYachtDraftState.SelectionCounts => SelectionCounts;
     }
 
     [Serializable]
-    public sealed class YachtAugmentPlayerState
+    public sealed class YachtAugmentPlayerState : IReadOnlyYachtAugmentPlayerState
     {
         public string[] OwnedIds = Array.Empty<string>();
         public int[] OwnedCardPresetIds = Array.Empty<int>();
@@ -78,6 +85,12 @@ namespace Tessera.Games.Yacht
             TurnsTaken = TurnsTaken,
             States = States?.Clone() ?? new AugmentStateStore()
         };
+
+        // 읽기 전용 뷰. 필드와 이름이 겹치므로 명시적 구현을 쓴다.
+        IReadOnlyList<string> IReadOnlyYachtAugmentPlayerState.OwnedIds => OwnedIds;
+        IReadOnlyList<int> IReadOnlyYachtAugmentPlayerState.OwnedCardPresetIds => OwnedCardPresetIds;
+        int IReadOnlyYachtAugmentPlayerState.ExtraTurns => ExtraTurns;
+        int IReadOnlyYachtAugmentPlayerState.TurnsTaken => TurnsTaken;
 
         // --- 구 상태 필드 호환성 프로퍼티 (States 위임) ---
         public int NoTimeRemaining

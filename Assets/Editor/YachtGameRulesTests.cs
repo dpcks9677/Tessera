@@ -138,12 +138,12 @@ namespace Tessera.Editor.Tests
 
             Assert.That(result.GameEnded, Is.True);
             Assert.That(session.Phase, Is.EqualTo(YachtGamePhase.GameOver));
-            Assert.That(session.GetPlayer(0).upperScores[0], Is.Zero);
+            Assert.That(session.GetPlayer(0).UpperScores[0], Is.Zero);
 
             session.StartNewGame();
             Assert.That(session.Phase, Is.EqualTo(YachtGamePhase.TurnReady));
             Assert.That(session.CurrentRound, Is.EqualTo(1));
-            Assert.That(session.GetPlayer(0).upperScores[0], Is.EqualTo(-1));
+            Assert.That(session.GetPlayer(0).UpperScores[0], Is.EqualTo(-1));
         }
 
         [Test]

@@ -26,10 +26,6 @@ namespace Tessera.Games.AugmentedYacht
         [SerializeField] private float sheetHeight = 8.80f;
         [SerializeField] private float sheetThickness = 0.015f;
 
-        [Header("Score Sheet State")]
-        [SerializeField] private PlayerScoreData player1Data = new();
-        [SerializeField] private PlayerScoreData player2Data = new();
-
         [Header("Font Settings")]
         [SerializeField] private Font scoreSheetFont;
 
@@ -51,9 +47,27 @@ namespace Tessera.Games.AugmentedYacht
         private int activePlayerIndex = -1;
         private bool selectionEnabled;
 
-        public PlayerScoreData Player1 => player1Data;
-        public PlayerScoreData Player2 => player2Data;
+        /// <summary>
+        /// 표에 그릴 점수다. 권위 상태를 가리키는 읽기 전용 뷰이며 이 컴포넌트는 읽기만 한다.
+        ///
+        /// 예전에는 <c>PlayerScoreData</c> 두 개를 직렬화 필드로 들고 그것을 권위에 넘겼다.
+        /// 그래서 UI 컴포넌트가 권위 데이터의 저장소를 겸했고, 점수를 누가 바꿨는지 추적할 수 없었다.
+        /// 이제 소유자는 <c>LocalGameAuthority</c> 하나이고 여기는 <see cref="BindPlayers"/>로 뷰만 받는다.
+        ///
+        /// 초깃값은 빈 점수표다. 편집 모드와 게임 시작 전에도 표가 그려져야 하기 때문이다.
+        /// </summary>
+        private IReadOnlyList<IReadOnlyPlayerScoreData> players =
+            new IReadOnlyPlayerScoreData[] { new PlayerScoreData(), new PlayerScoreData() };
+
         public event Action<int, ScoreCategory> ScoreSelected;
+
+        /// <summary>권위 세션이 만들어진 뒤 그 점수표 뷰를 연결한다.</summary>
+        public void BindPlayers(IReadOnlyList<IReadOnlyPlayerScoreData> authorityPlayers)
+        {
+            if (authorityPlayers == null || authorityPlayers.Count < 2) return;
+            players = authorityPlayers;
+            RefreshAllScores();
+        }
 
 #if UNITY_EDITOR
         [UnityEditor.MenuItem("Tessera/Rebuild Score Sheet")]
@@ -589,35 +603,6 @@ namespace Tessera.Games.AugmentedYacht
             label.color = color;
         }
 
-        public void SetPlayerScore(int playerIndex, ScoreCategory category, int score)
-        {
-            if (playerIndex < 0 || playerIndex > 1 || !YachtScoreCalculator.IsScorable(category)) return;
-            PlayerScoreData data = playerIndex == 0 ? player1Data : player2Data;
-            int catIdx = (int)category;
-
-            if (catIdx >= 0 && catIdx <= 5)
-            {
-                data.upperScores[catIdx] = score;
-            }
-            else if (catIdx >= 7 && catIdx <= 12)
-            {
-                data.lowerScores[catIdx - 7] = score;
-            }
-
-            data.RecalculateTotal();
-            RefreshAllScores();
-        }
-
-        public void ResetScores()
-        {
-            player1Data.Reset();
-            player2Data.Reset();
-            candidateScores.Clear();
-            activePlayerIndex = -1;
-            selectionEnabled = false;
-            RefreshAllScores();
-        }
-
         public void SetActivePlayer(int playerIndex, bool canSelectScore)
         {
             activePlayerIndex = playerIndex >= 0 && playerIndex <= 1 ? playerIndex : -1;
@@ -650,10 +635,10 @@ namespace Tessera.Games.AugmentedYacht
         public bool IsScoreFilled(int playerIndex, ScoreCategory category)
         {
             if (playerIndex < 0 || playerIndex > 1) return true;
-            PlayerScoreData data = playerIndex == 0 ? player1Data : player2Data;
+            IReadOnlyPlayerScoreData data = players[playerIndex];
             int categoryIndex = (int)category;
-            if (categoryIndex >= 0 && categoryIndex <= 5) return data.upperScores[categoryIndex] >= 0;
-            if (categoryIndex >= 7 && categoryIndex <= 12) return data.lowerScores[categoryIndex - 7] >= 0;
+            if (categoryIndex >= 0 && categoryIndex <= 5) return data.UpperScores[categoryIndex] >= 0;
+            if (categoryIndex >= 7 && categoryIndex <= 12) return data.LowerScores[categoryIndex - 7] >= 0;
             return true;
         }
 
@@ -664,40 +649,10 @@ namespace Tessera.Games.AugmentedYacht
             ScoreSelected?.Invoke(playerIndex, category);
         }
 
-        /// <summary>
-        /// 증강 효과가 이미 기록된 족보를 덮어쓸 때만 사용하는 명시적 경로.
-        /// 일반 점수 기록에서는 추가 턴이 발생하지 않도록 호출부를 분리한다.
-        /// </summary>
-        public bool OverwriteScoreFromAugment(int playerIndex, ScoreCategory category, int score)
-        {
-            if (playerIndex < 0 || playerIndex > 1) return false;
-
-            PlayerScoreData data = playerIndex == 0 ? player1Data : player2Data;
-            int categoryIndex = (int)category;
-            bool hasRecordedScore;
-
-            if (categoryIndex >= 0 && categoryIndex <= 5)
-            {
-                hasRecordedScore = data.upperScores[categoryIndex] >= 0;
-            }
-            else if (categoryIndex >= 7 && categoryIndex <= 12)
-            {
-                hasRecordedScore = data.lowerScores[categoryIndex - 7] >= 0;
-            }
-            else
-            {
-                return false;
-            }
-
-            if (!hasRecordedScore) return false;
-            SetPlayerScore(playerIndex, category, score);
-            return true;
-        }
-
         public void RefreshAllScores()
         {
-            UpdatePlayerScoreUI(player1Data, p1ScoreLabels, p1BonusProgressText);
-            UpdatePlayerScoreUI(player2Data, p2ScoreLabels, null);
+            UpdatePlayerScoreUI(players[0], p1ScoreLabels, p1BonusProgressText);
+            UpdatePlayerScoreUI(players[1], p2ScoreLabels, null);
             ApplyCandidatePreviews();
             RefreshInteractionVisuals();
         }
@@ -754,7 +709,7 @@ namespace Tessera.Games.AugmentedYacht
                 && candidateScores.ContainsKey(category);
         }
 
-        private void UpdatePlayerScoreUI(PlayerScoreData data, Text[] labels, Text bonusText)
+        private void UpdatePlayerScoreUI(IReadOnlyPlayerScoreData data, Text[] labels, Text bonusText)
         {
             if (labels == null || labels.Length < 14) return;
 
@@ -767,8 +722,8 @@ namespace Tessera.Games.AugmentedYacht
             {
                 if (labels[i] != null)
                 {
-                    labels[i].text = data.upperScores[i] >= 0 ? data.upperScores[i].ToString() : "-";
-                    SetLabelColor(labels[i], data.upperScores[i] >= 0 ? inkMain : inkScoreEmpty);
+                    labels[i].text = data.UpperScores[i] >= 0 ? data.UpperScores[i].ToString() : "-";
+                    SetLabelColor(labels[i], data.UpperScores[i] >= 0 ? inkMain : inkScoreEmpty);
                 }
             }
 
@@ -781,21 +736,21 @@ namespace Tessera.Games.AugmentedYacht
             if (labels[6] != null)
             {
                 labels[6].text = "+35";
-                SetLabelColor(labels[6], data.hasBonus ? bonusScoreGold : new Color32(140, 115, 95, 200));
+                SetLabelColor(labels[6], data.HasBonus ? bonusScoreGold : new Color32(140, 115, 95, 200));
             }
 
             for (int i = 0; i < 6; i++)
             {
                 if (labels[i + 7] != null)
                 {
-                    labels[i + 7].text = data.lowerScores[i] >= 0 ? data.lowerScores[i].ToString() : "-";
-                    SetLabelColor(labels[i + 7], data.lowerScores[i] >= 0 ? inkMain : inkScoreEmpty);
+                    labels[i + 7].text = data.LowerScores[i] >= 0 ? data.LowerScores[i].ToString() : "-";
+                    SetLabelColor(labels[i + 7], data.LowerScores[i] >= 0 ? inkMain : inkScoreEmpty);
                 }
             }
 
             if (labels[13] != null)
             {
-                labels[13].text = data.totalScore.ToString();
+                labels[13].text = data.TotalScore.ToString();
                 SetLabelColor(labels[13], footerScoreGold);
             }
         }

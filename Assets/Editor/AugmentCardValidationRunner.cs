@@ -64,12 +64,13 @@ public static class AugmentCardValidationRunner
             YachtGameSession session = flow.Session;
             if (session == null || !session.IsDrafting) continue;
 
-            string[] options = session.State.Draft.Options;
+            // 권위 상태는 읽기 전용 뷰로 오므로 Array.IndexOf를 쓸 수 없다.
+            IReadOnlyList<string> options = session.State.Draft.Options;
             if (options == null) continue;
 
             foreach (string target in wanted)
             {
-                int index = System.Array.IndexOf(options, target);
+                int index = IndexOf(options, target);
                 if (index < 0) continue;
 
                 flow.SelectDraftOption(index);
@@ -191,7 +192,7 @@ public static class AugmentCardValidationRunner
             if (session.Phase == YachtGamePhase.GameOver)
             {
                 EditorApplication.update -= driver;
-                Debug.Log($"[검증] 자동 완주 성공. 기입 {commits}회, P1 {session.GetPlayer(0).totalScore}점, P2 {session.GetPlayer(1).totalScore}점");
+                Debug.Log($"[검증] 자동 완주 성공. 기입 {commits}회, P1 {session.GetPlayer(0).TotalScore}점, P2 {session.GetPlayer(1).TotalScore}점");
                 return;
             }
 
@@ -224,6 +225,16 @@ public static class AugmentCardValidationRunner
     }
 
     private const int MaxAutoPlayTicks = 40000;
+
+    /// <summary>읽기 전용 목록에는 Array.IndexOf를 쓸 수 없어 같은 일을 하는 헬퍼를 둔다.</summary>
+    private static int IndexOf(IReadOnlyList<string> values, string target)
+    {
+        for (int i = 0; i < values.Count; i++)
+        {
+            if (string.Equals(values[i], target, System.StringComparison.Ordinal)) return i;
+        }
+        return -1;
+    }
 
     private static YachtTurnFlowPresenter ResolveTurnFlow()
     {

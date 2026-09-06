@@ -51,16 +51,6 @@ namespace Tessera.Games.AugmentedYacht
             return runicSlateMatrix != null && runicSlateMatrix.ConsumeExtraTurn();
         }
 
-        /// <summary>증강이 확정한 점수를 점수표에 덮어쓰고 추가 턴을 적립한다.</summary>
-        public bool ApplyScoreOverwrite(int playerIndex, ScoreCategory category, int score, int grantedExtraTurns)
-        {
-            if (scoreSheet == null) scoreSheet = FindFirstObjectByType<ParchmentScoreSheet>();
-            if (scoreSheet == null || !scoreSheet.OverwriteScoreFromAugment(playerIndex, category, score)) return false;
-
-            GrantExtraTurns(grantedExtraTurns);
-            return true;
-        }
-
         public void RefreshDebugLabels()
         {
             YachtSceneAssembler.UpdateRuneDebugLabels(debugButtons, runicSlateMatrix);

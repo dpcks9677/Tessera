@@ -152,8 +152,19 @@ namespace Tessera.Tabletop
             return upperSand != null && lowerSand != null;
         }
 
+        // 매 프레임 도는 경로라 셰이더 프로퍼티 이름을 미리 ID로 바꿔 둔다.
+        // 1회성 생성 경로의 문자열 접근은 그대로 둔다. 거기서는 조회 비용이 의미가 없다.
+        private static readonly int EmissionColorId = Shader.PropertyToID("_EmissionColor");
+
         private void Update()
         {
+            // 편집 모드에서는 연출을 돌리지 않는다. 이 애니메이션은 트랜스폼과 컴포넌트 값 같은
+            // 직렬화 대상에 매 틱 쓰기 때문에, 편집 모드에서 돌리면 씬이 계속 더러운 상태가 된다.
+            // 그러면 씬을 저장할 때마다 관련 없는 오버라이드가 diff에 섞이고 테스트 실행이
+            // "dirty scene"으로 막힌다. [ExecuteAlways]는 BuildGeometry 컨텍스트 메뉴와
+            // OnValidate 미리보기 때문에 그대로 둔다.
+            if (!Application.isPlaying) return;
+
             if (isFlipping) return;
 
             if (isRunning)
@@ -169,8 +180,8 @@ namespace Tessera.Tabletop
                 {
                     float pulse = (Mathf.Sin(Time.time * 8.0f) + 1.0f) * 0.5f;
                     Color alertEmission = Color.Lerp(sandEmissionNormal, sandEmissionWarning, pulse);
-                    if (sandMaterial != null) sandMaterial.SetColor("_EmissionColor", alertEmission);
-                    if (sandStreamMaterial != null) sandStreamMaterial.SetColor("_EmissionColor", alertEmission * 1.6f);
+                    if (sandMaterial != null) sandMaterial.SetColor(EmissionColorId, alertEmission);
+                    if (sandStreamMaterial != null) sandStreamMaterial.SetColor(EmissionColorId, alertEmission * 1.6f);
                 }
 
                 if (remainingTime <= 0f)

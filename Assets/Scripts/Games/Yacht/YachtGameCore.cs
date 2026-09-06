@@ -87,7 +87,7 @@ namespace Tessera.Games.Yacht
     }
 
     [Serializable]
-    public sealed class PlayerScoreData
+    public sealed class PlayerScoreData : IReadOnlyPlayerScoreData
     {
         public int[] upperScores = { -1, -1, -1, -1, -1, -1 };
         public int[] upperBaseScores = { -1, -1, -1, -1, -1, -1 };
@@ -164,6 +164,13 @@ namespace Tessera.Games.Yacht
             };
         }
 
+        // 읽기 전용 뷰. 필드가 소문자라 이름이 겹치지 않지만, 다른 상태 타입과 형태를 맞춰 명시적으로 구현한다.
+        IReadOnlyList<int> IReadOnlyPlayerScoreData.UpperScores => upperScores;
+        IReadOnlyList<int> IReadOnlyPlayerScoreData.LowerScores => lowerScores;
+        bool IReadOnlyPlayerScoreData.HasBonus => hasBonus;
+        int IReadOnlyPlayerScoreData.BonusScore => bonusScore;
+        int IReadOnlyPlayerScoreData.TotalScore => totalScore;
+
         private void EnsureArrays()
         {
             if (upperScores == null || upperScores.Length != 6) upperScores = new[] { -1, -1, -1, -1, -1, -1 };
@@ -176,7 +183,7 @@ namespace Tessera.Games.Yacht
     }
 
     [Serializable]
-    public sealed class YachtDieState
+    public sealed class YachtDieState : IReadOnlyYachtDieState
     {
         public int Id;
         public YachtDieType Type;
@@ -185,6 +192,14 @@ namespace Tessera.Games.Yacht
         public int KeepSlotIndex = -1;
         public int PromotionLevel;
         public YachtDieState Clone() => (YachtDieState)MemberwiseClone();
+
+        // 읽기 전용 뷰. 필드와 이름이 겹치므로 명시적 구현을 쓴다.
+        int IReadOnlyYachtDieState.Id => Id;
+        YachtDieType IReadOnlyYachtDieState.Type => Type;
+        int IReadOnlyYachtDieState.Value => Value;
+        bool IReadOnlyYachtDieState.IsKept => IsKept;
+        int IReadOnlyYachtDieState.KeepSlotIndex => KeepSlotIndex;
+        int IReadOnlyYachtDieState.PromotionLevel => PromotionLevel;
     }
 
     [Serializable]
@@ -200,7 +215,7 @@ namespace Tessera.Games.Yacht
     }
 
     [Serializable]
-    public sealed class YachtGameState
+    public sealed class YachtGameState : IReadOnlyYachtGameState
     {
         public int Version = 1;
         public long Revision;
@@ -249,6 +264,21 @@ namespace Tessera.Games.Yacht
             for (int i = 0; i < clone.Length; i++) clone[i] = source[i]?.Clone();
             return clone;
         }
+
+        // 읽기 전용 뷰. 배열은 IReadOnlyList<T>의 공변성 덕에 그대로 넘길 수 있다.
+        long IReadOnlyYachtGameState.Revision => Revision;
+        YachtGameMode IReadOnlyYachtGameState.Mode => Mode;
+        YachtGamePhase IReadOnlyYachtGameState.Phase => Phase;
+        int IReadOnlyYachtGameState.CurrentPlayerIndex => CurrentPlayerIndex;
+        int IReadOnlyYachtGameState.CurrentRound => CurrentRound;
+        int IReadOnlyYachtGameState.RollsRemaining => RollsRemaining;
+        bool IReadOnlyYachtGameState.HasRolled => HasRolled;
+        bool IReadOnlyYachtGameState.IsExtraTurnPhase => IsExtraTurnPhase;
+        IReadOnlyList<IReadOnlyYachtDieState> IReadOnlyYachtGameState.Dice => Dice;
+        IReadOnlyList<IReadOnlyPlayerScoreData> IReadOnlyYachtGameState.Players => Players;
+        IReadOnlyYachtDraftState IReadOnlyYachtGameState.Draft => Draft;
+        IReadOnlyList<IReadOnlyYachtAugmentPlayerState> IReadOnlyYachtGameState.AugmentPlayers => AugmentPlayers;
+        IReadOnlyList<string> IReadOnlyYachtGameState.GlobalAugmentIds => GlobalAugmentIds;
     }
 
     [Serializable]
@@ -343,7 +373,14 @@ namespace Tessera.Games.Yacht
     public sealed class SystemRandomSource : IRandomSource
     {
         private readonly Random random;
-        public SystemRandomSource() : this(Environment.TickCount) { }
+        // Environment.TickCount는 해상도가 약 15ms라, 연달아 만든 두 인스턴스가 같은 씨앗을 받는다.
+        // LocalGameAuthority는 판정용과 연출용 난수를 생성자에서 나란히 만들므로 실제로 그렇게 되고,
+        // 두 수열이 완전히 상관되어 카드 프리셋이 주사위 결과의 함수가 된다. Guid는 그 충돌을 없앤다.
+        // 이 수정의 목적은 예측 방지가 아니라 그 씨앗 충돌을 없애는 것이다.
+        // 예측 방지는 씨앗을 바꿔서는 얻을 수 없다. System.Random은 Knuth 뺄셈식이라 씨앗을 몰라도
+        // 출력 56개 정도로 내부 상태를 복원할 수 있다. 원격 클라이언트가 눈을 예측하지 못하게 하려면
+        // 씨앗이 아니라 생성기를 바꿔야 하므로, M18에서 IRandomSource의 암호학적 구현을 추가해 주입한다.
+        public SystemRandomSource() : this(Guid.NewGuid().GetHashCode()) { }
         public SystemRandomSource(int seed) => random = new Random(seed);
         public int NextInt(int minInclusive, int maxExclusive)
         {
