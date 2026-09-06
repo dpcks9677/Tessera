@@ -360,3 +360,50 @@ Bayer 4×4 임계 행렬을 **가상 격자 좌표**(`floor(uv * _VirtualResolut
 - 주사위를 실제로 굴리는 동안 외곽선이 반짝이지(pixel crawl) 않는지 확인.
   `Assets/Docs/Decision.md`에 열린 리스크로 적혀 있다. 정지 화면 검증만 마쳤다.
 - `480×270`에서의 외형 확인과 뎁스 임계값 재조정. 칸이 커지면 이웃 간 뎁스 차이도 4/3배가 된다.
+
+---
+
+## 11. 편집 모드 프리뷰 동기화 (2026-09-06)
+
+### 11.1 증상
+
+플레이를 누르기 전 에디터 화면과 플레이 직후 화면이 달랐다.
+
+### 11.2 원인
+
+픽셀 필터 사슬(월드 카메라 → 렌더 타깃 → 업스케일 `RawImage`)은 씬에 구워져 있어 편집 모드에서도 돈다. 그런데 그 값을 정하는 것은 플레이 모드에서만 살아나는 `AugmentedYachtController`와 `YachtCameraRig`다. 그래서 값이 세 갈래로 어긋나 있었다.
+
+| 항목 | 편집 모드 | 게임 시작 |
+|---|---|---|
+| 내부 해상도 | 640x360 (씬 재질에 구워진 옛 값) | 480x270 |
+| 색 양자화 | 0 (우연히 일치) | 0 |
+| 엣지 필터 | 없음 (`PixelEdgeCamera` 표시가 런타임에만 붙음) | 켜짐 |
+
+내부 해상도가 어긋난 것은 시작값을 640x360에서 480x270으로 바꿀 때(`4183e1b`) 씬 재질을 따라 고치지 않았기 때문이다. 같은 값이 네 곳에 흩어져 있어 한 곳만 고쳐도 티가 나지 않았다.
+
+- `AugmentedYachtController`의 프리셋 두 개
+- `YachtCameraRig`의 시작값
+- `AugmentParchmentVisuals.PixelFilterResolution`의 기본값
+- 씬에 구워진 업스케일 재질의 `_VirtualResolution`
+
+`PixelEdgeCamera` 표시는 `YachtCameraRig.SetupCrispUiSceneObjects`가 붙이는데, 그 메서드는 편집 모드용 `[ContextMenu]` 굽기 경로이면서 동시에 런타임에도 불린다. 실제로는 런타임 경로로만 실행돼 씬에 남지 않았다.
+
+### 11.3 수정
+
+값의 출처를 `Tessera.Rendering.PixelFilterSettings` 하나로 모았다. 프리셋 두 개, 시작 해상도, 시작 양자화 모드, 시작 연출 방식이 여기 있다. 위 네 곳 중 코드 세 곳은 이 값을 참조한다.
+
+씬 쪽은 `Assets/Editor/PixelFilterPreview.cs`가 맞춘다.
+
+- 씬을 열 때와 도메인 리로드 직후 자동 실행되고, `Tools/Tessera/Sync Pixel Filter Preview` 메뉴로도 부를 수 있다.
+- 업스케일 재질의 `_VirtualResolution`·`_Quantize`를 시작값으로, 팔레트 배열을 채운다.
+- 전역 `_PixelEdgeVirtualResolution`을 채운다. 엣지 패스는 재질이 아니라 전역 값에서 격자를 읽는다.
+- 월드 카메라에 `PixelEdgeCamera` 표시가 없으면 `Undo.AddComponent`로 붙인다.
+- **바꿀 것이 있을 때만 씬을 더럽힌다.** 이미 맞아 있으면 아무것도 하지 않는다.
+- 플레이 중에는 컨트롤러가 주인이므로 실행하지 않는다.
+
+재발 방지로 계약 테스트를 하나 두었다. `PixelEdgeFilterTests.씬에_구워진_업스케일_재질이_게임_시작값과_같다`가 씬을 열어 재질 값을 `PixelFilterSettings.StartResolution`과 비교한다. 시작값을 다시 바꾸면 이 테스트가 먼저 깨진다.
+
+### 11.4 남은 확인
+
+- 편집 모드에서 엣지 패스가 실제로 도는지 눈으로 확인하지 못했다. `PixelEdgeCamera` 표시를 씬에 저장한 뒤 Game 뷰에서 외곽선이 보여야 한다.
+- `PixelFilterPreview`가 씬을 더럽히는 경우는 표시를 처음 붙일 때 한 번뿐이어야 한다. 씬을 열 때마다 더러워진다면 저장이 안 된 것이다.

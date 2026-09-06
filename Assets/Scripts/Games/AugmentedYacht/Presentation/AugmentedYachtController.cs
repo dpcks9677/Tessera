@@ -71,11 +71,6 @@ namespace Tessera.Games.AugmentedYacht
         private YachtSceneAssembler.HudRefs hud;
         private YachtSceneAssembler.DebugButtons debugButtons;
 
-        // 1920×1080 렌더 타깃 안에서 격자를 스냅하므로 1920을 정수로 나누는 값만 쓴다.
-        // 나누어떨어지지 않으면 어떤 칸은 3화면픽셀, 어떤 칸은 4화면픽셀이 되어 격자가 무너진다.
-        private static readonly Vector2Int ResolutionA = new(640, 360);  // 3×3 블록
-        private static readonly Vector2Int ResolutionB = new(480, 270);  // 4×4 블록
-
         private const float TableWidth = 15.6f;
         private const float LeftSectionWidth = TableWidth * 0.25f;
         private const float CenterSectionWidth = TableWidth * 0.45f;
@@ -262,7 +257,7 @@ namespace Tessera.Games.AugmentedYacht
                 TogglePixelEdge = TogglePixelEdgeFilter,
                 CycleQuantize = CyclePixelQuantizeMode,
                 ToggleRenderStyle = ToggleRenderStyle,
-                ResolutionPresetLabel = () => $"{ResolutionA.x} / {ResolutionB.x}",
+                ResolutionPresetLabel = () => $"{PixelFilterSettings.ResolutionA.x} / {PixelFilterSettings.ResolutionB.x}",
                 KeyLightPresetName = () => KeyLightPresetName,
                 PixelEdgeEnabled = () => cameraRig != null && cameraRig.EdgeFilterEnabled,
                 QuantizeModeName = () => cameraRig != null ? cameraRig.QuantizeModeName : "Off",
@@ -496,7 +491,7 @@ namespace Tessera.Games.AugmentedYacht
 
         private void OnResolutionPresetRequested(int presetIndex)
         {
-            SetResolution(presetIndex == 0 ? ResolutionA : ResolutionB);
+            SetResolution(presetIndex == 0 ? PixelFilterSettings.ResolutionA : PixelFilterSettings.ResolutionB);
         }
 
         private void OnDieHoverChanged(int dieIndex)
@@ -534,7 +529,7 @@ namespace Tessera.Games.AugmentedYacht
         public void ToggleResolution()
         {
             EnsureCameraRig();
-            SetResolution(cameraRig.InternalResolution == ResolutionA ? ResolutionB : ResolutionA);
+            SetResolution(PixelFilterSettings.NextPreset(cameraRig.InternalResolution));
         }
 
         private void SetResolution(Vector2Int resolution)

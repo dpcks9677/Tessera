@@ -37,13 +37,13 @@ namespace Tessera.Games.AugmentedYacht
         private PixelEdgeCamera pixelEdgeCamera;
 
         // 시작 해상도. F1은 640×360, F2는 480×270이며 게임은 더 굵은 쪽으로 시작한다.
-        private Vector2Int internalResolution = new(480, 270);
+        private Vector2Int internalResolution = PixelFilterSettings.StartResolution;
 
         /// <summary>0 끔, 1 채널 단계 양자화, 2 아트 가이드 팔레트. 셰이더의 <c>_Quantize</c>와 같은 값이다.</summary>
-        private int quantizeMode;
+        private int quantizeMode = PixelFilterSettings.StartQuantizeMode;
 
         /// <summary>연출 방식(M10.8). 기본값은 Baseline이라 채택 전까지 화면이 그대로다.</summary>
-        private RenderStyle renderStyle = RenderStyle.Baseline;
+        private RenderStyle renderStyle = PixelFilterSettings.StartRenderStyle;
         private Vector4[] paletteColors;
         private int paletteCount;
 

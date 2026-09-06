@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Tessera.Rendering;
 using UnityEngine;
 
 namespace Tessera.Games.AugmentedYacht
@@ -24,7 +25,7 @@ namespace Tessera.Games.AugmentedYacht
         private static readonly Dictionary<(int Preset, int Width, int Height), Sprite> PixelFilteredSprites = new();
 
         /// <summary>월드 픽셀 필터가 사용하는 내부 해상도입니다. 해상도 전환 시 컨트롤러가 갱신합니다.</summary>
-        public static Vector2Int PixelFilterResolution { get; set; } = new(480, 270);
+        public static Vector2Int PixelFilterResolution { get; set; } = PixelFilterSettings.StartResolution;
 
         private static readonly float[][] EdgeProfiles =
         {

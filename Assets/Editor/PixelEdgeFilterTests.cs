@@ -1,8 +1,11 @@
 using NUnit.Framework;
 using Tessera.Rendering;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace Tessera.Editor.Tests
 {
@@ -17,6 +20,7 @@ namespace Tessera.Editor.Tests
     public sealed class PixelEdgeFilterTests
     {
         private const string PcRendererPath = "Assets/Settings/PC_Renderer.asset";
+        private const string ScenePath = "Assets/Scenes/Augmented Dice.unity";
 
         [Test]
         public void 엣지_셰이더는_필요한_프로퍼티를_모두_가진다()
@@ -92,6 +96,47 @@ namespace Tessera.Editor.Tests
             {
                 Object.DestroyImmediate(material);
             }
+        }
+
+        [Test]
+        public void 씬에_구워진_업스케일_재질이_게임_시작값과_같다()
+        {
+            // 플레이 전 에디터 프리뷰와 플레이 직후 화면이 달라지지 않게 고정한다.
+            // 시작 해상도를 640x360에서 480x270으로 바꿨을 때 실제로 어긋났던 자리다.
+            Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
+            try
+            {
+                Material upscale = FindUpscaleMaterial(scene);
+                Assert.That(upscale, Is.Not.Null, $"{ScenePath} 에서 업스케일 재질을 찾지 못했습니다.");
+
+                Vector2Int expected = PixelFilterSettings.StartResolution;
+                Vector4 actual = upscale.GetVector("_VirtualResolution");
+
+                Assert.That(actual.x, Is.EqualTo((float)expected.x),
+                    "씬 재질의 격자가 게임 시작 해상도와 다릅니다. Tools/Tessera/Sync Pixel Filter Preview 를 실행하십시오.");
+                Assert.That(actual.y, Is.EqualTo((float)expected.y));
+                Assert.That(upscale.GetFloat("_Quantize"), Is.EqualTo((float)PixelFilterSettings.StartQuantizeMode));
+            }
+            finally
+            {
+                EditorSceneManager.CloseScene(scene, removeScene: true);
+            }
+        }
+
+        private static Material FindUpscaleMaterial(Scene scene)
+        {
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                foreach (RawImage image in root.GetComponentsInChildren<RawImage>(true))
+                {
+                    Material material = image.material;
+                    if (material != null && material.shader != null && material.shader.name == "DicePoC/PixelUpscale")
+                    {
+                        return material;
+                    }
+                }
+            }
+            return null;
         }
 
         [Test]
