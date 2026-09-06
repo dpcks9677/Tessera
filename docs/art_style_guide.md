@@ -40,7 +40,7 @@ graph LR
   - 러너 중앙 및 테두리에 **골든 옐로우 / 앤틱 머스터드 골드 (`#e5a93c` ~ `#f2b749`)** 톤의 **기하학적 켈틱 놋워크(Celtic Knotwork) / 노르딕 패턴** 적용.
   - `Smoothness: 0.70 ~ 0.80`, `Metallic: 0.85 ~ 0.90` (은은하게 빛을 반사하는 메탈릭 골드).
 
-> **Cel 모드 단서 (M10.8).** 위 `Smoothness`/`Metallic` 값은 `RenderStyle.Baseline` 기준이다.
+> **Cel 모드 단서 (M16).** 위 `Smoothness`/`Metallic` 값은 `RenderStyle.Baseline` 기준이다.
 > `RenderStyle.Cel`에서는 스페큘러와 환경 반사를 쓰지 않으므로 두 값이 화면에 나타나지 않는다.
 > Cel에서 재질을 구분하는 것은 §4 명도 램프의 **밴드 수**다. 확산 재질은 3단, 금속으로 읽히길
 > 원하는 재질(금색 트림 등)은 4단을 준다. 밴드 수는 별도 필드가 아니라 기존 `Metallic > 0.5`에서

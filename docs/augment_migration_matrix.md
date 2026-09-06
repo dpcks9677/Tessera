@@ -425,9 +425,9 @@ PC 버전의 변형 증강은 기존 기획대로 카드를 획득한 플레이�
 | 영역 | 파일 | 처리 |
 |---|---|---|
 | 레이팅/MMR/매치메이킹 | `ratingEngine.js`, `matchmakingRules.js`, 관련 서버 코드 | 핵심 게임 이식에서 제외 |
-| 프로필 통계/마스터리/업적 | `profileStats.js`, `augmentProgress.js`, `augmentAchievements.js` | 선택·발동 규칙과 분리, M11 이후 별도 검토 |
+| 프로필 통계/마스터리/업적 | `profileStats.js`, `augmentProgress.js`, `augmentAchievements.js` | 선택·발동 규칙과 분리, M17 이후 별도 검토 |
 | Firebase 인증/저장 | `authEngine.js`, `firebase*`, `matchPersistence.js` | 로컬 권위 코어에서 제외 |
-| PartyKit 서버 전송 | `server/DiceServer.js`, `server.js`, `networkEngine.js` | M9/M10의 어댑터 참고로만 사용 |
+| PartyKit 서버 전송 | `server/DiceServer.js`, `server.js`, `networkEngine.js` | `M18`/`M19`(문서 작성 당시 `M9`/`M10`)의 어댑터 참고로만 사용 |
 | UI/DOM/VFX | `UIManager.js`, `main.js`, CSS, 렌더러 | 규칙 이식 대상 아님, M7 표현 설계 참고 |
 
 ## 6. 대표 수직 구현 5종

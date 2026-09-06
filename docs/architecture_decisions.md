@@ -109,6 +109,6 @@ public static class MatchRuntime
 
 ### 후속 작업
 
-- `IReadOnlyGameState` / `IGameCommandSink` 인터페이스 분리 — `M10` 프레젠테이션 분해 시 재검토
-- `AugmentedYachtController.cs:99`의 `augmentViewCatalog` 중복 인스턴스 제거 — 카드 표시용 정의 조회만을 위해 `YachtAugmentRuntime`을 두 번째로 생성하고 있다. 정적 정의 조회로 대체한다 (`M10-T7`)
-- `AugmentStateStore` 직렬화 지원 — `{id, typeTag, payload}` 평탄화 (`M12-T8`)
+- `IReadOnlyGameState` / `IGameCommandSink` 인터페이스 분리 — `M11` 프레젠테이션 분해 시 재검토
+- `AugmentedYachtController.cs:99`의 `augmentViewCatalog` 중복 인스턴스 제거 — 카드 표시용 정의 조회만을 위해 `YachtAugmentRuntime`을 두 번째로 생성하고 있다. 정적 정의 조회로 대체한다 (`M11-T7`)
+- `AugmentStateStore` 직렬화 지원 — `{id, typeTag, payload}` 평탄화 (`M18-T8`)
