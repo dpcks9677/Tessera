@@ -169,7 +169,8 @@ namespace Tessera.Dice
                 $"Dice_Body_Cel_{type}",
                 def.BodyColor,
                 BandsFor(def),
-                snapNormal: true);
+                snapNormal: true,
+                receiveShadows: false);
 
             // 셀 셰이더를 찾지 못하면 기존 재질로 떨어진다. 화면이 비는 것보다 낫다.
             if (celMaterial == null) return GetBodyMaterial(type);

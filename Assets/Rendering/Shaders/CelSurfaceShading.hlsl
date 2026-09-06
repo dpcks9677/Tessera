@@ -17,6 +17,7 @@ CBUFFER_START(UnityPerMaterial)
     float  _RimThreshold;
     float  _RimStrength;
     float  _AmbientStrength;
+    float  _ReceiveShadows;
 CBUFFER_END
 
 // 오브젝트 공간 노멀을 가장 큰 성분의 축으로 스냅한다. 주사위처럼 면이 축에 정렬된 메시에서
@@ -60,7 +61,12 @@ float3 CelShade(float3 albedo, float3 normalWS, float3 viewDirWS, float3 lightDi
     float wrapped = saturate(dot(normalWS, lightDirWS) * 0.5 + 0.5);
 
     // 그림자도 계단이어야 한다. 반그림자가 남으면 밴드 경계가 흐려져 3D로 읽힌다.
-    float hardShadow = step(0.5, shadowAttenuation);
+    //
+    // 다만 그림자를 받지 않아야 하는 재질이 있다. Renderer.receiveShadows는 URP Lit 전용이라
+    // 커스텀 라이팅인 이 셰이더에는 적용되지 않는다. 주사위가 그랬다. 자기 ShadowProxy가 만든
+    // 그림자를 자기 얼굴에 받고, 하드 step이 그 경계를 면 한가운데에 칼같이 그어 평면을 쪼갰다.
+    // 측정에서 주사위 면 안쪽 최대 평면 영역이 Baseline 90%에서 Cel 50%로 떨어진 원인이다.
+    float hardShadow = _ReceiveShadows < 0.5 ? 1.0 : step(0.5, shadowAttenuation);
     wrapped *= lerp(0.55, 1.0, hardShadow);
 
     int bands = (int)clamp(round(_Bands), 2.0, 4.0);

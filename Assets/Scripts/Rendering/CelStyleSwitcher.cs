@@ -112,6 +112,7 @@ namespace Tessera.Rendering
                 baseColor,
                 bands,
                 snapNormal: false,
+                receiveShadows: original.HasProperty("_ReceiveShadows") ? original.GetFloat("_ReceiveShadows") > 0.5f : true,
                 baseMap);
 
             if (celMaterial == null) return null;

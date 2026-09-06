@@ -32,8 +32,11 @@ namespace Tessera.Rendering
         /// <summary>
         /// 셀 재질을 만든다. <paramref name="snapNormal"/>은 면이 오브젝트 축에 정렬된 메시에만 켠다.
         /// 주사위가 여기 해당하고, 곡면이 있는 소품은 꺼야 실루엣이 뭉개지지 않는다.
+        ///
+        /// <paramref name="receiveShadows"/>는 <c>Renderer.receiveShadows</c>를 대신한다. 그 플래그는
+        /// URP Lit 전용이라 커스텀 라이팅인 셀 셰이더에는 통하지 않는다.
         /// </summary>
-        public static Material Create(string name, Color baseColor, int bands, bool snapNormal, Texture baseMap = null)
+        public static Material Create(string name, Color baseColor, int bands, bool snapNormal, bool receiveShadows = true, Texture baseMap = null)
         {
             if (!IsAvailable) return null;
 
@@ -47,6 +50,7 @@ namespace Tessera.Rendering
             material.SetFloat("_Bands", Mathf.Clamp(bands, 2, 4));
             material.SetVector("_RampValues", TesseraPixelPalette.RampVector);
             material.SetFloat("_NormalSnap", snapNormal ? 1f : 0f);
+            material.SetFloat("_ReceiveShadows", receiveShadows ? 1f : 0f);
             if (baseMap != null) material.SetTexture("_BaseMap", baseMap);
             material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
             return material;

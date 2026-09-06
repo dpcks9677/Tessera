@@ -32,6 +32,10 @@ Shader "Tessera/CelSurface"
 
         // 최저 밴드에 더하는 상수 앰비언트 비율. 씬의 Flat 앰비언트를 그대로 쓴다.
         _AmbientStrength ("Ambient Strength", Range(0, 2)) = 1.0
+
+        // 그림자를 받을지. Renderer.receiveShadows는 URP Lit 전용이라 이 셰이더에는 통하지 않으므로
+        // 재질 쪽에서 정한다. 주사위는 꺼야 한다. 자기 ShadowProxy 그림자를 자기 얼굴에 받는다.
+        [Toggle] _ReceiveShadows ("Receive Shadows", Float) = 1
     }
 
     SubShader
@@ -89,7 +93,11 @@ Shader "Tessera/CelSurface"
             half4 Frag(Varyings input) : SV_Target
             {
                 float3 normalWS = CelResolveNormal(input.normalOS, input.normalWS);
-                float3 viewDirWS = normalize(GetCameraPositionWS() - input.positionWS);
+                // 직교 카메라에서는 시선 벡터가 화면 전체에서 같다. 원근 방식으로 구하면 한 면
+                // 안에서도 값이 변해, 하드 림의 step 경계가 면 한가운데를 가른다. 실제로 주사위 면
+                // 안쪽 최대 평면 영역이 정확히 50%로 반토막 났다.
+                // URP 헬퍼가 투영 방식을 보고 알맞은 벡터를 준다.
+                float3 viewDirWS = GetWorldSpaceNormalizeViewDir(input.positionWS);
 
                 float4 shadowCoord = TransformWorldToShadowCoord(input.positionWS);
                 Light mainLight = GetMainLight(shadowCoord);

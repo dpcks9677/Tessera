@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using Tessera.Games.AugmentedYacht;
 using Tessera.Games.Yacht;
@@ -54,6 +55,22 @@ public static class RunPixelReadabilityValidation
     private static Color32[] baselineDiceCrop;
     private static Color32[] celDiceCrop;
     private static RectInt diceCropRect;
+
+    // 주사위 몸체 안쪽만 잘라 낸 지표. 바운딩 박스 크롭에는 주사위 사이 간격과 위아래 테이블이
+    // 섞여 들어와, 셀 셰이딩이 조명 응답을 실제로 계단화했는지를 가리지 못한다. 이쪽이 그 질문에
+    // 직접 답한다. 밴드 수는 주사위 다섯 개의 안쪽 패치를 이어 붙여 세고, 평면 영역 비율은
+    // 연결성이 필요하므로 첫 주사위 패치 하나에서만 잰다.
+    private const float DieInteriorFactor = 0.35f;
+
+    private static Color32[] baselineDieInteriors;
+    private static Color32[] celDieInteriors;
+    private static Color32[] baselineFirstDiePatch;
+    private static Color32[] celFirstDiePatch;
+
+    // 두 캡처가 사각형 하나를 공유하면 안 된다. 주사위 자세가 달라 패치 크기가 1셀만 어긋나도
+    // 나중 캡처가 앞 캡처의 사각형을 덮어써, 면적 계산이 조용히 0을 돌려준다. 실제로 그랬다.
+    private static RectInt baselineFirstDieRect;
+    private static RectInt celFirstDieRect;
     private static int celConvertedRenderers;
 
     static RunPixelReadabilityValidation()
@@ -94,6 +111,12 @@ public static class RunPixelReadabilityValidation
             baselineDiceCrop = null;
             celDiceCrop = null;
             diceCropRect = default;
+            baselineDieInteriors = null;
+            celDieInteriors = null;
+            baselineFirstDiePatch = null;
+            celFirstDiePatch = null;
+            baselineFirstDieRect = default;
+            celFirstDieRect = default;
             celConvertedRenderers = 0;
             lastCaptureAt = 0.0;
             captureWarmupLeft = 0;
@@ -135,6 +158,7 @@ public static class RunPixelReadabilityValidation
                 {
                     baselineStill = Capture(rig);
                     baselineDiceCrop = CaptureDiceCrop(rig);
+                    CaptureDieInteriors(rig, out baselineDieInteriors, out baselineFirstDiePatch, out baselineFirstDieRect);
                     controller.ResetAndRollDice();
                     rollingPrevious = null;
                     captureWarmupLeft = CaptureWarmupFrames;
@@ -191,6 +215,7 @@ public static class RunPixelReadabilityValidation
                 {
                     celStill = Capture(rig);
                     celDiceCrop = CaptureDiceCrop(rig);
+                    CaptureDieInteriors(rig, out celDieInteriors, out celFirstDiePatch, out celFirstDieRect);
                     celConvertedRenderers = controller.CelConvertedRendererCount;
                     Report(rig);
                 }
@@ -279,6 +304,85 @@ public static class RunPixelReadabilityValidation
             for (int x = 0; x < diceCropRect.width; x++)
             {
                 crop[targetRow + x] = frame[sourceRow + diceCropRect.x + x];
+            }
+        }
+        return crop;
+    }
+
+    /// <summary>
+    /// 주사위 몸체 안쪽 정사각 패치를 주사위마다 잘라 낸다.
+    ///
+    /// <paramref name="allInteriors"/>는 다섯 개 패치를 이어 붙인 것으로 밴드 수를 세는 데 쓴다.
+    /// 밴드 수는 순서와 무관해서 이어 붙여도 뜻이 변하지 않는다.
+    /// <paramref name="firstPatch"/>는 첫 주사위 패치 하나로, 연결성이 필요한 평면 영역 비율에 쓴다.
+    /// </summary>
+    private static void CaptureDieInteriors(YachtCameraRig rig, out Color32[] allInteriors, out Color32[] firstPatch, out RectInt firstRect)
+    {
+        allInteriors = null;
+        firstPatch = null;
+        firstRect = default;
+
+        Color32[] frame = Capture(rig);
+        Camera camera = rig.WorldCamera;
+        DiceVisualPool pool = Object.FindFirstObjectByType<DiceVisualPool>();
+        Transform diceRoot = pool != null ? pool.DiceRoot : null;
+        if (frame == null || camera == null || diceRoot == null) return;
+
+        List<Color32> combined = new();
+
+        foreach (Transform die in diceRoot)
+        {
+            if (!die.gameObject.activeInHierarchy) continue;
+            if (!TryBuildInteriorRect(camera, die, out RectInt rect)) continue;
+
+            Color32[] patch = CropFrame(frame, rect);
+            combined.AddRange(patch);
+
+            if (firstPatch == null)
+            {
+                firstPatch = patch;
+                firstRect = rect;
+            }
+        }
+
+        if (combined.Count > 0) allInteriors = combined.ToArray();
+    }
+
+    /// <summary>
+    /// 주사위 한 개의 실루엣 안쪽에 확실히 들어가는 사각형. 어떤 자세에서도 배경이 섞이지 않도록
+    /// 반지름의 일부만 쓴다.
+    /// </summary>
+    private static bool TryBuildInteriorRect(Camera camera, Transform die, out RectInt rect)
+    {
+        rect = default;
+
+        float radius = die.lossyScale.x * DieInteriorFactor;
+        Vector3 center = die.position;
+
+        Vector3 minViewport = camera.WorldToViewportPoint(center - camera.transform.right * radius - camera.transform.up * radius);
+        Vector3 maxViewport = camera.WorldToViewportPoint(center + camera.transform.right * radius + camera.transform.up * radius);
+
+        int x0 = Mathf.Clamp(Mathf.FloorToInt(Mathf.Min(minViewport.x, maxViewport.x) * gridSize.x), 0, gridSize.x - 1);
+        int x1 = Mathf.Clamp(Mathf.CeilToInt(Mathf.Max(minViewport.x, maxViewport.x) * gridSize.x), 0, gridSize.x - 1);
+        int y0 = Mathf.Clamp(Mathf.FloorToInt(Mathf.Min(minViewport.y, maxViewport.y) * gridSize.y), 0, gridSize.y - 1);
+        int y1 = Mathf.Clamp(Mathf.CeilToInt(Mathf.Max(minViewport.y, maxViewport.y) * gridSize.y), 0, gridSize.y - 1);
+
+        if (x1 <= x0 || y1 <= y0) return false;
+
+        rect = new RectInt(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+        return true;
+    }
+
+    private static Color32[] CropFrame(Color32[] frame, RectInt rect)
+    {
+        Color32[] crop = new Color32[rect.width * rect.height];
+        for (int y = 0; y < rect.height; y++)
+        {
+            int sourceRow = (rect.y + y) * gridSize.x;
+            int targetRow = y * rect.width;
+            for (int x = 0; x < rect.width; x++)
+            {
+                crop[targetRow + x] = frame[sourceRow + rect.x + x];
             }
         }
         return crop;
@@ -405,10 +509,12 @@ public static class RunPixelReadabilityValidation
         report.AppendLine("--- Pixel Readability Validation ---");
         report.AppendLine($"Grid: {gridSize.x}x{gridSize.y}, Quantize: {rig.QuantizeModeName}");
         report.AppendLine($"Cel converted renderers: {celConvertedRenderers}");
-        report.AppendLine($"Dice crop: {diceCropRect.width}x{diceCropRect.height} cells at ({diceCropRect.x}, {diceCropRect.y})");
+        report.AppendLine($"Dice crop: {diceCropRect.width}x{diceCropRect.height} cells, die interior patch: baseline {baselineFirstDieRect.width}x{baselineFirstDieRect.height}, cel {celFirstDieRect.width}x{celFirstDieRect.height}");
         report.AppendLine("| Metric | Baseline | Cel |");
         report.AppendLine("|---|---|---|");
-        report.AppendLine($"| Dice bands (primary) | {Bands(baselineDiceCrop)} | {Bands(celDiceCrop)} |");
+        report.AppendLine($"| Die interior bands (primary) | {Bands(baselineDieInteriors)} | {Bands(celDieInteriors)} |");
+        report.AppendLine($"| Die interior largest flat region | {PatchRegion(baselineFirstDiePatch, baselineFirstDieRect):P2} | {PatchRegion(celFirstDiePatch, celFirstDieRect):P2} |");
+        report.AppendLine($"| Dice bounding-box bands | {Bands(baselineDiceCrop)} | {Bands(celDiceCrop)} |");
         report.AppendLine($"| Dice largest flat region | {CropRegion(baselineDiceCrop):P2} | {CropRegion(celDiceCrop):P2} |");
         report.AppendLine($"| Full frame bands | {Bands(baselineStill)} | {Bands(celStill)} |");
         report.AppendLine($"| Full frame largest flat region | {Region(baselineStill):P2} | {Region(celStill):P2} |");
@@ -426,6 +532,12 @@ public static class RunPixelReadabilityValidation
     private static float Region(Color32[] pixels)
     {
         return pixels == null ? 0f : PixelReadabilityMetrics.LargestUniformRegionRatio(pixels, gridSize.x, gridSize.y);
+    }
+
+    private static float PatchRegion(Color32[] pixels, RectInt rect)
+    {
+        if (pixels == null || rect.width <= 0) return 0f;
+        return PixelReadabilityMetrics.LargestUniformRegionRatio(pixels, rect.width, rect.height);
     }
 
     private static float CropRegion(Color32[] pixels)
