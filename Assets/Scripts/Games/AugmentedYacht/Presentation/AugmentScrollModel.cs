@@ -118,14 +118,12 @@ namespace Tessera.Games.AugmentedYacht
             Material underside = CreateMaterial("Runtime Scroll Paper Underside", new Color(.97f, .96f, .93f, 1f), .08f, true);
             Material leather = CreateMaterial("Runtime Scroll Leather", new Color(.20f, .09f, .045f, 1f), .18f, false);
             Material wax = CreateMaterial("Runtime Scroll Wax", new Color(.54f, .10f, .09f, 1f), .34f, false);
-            Material cyan = CreateGlowMaterial("Runtime Scroll Cyan Border", new Color(.37f, .86f, 1f, .78f));
-            Material[] materials = { front, underside, leather, wax, cyan };
+            Material[] materials = { front, underside, leather, wax };
             AugmentScrollModel model = Build(parent, preset, size.x, size.y, materials, true);
             model.RegisterRuntimeAsset(front);
             model.RegisterRuntimeAsset(underside);
             model.RegisterRuntimeAsset(leather);
             model.RegisterRuntimeAsset(wax);
-            model.RegisterRuntimeAsset(cyan);
             return model;
         }
 
@@ -147,7 +145,6 @@ namespace Tessera.Games.AugmentedYacht
             Material underside = GetMaterial(materials, 1) ?? front;
             Material leather = GetMaterial(materials, 2) ?? underside;
             Material wax = GetMaterial(materials, 3) ?? leather;
-            Material cyan = GetMaterial(materials, 4) ?? front;
 
             Mesh body = CreatePaperBodyMesh(preset, width, height);
             CreateMeshPart(root.transform, "Rectangular Paper Body", body, new[] { front, underside });
@@ -166,8 +163,6 @@ namespace Tessera.Games.AugmentedYacht
             Mesh mark = CreateCubeSealMarkMesh(width, height);
             Transform markTransform = CreateMeshPart(root.transform, "Embossed Cube Seal Mark", mark, new[] { leather }).transform;
             markTransform.localPosition = rollCenter;
-            Mesh border = CreateInnerBorderMesh(width, height);
-            CreateMeshPart(root.transform, "Cyan Inner Border", border, new[] { cyan });
 
             Transform[] anchors = CreateOverlayAnchors(root.transform, width, height);
             model.Configure(anchors, sealRenderer, markTransform, ownsAssets);
@@ -178,7 +173,6 @@ namespace Tessera.Games.AugmentedYacht
                 model.RegisterRuntimeAsset(band);
                 model.RegisterRuntimeAsset(seal);
                 model.RegisterRuntimeAsset(mark);
-                model.RegisterRuntimeAsset(border);
             }
             return model;
         }
@@ -386,24 +380,6 @@ namespace Tessera.Games.AugmentedYacht
             return BuildSingleSubmesh("Augment_Embossed_Cube_Mark", vertices, uvs, triangles);
         }
 
-        public static Mesh CreateInnerBorderMesh(float width, float height)
-        {
-            float xMin = width * -.255f;
-            float xMax = width * .455f;
-            float zMin = height * -.420f;
-            float zMax = height * .420f;
-            float thickness = Mathf.Max(.012f, height * .008f);
-            float y = height * .030f;
-            var vertices = new List<Vector3>(16);
-            var uvs = new List<Vector2>(16);
-            var triangles = new List<int>(24);
-            AddFlatStrip(vertices, uvs, triangles, new Vector3(xMin, y, zMin), new Vector3(xMax, y, zMin), thickness);
-            AddFlatStrip(vertices, uvs, triangles, new Vector3(xMin, y, zMax), new Vector3(xMax, y, zMax), thickness);
-            AddFlatStrip(vertices, uvs, triangles, new Vector3(xMin, y, zMin), new Vector3(xMin, y, zMax), thickness);
-            AddFlatStrip(vertices, uvs, triangles, new Vector3(xMax, y, zMin), new Vector3(xMax, y, zMax), thickness);
-            return BuildSingleSubmesh("Augment_Cyan_Inner_Border", vertices, uvs, triangles);
-        }
-
         private static Transform[] CreateOverlayAnchors(Transform parent, float width, float height)
         {
             Rect safe = AugmentParchmentVisuals.ContentSafeRect;
@@ -467,15 +443,6 @@ namespace Tessera.Games.AugmentedYacht
                     material.mainTextureScale = new Vector2(1.10f, .92f);
                 }
             }
-            return material;
-        }
-
-        private static Material CreateGlowMaterial(string name, Color color)
-        {
-            Shader shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
-            Material material = new(shader) { name = name, color = color };
-            if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
-            if (material.HasProperty("_Color")) material.SetColor("_Color", color);
             return material;
         }
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -59,6 +59,24 @@ namespace Tessera.Games.AugmentedYacht
             diceCount = Mathf.Max(1, count);
         }
 
+        /// <summary>
+        /// 주사위 비주얼이 판 위에 나와 있는지.
+        ///
+        /// 굴리기 전과 점수 기입 후에는 주사위가 판에 남아 증강 카드 같은 다른 표시를 가린다.
+        /// 사라지는 연출이 아직 없으므로 그동안은 통째로 감춘다.
+        /// </summary>
+        public bool Visible { get; private set; }
+
+        public void SetVisible(bool visible)
+        {
+            Visible = visible;
+            for (int i = 0; i < activeDice.Count; i++)
+            {
+                if (activeDice[i] != null) activeDice[i].SetActive(visible);
+            }
+            if (!visible) HoveredIndex = -1;
+        }
+
         /// <summary>주사위 개수만큼 비주얼을 만들어 둔다. 개수가 이미 맞으면 아무것도 하지 않는다.</summary>
         public void EnsureDiceState()
         {
@@ -86,10 +104,11 @@ namespace Tessera.Games.AugmentedYacht
             }
 
             dicePool.ArrangeInitialPositions(activeDice, diceValues);
+            SetVisible(Visible);
         }
 
         /// <summary>새 턴을 위해 킵 슬롯을 비우고 주사위를 처음 자리로 되돌린다.</summary>
-        public void ResetForTurn(YachtDieState[] authorityDice)
+        public void ResetForTurn(IReadOnlyList<IReadOnlyYachtDieState> authorityDice)
         {
             SyncFromAuthority(authorityDice);
             for (int i = 0; i < keptSlotIndices.Count; i++) keptSlotIndices[i] = -1;
@@ -101,10 +120,10 @@ namespace Tessera.Games.AugmentedYacht
         /// 권위 계층이 확정한 눈·킵 여부·주사위 종류를 화면 사본에 복사한다.
         /// 종류가 바뀐 주사위만 다시 칠한다(M7-T5).
         /// </summary>
-        public void SyncFromAuthority(YachtDieState[] authorityDice)
+        public void SyncFromAuthority(IReadOnlyList<IReadOnlyYachtDieState> authorityDice)
         {
             if (authorityDice == null) return;
-            int count = Mathf.Min(authorityDice.Length, Mathf.Min(keptDice.Count, diceValues.Count));
+            int count = Mathf.Min(authorityDice.Count, Mathf.Min(keptDice.Count, diceValues.Count));
             for (int i = 0; i < count; i++)
             {
                 keptDice[i] = authorityDice[i].IsKept;

@@ -1,4 +1,4 @@
-using Tessera.Core;
+﻿using Tessera.Core;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -333,7 +333,8 @@ namespace Tessera.Games.AugmentedYacht
             if (trayMesh == null) return;
             GameObject tray = new("Yacht Tray Visual", typeof(MeshFilter), typeof(MeshRenderer));
             tray.transform.SetParent(layoutRoot, false);
-            tray.transform.localPosition = new Vector3(centerSectionX, trayVisualY, DiceBoardMetrics.TrayCenterZ);
+            tray.transform.localPosition = new Vector3(
+                centerSectionX + DiceBoardMetrics.TrayCenterX, trayVisualY, DiceBoardMetrics.TrayCenterZ);
             tray.transform.localRotation = Quaternion.identity;
             tray.transform.localScale = Vector3.one * trayScale;
 

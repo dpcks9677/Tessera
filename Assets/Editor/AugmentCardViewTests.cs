@@ -34,12 +34,13 @@ public sealed class AugmentCardViewTests
             card.Bind(definition, AugmentCardDisplayState.Available);
 
             Assert.That(card.NameText.text, Is.EqualTo("럭키 세븐"));
-            Assert.That(card.DescriptionText.text, Does.Contain("15점"));
             Assert.That(card.KindText.text, Is.EqualTo("변형"));
             Assert.That(card.TargetText.text, Is.EqualTo("대상 · 에이스"));
             Assert.That(card.StateText.text, Is.EqualTo("[선택 가능]"));
             Assert.That(card.Button.interactable, Is.True);
-            Assert.That(card.DescriptionText.text.Length, Is.LessThanOrEqualTo(20));
+            // 설명은 더 이상 잘리지 않고 워드랩으로 전문이 들어간다.
+            Assert.That(card.DescriptionText.text, Is.EqualTo(definition.Description));
+            Assert.That(card.DescriptionText.horizontalOverflow, Is.EqualTo(HorizontalWrapMode.Wrap));
             RectTransform rect = card.GetComponent<RectTransform>();
             Assert.That(rect.sizeDelta.x / rect.sizeDelta.y, Is.EqualTo(AugmentCardView.TrayCardAspectRatio).Within(0.001f));
         }
@@ -138,12 +139,13 @@ public sealed class AugmentCardViewTests
             Assert.That(view.OverlayRect.parent, Is.EqualTo(view.VisualRoot));
             Assert.That(view.OverlayRect.gameObject.layer, Is.EqualTo(TesseraLayers.CrispUI));
             Assert.That(view.ScrollModel, Is.Not.Null);
-            Assert.That(view.GetComponentsInChildren<MeshFilter>(true), Has.Length.GreaterThanOrEqualTo(6));
+            Assert.That(view.GetComponentsInChildren<MeshFilter>(true), Has.Length.GreaterThanOrEqualTo(5));
             Assert.That(view.ScrollModel.WaxRenderer, Is.Not.Null);
             Assert.That(view.ScrollModel.OverlayAnchors.Count, Is.EqualTo(4));
             Assert.That(view.ScrollModel.HasCenteredSeal, Is.True);
             Assert.That(view.ScrollModel.CubeSealMark, Is.Not.Null);
-            Assert.That(view.transform.Find("Parchment Visual Root/Augment Scroll Preset 0/Cyan Inner Border"), Is.Not.Null);
+            // 하늘색 네온 테두리는 픽셀 필터 격자에 걸려 깜빡였고 양피지 디자인과도 맞지 않아 폐기했다.
+            Assert.That(view.transform.Find("Parchment Visual Root/Augment Scroll Preset 0/Cyan Inner Border"), Is.Null);
             Assert.That(view.Card.Background.color.a, Is.Zero);
             Assert.That(view.Card.CardOutline.enabled, Is.False);
             Assert.That(view.PointerCollider.size.x, Is.EqualTo(slotSize.x).Within(.001f));
@@ -208,7 +210,6 @@ public sealed class AugmentCardViewTests
             Mesh band = AugmentScrollModelFactory.CreateSealBandMesh(preset, 4.3f, 2.3f);
             Mesh seal = AugmentScrollModelFactory.CreateWaxSealMesh(preset, 4.3f, 2.3f);
             Mesh mark = AugmentScrollModelFactory.CreateCubeSealMarkMesh(4.3f, 2.3f);
-            Mesh border = AugmentScrollModelFactory.CreateInnerBorderMesh(4.3f, 2.3f);
             try
             {
                 signatures.Add(AugmentParchmentVisuals.GetOutlineSignature(preset));
@@ -232,7 +233,6 @@ public sealed class AugmentCardViewTests
                 Assert.That(seal.bounds.size.x, Is.GreaterThan(.30f));
                 Assert.That(seal.bounds.size.z, Is.GreaterThan(.30f));
                 Assert.That(mark.vertexCount, Is.EqualTo(36));
-                Assert.That(border.vertexCount, Is.EqualTo(16));
             }
             finally
             {
@@ -241,7 +241,6 @@ public sealed class AugmentCardViewTests
                 Object.DestroyImmediate(band);
                 Object.DestroyImmediate(seal);
                 Object.DestroyImmediate(mark);
-                Object.DestroyImmediate(border);
             }
         }
         Assert.That(signatures.Count, Is.EqualTo(AugmentParchmentVisuals.PresetCount));
@@ -256,9 +255,9 @@ public sealed class AugmentCardViewTests
         GameObject prefab = Resources.Load<GameObject>($"AugmentScrolls/AugmentScrollPreset_{presetId}");
         Assert.That(prefab, Is.Not.Null);
         Assert.That(prefab.GetComponent<AugmentScrollModel>(), Is.Not.Null);
-        Assert.That(prefab.GetComponentsInChildren<MeshFilter>(true), Has.Length.GreaterThanOrEqualTo(6));
+        Assert.That(prefab.GetComponentsInChildren<MeshFilter>(true), Has.Length.GreaterThanOrEqualTo(5));
         Assert.That(prefab.transform.Find("Embossed Cube Seal Mark"), Is.Not.Null);
-        Assert.That(prefab.transform.Find("Cyan Inner Border"), Is.Not.Null);
+        Assert.That(prefab.transform.Find("Cyan Inner Border"), Is.Null);
         Assert.That(prefab.transform.Find("Pixel Readable Roll Layers"), Is.Null);
         Transform roll = prefab.transform.Find("Left Rolled Paper 2.5 Turns");
         Transform band = prefab.transform.Find("Leather Seal Band");
@@ -297,6 +296,43 @@ public sealed class AugmentCardViewTests
             Object.DestroyImmediate(canvasObject);
         }
     }
+
+    [Test]
+    public void CommonCard_헤더_본문_푸터를_위에서아래로쌓는다()
+    {
+        GameObject canvasObject = new("Augment Row Order Test Canvas", typeof(Canvas));
+        try
+        {
+            AugmentCardView card = AugmentCardView.Create(
+                canvasObject.transform, "Row Order Card", Vector2.zero,
+                new Vector2(460f, 460f / AugmentCardView.TrayCardAspectRatio),
+                new Vector2(.5f, .5f), null);
+
+            // 이름 헤더 · 상태 강조선 · 설명 본문 · 종류/대상 푸터가 위에서 아래로 이 순서대로 놓인다.
+            float nameTop = TopMargin(card.NameText.rectTransform);
+            float accentTop = TopMargin(card.StateAccent.rectTransform);
+            float bodyTop = TopMargin(card.DescriptionText.rectTransform);
+            float kindTop = TopMargin(card.KindText.rectTransform);
+
+            Assert.That(nameTop, Is.LessThan(accentTop));
+            Assert.That(accentTop, Is.LessThan(bodyTop));
+            Assert.That(bodyTop, Is.LessThan(kindTop));
+            Assert.That(TopMargin(card.TargetText.rectTransform), Is.EqualTo(kindTop).Within(.001f));
+            // 본문 아래 끝이 푸터보다 위에 있어야 두 행이 겹치지 않는다.
+            Assert.That(card.DescriptionText.rectTransform.offsetMin.y,
+                Is.GreaterThan(card.KindText.rectTransform.rect.height));
+            Assert.That(card.NameText.alignment, Is.EqualTo(TextAnchor.MiddleLeft));
+            Assert.That(card.DescriptionText.alignment, Is.EqualTo(TextAnchor.UpperLeft));
+            Assert.That(card.Icon.transform.IsChildOf(card.ContentRoot), Is.True);
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    /// <summary>부모 사각형 위쪽 변에서 잰 거리. 값이 작을수록 카드 위쪽 행이다.</summary>
+    private static float TopMargin(RectTransform rect) => -rect.offsetMax.y;
 
     [Test]
     public void CardTray_세슬롯앵커와카드비율을제공한다()

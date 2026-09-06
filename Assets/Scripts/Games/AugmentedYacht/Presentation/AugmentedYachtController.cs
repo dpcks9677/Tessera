@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using Tessera.Core;
 using Tessera.Dice;
@@ -237,7 +237,6 @@ namespace Tessera.Games.AugmentedYacht
             EnsureCameraRig();
             if (hud != null)
             {
-                AugmentParchmentVisuals.PixelFilterResolution = cameraRig.InternalResolution;
                 augmentTray.BuildUi(hud.Canvas);
             }
 
@@ -349,10 +348,12 @@ namespace Tessera.Games.AugmentedYacht
 
             inputRouter = GetComponent<YachtInputRouter>() ?? gameObject.AddComponent<YachtInputRouter>();
             inputRouter.WorldCamera = sceneRefs.WorldCamera;
+            // 이 게이트는 주사위뿐 아니라 굴림 오브젝트 클릭과 장식물 피드백까지 함께 막는다.
+            // 숨긴 주사위는 GameObject가 꺼져 콜라이더도 없으므로 여기서 다시 거를 필요가 없다.
             inputRouter.DicePointerEnabled = () => diceRound != null && diceRound.VisualCount > 0;
+            // 선택 카드도 월드의 3D 두루마리라 드래프트 중에도 포인터가 살아 있어야 한다.
             inputRouter.AugmentPointerEnabled = () => turnFlow?.Session != null
-                && turnFlow.Session.Mode == YachtGameMode.Augmented
-                && !turnFlow.Session.IsDrafting;
+                && turnFlow.Session.Mode == YachtGameMode.Augmented;
 
             inputRouter.RollRequested += RollDice;
             inputRouter.ResolutionPresetRequested += OnResolutionPresetRequested;
@@ -451,13 +452,25 @@ namespace Tessera.Games.AugmentedYacht
             // 일반·혼합·판 뒤집기 프리셋의 인덱스를 먼저 읽고 실제 파일은 최초 사용 시 적재한다.
             presetCatalog = DicePresetCatalog.LoadAll();
             if (!presetCatalog.IsLoaded) presetCatalog = DicePresetCatalog.LoadNormalFiveDice();
-            Debug.Log($"Preset Catalog loaded: {presetCatalog.NormalFiveDiceClipCount} clips available.");
+
+            // 기본 5개 프리셋 파일만 미리 적재한다. 파일 하나가 약 230KB이고 파싱이 동기라,
+            // 첫 굴림에서 읽으면 그 프레임이 통째로 멈춘다. 나머지 파일은 증강 구성에 따라
+            // 쓰일지 알 수 없으므로 최초 사용 시점에 맡긴다.
+            //
+            // 이 적재는 아래 로그가 NormalFiveDiceClipCount를 읽는 부수 효과로도 일어난다.
+            // 로그를 지우면 조용히 사라지는 의존이므로 별도 문장으로 드러내 둔다.
+            int warmedClipCount = presetCatalog.NormalFiveDiceClipCount;
+            Debug.Log($"Preset Catalog loaded: {warmedClipCount} clips available.");
         }
 
         private static void WarmUpRollAssets()
         {
-            // 저장된 씬의 기존 롤 오브젝트는 지오메트리를 재생성하지 않아 별자리 캐시가 비어 있을 수 있다.
-            // 입력 처리 전에 베이킹을 끝내, 첫 RollDice 호출이 프레임을 점유하지 않도록 한다.
+            // 별자리 텍스처 연출은 폐기됐으므로 게임에서는 적재하지 않는다(ZodiacConstellationData.EnabledInGame).
+            // 다시 켜는 경우에만 미리 굽는다. 저장된 씬의 기존 롤 오브젝트는 지오메트리를 재생성하지 않아
+            // 별자리 캐시가 비어 있을 수 있고, 입력 처리 전에 베이킹을 끝내야
+            // 첫 RollDice 호출이 프레임을 점유하지 않는다.
+            if (!ZodiacConstellationData.EnabledInGame) return;
+
             ZodiacConstellationData.GetAllZodiacTextures();
         }
 
@@ -537,8 +550,6 @@ namespace Tessera.Games.AugmentedYacht
 
         private void SetResolution(Vector2Int resolution)
         {
-            AugmentParchmentVisuals.PixelFilterResolution = resolution;
-            augmentTray?.RefreshDraftCardParchment();
             EnsureCameraRig();
             cameraRig.SetInternalResolution(resolution);
         }

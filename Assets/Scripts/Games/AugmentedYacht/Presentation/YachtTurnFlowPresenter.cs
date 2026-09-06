@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using Tessera.Games.Yacht;
@@ -150,6 +151,7 @@ namespace Tessera.Games.AugmentedYacht
             augmentTray?.EnsureOwnedCardViews();
             Phase = PresentationPhase.Idle;
             ResetDiceForTurn();
+            dice?.SetVisible(false);
             SetTimerTextIdle();
             SetRollInteraction(false);
             UpdateStatusText("게임 시작 버튼을 눌러 주세요.");
@@ -183,6 +185,7 @@ namespace Tessera.Games.AugmentedYacht
             gameResultOverlay?.SetActive(false);
             runicSlateMatrix?.SetRoundProgress(gameSession.CurrentRound);
             ResetDiceForTurn();
+            dice?.SetVisible(false);
             string augmentMessage = GetAugmentEventMessage(gameSession.LastCommandResult);
             RefreshAugmentPresentation(augmentMessage);
             if (gameSession.IsDrafting)
@@ -208,14 +211,16 @@ namespace Tessera.Games.AugmentedYacht
                 PresetClipCount = Mathf.Max(1, presetClipCount),
                 TurnDurationSeconds = TurnDurationSeconds
             };
-            return new YachtGameSession(scoreSheet.Player1, scoreSheet.Player2, options);
+            var session = new YachtGameSession(options);
+            scoreSheet?.BindPlayers(session.State.Players);
+            return session;
         }
 
         public void SelectDraftOption(int optionIndex)
         {
             if (gameSession == null || !gameSession.IsDrafting) return;
-            string[] options = gameSession.State.Draft.Options;
-            if (optionIndex < 0 || optionIndex >= options.Length) return;
+            IReadOnlyList<string> options = gameSession.State.Draft.Options;
+            if (optionIndex < 0 || optionIndex >= options.Count) return;
 
             if (!gameSession.TrySelectAugment(options[optionIndex], out YachtGameCommandResult result))
             {
@@ -299,6 +304,7 @@ namespace Tessera.Games.AugmentedYacht
                     return;
                 }
                 ResetDiceForTurn();
+                dice?.SetVisible(false);
                 rerollCounterBar?.SetRollsRemaining(YachtGameSession.MaxRolls, YachtGameSession.MaxRolls);
                 runicSlateMatrix?.SetRoundProgress(gameSession.CurrentRound);
                 scoreSheet?.SetActivePlayer(gameSession.CurrentPlayerIndex, false);
@@ -357,6 +363,8 @@ namespace Tessera.Games.AugmentedYacht
             turnDelay?.Stop(false);
             scoreSheet.ClearCandidateScores();
             SetRollInteraction(false);
+            // 사라지는 연출이 아직 없으므로 기입과 동시에 주사위를 치운다.
+            dice?.SetVisible(false);
 
             if (result.GameEnded)
             {
@@ -384,14 +392,15 @@ namespace Tessera.Games.AugmentedYacht
         {
             Phase = PresentationPhase.Idle;
             turnDelay?.Stop();
+            dice?.SetVisible(false);
             rerollCounterBar?.SetRollsRemaining(0, YachtGameSession.MaxRolls);
             scoreSheet?.SetActivePlayer(-1, false);
             turnBalanceIndicator?.SetActiveSide(TurnSide.None, true);
             SetRollInteraction(false);
             SetTimerTextIdle();
 
-            int p1 = gameSession.GetPlayer(0).totalScore;
-            int p2 = gameSession.GetPlayer(1).totalScore;
+            int p1 = gameSession.GetPlayer(0).TotalScore;
+            int p2 = gameSession.GetPlayer(1).TotalScore;
             string winner = p1 == p2 ? "무승부" : (p1 > p2 ? "P1 승리" : "P2 승리");
             if (resultText != null) resultText.text = $"{winner}\nP1  {p1}점   ·   P2  {p2}점";
             gameResultOverlay?.SetActive(true);
@@ -486,7 +495,7 @@ namespace Tessera.Games.AugmentedYacht
 
             if (pendingRollResult.RollPresentation == null)
             {
-                if (dice.VisualCount != gameSession.State.Dice.Length)
+                if (dice.VisualCount != gameSession.State.Dice.Count)
                 {
                     ResetDiceForTurn();
                     Phase = PresentationPhase.AwaitingRoll;
@@ -495,6 +504,7 @@ namespace Tessera.Games.AugmentedYacht
                 {
                     dice.SyncFromAuthority(gameSession.State.Dice);
                 }
+                dice.SetVisible(true);
                 scoreSheet?.ClearCandidateScores();
                 if (gameSession.Phase == YachtGamePhase.ScoreSelection)
                     scoreSheet?.ShowCandidateScores(gameSession.CurrentPlayerIndex, gameSession.CurrentCandidates);
@@ -531,6 +541,7 @@ namespace Tessera.Games.AugmentedYacht
                 yield break;
             }
 
+            dice.SetVisible(true);
             UpdateStatusText($"주사위 굴리는 중... (Preset #{presentation.PresetIndex + 1})");
             yield return dice.PlayRoll(presentation);
 

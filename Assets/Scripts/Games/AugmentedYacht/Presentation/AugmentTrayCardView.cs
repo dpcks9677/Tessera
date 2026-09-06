@@ -13,6 +13,8 @@ namespace Tessera.Games.AugmentedYacht
     /// </summary>
     public sealed class AugmentTrayCardView : MonoBehaviour
     {
+        public const string OwnedCardNamePrefix = "Owned Augment Card";
+
         private const int DecorationLayer = 11;
         private const float CardPixelWidth = 460f;
         private const float RestingHeight = 0.08f;
@@ -26,9 +28,20 @@ namespace Tessera.Games.AugmentedYacht
         /// <summary>양피지 표면과 캔버스 사이 z-fighting을 피하기 위한 최소 간격.</summary>
         private const float OverlayLift = 0.004f;
 
+        /// <summary>
+        /// 깊이 마스크가 놓이는 높이. 카드 글자 캔버스보다 낮아야 자기 글자를 잘라내지 않는다.
+        /// </summary>
+        private const float DepthMaskLift = 0.002f;
+
+        private const string DepthMaskShaderName = "DicePoC/CrispUiDepthMask";
+
+        /// <summary>모든 카드가 함께 쓰는 깊이 전용 재질. 색을 쓰지 않으므로 카드마다 나눌 이유가 없다.</summary>
+        private static Material sharedDepthMaskMaterial;
+
         private Transform visualRoot;
         private AugmentScrollModel scrollModel;
         private RectTransform overlayRect;
+        private Transform depthMask;
         private Canvas overlayCanvas;
         private AugmentCardView card;
         private BoxCollider pointerCollider;
@@ -48,6 +61,7 @@ namespace Tessera.Games.AugmentedYacht
         public bool IsSelected => selected;
         public bool IsHovered { get; private set; }
         public RectTransform OverlayRect => overlayRect;
+        public Transform DepthMask => depthMask;
         public Transform VisualRoot => visualRoot;
         public AugmentScrollModel ScrollModel => scrollModel;
         public float CardAspectRatio => Mathf.Max(1f, cardAspectRatio);
@@ -55,9 +69,10 @@ namespace Tessera.Games.AugmentedYacht
         public static AugmentTrayCardView Create(
             Transform slotAnchor,
             Vector2 slotLocalSize,
-            int slotIndex)
+            int slotIndex,
+            string namePrefix = OwnedCardNamePrefix)
         {
-            GameObject root = new($"Owned Augment Card {slotIndex + 1}");
+            GameObject root = new($"{namePrefix} {slotIndex + 1}");
             root.layer = DecorationLayer;
             root.transform.SetParent(slotAnchor, false);
             root.transform.localPosition = Vector3.zero;
@@ -80,7 +95,7 @@ namespace Tessera.Games.AugmentedYacht
 
             // 카드 UI는 양피지 자식으로 눕힌 월드 스페이스 캔버스에 그린다.
             GameObject overlayObject = new(
-                $"HighRes Owned Augment Card {slotIndex + 1}",
+                $"HighRes {namePrefix} {slotIndex + 1}",
                 typeof(RectTransform), typeof(Canvas));
             overlayObject.transform.SetParent(visualObject.transform, false);
             view.overlayRect = overlayObject.GetComponent<RectTransform>();
@@ -104,12 +119,17 @@ namespace Tessera.Games.AugmentedYacht
             SetLayerRecursively(overlayObject, TesseraLayers.CrispUI);
             MarkDontSaveRecursively(overlayObject);
 
+            view.depthMask = CreateDepthMask(visualObject.transform);
+
             view.ApplyPreset(AugmentParchmentPreset.GentleWave);
             view.SetVisible(false);
             return view;
         }
 
-        public void Bind(YachtAugmentDefinition value, int presetId)
+        public void Bind(
+            YachtAugmentDefinition value,
+            int presetId,
+            AugmentCardDisplayState state = AugmentCardDisplayState.Owned)
         {
             definition = value;
             selected = false;
@@ -118,8 +138,9 @@ namespace Tessera.Games.AugmentedYacht
             if (card != null)
             {
                 card.SetParchmentPreset(preset, true);
-                card.Bind(value, value == null ? AugmentCardDisplayState.Disabled : AugmentCardDisplayState.Owned);
+                card.Bind(value, value == null ? AugmentCardDisplayState.Disabled : state);
             }
+            if (scrollModel != null && value != null) scrollModel.SetDisplayState(state);
             if (gameObject.activeInHierarchy) SyncOverlayTransform();
         }
 
@@ -179,6 +200,7 @@ namespace Tessera.Games.AugmentedYacht
             if (overlayRect == null || visualRoot == null || definition == null || !gameObject.activeInHierarchy)
             {
                 if (overlayRect != null) overlayRect.gameObject.SetActive(false);
+                if (depthMask != null) depthMask.gameObject.SetActive(false);
                 return;
             }
 
@@ -186,6 +208,7 @@ namespace Tessera.Games.AugmentedYacht
             if (scrollModel == null || !scrollModel.TryGetOverlayCorners(corners))
             {
                 overlayRect.gameObject.SetActive(false);
+                if (depthMask != null) depthMask.gameObject.SetActive(false);
                 return;
             }
 
@@ -217,6 +240,52 @@ namespace Tessera.Games.AugmentedYacht
                 float scale = cardWidth * CanvasUnitsPerWorldUnit / CardPixelWidth;
                 card.transform.localScale = new Vector3(scale, scale, 1f);
             }
+
+            if (depthMask != null)
+            {
+                depthMask.gameObject.SetActive(true);
+                Vector3 overlayPosition = overlayRect.localPosition;
+                depthMask.localPosition = new Vector3(overlayPosition.x, DepthMaskLift, overlayPosition.z);
+                depthMask.localScale = new Vector3(cardWidth, cardHeight, 1f);
+            }
+        }
+
+        /// <summary>
+        /// Crisp UI 카메라에만 카드의 깊이를 알려 주는 판을 만든다.
+        ///
+        /// 족보 표와 다른 카드 글자는 픽셀 필터를 피해 CrispUI 레이어에 있고, 그 카메라는 월드 물체를
+        /// 하나도 찍지 않아 깊이 버퍼가 비어 있다. 그래서 앞에 카드가 있어도 글자가 그대로 그려진다.
+        /// 이 판은 색을 쓰지 않고 깊이만 남기므로, 뒤에 있는 글자만 이 카드 모양대로 잘려 나간다.
+        /// </summary>
+        private static Transform CreateDepthMask(Transform parent)
+        {
+            GameObject maskObject = new("Crisp Depth Mask", typeof(MeshFilter), typeof(MeshRenderer));
+            maskObject.layer = TesseraLayers.CrispUI;
+            maskObject.hideFlags = HideFlags.DontSave;
+            maskObject.transform.SetParent(parent, false);
+            maskObject.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            maskObject.GetComponent<MeshFilter>().sharedMesh = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
+
+            MeshRenderer renderer = maskObject.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = EnsureDepthMaskMaterial();
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            return maskObject.transform;
+        }
+
+        private static Material EnsureDepthMaskMaterial()
+        {
+            if (sharedDepthMaskMaterial != null) return sharedDepthMaskMaterial;
+
+            Shader shader = Shader.Find(DepthMaskShaderName);
+            if (shader == null) return null;
+
+            sharedDepthMaskMaterial = new Material(shader)
+            {
+                name = "Runtime Crisp Depth Mask",
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            return sharedDepthMaskMaterial;
         }
 
         private static void SetLayerRecursively(GameObject target, int layer)
@@ -260,6 +329,7 @@ namespace Tessera.Games.AugmentedYacht
         private void OnDisable()
         {
             if (overlayRect != null) overlayRect.gameObject.SetActive(false);
+            if (depthMask != null) depthMask.gameObject.SetActive(false);
         }
 
         private void OnDestroy()

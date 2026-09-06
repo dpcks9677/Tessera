@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Tessera.Core
 {
@@ -33,6 +33,14 @@ namespace Tessera.Core
         // 정렬/킵 목표 좌표에 이 값을 더해 트레이 내부 기준과 일치시킨다.
         public const float TrayCenterZ = -0.3f;
 
+        // 트레이 비주얼의 고정 X 오프셋. TrayCenterZ와 같은 역할을 X에서 한다.
+        //
+        // 주사위 루트는 CenterSectionX(-0.39)에 있고 트레이 비주얼은 씬에서 -0.62로 옮겨져 있다
+        // (커밋 c6d3533, 에디터에서 직접 배치한 값). 두 좌표계가 0.23만큼 어긋나 있어 정렬·킵
+        // 주사위가 트레이보다 오른쪽으로 밀려 보였다. 이 값을 트레이 기준 좌표에 더해 맞춘다.
+        // TabletopSurfaceBuilder도 이 값을 써서 굽기 때문에 다시 구워도 배치가 되돌아가지 않는다.
+        public const float TrayCenterX = -0.23f;
+
         // 트레이 내부 바닥 착지 시 Y 중심 좌표 (0.2 + 0.39 = 0.59f)
         public const float FloorRestY = RollSurfaceY + DieHalfSize; // 0.59f
 
@@ -47,13 +55,13 @@ namespace Tessera.Core
         // 트레이 상단 12시 방향 킵 홈(Keep Surface) 높이 및 위치
         public const float KeepSurfaceSourceY = 13f;
         public const float PlayFloorSourceY = -10.283531f;
-        public const float KeepSurfaceY = RollSurfaceY + (KeepSurfaceSourceY - PlayFloorSourceY) * TrayScale + DieHalfSize;
+        public const float KeepSurfaceY = RollSurfaceY + (KeepSurfaceSourceY - PlayFloorSourceY) * TrayScale + KeptDieHalfSize;
 
         public const float KeepStartSourceX = -44f;
         public const float KeepSpacingSourceX = 22f;
         public const float KeepCenterSourceZ = 58f; // 12시 방향 (+Z)
 
-        public const float KeepStartX = KeepStartSourceX * TrayScale;       // -2.64f
+        public const float KeepStartX = TrayCenterX + KeepStartSourceX * TrayScale;   // -2.87f
         public const float KeepSpacingX = KeepSpacingSourceX * TrayScale;   //  1.32f
         public const float KeepCenterZ = TrayCenterZ + KeepCenterSourceZ * TrayScale; // +3.18f
 
@@ -79,8 +87,27 @@ namespace Tessera.Core
         public const float TrayOuterWidth = 155f * TrayScale; // 9.30f
         public const float ActiveSpacing = 1.5f; // 요청에 따른 정렬 간격 조정 (1.5f)
 
+        public const float ActiveCenterX = TrayCenterX;
         public const float ActiveCenterZ = TrayCenterZ;
-        public const float KeepDieScale = 0.95f;
+
+        // 킵 소켓은 트레이 STL 실측으로 17x17 소스 단위 정사각형이다. 칸막이 벽이 소스 x
+        // -52.5/-35.5/-30.5/-13.5/-8.5/8.5/13.5/30.5/35.5/52.5 에 있어 칸 중심이 -44, -22, 0, 22, 44로
+        // KeepStartSourceX·KeepSpacingSourceX와 정확히 맞는다. 깊이도 소스 z 49.5~66.5로 같은 17이다.
+        //
+        // 주사위를 16 소스 단위로 맞춰 사방에 0.5씩만 남긴다. 이전 값 0.95는 14.2 단위여서
+        // 소켓의 83%만 채워 헐거워 보였다.
+        public const float KeepDieScale = 16f / (DieSize / TrayScale); // ~1.070
+
+        public const float KeptDieSize = DieSize * KeepDieScale;
+        public const float KeptDieHalfSize = KeptDieSize * 0.5f;
+
+        // 카메라 피치 75도의 코탄젠트. 바닥에서 h만큼 떠 있는 물체는 화면에서 h*cot(75도)만큼
+        // 위로 밀려 보인다. 직교 투영이라 거리와 무관하게 일정하다.
+        private const float CameraPitchCotangent = 0.26795f;
+
+        // 킵 주사위는 소켓 바닥보다 자기 반높이만큼 떠 있어 화면에서 위로 밀린다.
+        // 같은 화면 변위를 Z로 되돌려 소켓 한가운데에 앉힌 것처럼 보이게 한다.
+        public const float KeepParallaxZ = -KeptDieHalfSize * CameraPitchCotangent;
 
         /// <summary>
         /// 프리셋 로컬 좌표를 6시 -> 12시 투척 방향으로 180도 회전 변환하여 트레이 내부 좌표로 매핑
@@ -105,7 +132,7 @@ namespace Tessera.Core
         /// </summary>
         public static Vector3 GetActivePosition(int slot, int totalActive)
         {
-            float startX = -(totalActive - 1) * ActiveSpacing * 0.5f;
+            float startX = ActiveCenterX - (totalActive - 1) * ActiveSpacing * 0.5f;
             return new Vector3(
                 startX + slot * ActiveSpacing,
                 ActiveArrangedY,
@@ -120,7 +147,7 @@ namespace Tessera.Core
             return new Vector3(
                 KeepStartX + slot * KeepSpacingX,
                 KeepSurfaceY,
-                KeepCenterZ);
+                KeepCenterZ + KeepParallaxZ);
         }
     }
 }

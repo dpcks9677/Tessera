@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Tessera.Games.Yacht;
 using UnityEngine;
@@ -42,7 +42,6 @@ namespace Tessera.Games.AugmentedYacht
         private Text stateText;
         private Button button;
         private bool overlayContentOnly;
-        private Vector2 cardDisplaySize;
 
         public Button Button => button;
         public Text NameText => nameText;
@@ -159,9 +158,7 @@ namespace Tessera.Games.AugmentedYacht
         {
             ParchmentPreset = AugmentParchmentVisuals.Normalize((int)preset);
             this.overlayContentOnly = overlayContentOnly;
-            background.sprite = overlayContentOnly
-                ? AugmentParchmentVisuals.GetSprite(ParchmentPreset, true)
-                : AugmentParchmentVisuals.GetPixelFilteredSprite(ParchmentPreset, cardDisplaySize);
+            background.sprite = AugmentParchmentVisuals.GetSprite(ParchmentPreset, overlayContentOnly);
             background.type = Image.Type.Simple;
             background.preserveAspect = false;
             if (outline != null) outline.enabled = !overlayContentOnly;
@@ -181,7 +178,6 @@ namespace Tessera.Games.AugmentedYacht
 
         private void Build(UnityAction onClick, Vector2 size)
         {
-            cardDisplaySize = size;
             float width = Mathf.Max(240f, size.x);
             float height = Mathf.Max(135f, size.y);
             background = GetComponent<Image>();
@@ -189,7 +185,7 @@ namespace Tessera.Games.AugmentedYacht
             SetParchmentPreset(AugmentParchmentPreset.GentleWave);
 
             outline = GetComponent<Outline>();
-            outline.effectColor = new Color(.37f, .86f, 1f, .42f);
+            outline.effectColor = AntiqueGold;
             outline.effectDistance = new Vector2(1f, -1f);
 
             button = GetComponent<Button>();
@@ -213,41 +209,58 @@ namespace Tessera.Games.AugmentedYacht
 
             float contentWidth = width * safeRect.width;
             float contentHeight = height * safeRect.height;
-            float headerY = contentHeight * 0.40f;
-            stateAccent = CreateImage(contentRoot, "State Accent", Vector2.zero, new Vector2(8f, -12f), AntiqueGold);
-            RectTransform accentRect = stateAccent.rectTransform;
-            accentRect.anchorMin = new Vector2(0f, 0f);
-            accentRect.anchorMax = new Vector2(0f, 1f);
-            accentRect.pivot = new Vector2(0f, 0.5f);
-            accentRect.anchoredPosition = new Vector2(7f, 0f);
-            accentRect.sizeDelta = new Vector2(8f, -16f);
-            stateAccent.raycastTarget = false;
 
-            header = CreateImage(contentRoot, "Crimson Header", new Vector2(0f, headerY), new Vector2(-18f, contentHeight * 0.18f), Crimson);
+            // 위에서 아래로 헤더 · 강조선 · 본문 · 푸터가 한 줄씩 쌓이는 배치다.
+            // 각 행은 콘텐츠 사각형의 위아래 여백만으로 위치를 정하므로 카드 크기가 달라져도 비율이 유지된다.
+            float headerHeight = 46f;
+            float accentTop = headerHeight;
+            float footerHeight = 22f;
+
+            header = CreateImage(contentRoot, "Crimson Header", Vector2.zero, Vector2.zero, Crimson);
+            SetStretch(header.rectTransform, 0f, 0f, 0f, contentHeight - headerHeight);
             header.raycastTarget = false;
 
-            kindText = CreateText(contentRoot, "Kind Badge", "종류", new Vector2(-contentWidth * 0.29f, headerY), new Vector2(contentWidth * 0.36f, 28f), 14, TextAnchor.MiddleLeft, AntiqueGold);
-            stateText = CreateText(contentRoot, "State Badge", "[선택 가능]", new Vector2(contentWidth * 0.29f, headerY), new Vector2(contentWidth * 0.36f, 28f), 13, TextAnchor.MiddleRight, AntiqueGold);
-
             // 잉크 아이콘을 양피지 위에 직접 얹으므로 받침판은 배치 기준으로만 남기고 그리지 않는다.
-            iconBacking = CreateImage(contentRoot, "Pixel Icon Backing", new Vector2(0f, contentHeight * 0.19f), new Vector2(56f, 56f), Color.clear);
+            iconBacking = CreateImage(contentRoot, "Pixel Icon Backing", Vector2.zero, Vector2.zero, Color.clear);
+            SetStretch(iconBacking.rectTransform, 4f, contentWidth - 38f, 6f, contentHeight - headerHeight + 6f);
             iconBacking.raycastTarget = false;
-            icon = CreateImage(iconBacking.transform, "Pixel Icon", Vector2.zero, new Vector2(-10f, -10f), AntiqueGold, true);
+            icon = CreateImage(iconBacking.transform, "Pixel Icon", Vector2.zero, new Vector2(-6f, -6f), AntiqueGold, true);
             icon.preserveAspect = true;
             icon.raycastTarget = false;
 
-            nameText = CreateText(contentRoot, "Name", "증강", new Vector2(0f, contentHeight * 0.015f), new Vector2(-30f, 34f), 21, TextAnchor.MiddleCenter, Ink);
-            Image divider = CreateImage(contentRoot, "Description Divider", new Vector2(0f, -contentHeight * 0.085f), new Vector2(-28f, 2f), new Color(0.37f, 0.20f, 0.10f, 0.46f));
-            divider.raycastTarget = false;
+            // 이름은 크림슨 헤더 위에 얹히므로 잉크색이 아니라 양피지색으로 뽑는다.
+            nameText = CreateText(contentRoot, "Name", "증강", Vector2.zero, Vector2.zero, 22, TextAnchor.MiddleLeft, Parchment);
+            SetStretch(nameText.rectTransform, 44f, 100f, 0f, contentHeight - headerHeight);
+            stateText = CreateText(contentRoot, "State Badge", "[선택 가능]", Vector2.zero, Vector2.zero, 12, TextAnchor.MiddleRight, AntiqueGold);
+            SetStretch(stateText.rectTransform, contentWidth - 96f, 4f, 0f, contentHeight - headerHeight);
 
-            descriptionText = CreateText(contentRoot, "One Line Effect", "효과", new Vector2(0f, -contentHeight * 0.19f), new Vector2(-34f, 30f), 15, TextAnchor.MiddleCenter, Ink);
+            // 상태 강조선이 헤더와 본문을 가르는 구분선을 겸한다.
+            stateAccent = CreateImage(contentRoot, "State Accent", Vector2.zero, Vector2.zero, AntiqueGold);
+            SetStretch(stateAccent.rectTransform, 2f, 2f, accentTop, contentHeight - accentTop - 2f);
+            stateAccent.raycastTarget = false;
+
+            descriptionText = CreateText(contentRoot, "Effect Body", "효과", Vector2.zero, Vector2.zero, 15, TextAnchor.UpperLeft, Ink);
+            SetStretch(descriptionText.rectTransform, 4f, 4f, accentTop + 8f, footerHeight + 6f);
             descriptionText.resizeTextForBestFit = true;
             descriptionText.resizeTextMinSize = 12;
-            descriptionText.resizeTextMaxSize = 15;
-            descriptionText.horizontalOverflow = HorizontalWrapMode.Overflow;
+            descriptionText.resizeTextMaxSize = 16;
+            descriptionText.horizontalOverflow = HorizontalWrapMode.Wrap;
             descriptionText.verticalOverflow = VerticalWrapMode.Truncate;
 
-            targetText = CreateText(contentRoot, "Target Badge", "대상 · 없음", new Vector2(0f, -contentHeight * 0.39f), new Vector2(-34f, 24f), 12, TextAnchor.MiddleCenter, new Color(0.25f, 0.19f, 0.15f, 1f));
+            kindText = CreateText(contentRoot, "Kind Badge", "종류", Vector2.zero, Vector2.zero, 12, TextAnchor.MiddleLeft, AntiqueGold);
+            SetStretch(kindText.rectTransform, 4f, contentWidth * 0.6f, contentHeight - footerHeight, 0f);
+            targetText = CreateText(contentRoot, "Target Badge", "대상 · 없음", Vector2.zero, Vector2.zero, 12, TextAnchor.MiddleRight, new Color(0.25f, 0.19f, 0.15f, 1f));
+            SetStretch(targetText.rectTransform, contentWidth * 0.4f, 4f, contentHeight - footerHeight, 0f);
+        }
+
+        /// <summary>부모 사각형에 네 변 여백만으로 붙인다. 행 단위 배치를 좌표 계산 없이 표현하기 위한 것이다.</summary>
+        private static void SetStretch(RectTransform rect, float left, float right, float top, float bottom)
+        {
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.offsetMin = new Vector2(left, bottom);
+            rect.offsetMax = new Vector2(-right, -top);
         }
 
         private static Image CreateImage(Transform parent, string name, Vector2 position, Vector2 size, Color color, bool stretch = false)
@@ -326,7 +339,7 @@ namespace Tessera.Games.AugmentedYacht
             if (string.IsNullOrWhiteSpace(description)) return "효과 설명 없음";
             string compact = description.Replace('\n', ' ').Replace('\r', ' ').Trim();
             while (compact.Contains("  ", StringComparison.Ordinal)) compact = compact.Replace("  ", " ");
-            return compact.Length > 20 ? $"{compact[..19]}…" : compact;
+            return compact;
         }
 
         private static string KindLabel(YachtAugmentKind kind) => kind switch

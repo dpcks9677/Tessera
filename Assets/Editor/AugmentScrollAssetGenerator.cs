@@ -48,10 +48,7 @@ public static class AugmentScrollAssetGenerator
         Material wax = CreateOrReplaceLitMaterial(
             MaterialFolder + "/AugmentScrollWax.mat",
             new Color(.54f, .10f, .09f, 1f), .34f, false);
-        Material cyan = CreateOrReplaceGlowMaterial(
-            MaterialFolder + "/AugmentScrollCyanBorder.mat",
-            new Color(.37f, .86f, 1f, .78f));
-        Material[] materials = { front, underside, leather, wax, cyan };
+        Material[] materials = { front, underside, leather, wax };
 
         RemoveObsoleteAssets();
         foreach (AugmentParchmentPreset preset in Enum.GetValues(typeof(AugmentParchmentPreset)))
@@ -120,17 +117,6 @@ public static class AugmentScrollAssetGenerator
             material.mainTextureScale = new Vector2(1.10f, .92f);
             if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", texture);
         }
-        AssetDatabase.CreateAsset(material, path);
-        return material;
-    }
-
-    private static Material CreateOrReplaceGlowMaterial(string path, Color color)
-    {
-        AssetDatabase.DeleteAsset(path);
-        Shader shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
-        Material material = new(shader) { name = Path.GetFileNameWithoutExtension(path), color = color };
-        if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
-        if (material.HasProperty("_Color")) material.SetColor("_Color", color);
         AssetDatabase.CreateAsset(material, path);
         return material;
     }
@@ -220,10 +206,12 @@ public static class AugmentScrollAssetGenerator
         string[] obsolete = AssetDatabase.FindAssets("Preset_4_", new[] { MeshFolder });
         for (int i = 0; i < obsolete.Length; i++)
             AssetDatabase.DeleteAsset(AssetDatabase.GUIDToAssetPath(obsolete[i]));
+        AssetDatabase.DeleteAsset($"{MaterialFolder}/AugmentScrollCyanBorder.mat");
         for (int key = 0; key < 4; key++)
         {
             AssetDatabase.DeleteAsset($"{MeshFolder}/Preset_{key}_RibbonTail.asset");
             AssetDatabase.DeleteAsset($"{MeshFolder}/Preset_{key}_PixelReadableRollLayers.asset");
+            AssetDatabase.DeleteAsset($"{MeshFolder}/Preset_{key}_CyanInnerBorder.asset");
         }
     }
 

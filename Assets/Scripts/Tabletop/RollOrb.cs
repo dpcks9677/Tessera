@@ -110,6 +110,15 @@ namespace Tessera.Tabletop
 
             constellationRenderer = bezelRoot.Find("Orb_Constellation_Plane")?.GetComponent<MeshRenderer>();
             constellationMaterial = constellationRenderer?.sharedMaterial;
+
+            // 별자리 연출은 폐기 상태다. 평면은 재사용 가능성 때문에 남겨 두되,
+            // 게임에서는 렌더러를 끄고 머티리얼 참조를 버려 텍스처가 구워지지 않게 한다.
+            // 렌더러를 재생 중에만 끄는 이유는, 편집 모드에서 끄면 씬·프리팹이 더러워지기 때문이다.
+            if (!ZodiacConstellationData.EnabledInGame)
+            {
+                if (Application.isPlaying && constellationRenderer != null) constellationRenderer.enabled = false;
+                constellationMaterial = null;
+            }
             magicParticles = orbRoot.GetComponentInChildren<ParticleSystem>(true);
         }
 
@@ -121,6 +130,9 @@ namespace Tessera.Tabletop
 
         public void SetZodiac(int index, bool immediate = false)
         {
+            // 폐기된 연출이므로 텍스처 베이킹까지 이어지는 경로를 여기서 끊는다.
+            if (!ZodiacConstellationData.EnabledInGame) return;
+
             int targetIndex = Mathf.Clamp(index, 0, 11);
             if (targetIndex == currentZodiacIndex && !immediate) return;
 
@@ -256,8 +268,21 @@ namespace Tessera.Tabletop
             isHovered = false;
         }
 
+        // 매 프레임 도는 경로라 셰이더 프로퍼티 이름을 미리 ID로 바꿔 둔다.
+        // 1회성 생성 경로의 문자열 접근은 그대로 둔다. 거기서는 조회 비용이 의미가 없다.
+        private static readonly int IntensityId = Shader.PropertyToID("_Intensity");
+        private static readonly int RimIntensityId = Shader.PropertyToID("_RimIntensity");
+        private static readonly int TwinkleSpeedId = Shader.PropertyToID("_TwinkleSpeed");
+
         private void Update()
         {
+            // 편집 모드에서는 연출을 돌리지 않는다. 이 애니메이션은 트랜스폼과 컴포넌트 값 같은
+            // 직렬화 대상에 매 틱 쓰기 때문에, 편집 모드에서 돌리면 씬이 계속 더러운 상태가 된다.
+            // 그러면 씬을 저장할 때마다 관련 없는 오버라이드가 diff에 섞이고 테스트 실행이
+            // "dirty scene"으로 막힌다. [ExecuteAlways]는 BuildGeometry 컨텍스트 메뉴와
+            // OnValidate 미리보기 때문에 그대로 둔다.
+            if (!Application.isPlaying) return;
+
             float target = (isHovered && isInteractable) ? 1f : 0f;
             hoverLerp = Mathf.MoveTowards(hoverLerp, target, Time.deltaTime * 6f);
 
@@ -268,8 +293,8 @@ namespace Tessera.Tabletop
             {
                 float idleBreath = Mathf.Sin(Time.time * 2.0f) * 0.04f;
                 float ambientIntensity = (isInteractable ? 0.36f : 0.20f) + idleBreath + (hoverLerp * 0.14f) + (clickFlashLerp * 0.45f);
-                if (ambientHaloMaterial.HasProperty("_Intensity"))
-                    ambientHaloMaterial.SetFloat("_Intensity", Mathf.Max(0f, ambientIntensity));
+                if (ambientHaloMaterial.HasProperty(IntensityId))
+                    ambientHaloMaterial.SetFloat(IntensityId, Mathf.Max(0f, ambientIntensity));
             }
 
             // 2. 호버 시 베젤 테두리 마나 아우라 (베젤 링 외곽으로만 퍼지는 옅은 아우라)
@@ -281,16 +306,16 @@ namespace Tessera.Tabletop
                 if (showAura && hearthstoneAuraMaterial != null)
                 {
                     float auraIntensity = Mathf.Lerp(0.0f, 0.48f, hoverLerp) + (clickFlashLerp * 0.6f);
-                    if (hearthstoneAuraMaterial.HasProperty("_Intensity"))
-                        hearthstoneAuraMaterial.SetFloat("_Intensity", Mathf.Max(0f, auraIntensity));
+                    if (hearthstoneAuraMaterial.HasProperty(IntensityId))
+                        hearthstoneAuraMaterial.SetFloat(IntensityId, Mathf.Max(0f, auraIntensity));
                 }
             }
 
             // 3. 외부 글래스 구체 머티리얼 반응 (외곽 림 라이트 은은한 상승)
             if (orbMaterial != null)
             {
-                if (orbMaterial.HasProperty("_RimIntensity"))
-                    orbMaterial.SetFloat("_RimIntensity", Mathf.Lerp(0.35f, 0.55f, hoverLerp) + (clickFlashLerp * 0.3f));
+                if (orbMaterial.HasProperty(RimIntensityId))
+                    orbMaterial.SetFloat(RimIntensityId, Mathf.Lerp(0.35f, 0.55f, hoverLerp) + (clickFlashLerp * 0.3f));
             }
 
             // 4. 내부 별자리 머티리얼 반응 (은은한 백색 발광, 호버 시 상승, 클릭 시 플래시)
@@ -298,12 +323,12 @@ namespace Tessera.Tabletop
             {
                 float baseIntensity = isInteractable ? 0.95f : 0.60f;
                 float constIntensity = baseIntensity + (hoverLerp * 0.30f) + (clickFlashLerp * 1.2f);
-                if (constellationMaterial.HasProperty("_Intensity"))
-                    constellationMaterial.SetFloat("_Intensity", constIntensity);
+                if (constellationMaterial.HasProperty(IntensityId))
+                    constellationMaterial.SetFloat(IntensityId, constIntensity);
 
                 float twinkleSpeed = Mathf.Lerp(2.2f, 3.8f, hoverLerp);
-                if (constellationMaterial.HasProperty("_TwinkleSpeed"))
-                    constellationMaterial.SetFloat("_TwinkleSpeed", twinkleSpeed);
+                if (constellationMaterial.HasProperty(TwinkleSpeedId))
+                    constellationMaterial.SetFloat(TwinkleSpeedId, twinkleSpeed);
             }
         }
 
@@ -378,7 +403,9 @@ namespace Tessera.Tabletop
             // 1-7. 황도 12궁 은은한 백색 별자리 머티리얼 (카메라 시선 기준 수정구 내부 렌더링, 1.5배 전반 확장)
             Shader constellationShader = Shader.Find("DicePoC/OrbConstellation") ?? outerGlowShader;
             constellationMaterial = new Material(constellationShader) { name = "Orb_Constellation_Mat" };
-            Texture2D curZodiacTex = ZodiacConstellationData.GetZodiacTexture(currentZodiacIndex);
+            Texture2D curZodiacTex = ZodiacConstellationData.EnabledInGame
+                ? ZodiacConstellationData.GetZodiacTexture(currentZodiacIndex)
+                : null;
             if (constellationMaterial.HasProperty("_ConstellationColor")) constellationMaterial.SetColor("_ConstellationColor", new Color(0.92f, 0.96f, 1.00f, 0.55f));
             if (constellationMaterial.HasProperty("_CurrentTex")) constellationMaterial.SetTexture("_CurrentTex", curZodiacTex);
             if (constellationMaterial.HasProperty("_NextTex")) constellationMaterial.SetTexture("_NextTex", curZodiacTex);
@@ -531,7 +558,7 @@ namespace Tessera.Tabletop
             constellationRenderer = constellationPlane.GetComponent<MeshRenderer>();
             if (constellationRenderer != null)
             {
-                constellationRenderer.enabled = true;
+                constellationRenderer.enabled = ZodiacConstellationData.EnabledInGame;
                 constellationRenderer.shadowCastingMode = ShadowCastingMode.Off;
                 constellationRenderer.receiveShadows = false;
             }

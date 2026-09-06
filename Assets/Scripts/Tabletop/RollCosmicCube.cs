@@ -173,6 +173,15 @@ namespace Tessera.Tabletop
                 : null;
             constellationMaterial = RuntimeAssetGuard.GetWritableMaterial(constellationRenderer);
 
+            // 별자리 연출은 폐기 상태다. 프리팹의 평면은 재사용 가능성 때문에 남겨 두되,
+            // 게임에서는 렌더러를 끄고 머티리얼 참조를 버려 텍스처가 구워지지 않게 한다.
+            // 렌더러를 재생 중에만 끄는 이유는, 편집 모드에서 끄면 씬·프리팹이 더러워지기 때문이다.
+            if (!ZodiacConstellationData.EnabledInGame)
+            {
+                if (Application.isPlaying && constellationRenderer != null) constellationRenderer.enabled = false;
+                constellationMaterial = null;
+            }
+
             UpgradeInternalParticles();
             faceParticleSystems.Clear();
             if (cubeBodyTransform != null)
@@ -359,6 +368,9 @@ namespace Tessera.Tabletop
 
         public void SetZodiac(int index, bool immediate = false)
         {
+            // 폐기된 연출이므로 텍스처 베이킹까지 이어지는 경로를 여기서 끊는다.
+            if (!ZodiacConstellationData.EnabledInGame) return;
+
             int targetIndex = Mathf.Clamp(index, 0, 11);
             if (targetIndex == currentZodiacIndex && !immediate) return;
 
@@ -434,8 +446,30 @@ namespace Tessera.Tabletop
             isHovered = false;
         }
 
+        // 매 프레임 도는 경로라 셰이더 프로퍼티 이름을 미리 ID로 바꿔 둔다.
+        // 1회성 생성 경로의 문자열 접근은 그대로 둔다. 거기서는 조회 비용이 의미가 없다.
+        private static readonly int BrightnessId = Shader.PropertyToID("_Brightness");
+        private static readonly int StarIntensityId = Shader.PropertyToID("_StarIntensity");
+        private static readonly int CoreIntensityId = Shader.PropertyToID("_CoreIntensity");
+        private static readonly int TwinkleSpeedId = Shader.PropertyToID("_TwinkleSpeed");
+        private static readonly int EdgeIntensityId = Shader.PropertyToID("_EdgeIntensity");
+        private static readonly int ThicknessIntensityId = Shader.PropertyToID("_ThicknessIntensity");
+        private static readonly int RefractionStrengthId = Shader.PropertyToID("_RefractionStrength");
+        private static readonly int PulseAmountId = Shader.PropertyToID("_PulseAmount");
+        private static readonly int OutlineIntensityId = Shader.PropertyToID("_OutlineIntensity");
+        private static readonly int IntensityId = Shader.PropertyToID("_Intensity");
+        private static readonly int OpacityId = Shader.PropertyToID("_Opacity");
+        private static readonly int FlowSpeedId = Shader.PropertyToID("_FlowSpeed");
+
         private void Update()
         {
+            // 편집 모드에서는 연출을 돌리지 않는다. 이 애니메이션은 트랜스폼과 컴포넌트 값 같은
+            // 직렬화 대상에 매 틱 쓰기 때문에, 편집 모드에서 돌리면 씬이 계속 더러운 상태가 된다.
+            // 그러면 씬을 저장할 때마다 관련 없는 오버라이드가 diff에 섞이고 테스트 실행이
+            // "dirty scene"으로 막힌다. [ExecuteAlways]는 BuildGeometry 컨텍스트 메뉴와
+            // OnValidate 미리보기 때문에 그대로 둔다.
+            if (!Application.isPlaying) return;
+
             float dt = Time.deltaTime;
             float time = Time.time;
 
@@ -472,64 +506,64 @@ namespace Tessera.Tabletop
             {
                 float baseBrightness = isInteractable ? 1.18f : 0.58f;
                 float brightness = baseBrightness + (hoverLerp * 0.10f) + (clickFlashLerp * 0.32f);
-                cosmicCubeMaterial.SetFloat("_Brightness", brightness);
+                cosmicCubeMaterial.SetFloat(BrightnessId, brightness);
                 float starIntensity = 2.65f + (hoverLerp * 0.35f) + (clickFlashLerp * 1.35f);
-                cosmicCubeMaterial.SetFloat("_StarIntensity", starIntensity);
+                cosmicCubeMaterial.SetFloat(StarIntensityId, starIntensity);
                 float coreIntensity = 2.45f + (hoverLerp * 0.38f) + (clickFlashLerp * 0.75f);
-                cosmicCubeMaterial.SetFloat("_CoreIntensity", coreIntensity);
-                cosmicCubeMaterial.SetFloat("_TwinkleSpeed", Mathf.Lerp(2.20f, 3.15f, hoverLerp));
+                cosmicCubeMaterial.SetFloat(CoreIntensityId, coreIntensity);
+                cosmicCubeMaterial.SetFloat(TwinkleSpeedId, Mathf.Lerp(2.20f, 3.15f, hoverLerp));
             }
 
             // 투명 외피는 기본 상태에서도 네온 모서리를 유지한다.
             float shellEdgeIntensity = 2.35f + (hoverLerp * 0.55f) + (clickFlashLerp * 0.90f);
             if (crystalFrontMaterial != null)
             {
-                crystalFrontMaterial.SetFloat("_EdgeIntensity", shellEdgeIntensity);
-                crystalFrontMaterial.SetFloat("_ThicknessIntensity", 0.70f + hoverLerp * 0.12f);
-                crystalFrontMaterial.SetFloat("_RefractionStrength", 0.18f + hoverLerp * 0.06f);
+                crystalFrontMaterial.SetFloat(EdgeIntensityId, shellEdgeIntensity);
+                crystalFrontMaterial.SetFloat(ThicknessIntensityId, 0.70f + hoverLerp * 0.12f);
+                crystalFrontMaterial.SetFloat(RefractionStrengthId, 0.18f + hoverLerp * 0.06f);
             }
             if (crystalInnerMaterialA != null)
             {
-                crystalInnerMaterialA.SetFloat("_EdgeIntensity", 0.10f + hoverLerp * 0.03f);
-                crystalInnerMaterialA.SetFloat("_ThicknessIntensity", 0.56f + hoverLerp * 0.07f);
-                crystalInnerMaterialA.SetFloat("_RefractionStrength", 0.22f + hoverLerp * 0.04f);
+                crystalInnerMaterialA.SetFloat(EdgeIntensityId, 0.10f + hoverLerp * 0.03f);
+                crystalInnerMaterialA.SetFloat(ThicknessIntensityId, 0.56f + hoverLerp * 0.07f);
+                crystalInnerMaterialA.SetFloat(RefractionStrengthId, 0.22f + hoverLerp * 0.04f);
             }
             if (crystalInnerMaterialB != null)
             {
-                crystalInnerMaterialB.SetFloat("_EdgeIntensity", 0.04f + hoverLerp * 0.02f);
-                crystalInnerMaterialB.SetFloat("_ThicknessIntensity", 0.42f + hoverLerp * 0.05f);
-                crystalInnerMaterialB.SetFloat("_RefractionStrength", 0.17f + hoverLerp * 0.03f);
+                crystalInnerMaterialB.SetFloat(EdgeIntensityId, 0.04f + hoverLerp * 0.02f);
+                crystalInnerMaterialB.SetFloat(ThicknessIntensityId, 0.42f + hoverLerp * 0.05f);
+                crystalInnerMaterialB.SetFloat(RefractionStrengthId, 0.17f + hoverLerp * 0.03f);
             }
 
             // 중앙 에너지 코어는 레퍼런스처럼 호버 시 은은하게 점화된다.
             if (energyCoreMaterial != null)
             {
                 float coreGlow = 2.70f + (hoverLerp * 0.65f) + (clickFlashLerp * 1.15f);
-                energyCoreMaterial.SetFloat("_CoreIntensity", coreGlow);
-                energyCoreMaterial.SetFloat("_PulseAmount", Mathf.Lerp(0.08f, 0.14f, hoverLerp));
+                energyCoreMaterial.SetFloat(CoreIntensityId, coreGlow);
+                energyCoreMaterial.SetFloat(PulseAmountId, Mathf.Lerp(0.08f, 0.14f, hoverLerp));
             }
 
             // 두 겹의 확장 렌더러가 기본 발광과 호버 시 넓어지는 육각 후광을 만든다.
             if (hoverOutlineMaterial != null)
             {
                 float enabled = isInteractable ? 1.0f : 0.35f;
-                hoverOutlineMaterial.SetFloat("_OutlineIntensity",
+                hoverOutlineMaterial.SetFloat(OutlineIntensityId,
                     0.42f * enabled + hoverLerp * 0.70f + clickFlashLerp * 0.60f);
             }
             if (outerHaloMaterial != null)
             {
                 float enabled = isInteractable ? 1.0f : 0.30f;
-                outerHaloMaterial.SetFloat("_OutlineIntensity",
+                outerHaloMaterial.SetFloat(OutlineIntensityId,
                     0.20f * enabled + hoverLerp * 0.38f + clickFlashLerp * 0.30f);
             }
 
             if (tesseractMaterial != null)
             {
                 float enabled = isInteractable ? 1.0f : 0.38f;
-                tesseractMaterial.SetFloat("_Intensity",
+                tesseractMaterial.SetFloat(IntensityId,
                     0.90f * enabled + hoverLerp * 0.48f + clickFlashLerp * 0.88f);
-                tesseractMaterial.SetFloat("_Opacity", Mathf.Lerp(0.62f, 0.78f, hoverLerp) * enabled);
-                tesseractMaterial.SetFloat("_FlowSpeed", Mathf.Lerp(1.15f, 1.90f, hoverLerp));
+                tesseractMaterial.SetFloat(OpacityId, Mathf.Lerp(0.62f, 0.78f, hoverLerp) * enabled);
+                tesseractMaterial.SetFloat(FlowSpeedId, Mathf.Lerp(1.15f, 1.90f, hoverLerp));
             }
 
             // 5. 내부 별자리 심볼 갱신
@@ -537,7 +571,7 @@ namespace Tessera.Tabletop
             {
                 float baseIntensity = isInteractable ? 0.85f : 0.50f;
                 float constIntensity = baseIntensity + (clickFlashLerp * 1.0f);
-                constellationMaterial.SetFloat("_Intensity", constIntensity);
+                constellationMaterial.SetFloat(IntensityId, constIntensity);
             }
         }
 
@@ -580,7 +614,9 @@ namespace Tessera.Tabletop
             // 1-3. 내부 별자리 머티리얼
             Shader constellationShader = Shader.Find("DicePoC/OrbConstellation") ?? Shader.Find("Universal Render Pipeline/Unlit") ?? litShader;
             constellationMaterial = new Material(constellationShader) { name = "Cosmic_Constellation_Mat" };
-            Texture2D curZodiacTex = ZodiacConstellationData.GetZodiacTexture(currentZodiacIndex);
+            Texture2D curZodiacTex = ZodiacConstellationData.EnabledInGame
+                ? ZodiacConstellationData.GetZodiacTexture(currentZodiacIndex)
+                : null;
             if (constellationMaterial.HasProperty("_ConstellationColor")) constellationMaterial.SetColor("_ConstellationColor", new Color(0.92f, 0.96f, 1.00f, 0.55f));
             if (constellationMaterial.HasProperty("_CurrentTex")) constellationMaterial.SetTexture("_CurrentTex", curZodiacTex);
             if (constellationMaterial.HasProperty("_NextTex")) constellationMaterial.SetTexture("_NextTex", curZodiacTex);
@@ -709,7 +745,7 @@ namespace Tessera.Tabletop
             constellationRenderer = constellationPlane.GetComponent<MeshRenderer>();
             if (constellationRenderer != null)
             {
-                constellationRenderer.enabled = true;
+                constellationRenderer.enabled = ZodiacConstellationData.EnabledInGame;
                 constellationRenderer.shadowCastingMode = ShadowCastingMode.Off;
                 constellationRenderer.receiveShadows = false;
             }

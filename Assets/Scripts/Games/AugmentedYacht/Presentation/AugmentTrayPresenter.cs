@@ -1,7 +1,10 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
+using Tessera.Core;
 using Tessera.Games.Yacht;
 using Tessera.Tabletop;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UI;
 
 namespace Tessera.Games.AugmentedYacht
@@ -43,14 +46,35 @@ namespace Tessera.Games.AugmentedYacht
             "Use Table Flip",
         };
 
+        /// <summary>
+        /// 선택 카드가 눕는 평면의 높이.
+        ///
+        /// 정렬 주사위는 중심이 약 2.81이고 반지름이 약 0.51이라 위쪽 면이 약 3.32까지 올라온다.
+        /// 그 위로 올려야 주사위가 카드를 뚫고 나오지 않는다.
+        /// </summary>
+        private const float DraftPlaneY = 3.6f;
+
+        /// <summary>선택 카드 사이 간격. 트레이 격벽(0.20)보다 조금 넓게 벌린다.</summary>
+        private const float DraftCardGap = .3f;
+
+        /// <summary>선택 중 판을 가리는 어두운 판의 한 변 길이와, 카드보다 얼마나 아래에 놓이는지.</summary>
+        private const float DraftDimSize = 40f;
+        private const float DraftDimDrop = .02f;
+
+        private const string DraftRootName = "Yacht Augment Draft Cards";
+        private const string DraftCardNamePrefix = "Draft Augment Card";
+
         private GameObject draftOverlay;
         private Text draftTitle;
         private Text effectText;
         private Text hoverDetailText;
-        private readonly Button[] draftButtons = new Button[YachtAugmentRuntime.DraftOptionCount];
-        private readonly AugmentCardView[] draftCards = new AugmentCardView[YachtAugmentRuntime.DraftOptionCount];
         private readonly Button[] actionButtons = new Button[ManualAugmentIds.Length];
         private Button tableFlipButton;
+
+        private Transform draftRoot;
+        private Renderer draftDim;
+        private Material draftDimMaterial;
+        private readonly AugmentTrayCardView[] draftCards = new AugmentTrayCardView[YachtAugmentRuntime.DraftOptionCount];
 
         private readonly AugmentTrayCardView[] ownedCards = new AugmentTrayCardView[3];
         private AugmentCardTray cardTray;
@@ -83,29 +107,14 @@ namespace Tessera.Games.AugmentedYacht
                 else DestroyImmediate(stale.gameObject);
             }
 
+            // 카드 본체는 트레이 카드와 같은 3D 두루마리라 월드에 있다. 화면 오버레이는 제목과 입력 차단만 맡으므로
+            // 배경을 투명하게 비워 월드 카드가 그대로 보이게 한다. 판을 어둡게 덮는 일은 월드의 딤 판이 한다.
             draftOverlay = YachtHudFactory.CreateFullScreenOverlay(canvas, "Yacht Augment Draft Overlay");
-            float draftCardWidth = 460f;
-            float draftCardAspect = cardTray != null
-                ? cardTray.CardSlotAspectRatio
-                : AugmentCardView.TrayCardAspectRatio;
-            float draftCardHeight = draftCardWidth / Mathf.Max(1f, draftCardAspect);
-            float draftCardSpacing = draftCardWidth + 24f;
-            draftTitle = YachtHudFactory.CreateText(draftOverlay.transform, "Draft Title", "증강 선택", new Vector2(0f, draftCardHeight * 0.5f + 72f),
+            Image overlayBackground = draftOverlay.GetComponent<Image>();
+            overlayBackground.color = Color.clear;
+            draftTitle = YachtHudFactory.CreateText(draftOverlay.transform, "Draft Title", "증강 선택", new Vector2(0f, 250f),
                 new Vector2(760f, 60f), new Vector2(0.5f, 0.5f), 34, TextAnchor.MiddleCenter);
             draftTitle.color = new Color32(255, 222, 151, 255);
-            for (int i = 0; i < draftButtons.Length; i++)
-            {
-                int optionIndex = i;
-                draftCards[i] = AugmentCardView.Create(
-                    draftOverlay.transform,
-                    $"Draft Option {i + 1}",
-                    new Vector2((i - 1) * draftCardSpacing, -8f),
-                    new Vector2(draftCardWidth, draftCardHeight),
-                    new Vector2(0.5f, 0.5f),
-                    () => DraftOptionSelected?.Invoke(optionIndex));
-                draftCards[i].SetParchmentPreset((AugmentParchmentPreset)i);
-                draftButtons[i] = draftCards[i].Button;
-            }
             draftOverlay.SetActive(false);
 
             effectText = YachtHudFactory.CreateText(canvas, "Yacht Augment Effect Text", "", new Vector2(0f, 58f),
@@ -162,35 +171,127 @@ namespace Tessera.Games.AugmentedYacht
                 button.gameObject.SetActive(owned);
                 if (i > 0) button.interactable = owned && interactive;
             }
-            RefreshOwnedCardTray(session, augmented, gameInProgress);
-            if (!augmented) return;
+            // 선택 중에는 딤이 판을 덮으므로 보유 카드를 감춘다. 보유 카드 글자는 Crisp UI로 합성돼
+            // 딤 위에 그대로 떠 버리기 때문에 켜 두면 선택 화면이 지저분해진다.
+            bool drafting = augmented && gameInProgress && session.IsDrafting;
+            RefreshOwnedCardTray(session, augmented, gameInProgress && !drafting);
+            RefreshDraftCards(session, drafting);
+        }
 
-            if (!session.IsDrafting) return;
+        /// <summary>
+        /// 선택 카드를 트레이 카드와 같은 3D 두루마리로 세운다.
+        ///
+        /// 트레이 슬롯과 같은 월드 크기로 만들고 트레이와 같은 부모 아래에 두므로,
+        /// 메시·머티리얼·씬 조명·픽셀 필터가 모두 트레이 카드와 같은 경로를 탄다.
+        /// </summary>
+        private void RefreshDraftCards(YachtGameSession session, bool drafting)
+        {
+            if (!drafting)
+            {
+                for (int i = 0; i < draftCards.Length; i++) draftCards[i]?.SetVisible(false);
+                if (draftDim != null) draftDim.gameObject.SetActive(false);
+                return;
+            }
+
+            EnsureDraftCardViews();
+            if (draftDim != null) draftDim.gameObject.SetActive(true);
 
             int playerIndex = session.State.Draft.PlayerIndex;
             if (draftTitle != null)
                 draftTitle.text = $"P{playerIndex + 1} 증강 선택 · {session.CurrentRound}라운드";
-            string[] options = session.State.Draft.Options;
-            for (int i = 0; i < draftButtons.Length; i++)
+
+            IReadOnlyList<string> options = session.State.Draft.Options;
+            IReadOnlyList<int> presets = session.State.Draft.OptionCardPresetIds;
+            for (int i = 0; i < draftCards.Length; i++)
             {
-                Button button = draftButtons[i];
-                if (button == null) continue;
-                bool active = i < options.Length;
-                button.gameObject.SetActive(active);
+                AugmentTrayCardView view = draftCards[i];
+                if (view == null) continue;
+                bool active = i < options.Count;
+                view.SetVisible(active);
                 if (!active) continue;
-                YachtAugmentDefinition definition = YachtAugmentRuntime.Lookup(options[i]);
-                int presetId = i < (session.State.Draft.OptionCardPresetIds?.Length ?? 0)
-                    ? session.State.Draft.OptionCardPresetIds[i]
-                    : 0;
-                draftCards[i]?.SetParchmentPreset(AugmentParchmentVisuals.Normalize(presetId));
-                draftCards[i]?.Bind(definition, AugmentCardDisplayState.Available);
+                int presetId = i < (presets?.Count ?? 0) ? presets[i] : 0;
+                view.Bind(YachtAugmentRuntime.Lookup(options[i]), presetId, AugmentCardDisplayState.Available);
             }
         }
 
-        public void RefreshDraftCardParchment()
+        /// <summary>선택 카드 3장과 판을 덮는 딤을 트레이와 같은 좌표계에 세운다.</summary>
+        private void EnsureDraftCardViews()
         {
+            if (cardTray == null || worldCamera == null) return;
+            if (draftRoot == null)
+            {
+                Transform existing = cardTray.transform.Find(DraftRootName);
+                draftRoot = existing != null ? existing : new GameObject(DraftRootName).transform;
+                draftRoot.SetParent(cardTray.transform, false);
+                draftRoot.gameObject.layer = TesseraLayers.Decoration;
+            }
+
+            // 직교 카메라 시야 한가운데가 되도록 시선을 선택 평면까지 늘려 중심을 잡는다.
+            Vector3 eye = worldCamera.transform.position;
+            Vector3 forward = worldCamera.transform.forward;
+            float distance = (eye.y - DraftPlaneY) / Mathf.Max(.001f, -forward.y);
+            Vector3 center = eye + forward * distance;
+            draftRoot.SetPositionAndRotation(
+                new Vector3(center.x, DraftPlaneY, center.z), Quaternion.identity);
+
+            if (draftDim == null) draftDim = CreateDraftDim(draftRoot);
+
+            Vector2 slotSize = cardTray.CardSlotLocalSize;
+            float step = slotSize.x + DraftCardGap;
             for (int i = 0; i < draftCards.Length; i++)
-                draftCards[i]?.SetParchmentPreset(draftCards[i].ParchmentPreset);
+            {
+                if (draftCards[i] == null)
+                {
+                    Transform existing = draftRoot.Find($"{DraftCardNamePrefix} {i + 1}");
+                    draftCards[i] = existing != null
+                        ? existing.GetComponent<AugmentTrayCardView>()
+                        : AugmentTrayCardView.Create(draftRoot, slotSize, i, DraftCardNamePrefix);
+                }
+                if (draftCards[i] != null)
+                    draftCards[i].transform.localPosition = new Vector3((i - 1) * step, 0f, 0f);
+            }
+        }
+
+        /// <summary>
+        /// 선택 중 테이블을 덮는 반투명 어두운 판.
+        ///
+        /// 월드(픽셀) 패스에 둔다. Crisp UI 레이어에 올리면 족보 표까지 함께 어두워지는데,
+        /// 알파가 0.82라 족보가 18%만 남아 읽을 수 없게 된다. 족보는 선택 중에도 평소 밝기로
+        /// 읽혀야 하므로, 이 판은 테이블·트레이·주사위만 어둡게 하고 족보는 건드리지 않는다.
+        /// 카드와 족보가 겹치는 부분은 딤이 아니라 카드의 깊이 마스크가 잘라낸다.
+        ///
+        /// 불투명 카드가 먼저 깊이를 쓰고 이 판은 깊이 테스트만 하므로 카드 위를 덮지 않는다.
+        /// </summary>
+        private Renderer CreateDraftDim(Transform parent)
+        {
+            Transform existing = parent.Find("Draft Dim");
+            if (existing != null) return existing.GetComponent<Renderer>();
+
+            GameObject dimObject = new("Draft Dim", typeof(MeshFilter), typeof(MeshRenderer));
+            dimObject.layer = TesseraLayers.Decoration;
+            dimObject.transform.SetParent(parent, false);
+            dimObject.transform.localPosition = new Vector3(0f, -DraftDimDrop, 0f);
+            dimObject.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            dimObject.transform.localScale = new Vector3(DraftDimSize, DraftDimSize, 1f);
+            dimObject.GetComponent<MeshFilter>().sharedMesh = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
+
+            Color dim = new(.035f, .025f, .04f, .82f);
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+            draftDimMaterial = new Material(shader) { name = "Runtime Draft Dim", color = dim };
+            if (draftDimMaterial.HasProperty("_BaseColor")) draftDimMaterial.SetColor("_BaseColor", dim);
+            if (draftDimMaterial.HasProperty("_Surface")) draftDimMaterial.SetFloat("_Surface", 1f);
+            if (draftDimMaterial.HasProperty("_Blend")) draftDimMaterial.SetFloat("_Blend", 0f);
+            if (draftDimMaterial.HasProperty("_SrcBlend")) draftDimMaterial.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+            if (draftDimMaterial.HasProperty("_DstBlend")) draftDimMaterial.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+            if (draftDimMaterial.HasProperty("_ZWrite")) draftDimMaterial.SetFloat("_ZWrite", 0f);
+            draftDimMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            draftDimMaterial.renderQueue = (int)RenderQueue.Transparent;
+
+            MeshRenderer renderer = dimObject.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = draftDimMaterial;
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            return renderer;
         }
 
         public void EnsureOwnedCardViews()
@@ -228,22 +329,22 @@ namespace Tessera.Games.AugmentedYacht
                 SetHoveredSlot(-1);
             }
 
-            string[] owned = augmented && gameInProgress && playerIndex >= 0
+            IReadOnlyList<string> owned = augmented && gameInProgress && playerIndex >= 0
                 ? session.State.AugmentPlayers[playerIndex].OwnedIds
                 : Array.Empty<string>();
-            int[] presets = playerIndex >= 0
+            IReadOnlyList<int> presets = playerIndex >= 0
                 ? session.State.AugmentPlayers[playerIndex].OwnedCardPresetIds
                 : Array.Empty<int>();
-            if (selectedSlot >= owned.Length) selectedSlot = -1;
+            if (selectedSlot >= owned.Count) selectedSlot = -1;
 
             for (int i = 0; i < ownedCards.Length; i++)
             {
                 AugmentTrayCardView view = ownedCards[i];
                 if (view == null) continue;
-                bool visible = i < owned.Length;
+                bool visible = i < owned.Count;
                 view.SetVisible(visible);
                 if (!visible) continue;
-                int presetId = i < (presets?.Length ?? 0) ? presets[i] : 0;
+                int presetId = i < (presets?.Count ?? 0) ? presets[i] : 0;
                 view.Bind(YachtAugmentRuntime.Lookup(owned[i]), presetId);
                 view.SetSelected(i == selectedSlot);
             }
@@ -274,19 +375,39 @@ namespace Tessera.Games.AugmentedYacht
         private static bool IsOwned(YachtGameSession session, int playerIndex, string augmentId)
         {
             if (session?.State?.AugmentPlayers == null
-                || playerIndex < 0 || playerIndex >= session.State.AugmentPlayers.Length) return false;
-            string[] owned = session.State.AugmentPlayers[playerIndex].OwnedIds;
-            return Array.IndexOf(owned, augmentId) >= 0;
+                || playerIndex < 0 || playerIndex >= session.State.AugmentPlayers.Count) return false;
+            IReadOnlyList<string> owned = session.State.AugmentPlayers[playerIndex].OwnedIds;
+            for (int i = 0; i < owned.Count; i++)
+            {
+                if (string.Equals(owned[i], augmentId, StringComparison.Ordinal)) return true;
+            }
+            return false;
         }
         /// <summary>가리킨 카드를 바꾼다. null이면 안내를 숨긴다.</summary>
         public void SetHoveredCard(AugmentTrayCardView card)
         {
+            int draftIndex = card == null ? -1 : Array.IndexOf(draftCards, card);
+            SetHoveredDraftIndex(draftIndex);
+            if (draftIndex >= 0) return;
             SetHoveredSlot(card == null ? -1 : Array.IndexOf(ownedCards, card));
         }
 
-        /// <summary>이미 고른 카드를 다시 누르면 선택이 풀린다.</summary>
+        /// <summary>선택 카드는 하나만 떠오른다. 나머지는 내려 둔다.</summary>
+        private void SetHoveredDraftIndex(int index)
+        {
+            for (int i = 0; i < draftCards.Length; i++) draftCards[i]?.SetHovered(i == index);
+        }
+
+        /// <summary>선택 카드를 누르면 그 후보를 고르고, 보유 카드는 선택을 켜고 끈다.</summary>
         public void ToggleSelection(AugmentTrayCardView card)
         {
+            int draftIndex = Array.IndexOf(draftCards, card);
+            if (draftIndex >= 0)
+            {
+                DraftOptionSelected?.Invoke(draftIndex);
+                return;
+            }
+
             int slot = Array.IndexOf(ownedCards, card);
             if (slot < 0) return;
 
@@ -298,6 +419,13 @@ namespace Tessera.Games.AugmentedYacht
                     ownedCards[i].SetSelected(i == selectedSlot);
                 }
             }
+        }
+
+        private void OnDestroy()
+        {
+            if (draftDimMaterial == null) return;
+            if (Application.isPlaying) Destroy(draftDimMaterial);
+            else DestroyImmediate(draftDimMaterial);
         }
     }
 }
