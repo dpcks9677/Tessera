@@ -93,7 +93,8 @@ Rules:
   - `graphify god-nodes` 로 핵심 허브 파악.
 - graphify 결과는 스코프된 서브그래프라 raw grep 결과나 GRAPH_REPORT.md 통독보다 훨씬 작습니다.
 - graphify가 충분한 컨텍스트를 못 주는 경우에만 직접 Read/Grep 으로 내려갑니다.
-- `graphify-out/graph.json` 이 없으면 `graphify update .` 로 먼저 생성합니다. `graphify-out/` 은 git 추적 대상 아님(각자 생성).
+- `graphify-out/graph.json` 이 없으면 `graphify update .` 로 먼저 생성합니다. 산출물은 git 추적 대상이 아니라 각자 생성합니다.
+- 예외로 `graphify-out/.graphify_labels.json` 과 같은 이름의 `.sig` 는 추적합니다. 노드·엣지·커뮤니티 분할은 AST에서 결정돼 같은 커밋이면 어디서든 똑같이 재생성되지만, 커뮤니티 이름은 LLM으로만 만들 수 있어 재생성이 불가능합니다. 이 두 파일 덕분에 새 환경에서 `graphify update .` 만 돌려도 같은 이름이 붙습니다.
 
 ## 커밋 & 푸시
 

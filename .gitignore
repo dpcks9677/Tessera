@@ -129,7 +129,20 @@ yarn-error.log*
 /[Aa]ssets/_Recovery.meta
 
 # graphify 지식 그래프 산출물 (graphify update . 로 재생성)
-/graphify-out/
+#
+# 디렉터리 자체가 아니라 내용물을 무시한다. 부모 디렉터리가 제외되면 그 안의 파일을
+# 다시 포함할 수 없기 때문이다(gitignore 규칙).
+/graphify-out/*
+
+# 커뮤니티 이름만은 예외로 추적한다.
+#
+# 노드·엣지·커뮤니티 분할은 AST에서 결정되므로 같은 커밋이면 어느 환경에서든 똑같이
+# 재생성된다. 반면 커뮤니티 이름은 LLM으로만 만들 수 있어 재생성이 불가능하고 결과도
+# 매번 다르다. 이 두 파일(합쳐 15KB)만 공유하면 다른 환경에서 graphify update . 를
+# 돌려도 같은 이름이 붙는다. .sig 는 커뮤니티별 내용 해시로, 저장된 이름이 아직
+# 유효한지 판정하는 데 쓰인다.
+!/graphify-out/.graphify_labels.json
+!/graphify-out/.graphify_labels.json.sig
 
 
 # unity-skills 스킬 문서 (com.besty.unity-skills 패키지가 원본)
