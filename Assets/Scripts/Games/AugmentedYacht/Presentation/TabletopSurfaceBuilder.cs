@@ -126,28 +126,6 @@ namespace Tessera.Games.AugmentedYacht
             underlayMr.shadowCastingMode = ShadowCastingMode.TwoSided;
             underlayMr.receiveShadows = true;
 
-            Color[] plankColors = new Color[]
-            {
-                new Color32(110, 67, 42, 255), // Plank 1: #6e432a (Warm Honey Brown)
-                new Color32(120, 73, 46, 255), // Plank 2: #78492e (Amber Toast Brown)
-                new Color32(99, 60, 37, 255),  // Plank 3: #633c25 (Deep Toffee Walnut)
-                new Color32(115, 69, 43, 255)  // Plank 4: #73452b (Warm Walnut Brown)
-            };
-
-            // 판자마다 서로 다른 옹이(Knot)와 결 위치를 위한 UV Offset & Scale
-            Vector2[] uvOffsets = new Vector2[]
-            {
-                new(0.00f, 0.00f),
-                new(0.40f, 0.20f),
-                new(0.80f, 0.60f),
-                new(0.20f, 0.40f)
-            };
-
-            Texture2D woodTexture = null;
-#if UNITY_EDITOR
-            woodTexture = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Wood/wood_grain_knots.png");
-#endif
-
             float startZ = -totalHeight * 0.5f + plankHeight * 0.5f;
 
             for (int i = 0; i < plankCount; i++)
@@ -171,32 +149,30 @@ namespace Tessera.Games.AugmentedYacht
                     else Object.DestroyImmediate(col);
                 }
 
+                // 판자마다 전용 픽셀 나뭇결을 쓴다(M17-T16). 결·옹이·균열이 텍스처마다 다르므로
+                // 예전처럼 한 장을 UV 오프셋으로 잘라 쓸 필요가 없다. 텍스처는
+                // Tools/Tessera/Generate Wood Plank Textures 로 굽는다.
+                Texture2D woodTexture = null;
+#if UNITY_EDITOR
+                woodTexture = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(
+                    $"Assets/Textures/Wood/wood_plank_{i + 1}.png");
+#endif
+
+                // 텍스처가 색을 통째로 들고 있다. 판자별 색을 곱하면 이중 착색이 되므로 흰색을 준다.
                 Material mat = new(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"))
                 {
                     name = $"Runtime Heavy Wood Plank {i + 1} Material",
-                    color = plankColors[i % plankColors.Length]
+                    color = Color.white
                 };
+                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", Color.white);
 
                 if (woodTexture != null)
                 {
+                    // 타일링·오프셋은 기본값(1,1)·(0,0)을 그대로 둔다. 텍스처 한 장이 판자 한 장을
+                    // 1:1로 덮어야 텍셀이 월드에서 정방형에 가까워지고 결이 가로로 문대지지 않는다.
                     mat.mainTexture = woodTexture;
                     if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", woodTexture);
                     if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", woodTexture);
-
-                    Vector2 tiling = new(1.5f, 1.0f);
-                    Vector2 offset = uvOffsets[i % uvOffsets.Length];
-                    mat.mainTextureScale = tiling;
-                    mat.mainTextureOffset = offset;
-                    if (mat.HasProperty("_BaseMap"))
-                    {
-                        mat.SetTextureScale("_BaseMap", tiling);
-                        mat.SetTextureOffset("_BaseMap", offset);
-                    }
-                    if (mat.HasProperty("_MainTex"))
-                    {
-                        mat.SetTextureScale("_MainTex", tiling);
-                        mat.SetTextureOffset("_MainTex", offset);
-                    }
                 }
 
                 mat.SetFloat("_Smoothness", 0.20f);
