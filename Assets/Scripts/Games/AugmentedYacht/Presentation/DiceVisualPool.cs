@@ -22,6 +22,10 @@ namespace Tessera.Games.AugmentedYacht
     public sealed class DiceVisualPool : MonoBehaviour
     {
         private const int DiceLayer = TesseraLayers.Dice;
+        private const string CrispDepthMaskShaderName = "DicePoC/CrispUiDepthMask";
+
+        /// <summary>깊이만 남기는 판은 색을 쓰지 않으므로 주사위마다 나눌 이유가 없다.</summary>
+        private static Material crispDepthMaskMaterial;
 
         private GameObject diceModel;
         private GameObject octahedronModel;
@@ -106,12 +110,7 @@ namespace Tessera.Games.AugmentedYacht
         /// <summary>모델 인스턴스를 새로 만들어 Visual 자리에 끼운다. 기존 Visual은 버린다.</summary>
         private Transform BuildVisual(GameObject die, DieType type)
         {
-            Transform existing = die.transform.Find("Visual");
-            if (existing != null)
-            {
-                if (Application.isPlaying) Destroy(existing.gameObject);
-                else DestroyImmediate(existing.gameObject);
-            }
+            DiscardVisuals(die.transform);
 
             GameObject model = ModelFor(type);
             if (model == null) return null;
@@ -121,9 +120,105 @@ namespace Tessera.Games.AugmentedYacht
             DisableImportedSceneComponents(visual);
             visual.transform.localPosition = Vector3.zero;
             visual.transform.localRotation = MeasureBaseCorrection(visual.transform, type);
-            NormalizeVisual(visual.transform, 1.0f);
+            NormalizeVisual(visual.transform, NormalizedSizeFor(type));
             SetLayerRecursively(die, DiceLayer);
+            if (type == DieType.Octahedron) PromoteOctaDigitsToCrispUi(visual.transform);
             return visual.transform;
+        }
+
+        /// <summary>
+        /// 이전 몸체를 모두 버린다.
+        ///
+        /// 재생 중 <see cref="Object.Destroy"/>는 프레임이 끝날 때 처리된다. 이름을 그대로 두면
+        /// 같은 프레임의 다음 호출이 파괴 예약된 오브젝트를 "Visual"로 다시 찾아 그 뒤에 새 몸체를
+        /// 덧붙이므로, 종류를 연달아 바꾸면 8면체와 D6가 겹쳐 쌓인다. 이름을 먼저 바꾸고 꺼 둔다.
+        /// </summary>
+        private static void DiscardVisuals(Transform die)
+        {
+            for (int i = die.childCount - 1; i >= 0; i--)
+            {
+                Transform child = die.GetChild(i);
+                if (child.name != "Visual") continue;
+
+                child.name = "Visual (Discarded)";
+                child.gameObject.SetActive(false);
+                if (Application.isPlaying) Destroy(child.gameObject);
+                else DestroyImmediate(child.gameObject);
+            }
+        }
+
+        /// <summary>
+        /// 정규화 목표 크기. 8면체만 1.2로 키운다.
+        ///
+        /// 정규화는 큐브 원본 규격(1.62)으로 나누는 고정 비율이라 8면체는 마주 보는 두 면 사이가
+        /// D6 한 변의 0.70배로 줄어든다. 실루엣은 꼭짓점 덕에 커 보이지만 숫자를 새기는 평면은
+        /// 그만큼 좁아진다. 트레이 간격(1.5)이 허용하는 선에서 키워 면을 넓힌다.
+        /// </summary>
+        private static float NormalizedSizeFor(DieType type)
+        {
+            return type == DieType.Octahedron ? 1.2f : 1.0f;
+        }
+
+        /// <summary>
+        /// 8면 주사위의 면 숫자만 픽셀 필터 밖으로 옮긴다(M17-T8).
+        ///
+        /// 면 평면의 내접원이 640×480 격자에서 약 7.6px라, 새긴 숫자는 획을 어떻게 잡아도 축소에서
+        /// 사라지거나 흰 덩어리로 뭉친다. 몸체는 픽셀 패스에 그대로 두고 숫자만
+        /// <see cref="TesseraLayers.CrispUI"/> 레이어로 올리면 점수표·증강 카드 글자와 같은 경로로
+        /// 원본 해상도에 합성돼, 숫자가 면에 붙은 채로 획이 살아난다.
+        ///
+        /// Crisp 카메라는 월드 물체를 하나도 찍지 않아 깊이 버퍼가 비어 있다. 그대로 두면 뒤쪽 면의
+        /// 숫자가 몸체를 뚫고 보이므로, 색을 쓰지 않고 깊이만 남기는 몸체 사본을 같은 레이어에 함께 둔다.
+        /// </summary>
+        private static void PromoteOctaDigitsToCrispUi(Transform visual)
+        {
+            Mesh bodyMesh = null;
+            for (int i = 0; i < visual.childCount; i++)
+            {
+                Transform child = visual.GetChild(i);
+                if (child.name == "Body")
+                {
+                    MeshFilter bodyFilter = child.GetComponent<MeshFilter>();
+                    if (bodyFilter != null) bodyMesh = bodyFilter.sharedMesh;
+                    continue;
+                }
+
+                if (!child.name.StartsWith("Pip_", StringComparison.Ordinal)) continue;
+                SetLayerRecursively(child.gameObject, TesseraLayers.CrispUI);
+            }
+
+            if (bodyMesh == null) return;
+
+            Material maskMaterial = EnsureCrispDepthMaskMaterial();
+            if (maskMaterial == null) return;
+
+            GameObject maskObject = new("Crisp Depth Mask", typeof(MeshFilter), typeof(MeshRenderer))
+            {
+                layer = TesseraLayers.CrispUI,
+                hideFlags = HideFlags.DontSave
+            };
+            maskObject.transform.SetParent(visual, false);
+            maskObject.GetComponent<MeshFilter>().sharedMesh = bodyMesh;
+
+            MeshRenderer maskRenderer = maskObject.GetComponent<MeshRenderer>();
+            maskRenderer.sharedMaterial = maskMaterial;
+            maskRenderer.shadowCastingMode = ShadowCastingMode.Off;
+            maskRenderer.receiveShadows = false;
+        }
+
+        private static Material EnsureCrispDepthMaskMaterial()
+        {
+            if (crispDepthMaskMaterial != null) return crispDepthMaskMaterial;
+
+            Shader shader = Shader.Find(CrispDepthMaskShaderName);
+            if (shader == null) return null;
+
+            crispDepthMaskMaterial = new Material(shader)
+            {
+                name = "Runtime Octa Crisp Depth Mask",
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            return crispDepthMaskMaterial;
         }
 
         /// <summary>

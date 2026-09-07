@@ -28,8 +28,13 @@ public static class DiceShapeBaker
 
     // 삼각형 면의 평면부는 내접원이 약 0.212다. 점 여섯 개를 넣으면 저해상도에서 한 덩어리로 뭉쳐
     // 원본과 같이 숫자를 새긴다(preset-studio/src/diceMaterials.js:76-77).
-    // 이 씬의 앰버 키라이트가 강해 숫자를 키우면 획이 포화해 주사위 전체가 흰 덩어리로 읽힌다.
-    // 형상과 색으로 종류를 구분하고, 숫자는 뭉개지지 않는 최대 크기까지만 새긴다.
+    //
+    // 2026-09-07 측정(M17-T8). 픽셀 패스(640×480)에서는 이 크기로 값을 읽을 수 없다. 8면체를 1.2로
+    // 정규화해도 면 평면의 내접원 지름이 약 7.6px뿐이라, 획 0.030(약 0.5px)은 축소에서 얼룩이 되고
+    // 획 0.11(약 2px)은 세그먼트 사이가 메워져 흰 덩어리가 된다. 점 표기도 값 6이 2열×3행 5×8px라
+    // 내접원을 넘는다. 그래서 크기를 키우는 대신 숫자만 픽셀 필터 밖으로 뺐다.
+    // 런타임이 Pip_* 를 CrispUI 레이어로 올려 원본 해상도로 합성하므로
+    // (`DiceVisualPool.PromoteOctaDigitsToCrispUi`), 여기서는 원래 크기를 그대로 쓴다.
     private const float DigitHeight = 0.22f;
     private const float DigitWidth = 0.13f;
     private const float DigitStroke = 0.030f;

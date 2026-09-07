@@ -127,11 +127,30 @@ namespace Tessera.Dice
             return topFace;
         }
 
-        /// <summary>8면 주사위의 목표 면이 카메라를 정면으로 바라보게 하는 회전.</summary>
+        /// <summary>
+        /// 8면 주사위의 목표 면이 카메라를 정면으로 바라보게 하는 회전.
+        ///
+        /// 면 법선만 맞추면(<see cref="Quaternion.FromToRotation"/>) 축 둘레의 롤이 정해지지 않아
+        /// 면에 새긴 숫자가 제멋대로 누워서 읽힌다. 6면과 같이 면 법선과 글자 윗방향을 함께 맞춘다.
+        /// </summary>
         public static Quaternion GetOctaCameraFacingRotation(int faceIndex, float cameraPitch = DefaultCameraPitch)
         {
             Quaternion tilt = Quaternion.Euler(cameraPitch - 90f, 0f, 0f);
-            return tilt * Quaternion.FromToRotation(GetOctaFaceNormal(faceIndex), Vector3.up);
+            Quaternion sourceBasis = Quaternion.LookRotation(GetOctaFaceNormal(faceIndex), GetOctaFaceUpAxis(faceIndex));
+            Quaternion targetBasis = Quaternion.LookRotation(Vector3.up, Vector3.forward);
+            return tilt * (targetBasis * Quaternion.Inverse(sourceBasis));
+        }
+
+        /// <summary>
+        /// 면에 새긴 숫자의 윗방향(면 평면 위). 베이커가 숫자를 세울 때 쓴 규칙과 같아야 한다
+        /// (<c>DiceShapeBaker.BakeOctahedronPrefab</c>, 원본 geometryUtils.js:125).
+        ///
+        /// 면 방향 성분이 ±1뿐이라 이 벡터는 면 법선과 항상 직교한다.
+        /// </summary>
+        public static Vector3 GetOctaFaceUpAxis(int faceIndex)
+        {
+            Vector3 normal = GetOctaFaceNormal(faceIndex);
+            return new Vector3(-Mathf.Sign(normal.x), -Mathf.Sign(normal.y), 2f * Mathf.Sign(normal.z)).normalized;
         }
 
         /// <summary>
