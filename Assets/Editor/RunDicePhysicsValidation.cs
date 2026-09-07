@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using Tessera.Games.AugmentedYacht;
+using Tessera.Games.Yacht;
 
 [InitializeOnLoad]
 public static class RunDicePhysicsValidation
@@ -12,8 +13,12 @@ public static class RunDicePhysicsValidation
     private const string ValidationRequestedKey = "Tessera.PhysicsKeepValidationRequested";
     private const string ValidationRunningKey = "Tessera.PhysicsKeepValidationRunning";
 
+    // 굴림 궤적과 뒤이은 정렬 애니메이션까지 기다린다. 기존 5초는 그 둘을 합친 시간보다 짧았다.
+    private const double SettleTimeoutSeconds = 12.0;
+
     private static int phase;
     private static double phaseStartedAt;
+    private static int keepIndex;
     private static int firstKeptValue;
     private static int secondKeptValue;
 
@@ -83,12 +88,36 @@ public static class RunDicePhysicsValidation
 
         switch (phase)
         {
-            case 1: // 초기 굴림 시작
+            case 1: // 게임 세션 시작. 시작하지 않으면 굴림 자체가 거부된다.
                 if (elapsed > 0.5)
                 {
-                    controller.ResetAndRollDice();
-                    phase = 2;
-                    phaseStartedAt = EditorApplication.timeSinceStartup;
+                    YachtTurnFlowPresenter turnFlow = controller.TurnFlow;
+                    if (turnFlow == null)
+                    {
+                        if (elapsed > SettleTimeoutSeconds) Fail("Turn flow presenter was never created.");
+                        break;
+                    }
+
+                    // 플레이 진입 직후는 시작 오버레이가 떠 있는 Idle 단계다. 이 상태에서
+                    // RollDice()는 게임 세션이 없어 조용히 반환하므로, 먼저 게임을 시작한다.
+                    if (turnFlow.Phase == PresentationPhase.Idle)
+                    {
+                        turnFlow.StartNewGame(YachtGameMode.Normal);
+                        break;
+                    }
+
+                    if (turnFlow.Phase == PresentationPhase.AwaitingRoll)
+                    {
+                        controller.ResetAndRollDice();
+                        phase = 2;
+                        phaseStartedAt = EditorApplication.timeSinceStartup;
+                        break;
+                    }
+
+                    if (elapsed > SettleTimeoutSeconds)
+                    {
+                        Fail($"Game never reached AwaitingRoll. Current phase: {turnFlow.Phase}.");
+                    }
                 }
                 break;
 
@@ -106,23 +135,39 @@ public static class RunDicePhysicsValidation
                         }
                     }
 
-                    // 첫 두 개 주사위 킵(Keep)
-                    controller.SetDieKept(0, true);
-                    controller.SetDieKept(1, true);
                     firstKeptValue = controller.GetDieValue(0);
                     secondKeptValue = controller.GetDieValue(1);
 
+                    keepIndex = 0;
                     phase = 3;
                     phaseStartedAt = EditorApplication.timeSinceStartup;
                 }
-                else if (elapsed > 5.0)
+                else if (elapsed > SettleTimeoutSeconds)
                 {
-                    Fail("Timed out waiting for first roll to settle.");
+                    Fail($"Timed out waiting for first roll to settle. Current phase: {PhaseOf(controller)}.");
                 }
                 break;
 
-            case 3: // 킵 적용 후 부분 재굴림(Re-roll) 시작
-                if (elapsed > 0.5 && controller.IsSettled)
+            case 3: // 주사위를 한 개씩 킵한 뒤 부분 재굴림(Re-roll) 시작
+                // 킵하면 정렬 애니메이션이 다시 돌아 단계가 Arranging으로 바뀐다.
+                // SetDieKept는 Settled에서만 통과하므로 한 프레임에 두 개를 걸 수 없다.
+                if (elapsed <= 0.5) break;
+
+                if (keepIndex < 2)
+                {
+                    if (controller.IsSettled && controller.SetDieKept(keepIndex, true))
+                    {
+                        keepIndex++;
+                        phaseStartedAt = EditorApplication.timeSinceStartup;
+                    }
+                    else if (elapsed > SettleTimeoutSeconds)
+                    {
+                        Fail($"Keep request for die {keepIndex + 1} never took. Current phase: {PhaseOf(controller)}.");
+                    }
+                    break;
+                }
+
+                if (controller.IsSettled)
                 {
                     if (controller.KeptDieCount != 2)
                     {
@@ -133,6 +178,10 @@ public static class RunDicePhysicsValidation
                     controller.RollDice();
                     phase = 4;
                     phaseStartedAt = EditorApplication.timeSinceStartup;
+                }
+                else if (elapsed > SettleTimeoutSeconds)
+                {
+                    Fail($"Timed out waiting to settle after keeping. Current phase: {PhaseOf(controller)}.");
                 }
                 break;
 
@@ -151,12 +200,18 @@ public static class RunDicePhysicsValidation
                     Pass("Dice Baked Preset & Keep Layout Validation PASSED successfully!");
                     phase = 5;
                 }
-                else if (elapsed > 5.0)
+                else if (elapsed > SettleTimeoutSeconds)
                 {
-                    Fail("Timed out waiting for second roll to settle.");
+                    Fail($"Timed out waiting for second roll to settle. Current phase: {PhaseOf(controller)}.");
                 }
                 break;
         }
+    }
+
+    /// <summary>실패 원인을 좁히기 위해 현재 프레젠테이션 단계를 문자열로 남긴다.</summary>
+    private static string PhaseOf(AugmentedYachtController controller)
+    {
+        return controller.TurnFlow != null ? controller.TurnFlow.Phase.ToString() : "no turn flow";
     }
 
     private static void Pass(string message)

@@ -173,3 +173,4 @@ LightingData.asset     binary
 # 주사위 프리셋 생성 툴
 preset-studio/** linguist-vendored
 
+graphify-out/graph.json merge=graphify

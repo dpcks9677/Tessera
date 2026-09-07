@@ -45,6 +45,10 @@ namespace Tessera.Tabletop
         [SerializeField, Range(0, OuterRuneCount)] private int outerRuneProgress;
         [SerializeField] private bool stoneRunesLit;
 
+        [Header("Base Yacht Round State")]
+        [SerializeField, Range(0, OuterRuneCount)] private int roundProgress;
+        [SerializeField] private bool roundProgressActive;
+
         [Header("Animation")]
         [SerializeField, Min(0.1f)] private float outerRuneStepDuration = 0.065f;
         [SerializeField, Min(0.1f)] private float stoneMoveDuration = 0.72f;
@@ -72,7 +76,7 @@ namespace Tessera.Tabletop
 
         public int ExtraTurnCount => extraTurnCount;
         public int MaxExtraTurns => maxExtraTurns;
-        public int OuterRuneProgress => outerRuneProgress;
+        public int OuterRuneProgress => roundProgressActive ? roundProgress : outerRuneProgress;
         
 
         public event Action StateChanged;
@@ -123,6 +127,7 @@ public bool StoneRunesLit => stoneRunesLit;
             maxExtraTurns = Mathf.Clamp(maxExtraTurns, 1, VisualCapacity);
             extraTurnCount = Mathf.Clamp(extraTurnCount, 0, maxExtraTurns);
             outerRuneProgress = Mathf.Clamp(outerRuneProgress, 0, OuterRuneCount);
+            roundProgress = Mathf.Clamp(roundProgress, 0, OuterRuneCount);
         }
 
         public void EnsureGeometry()
@@ -200,6 +205,24 @@ public bool StoneRunesLit => stoneRunesLit;
             {
                 SetExtraTurnCount(maxExtraTurns, Application.isPlaying);
             }
+        }
+
+        /// <summary>
+        /// 기본 요트 다이스의 현재 라운드를 외곽 12개 룬에 누적 표시합니다.
+        /// 증강용 수정 스톤과 외곽 룬 시퀀스 상태는 변경하지 않습니다.
+        /// </summary>
+        public void SetRoundProgress(int round)
+        {
+            roundProgress = Mathf.Clamp(round, 0, OuterRuneCount);
+            roundProgressActive = true;
+            ApplyRuneStates();
+        }
+
+        public void ClearRoundProgress()
+        {
+            roundProgress = 0;
+            roundProgressActive = false;
+            ApplyRuneStates();
         }
 
         public void SetExtraTurnCount(int count, bool animate = true)
@@ -709,9 +732,11 @@ public bool StoneRunesLit => stoneRunesLit;
         {
             propertyBlock ??= new MaterialPropertyBlock();
 
+            int displayedProgress = roundProgressActive ? roundProgress : outerRuneProgress;
+
             for (int i = 0; i < outerRunes.Count; i++)
             {
-                bool lit = i < outerRuneProgress;
+                bool lit = i < displayedProgress;
                 ApplyGlyphState(outerRunes[i], lit);
             }
 

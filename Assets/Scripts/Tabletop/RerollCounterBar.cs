@@ -123,8 +123,21 @@ namespace Tessera.Tabletop
             maxRolls = max;
         }
 
+        // 매 프레임 도는 경로라 셰이더 프로퍼티 이름을 미리 ID로 바꿔 둔다.
+        // 1회성 생성 경로의 문자열 접근은 그대로 둔다. 거기서는 조회 비용이 의미가 없다.
+        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        private static readonly int ColorId = Shader.PropertyToID("_Color");
+        private static readonly int EmissionColorId = Shader.PropertyToID("_EmissionColor");
+
         private void Update()
         {
+            // 편집 모드에서는 연출을 돌리지 않는다. 이 애니메이션은 트랜스폼과 컴포넌트 값 같은
+            // 직렬화 대상에 매 틱 쓰기 때문에, 편집 모드에서 돌리면 씬이 계속 더러운 상태가 된다.
+            // 그러면 씬을 저장할 때마다 관련 없는 오버라이드가 diff에 섞이고 테스트 실행이
+            // "dirty scene"으로 막힌다. [ExecuteAlways]는 BuildGeometry 컨텍스트 메뉴와
+            // OnValidate 미리보기 때문에 그대로 둔다.
+            if (!Application.isPlaying) return;
+
             if (propBlock == null) propBlock = new MaterialPropertyBlock();
 
             float t = Time.time;
@@ -144,9 +157,9 @@ namespace Tessera.Tabletop
                     Color curEmit = Color.Lerp(Color.black, activeEmissionColor * (0.75f * pulse), f);
 
                     gemRenderers[i].GetPropertyBlock(propBlock);
-                    propBlock.SetColor("_BaseColor", curBody);
-                    propBlock.SetColor("_Color", curBody);
-                    propBlock.SetColor("_EmissionColor", curEmit);
+                    propBlock.SetColor(BaseColorId, curBody);
+                    propBlock.SetColor(ColorId, curBody);
+                    propBlock.SetColor(EmissionColorId, curEmit);
                     gemRenderers[i].SetPropertyBlock(propBlock);
                 }
 
@@ -160,9 +173,9 @@ namespace Tessera.Tabletop
                     {
                         if (gemRidgeRenderers[i][r] == null) continue;
                         gemRidgeRenderers[i][r].GetPropertyBlock(propBlock);
-                        propBlock.SetColor("_BaseColor", curRidge);
-                        propBlock.SetColor("_Color", curRidge);
-                        propBlock.SetColor("_EmissionColor", curRidgeEmit);
+                        propBlock.SetColor(BaseColorId, curRidge);
+                        propBlock.SetColor(ColorId, curRidge);
+                        propBlock.SetColor(EmissionColorId, curRidgeEmit);
                         gemRidgeRenderers[i][r].SetPropertyBlock(propBlock);
                     }
                 }

@@ -15,6 +15,7 @@ namespace Tessera.Tabletop
     public sealed class AugmentCardTray : MonoBehaviour
     {
         private const int DecorationLayer = 11;
+        public const float DefaultCardSlotAspectRatio = 1.774f;
 
         [Header("Tray Dimensions")]
         [SerializeField] private float trayWidth = 5.06f;           // 우측 족보(5.06f)와 동일한 기본 가로 폭
@@ -32,6 +33,28 @@ namespace Tessera.Tabletop
         private readonly Transform[] slotAnchors = new Transform[3];
 
         public int SlotCount => slotCount;
+        public Vector2 CardSlotLocalSize
+        {
+            get
+            {
+                float insideHeight = trayHeight - wallThickness * 2f;
+                float dividersHeight = dividerThickness * Mathf.Max(0, slotCount - 1);
+                float slotHeight = slotCount > 0 ? (insideHeight - dividersHeight) / slotCount : 0f;
+                return new Vector2(trayWidth - wallThickness * 2f, slotHeight);
+            }
+        }
+        public float CardSlotAspectRatio
+        {
+            get
+            {
+                Vector2 slotSize = CardSlotLocalSize;
+                float slotWidth = slotSize.x;
+                float slotHeight = slotSize.y;
+                return slotWidth > 0f && slotHeight > 0f
+                    ? slotWidth / slotHeight
+                    : DefaultCardSlotAspectRatio;
+            }
+        }
 
         public static AugmentCardTray Create(Transform parent, Vector3 worldPosition, Vector3? scale = null)
         {
@@ -49,11 +72,29 @@ namespace Tessera.Tabletop
 
         public Transform GetSlotAnchor(int slotIndex)
         {
+            ResolveSlotAnchors();
             if (slotIndex >= 0 && slotIndex < slotAnchors.Length)
             {
                 return slotAnchors[slotIndex];
             }
             return null;
+        }
+
+        private void ResolveSlotAnchors()
+        {
+            Transform[] descendants = null;
+            for (int i = 0; i < slotAnchors.Length; i++)
+            {
+                if (slotAnchors[i] != null) continue;
+                descendants ??= GetComponentsInChildren<Transform>(true);
+                string anchorName = $"CardSlot_{i}_Anchor";
+                for (int j = 0; j < descendants.Length; j++)
+                {
+                    if (descendants[j].name != anchorName) continue;
+                    slotAnchors[i] = descendants[j];
+                    break;
+                }
+            }
         }
 
         public void BuildGeometry()
@@ -346,10 +387,10 @@ namespace Tessera.Tabletop
                 SetupPart(rimCapBottom, slotGroup.transform, new Vector3(rimX, rimY, -halfGap - 0.03f), Vector3.zero,
                     new Vector3(rimThickness, rimH, 0.06f), stoneHighlightMat);
 
-                // 3-5. 카드 안착용 3D 앵커 Transform
+                // 3-5. 카드 안착용 3D 앵커 Transform (스폰 위치 x -0.17 좌측 이동 적용)
                 GameObject anchorObj = new($"CardSlot_{i}_Anchor");
                 anchorObj.transform.SetParent(slotGroup.transform, false);
-                anchorObj.transform.localPosition = new Vector3(0f, baseThickness + 0.06f, 0f);
+                anchorObj.transform.localPosition = new Vector3(-0.17f, baseThickness + 0.06f, 0f);
                 slotAnchors[i] = anchorObj.transform;
 
                 // 3-6. 슬롯 간 분할 격벽 (Divider Bar)

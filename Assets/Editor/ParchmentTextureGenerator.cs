@@ -1,4 +1,4 @@
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 using System;
 using System.IO;
 using UnityEditor;
@@ -33,21 +33,6 @@ namespace Tessera.EditorTools
             AssetDatabase.Refresh();
             ConfigureTextureImporters();
             Debug.Log("✨ svgicons.js 원본 벡터 아이콘 복원 및 양피지 텍스처 생성 완료!");
-        }
-
-        [MenuItem("Tools/Tessera/Rebuild Scene Layout (Include Parchment)")]
-        public static void RebuildSceneLayout()
-        {
-            var controller = UnityEngine.Object.FindFirstObjectByType<AugmentedYachtController>();
-            if (controller != null)
-            {
-                controller.BuildEditableLayout();
-                Debug.Log("✨ AugmentedYachtController 레이아웃 리빌드 완료 (우측 양피지 족보 포함)!");
-            }
-            else
-            {
-                Debug.LogWarning("⚠️ 씬에서 AugmentedYachtController를 찾을 수 없습니다.");
-            }
         }
 
         private static void GenerateSvgIcons(string iconsDir)

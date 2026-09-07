@@ -25,6 +25,18 @@ namespace Tessera.Dice
             Vector3.forward   // 6 (Numpad 1, 3, 4, 6, 7, 9 세로 2열 정렬)
         };
 
+        /// <summary>
+        /// 8면 주사위의 면 법선(M7-T5). 배열 위치가 곧 면 인덱스 - 1이다.
+        /// 원본 preset-studio/src/geometryUtils.js:110-113의 방향 순서를 그대로 쓴다.
+        /// </summary>
+        public static readonly Vector3[] OctaFaceNormals =
+        {
+            new Vector3(1f, 1f, 1f).normalized, new Vector3(1f, -1f, 1f).normalized,
+            new Vector3(1f, -1f, -1f).normalized, new Vector3(1f, 1f, -1f).normalized,
+            new Vector3(-1f, 1f, -1f).normalized, new Vector3(-1f, -1f, -1f).normalized,
+            new Vector3(-1f, -1f, 1f).normalized, new Vector3(-1f, 1f, 1f).normalized
+        };
+
         public const float DefaultCameraPitch = 75.0f;
         public const float DefaultCameraTiltOffset = -15.0f; // 75f - 90f
 
@@ -95,6 +107,49 @@ namespace Tessera.Dice
         public static Quaternion GetUprightRotation(Quaternion landingRotation, Vector3 faceUpDirection)
         {
             return GetTopRotation(GetTopValue(landingRotation), faceUpDirection);
+        }
+
+        // ------------------------------------------------------------ 8면 주사위(M7-T5)
+
+        /// <summary>지금 위를 향하고 있는 8면 주사위의 면 인덱스(1~8).</summary>
+        public static int GetOctaTopFace(Quaternion rotation)
+        {
+            Quaternion normalizedRotation = rotation.normalized;
+            int topFace = 1;
+            float bestUpDot = float.NegativeInfinity;
+            for (int index = 0; index < OctaFaceNormals.Length; index++)
+            {
+                float upDot = Vector3.Dot(normalizedRotation * OctaFaceNormals[index], Vector3.up);
+                if (upDot <= bestUpDot) continue;
+                bestUpDot = upDot;
+                topFace = index + 1;
+            }
+            return topFace;
+        }
+
+        /// <summary>8면 주사위의 목표 면이 카메라를 정면으로 바라보게 하는 회전.</summary>
+        public static Quaternion GetOctaCameraFacingRotation(int faceIndex, float cameraPitch = DefaultCameraPitch)
+        {
+            Quaternion tilt = Quaternion.Euler(cameraPitch - 90f, 0f, 0f);
+            return tilt * Quaternion.FromToRotation(GetOctaFaceNormal(faceIndex), Vector3.up);
+        }
+
+        /// <summary>
+        /// 착지 회전은 그대로 두고, 목표 면이 위로 오도록 8면 주사위를 제자리에서 돌린다.
+        /// 6면과 달리 면이 축과 나란하지 않아 별도 표가 필요하다.
+        /// </summary>
+        public static Quaternion GetOctaVisualRemapRotation(Quaternion landingRotation, int targetFaceIndex)
+        {
+            int physicalTop = GetOctaTopFace(landingRotation);
+            Vector3 source = GetOctaFaceNormal(targetFaceIndex);
+            Vector3 target = GetOctaFaceNormal(physicalTop);
+            return Quaternion.FromToRotation(source, target);
+        }
+
+        private static Vector3 GetOctaFaceNormal(int faceIndex)
+        {
+            if (faceIndex < 1 || faceIndex > OctaFaceNormals.Length) return OctaFaceNormals[0];
+            return OctaFaceNormals[faceIndex - 1];
         }
 
         /// <summary>

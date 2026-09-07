@@ -220,16 +220,31 @@ namespace Tessera.Dice
                     ? TransformPresetDie(landingFrame.Dice[index], isMirrored).Rotation
                     : dice[index].localRotation;
 
+                // 세븐스 주사위처럼 면 값이 1~6이 아닌 종류가 있어 값을 면 인덱스로 옮겨 넘긴다(M7-T5).
+                DieType dieType = DiceFaceValues.TypeOf(dice[index]);
+                int faceIndex = DiceFaceValues.FaceIndexOf(dieType, targetValues[index]);
+
+                if (dieType == DieType.Octahedron)
+                {
+                    Transform octaVisual = dice[index].Find("Visual");
+                    if (octaVisual != null)
+                    {
+                        octaVisual.localRotation = DiceFaceOrientation.GetOctaVisualRemapRotation(landingRotation, faceIndex);
+                    }
+                    continue;
+                }
+
+                faceIndex = Mathf.Clamp(faceIndex, 1, 6);
                 Transform visual = dice[index].Find("Visual");
                 if (visual != null)
                 {
                     // FBX 3D 모델의 자체 기울기(333, 318, 0)를 측정하여 직교 기저로 보정하고 목표 눈으로 90도 회전
                     Quaternion baseCorrection = DiceFaceOrientation.MeasureModelBasis(visual);
-                    visual.localRotation = DiceFaceOrientation.GetVisualRemapRotation(landingRotation, targetValues[index], baseCorrection);
+                    visual.localRotation = DiceFaceOrientation.GetVisualRemapRotation(landingRotation, faceIndex, baseCorrection);
                 }
                 else
                 {
-                    DiceMaterialFactory.ApplyPredictedTopValue(dice[index], landingRotation, targetValues[index]);
+                    DiceMaterialFactory.ApplyPredictedTopValue(dice[index], landingRotation, faceIndex);
                 }
             }
         }

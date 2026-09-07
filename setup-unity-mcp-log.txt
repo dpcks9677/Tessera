@@ -1,0 +1,30 @@
+[15:51:48] === MCP for Unity server setup ===
+[15:51:48] PSVersion : 5.1.26100.9168
+[15:51:48] ScriptRoot: C:\Users\dpcks\문서\Tessera
+[15:51:48] uv already installed: C:\Users\dpcks\.local\bin\uv.exe
+[15:51:48] uv path  : C:\Users\dpcks\.local\bin\uv.exe
+[15:51:48] uv version: uv 0.12.5 (210d1f678 2026-08-14 x86_64-pc-windows-msvc)
+[15:51:48] uvx path : C:\Users\dpcks\.local\bin\uvx.exe  exists=True
+[15:51:48] Installing a managed Python (uv python install 3.12) ...
+[15:51:53]   -> uv.exe : Downloading cpython-3.12.14-windows-x86_64-none (download) (21.0MiB) | At C:\Users\dpcks\문서\Tessera\setup-unity-mcp.ps1:64 char:8 | + $out = & $uv python install 3.12 2>&1 | +        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |     + CategoryInfo          : NotSpecified: (Downloading cpy...load) (21.0MiB):String) [], RemoteException |     + FullyQualifiedErrorId : NativeCommandError |   |  Downloaded cpython-3.12.14-windows-x86_64-none (download) | Installed Python 3.12.14 in 4.32s |  + cpython-3.12.14-windows-x86_64-none (python3.12.exe)
+[15:51:53] Pre-fetching the MCP server package (uv tool install mcpforunityserver) ... this can take a minute
+[15:51:55]   -> uv.exe : Resolved 72 packages in 211ms | At C:\Users\dpcks\문서\Tessera\setup-unity-mcp.ps1:68 char:8 | + $out = & $uv tool install "mcpforunityserver" --force 2>&1 | +        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |     + CategoryInfo          : NotSpecified: (Resolved 72 packages in 211ms:String) [], RemoteException |     + FullyQualifiedErrorId : NativeCommandError |   | Prepared 4 packages in 186ms | Installed 72 packages in 1.01s |  + aiofile==3.12.3 |  + annotated-doc==0.0.5 |  + annotated-types==0.8.0 |  + anyio==4.15.0 |  + attrs==26.1.0 |  + authlib==1.8.0 |  + beartype==0.22.9 |  + cachetools==7.1.8 |  + caio==0.12.2 |  + certifi==2026.7.22 |  + cffi==2.1.1 |  + click==8.5.0 |  + cryptography==50.0.1 |  + cyclopts==4.23.3 |  + dnspython==2.8.0 |  + docstring-parser==0.18.0 |  + email-validator==2.3.0 |  + exceptiongroup==1.3.1 |  + fastapi==0.141.1 |  + fastmcp==3.4.7 |  + fastmcp-slim==3.4.7 |  + griffelib==2.2.0 |  + h11==0.16.0 |  + httpcore==1.0.9 |  + httpx==0.28.1 |  + httpx-sse==0.4.3 |  + idna==3.19 |  + jaraco-classes==3.4.0 |  + jaraco-context==6.1.2 |  + jaraco-functools==4.6.0 |  + joserfc==1.7.5 |  + jsonref==1.1.0 |  + jsonschema==4.26.0 |  + jsonschema-path==0.5.0 |  + jsonschema-specifications==2025.9.1 |  + keyring==25.7.0 |  + markdown-it-py==4.2.0 |  + mcp==1.29.1 |  + mcpforunityserver==10.2.0 |  + mdurl==0.1.2 |  + more-itertools==11.1.0 |  + openapi-pydantic==0.5.1 |  + opentelemetry-api==1.44.0 |  + packaging==26.3 |  + pathable==0.6.0 |  + platformdirs==4.11.7 |  + py-key-value-aio==0.4.5 |  + pycparser==3.0 |  + pydantic==2.13.5 |  + pydantic-core==2.46.5 |  + pydantic-settings==2.15.0 |  + pygments==2.21.0 |  + pyjwt==2.13.0 |  + pyperclip==1.11.0 |  + python-dotenv==1.2.3 |  + python-multipart==0.0.32 |  + pywin32==312 |  + pywin32-ctypes==0.2.3 |  + pyyaml==6.0.3 |  + referencing==0.37.0 |  + rich==15.0.0 |  + rich-rst==2.1.0 |  + rpds-py==2026.6.3 |  + sse-starlette==3.4.8 |  + starlette==1.6.0 |  + tomli==2.4.1 |  + typing-extensions==4.16.0 |  + typing-inspection==0.4.4 |  + uncalled-for==0.4.0 |  + uvicorn==0.52.4 |  + watchfiles==1.2.0 |  + websockets==17.1 | Installed 2 executables: mcp-for-unity, unity-mcp
+[15:51:55] config written -> C:\Users\dpcks\AppData\Roaming\Claude\claude_desktop_config.json
+[15:51:55]   | {
+[15:51:55]   |     "mcpServers":  {
+[15:51:55]   |                        "unityMCP":  {
+[15:51:55]   |                                         "command":  "C:\\Users\\dpcks\\.local\\bin\\uvx.exe",
+[15:51:55]   |                                         "args":  [
+[15:51:55]   |                                                      "--from",
+[15:51:55]   |                                                      "mcpforunityserver",
+[15:51:55]   |                                                      "mcp-for-unity",
+[15:51:55]   |                                                      "--transport",
+[15:51:55]   |                                                      "stdio"
+[15:51:55]   |                                                  ]
+[15:51:55]   |                                     }
+[15:51:55]   |                    }
+[15:51:55]   | }
+[15:51:55] Smoke test: launching the server for 8 seconds to see if it starts ...
+[15:52:03]   server is running (good) - stopping it
+[15:52:03] === DONE ===
+[15:52:03] Next: quit Claude Desktop completely (tray icon -> Quit) and start it again.

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
@@ -8,27 +8,11 @@ using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 using Tessera.Games.AugmentedYacht;
 
-[InitializeOnLoad]
 public static class BuildDiceGraphicsPoC
 {
     private const string ScenePath = "Assets/Scenes/Augmented Dice.unity";
     private const string TrayStlPath = "Assets/Art/Reference/yacht-tray.stl";
     private const string TrayMeshPath = "Assets/Art/Reference/yacht-tray.asset";
-    private const string BuildStamp = "Tessera.AugmentedDice.YachtTray.v9";
-
-    static BuildDiceGraphicsPoC()
-    {
-        EditorApplication.delayCall += BuildOnce;
-        EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
-    }
-
-    private static void OnPlayModeStateChanged(PlayModeStateChange state)
-    {
-        if (state != PlayModeStateChange.EnteredEditMode) return;
-        SessionState.SetBool(BuildStamp, false);
-        EditorApplication.delayCall += BuildOnce;
-    }
-
     [MenuItem("Tools/Tessera/Rebuild Augmented Dice Scene")]
     public static void RebuildScene()
     {
@@ -53,127 +37,10 @@ public static class BuildDiceGraphicsPoC
         Debug.Log($"Dice Graphics PoC standalone built: {report.summary.outputPath}");
     }
 
-    private static void BuildOnce()
-    {
-        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying || Application.isPlaying) return;
-        if (EditorApplication.isCompiling || EditorApplication.isUpdating)
-        {
-            EditorApplication.delayCall += BuildOnce;
-            return;
-        }
-        if (SessionState.GetBool(BuildStamp, false) && SceneHasYachtTrayLayout()) return;
-        Mesh trayMesh = EnsureYachtTrayMesh();
-        if (trayMesh == null)
-        {
-            Debug.LogError("Dice PoC yacht tray upgrade stopped: yacht-tray.stl could not be converted.");
-            return;
-        }
-        if (SceneHasYachtTrayLayout())
-        {
-            SessionState.SetBool(BuildStamp, true);
-            return;
-        }
-        UpgradeExistingSceneToYachtTray(trayMesh);
-        SessionState.SetBool(BuildStamp, true);
-    }
-
-    [MenuItem("Tools/Tessera/Upgrade Scene To Yacht Tray")]
-    public static void UpgradeExistingSceneToYachtTray()
-    {
-        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying || Application.isPlaying) return;
-        Mesh trayMesh = EnsureYachtTrayMesh();
-        if (trayMesh != null) UpgradeExistingSceneToYachtTray(trayMesh);
-    }
-
-    private static void UpgradeExistingSceneToYachtTray(Mesh trayMesh)
-    {
-        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying || Application.isPlaying) return;
-        Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
-        AugmentedYachtController controller = Object.FindFirstObjectByType<AugmentedYachtController>();
-        if (controller == null)
-        {
-            Debug.LogError("Tessera yacht tray upgrade stopped: controller missing from Augmented Dice scene.");
-            return;
-        }
-
-        controller.UpgradeYachtTrayLayout(trayMesh);
-        EditorUtility.SetDirty(controller);
-        EditorSceneManager.MarkSceneDirty(scene);
-        EditorSceneManager.SaveScene(scene, ScenePath);
-        Debug.Log("Tessera upgraded to the yacht tray STL and reference ingress physics.");
-    }
-
-    [MenuItem("Tools/Tessera/Bake Editable Layout Into Scene")]
-    public static void BakeEditableLayoutIntoExistingScene()
-    {
-        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying || Application.isPlaying) return;
-        Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
-        AugmentedYachtController controller = Object.FindFirstObjectByType<AugmentedYachtController>();
-        if (controller == null)
-        {
-            Debug.LogError("Tessera layout bake stopped: controller missing from Augmented Dice scene.");
-            return;
-        }
-
-        controller.BuildEditableLayout(true);
-        EditorUtility.SetDirty(controller);
-        EditorSceneManager.MarkSceneDirty(scene);
-        EditorSceneManager.SaveScene(scene, ScenePath);
-        Debug.Log("Tessera editable layout baked into scene.");
-    }
-
-    [MenuItem("Tools/Tessera/Sync Code-Generated Objects Into Scene")]
-    public static void SyncCodeGeneratedObjectsIntoScene()
-    {
-        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying || Application.isPlaying) return;
-
-        Scene scene = SceneManager.GetActiveScene();
-        if (!scene.IsValid() || scene.path != ScenePath)
-        {
-            scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
-        }
-
-        AugmentedYachtController controller = Object.FindFirstObjectByType<AugmentedYachtController>();
-        if (controller == null)
-        {
-            Debug.LogError("Tessera scene sync stopped: controller missing from Augmented Dice scene.");
-            return;
-        }
-
-        // 완성된 씬 오브젝트는 유지하고, 코드 정의상 누락된 지오메트리만 복원합니다.
-        controller.BuildEditableLayout();
-        EditorUtility.SetDirty(controller);
-        EditorSceneManager.MarkSceneDirty(scene);
-        EditorSceneManager.SaveScene(scene, ScenePath);
-        Debug.Log("Tessera code-generated objects synchronized into the editable scene.");
-    }
-
     private static void EnsureSceneExists()
     {
         if (AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath) == null)
             BuildScene(false);
-    }
-
-    private static bool SceneHasEditableLayout()
-    {
-        if (!File.Exists(ScenePath)) return false;
-        string sceneText = File.ReadAllText(ScenePath);
-        return sceneText.Contains("editableLayoutBuilt: 1") && sceneText.Contains("m_Name: Graphics Layout");
-    }
-
-    private static bool SceneHasYachtTrayLayout()
-    {
-        if (!SceneHasEditableLayout()) return false;
-        string sceneText = File.ReadAllText(ScenePath);
-        return sceneText.Contains("m_Name: Yacht Tray Visual")
-            && sceneText.Contains("m_Name: Yacht Tray Ingress Physics")
-            && sceneText.Contains("m_Name: Yacht Tray Closed Physics")
-            && sceneText.Contains("m_Name: Yacht Tray Inner Floor")
-            && sceneText.Contains("m_Name: Yacht Tray Inner Front Wall")
-            && sceneText.Contains("m_Name: Yacht Tray Ceiling")
-            && sceneText.Contains("m_LocalScale: {x: 0.05, y: 0.05, z: 0.05}")
-            && sceneText.Contains("m_Bias: 0.005")
-            && sceneText.Contains("m_NormalBias: 0.03");
     }
 
     private static void BuildScene(bool openAfterBuild)
@@ -215,7 +82,8 @@ public static class BuildDiceGraphicsPoC
         serialized.FindProperty("upscaleShader").objectReferenceValue = shader;
         serialized.ApplyModifiedPropertiesWithoutUndo();
 
-        controller.BuildEditableLayout();
+        // 테이블 프롭은 코드로 만들지 않는다(M9). Assets/Prefabs/Tabletop 의 프리팹을 씬에 배치한다.
+        Debug.LogWarning("빈 씬을 만들었습니다. Assets/Prefabs/Tabletop 의 프리팹을 씬에 배치하십시오.");
 
         EditorSceneManager.SaveScene(scene, ScenePath);
         EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };

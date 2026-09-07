@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Tessera.Rendering;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -13,7 +14,9 @@ namespace Tessera.Dice
         Sevens,      // 에메랄드 시안 (민트 바탕, 딥 틸 눈)
         Couple,      // 로즈 핑크 (핑크 바탕, 딥 버건디 눈)
         Promotion,   // 다크 슬레이트 (흑요석 바탕, 엠버 골드 눈)
-        Weird        // 아케인 퍼플 (보라 바탕, 민트 라임 눈)
+        Weird,       // 아케인 퍼플 (보라 바탕, 민트 라임 눈)
+        // 아래로만 추가한다. 씬이 selectedDieType을 정수로 직렬화하므로 중간에 끼우면 기존 값이 밀린다.
+        Octahedron   // 미드나잇 네이비 8면 (남색 바탕, 흰 눈)
     }
 
     public struct DiePaletteDefinition
@@ -117,15 +120,73 @@ namespace Tessera.Dice
                     new Color(0.65f, 0.95f, 0.80f),
                     0.10f,
                     0.60f)
+            },
+            // 9. 8면 주사위: 미드나잇 네이비 바탕 + 퓨어 화이트 눈 (원본 diceMaterials.js:16 #002F5E / #ffffff)
+            //    원본 색을 그대로 쓰면 이 씬의 앰버 조명 아래에서 반사광이 색을 덮어 회백색으로 보인다.
+            //    색조는 유지하고 명도만 올려(#0F427A 계열) 남색으로 읽히게 했다.
+            //    숫자는 순백 대신 옅은 하늘색으로 새긴다. 순백 자발광 획은 640x360 렌더에서 인접 픽셀까지
+            //    흰색으로 채워 8면체를 통째로 흰 덩어리로 만들었다.
+            {
+                DieType.Octahedron,
+                new DiePaletteDefinition(
+                    "Octahedron Navy",
+                    new Color(0.06f, 0.26f, 0.48f),
+                    new Color(0.92f, 0.94f, 0.98f),
+                    0.0f,
+                    0.18f)
             }
         };
 
         private static readonly Dictionary<DieType, Material> BodyMaterialCache = new();
+        private static readonly Dictionary<DieType, Material> CelBodyMaterialCache = new();
         private static readonly Dictionary<DieType, Material> PipMaterialCache = new();
 
         public static DiePaletteDefinition GetDefinition(DieType type)
         {
             return Definitions.TryGetValue(type, out var def) ? def : Definitions[DieType.Normal];
+        }
+
+        /// <summary>
+        /// 몸체 재질. <see cref="RenderStyle.Cel"/>이면 셀 램프 재질을, 아니면 기존 URP Lit 재질을 준다(M10.8).
+        ///
+        /// 채택 여부가 정해질 때까지 두 경로를 모두 살려 둔다. 캐시도 따로 두어 전환이 즉시 왕복한다.
+        /// </summary>
+        public static Material GetBodyMaterial(DieType type, RenderStyle style)
+        {
+            return style == RenderStyle.Cel ? GetCelBodyMaterial(type) : GetBodyMaterial(type);
+        }
+
+        /// <summary>
+        /// 셀 몸체 재질. 주사위는 면이 오브젝트 축에 정렬돼 있어 노멀 스냅을 켠다. 스냅하지 않으면
+        /// 휜 노멀 위에 동심원 밴드가 생겨 포스트 양자화와 같은 실패를 재현한다.
+        /// </summary>
+        private static Material GetCelBodyMaterial(DieType type)
+        {
+            if (CelBodyMaterialCache.TryGetValue(type, out Material cached) && cached != null) return cached;
+
+            DiePaletteDefinition def = GetDefinition(type);
+            Material celMaterial = CelMaterialFactory.Create(
+                $"Dice_Body_Cel_{type}",
+                def.BodyColor,
+                BandsFor(def),
+                snapNormal: true,
+                receiveShadows: false);
+
+            // 셀 셰이더를 찾지 못하면 기존 재질로 떨어진다. 화면이 비는 것보다 낫다.
+            if (celMaterial == null) return GetBodyMaterial(type);
+
+            celMaterial.SetShaderPassEnabled("ShadowCaster", true);
+            CelBodyMaterialCache[type] = celMaterial;
+            return celMaterial;
+        }
+
+        /// <summary>
+        /// 금속으로 읽히길 원하던 타입은 밴드를 하나 더 준다. 스페큘러가 사라진 자리를 밝은 밴드가 대신한다.
+        /// 새 필드를 두지 않고 기존 Metallic 값에서 파생시켜 Baseline 경로의 데이터를 건드리지 않는다.
+        /// </summary>
+        private static int BandsFor(DiePaletteDefinition def)
+        {
+            return def.Metallic > 0.5f ? CelMaterialFactory.MetallicBands : CelMaterialFactory.DiffuseBands;
         }
 
         public static Material GetBodyMaterial(DieType type)
@@ -159,7 +220,14 @@ namespace Tessera.Dice
             if (PipMaterialCache.TryGetValue(type, out Material mat) && mat != null) return mat;
 
             DiePaletteDefinition def = GetDefinition(type);
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+
+            // 눈은 조명을 받지 않는 평면색으로 그린다.
+            //
+            // 눈은 음각 홈 메시라 홈의 경사벽이 면과 다른 각도로 빛을 받는다. 조명을 받으면
+            // 그 벽이 몸체와 홈 바닥 사이의 중간 밝기가 되는데, 픽셀 격자에서 한 칸을 차지하면
+            // 안티앨리어싱처럼 흐릿하게 읽힌다. Unlit으로 두면 벽과 바닥이 같은 색이 되어
+            // 몸체와 눈 두 값만 남고 경계가 또렷해진다.
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
             mat = new Material(shader)
             {
                 name = $"Dice_Pip_{type}",
@@ -167,12 +235,7 @@ namespace Tessera.Dice
             };
 
             mat.SetColor("_BaseColor", def.PipColor);
-            mat.SetFloat("_Metallic", 0f);
-            mat.SetFloat("_Smoothness", 0.3f);
-            mat.SetFloat("_SpecularHighlights", 0f);
-            mat.SetFloat("_EnvironmentReflections", 0f);
-            mat.EnableKeyword("_EMISSION");
-            mat.SetColor("_EmissionColor", def.PipColor);
+            if (mat.HasProperty("_Color")) mat.SetColor("_Color", def.PipColor);
             mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
             // Pip 메시는 그림자를 캐스팅하지 않음 (그림자 구멍 차단)
             mat.SetShaderPassEnabled("ShadowCaster", false);
@@ -187,11 +250,16 @@ namespace Tessera.Dice
             {
                 if (mat != null) Object.DestroyImmediate(mat);
             }
+            foreach (var mat in CelBodyMaterialCache.Values)
+            {
+                if (mat != null) Object.DestroyImmediate(mat);
+            }
             foreach (var mat in PipMaterialCache.Values)
             {
                 if (mat != null) Object.DestroyImmediate(mat);
             }
             BodyMaterialCache.Clear();
+            CelBodyMaterialCache.Clear();
             PipMaterialCache.Clear();
         }
     }

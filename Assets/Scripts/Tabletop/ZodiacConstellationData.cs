@@ -12,6 +12,17 @@ namespace Tessera.Tabletop
     /// </summary>
     public static class ZodiacConstellationData
     {
+        /// <summary>
+        /// 별자리 텍스처 연출을 게임에서 적재할지 여부.
+        /// RollOrb가 RollCosmicCube로 대체되면서 이 연출은 폐기됐다. 다만 나중에 다시 쓸 수 있어
+        /// 좌표 데이터와 베이킹 코드는 그대로 남겨 둔다. false인 동안에는 텍스처를 굽지도 않고
+        /// 프롭 머티리얼에 물리지도 않으므로, 시작 시 12장 베이킹 비용과 약 3MB 텍스처가 모두 사라진다.
+        /// 되살리려면 이 값을 true로 바꾸면 된다.
+        /// const가 아니라 static readonly인 이유는, false로 둔 채로도 사용처에서
+        /// 도달 불가 코드 경고가 나지 않게 하기 위해서다.
+        /// </summary>
+        public static readonly bool EnabledInGame = false;
+
         public enum ZodiacType
         {
             Aries = 0,       // 1. 양자리
@@ -267,13 +278,22 @@ namespace Tessera.Tabletop
         };
 
         private static Texture2D[] cachedTextures;
+        private static bool cacheStale;
 
         /// <summary>
-        /// 캐시된 별자리 텍스처 초기화 (런타임/에디터 리빌드 시 갱신 보장)
+        /// 다음 요청 때 별자리 텍스처를 다시 굽게 한다.
+        ///
+        /// 텍스처 객체 자체는 버리지 않고 내용만 덮어쓴다. 이 캐시는 <c>RollOrb</c>와
+        /// <c>RollCosmicCube</c>가 함께 쓰고, 두 프롭 모두 지오메트리를 다시 만들기 직전에
+        /// 이 메서드를 부른다. 여기서 텍스처를 파괴하면 아직 그 텍스처를 재질에 물고 있는
+        /// 다른 프롭의 별자리 면이 자기 차례가 올 때까지 비어 버린다.
+        ///
+        /// 객체를 유지하면 그 참조가 살아 있는 채로 내용만 갱신되므로 두 프롭이 함께 최신이 되고,
+        /// 예전처럼 참조만 버려 12장(약 3MB)이 도메인 리로드까지 남는 일도 없어진다.
         /// </summary>
         public static void ClearCache()
         {
-            cachedTextures = null;
+            cacheStale = true;
         }
 
         /// <summary>
@@ -281,16 +301,20 @@ namespace Tessera.Tabletop
         /// </summary>
         public static Texture2D[] GetAllZodiacTextures(int resolution = 256)
         {
-            if (cachedTextures != null && cachedTextures.Length == 12 && cachedTextures[0] != null)
-            {
-                return cachedTextures;
-            }
+            bool reusable = cachedTextures != null
+                && cachedTextures.Length == 12
+                && cachedTextures[0] != null
+                && cachedTextures[0].width == resolution;
 
-            cachedTextures = new Texture2D[12];
+            if (reusable && !cacheStale) return cachedTextures;
+
+            if (!reusable) cachedTextures = new Texture2D[12];
             for (int i = 0; i < 12; i++)
             {
-                cachedTextures[i] = BakeConstellationTexture(Definitions[i], resolution);
+                cachedTextures[i] = BakeConstellationTexture(
+                    Definitions[i], resolution, reusable ? cachedTextures[i] : null);
             }
+            cacheStale = false;
             return cachedTextures;
         }
 
@@ -309,15 +333,19 @@ namespace Tessera.Tabletop
 
         /// <summary>
         /// 지정된 별자리 정의를 고해상도 안티앨리어스 RGBA32 텍스처로 프로시저럴 베이킹
+        ///
+        /// <paramref name="reuse"/>를 주면 새 텍스처를 만들지 않고 그 객체의 픽셀만 덮어쓴다.
+        /// 이미 재질에 물려 있는 텍스처를 다시 구울 때 참조를 깨지 않기 위한 경로다.
         /// </summary>
-        public static Texture2D BakeConstellationTexture(ConstellationDefinition def, int resolution = 256)
+        public static Texture2D BakeConstellationTexture(
+            ConstellationDefinition def, int resolution = 256, Texture2D reuse = null)
         {
-            Texture2D tex = new(resolution, resolution, TextureFormat.RGBA32, false)
-            {
-                name = $"Zodiac_{def.type}_{def.nameEn}",
-                wrapMode = TextureWrapMode.Clamp,
-                filterMode = FilterMode.Bilinear
-            };
+            Texture2D tex = reuse != null && reuse.width == resolution && reuse.height == resolution
+                ? reuse
+                : new Texture2D(resolution, resolution, TextureFormat.RGBA32, false);
+            tex.name = $"Zodiac_{def.type}_{def.nameEn}";
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.filterMode = FilterMode.Bilinear;
 
             Color32[] pixels = new Color32[resolution * resolution];
             float invRes = 1.0f / resolution;
@@ -327,6 +355,10 @@ namespace Tessera.Tabletop
 
             // 배경 고정 은하수 별가루 80개 생성 (별자리 일러스트 주변 회피 필터링)
             int seed = (int)def.type * 100 + 42;
+            // InitState는 Unity 전역 난수를 덮어쓴다. 여기서 필요한 것은 별가루 배치의 재현성뿐이므로
+            // 이전 상태를 기억했다가 루프가 끝나면 되돌린다. 되돌리지 않으면 이 함수를 부른 뒤의
+            // 모든 UnityEngine.Random 호출이 이 씨앗에서 이어지는 수열을 받는다.
+            UnityEngine.Random.State previousRandomState = UnityEngine.Random.state;
             UnityEngine.Random.InitState(seed);
             List<Vector4> stardust = new(); // (x, y, brightness, size)
             int attempts = 0;
@@ -359,6 +391,8 @@ namespace Tessera.Tabletop
                     stardust.Add(new Vector4(sPos.x, sPos.y, sb, ss));
                 }
             }
+
+            UnityEngine.Random.state = previousRandomState;
 
             // 은하수 성운 흐름 밴드 회전 각도
             float nebulaAngle = ((int)def.type * 30f + 35f) * Mathf.Deg2Rad;

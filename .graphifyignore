@@ -1,0 +1,28 @@
+# vendored 서드파티 스킬 문서 (355개) — 프로젝트 지식 아님
+.agents/skills/
+.claude/skills/
+
+# Unity 아트 에셋 — vision LLM 호출 방지
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.psd
+*.tga
+*.svg
+
+# Unity 메타/생성물
+*.meta
+*.unity
+*.prefab
+*.asset
+*.csproj
+*.sln
+*.slnx
+preset-studio/
+
+# 문서로 오분류되는 잡음
+ProjectSettings/ProjectVersion.txt
+setup-unity-mcp-log.txt
+docs/archive/
