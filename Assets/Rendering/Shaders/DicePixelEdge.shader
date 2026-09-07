@@ -130,7 +130,11 @@ Shader "DicePoC/PixelEdge"
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
                 float2 snappedUV = SnapUV(input.texcoord);
-                half4 color = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_LinearClamp, snappedUV);
+                // 스냅한 UV는 격자 칸 중심을 가리키므로 point로 읽어야 한다. linear로 읽으면
+                // 내부 해상도가 출력의 짝수 분의 일일 때(480x270은 1920의 1/4) 칸 중심이 텍셀
+                // 경계에 정확히 떨어져 2x2 텍셀 평균이 되고, 화면 전체가 흐려진다. 뎁스와 노멀은
+                // 이미 point로 강제돼 있어 컬러만 어긋나 있었다.
+                half4 color = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, snappedUV);
 
                 float depth = SampleLinearDepth(snappedUV);
                 float3 normalVS = SampleViewNormal(snappedUV);
