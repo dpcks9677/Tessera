@@ -1820,7 +1820,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: 'Light: Warm Amber'
+  m_Text: 'Light: Soft Neutral'
 --- !u!222 &573675173
 CanvasRenderer:
   m_ObjectHideFlags: 0

@@ -38,18 +38,25 @@ namespace Tessera.Games.AugmentedYacht
         [SerializeField] private float shadowBias = 0.005f;
         [SerializeField] private float shadowNormalBias = 0.03f;
 
+        /// <summary>
+        /// 키라이트 프리셋. 배열 순서가 곧 전환 순서다(<see cref="TogglePreset"/>).
+        ///
+        /// 색이 옅은 Soft Neutral을 앞에 두고 Warm Amber를 그다음에 둔다. 앰버는 주사위 바탕과
+        /// 눈 색에 강하게 섞여 팔레트를 확인할 때 색을 혼동하게 만든다. 기본 화면에서 먼저
+        /// 색을 있는 그대로 보고, 다음 칸에서 앰버를 비교할 수 있게 한 배치다.
+        /// </summary>
         [SerializeField]
         private KeyLightPreset[] presets =
         {
-            new() { Name = "Pure White", Color = new Color(1.00f, 1.00f, 1.00f), Intensity = 1.25f },
-            new() { Name = "Warm Amber", Color = new Color(1.00f, 0.62f, 0.23f), Intensity = 1.50f },
             new() { Name = "Soft Neutral", Color = new Color(1.00f, 0.88f, 0.74f), Intensity = 1.35f },
+            new() { Name = "Warm Amber", Color = new Color(1.00f, 0.62f, 0.23f), Intensity = 1.50f },
+            new() { Name = "Pure White", Color = new Color(1.00f, 1.00f, 1.00f), Intensity = 1.25f },
             new() { Name = "Cool Moon", Color = new Color(0.55f, 0.70f, 0.95f), Intensity = 1.35f },
             new() { Name = "Cozy Candle", Color = new Color(1.00f, 0.48f, 0.16f), Intensity = 1.55f }
         };
 
-        /// <summary>Warm Amber를 기본으로 시작한다.</summary>
-        [SerializeField] private int currentPresetIndex = 1;
+        /// <summary>Soft Neutral을 기본으로 시작한다.</summary>
+        [SerializeField] private int currentPresetIndex = 0;
         private Light keyLight;
 
         /// <summary>연출 방식(M10.8). Cel에서는 그림자를 하드로 바꾸고 SSAO를 끈다.</summary>
