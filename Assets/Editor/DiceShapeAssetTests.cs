@@ -98,10 +98,11 @@ namespace Tessera.Editor.Tests
                 Assert.That(group, Is.Not.Null, $"{face}번 면의 눈 묶음이 없습니다.");
                 Assert.That(group.childCount, Is.EqualTo(1), $"{face}번 면에는 숫자 하나만 새긴다.");
 
-                MeshFilter filter = group.GetChild(0).GetComponent<MeshFilter>();
-                Assert.That(filter, Is.Not.Null);
-                Assert.That(filter.sharedMesh.name, Is.EqualTo($"Dice_Digit_{faceValues[face - 1]}"),
+                TextMesh digit = group.GetChild(0).GetComponent<TextMesh>();
+                Assert.That(digit, Is.Not.Null, $"{face}번 면의 숫자가 TextMesh가 아닙니다.");
+                Assert.That(digit.text, Is.EqualTo(faceValues[face - 1].ToString()),
                     $"{face}번 면에는 {faceValues[face - 1]}이 새겨져야 합니다.");
+                Assert.That(digit.font, Is.Not.Null, $"{face}번 면의 숫자에 폰트가 없습니다.");
             }
         }
 

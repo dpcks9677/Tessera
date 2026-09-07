@@ -23,9 +23,15 @@ namespace Tessera.Games.AugmentedYacht
     {
         private const int DiceLayer = TesseraLayers.Dice;
         private const string CrispDepthMaskShaderName = "DicePoC/CrispUiDepthMask";
+        private const string CrispTextShaderName = "DicePoC/CrispUiText";
+        private const string CrispDepthMaskName = "Crisp Depth Mask";
 
         /// <summary>깊이만 남기는 판은 색을 쓰지 않으므로 주사위마다 나눌 이유가 없다.</summary>
         private static Material crispDepthMaskMaterial;
+
+        /// <summary>면 숫자 재질. 색은 TextMesh가 정점 색으로 실으므로 종류별로 나누지 않는다.</summary>
+        private static Material crispTextMaterial;
+        private static Font crispTextFont;
 
         private GameObject diceModel;
         private GameObject octahedronModel;
@@ -192,7 +198,7 @@ namespace Tessera.Games.AugmentedYacht
             Material maskMaterial = EnsureCrispDepthMaskMaterial();
             if (maskMaterial == null) return;
 
-            GameObject maskObject = new("Crisp Depth Mask", typeof(MeshFilter), typeof(MeshRenderer))
+            GameObject maskObject = new(CrispDepthMaskName, typeof(MeshFilter), typeof(MeshRenderer))
             {
                 layer = TesseraLayers.CrispUI,
                 hideFlags = HideFlags.DontSave
@@ -204,6 +210,41 @@ namespace Tessera.Games.AugmentedYacht
             maskRenderer.sharedMaterial = maskMaterial;
             maskRenderer.shadowCastingMode = ShadowCastingMode.Off;
             maskRenderer.receiveShadows = false;
+        }
+
+        /// <summary>
+        /// 면 숫자용 재질. 글리프 아틀라스는 폰트가 들고 있는 것을 그대로 빌려 쓴다.
+        ///
+        /// 동적 폰트는 새 글자를 요구받으면 아틀라스를 다시 굽고, 그때 텍스처 객체 자체가 바뀔 수
+        /// 있다. 이 씬은 같은 폰트로 증강 카드의 한글도 찍으므로 실제로 일어난다. 재굽기 통지를
+        /// 받아 텍스처를 다시 물려 두지 않으면 그 순간부터 숫자가 빈칸이 된다.
+        /// </summary>
+        private static Material EnsureCrispTextMaterial(Font font)
+        {
+            if (font == null) return null;
+
+            if (crispTextMaterial == null)
+            {
+                Shader shader = Shader.Find(CrispTextShaderName);
+                if (shader == null) return null;
+
+                crispTextMaterial = new Material(shader)
+                {
+                    name = "Runtime Octa Crisp Text",
+                    hideFlags = HideFlags.HideAndDontSave
+                };
+                Font.textureRebuilt += OnFontTextureRebuilt;
+            }
+
+            crispTextFont = font;
+            crispTextMaterial.mainTexture = font.material != null ? font.material.mainTexture : null;
+            return crispTextMaterial;
+        }
+
+        private static void OnFontTextureRebuilt(Font font)
+        {
+            if (crispTextMaterial == null || font != crispTextFont || font.material == null) return;
+            crispTextMaterial.mainTexture = font.material.mainTexture;
         }
 
         private static Material EnsureCrispDepthMaskMaterial()
@@ -309,6 +350,11 @@ namespace Tessera.Games.AugmentedYacht
 
             foreach (Renderer renderer in visual.GetComponentsInChildren<Renderer>(true))
             {
+                // 깊이 전용 판은 색을 한 픽셀도 쓰지 않는 것이 존재 이유다. 몸체 재질로 덮으면
+                // Crisp 카메라가 몸체를 원본 해상도로 한 번 더 그려, 주사위에만 픽셀 필터가
+                // 걸리지 않은 것처럼 보인다.
+                if (renderer.name == CrispDepthMaskName) continue;
+
                 if (renderer.name.Equals("ShadowProxy", StringComparison.OrdinalIgnoreCase))
                 {
                     renderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
@@ -317,7 +363,18 @@ namespace Tessera.Games.AugmentedYacht
                     continue;
                 }
 
-                if (renderer.name.StartsWith("Pip", StringComparison.OrdinalIgnoreCase))
+                // 8면체 면 숫자는 폰트 아틀라스를 쓰는 TextMesh다. 눈 재질로 덮으면 글리프가 사라지고,
+                // 폰트 기본 재질을 그대로 두면 뒷면 글자가 몸체를 뚫고 나온다. 색은 정점 색으로 싣고
+                // 깊이를 검사하는 전용 재질로 바꾼다.
+                TextMesh digitText = renderer.GetComponent<TextMesh>();
+                if (digitText != null)
+                {
+                    digitText.color = DicePaletteCatalog.GetDefinition(type).PipColor;
+                    Material textMaterial = EnsureCrispTextMaterial(digitText.font);
+                    if (textMaterial != null) renderer.sharedMaterial = textMaterial;
+                    renderer.shadowCastingMode = ShadowCastingMode.Off;
+                }
+                else if (renderer.name.StartsWith("Pip", StringComparison.OrdinalIgnoreCase))
                 {
                     renderer.sharedMaterial = dicePipMaterial;
                     renderer.shadowCastingMode = ShadowCastingMode.Off; // Pip 메시 그림자 캐스팅 제외

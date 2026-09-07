@@ -206,8 +206,8 @@ namespace Tessera.Dice
             mat.SetFloat("_Smoothness", def.Smoothness);
             mat.SetFloat("_SpecularHighlights", 1f);
             mat.SetFloat("_EnvironmentReflections", 1f);
-            mat.EnableKeyword("_EMISSION");
-            mat.SetColor("_EmissionColor", def.BodyColor);
+            // 자발광은 넣지 않는다. 바탕색과 같은 색을 자발광으로 한 번 더 더하면 조명 계조가 덮여
+            // 몸체가 단색 평면이 되고, 어두운 팔레트일수록 화면에서 원래 색보다 밝게 뜬다.
             mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
             mat.SetShaderPassEnabled("ShadowCaster", true);
 

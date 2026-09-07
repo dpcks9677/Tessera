@@ -29,15 +29,17 @@ public static class DiceShapeBaker
     // 삼각형 면의 평면부는 내접원이 약 0.212다. 점 여섯 개를 넣으면 저해상도에서 한 덩어리로 뭉쳐
     // 원본과 같이 숫자를 새긴다(preset-studio/src/diceMaterials.js:76-77).
     //
-    // 2026-09-07 측정(M17-T8). 픽셀 패스(640×480)에서는 이 크기로 값을 읽을 수 없다. 8면체를 1.2로
-    // 정규화해도 면 평면의 내접원 지름이 약 7.6px뿐이라, 획 0.030(약 0.5px)은 축소에서 얼룩이 되고
-    // 획 0.11(약 2px)은 세그먼트 사이가 메워져 흰 덩어리가 된다. 점 표기도 값 6이 2열×3행 5×8px라
-    // 내접원을 넘는다. 그래서 크기를 키우는 대신 숫자만 픽셀 필터 밖으로 뺐다.
-    // 런타임이 Pip_* 를 CrispUI 레이어로 올려 원본 해상도로 합성하므로
-    // (`DiceVisualPool.PromoteOctaDigitsToCrispUi`), 여기서는 원래 크기를 그대로 쓴다.
-    private const float DigitHeight = 0.22f;
-    private const float DigitWidth = 0.13f;
-    private const float DigitStroke = 0.030f;
+    // 2026-09-07 측정(M17-T8). 픽셀 패스(640×480)에서는 어떤 크기로도 값을 읽을 수 없어, 숫자만
+    // 픽셀 필터 밖으로 뺐다. 런타임이 Pip_* 를 CrispUI 레이어로 올려 원본 해상도로 합성한다
+    // (`DiceVisualPool.PromoteOctaDigitsToCrispUi`).
+    //
+    // 글리프는 직접 만든 7세그먼트 메시가 아니라 타이머·점수표와 같은 폰트로 찍는다. 원본 해상도로
+    // 합성되므로 UI 글자와 같은 서체를 쓰는 편이 화면에서 하나로 읽힌다. 세로 크기는
+    // 대략 `0.07 × fontSize × characterSize` 단위라 아래 값이 약 0.43이 된다.
+    private const string DigitFontPath = "Assets/Fonts/alagard.ttf";
+    private const string DigitFallbackFontPath = "Assets/Fonts/m6x11.ttf";
+    private const int DigitFontSize = 64;
+    private const float DigitCharacterSize = 0.096f;
     private const float PipSurfaceLift = 0.01f;
 
     private const string DiceModelPath = "Assets/Art/Reference/normal_dice.fbx";
@@ -65,9 +67,7 @@ public static class DiceShapeBaker
         Directory.CreateDirectory(PrefabFolder);
 
         Mesh octBody = SaveMesh(BuildOctahedronBody(), "Dice_Octahedron_Body");
-        var digits = new Mesh[6];
-        for (int value = 1; value <= 6; value++) digits[value - 1] = SaveMesh(BuildDigit(value), $"Dice_Digit_{value}");
-        BakeOctahedronPrefab(octBody, digits);
+        BakeOctahedronPrefab(octBody);
         BakeSevensPrefab(diceModel);
 
         AssetDatabase.SaveAssets();
@@ -217,68 +217,36 @@ public static class DiceShapeBaker
     // ---------------------------------------------------------------- 프리팹 조립
 
     /// <summary>
-    /// 7세그먼트 모양의 숫자 글리프. XZ 평면에 눕고 법선은 +Y라 어느 면에든 회전만으로 붙는다.
-    /// 삼각형 면에는 점 여섯 개가 들어가지 않아 원본도 8면체만 숫자를 썼다.
+    /// 면에 찍을 숫자 하나. 타이머·점수표와 같은 폰트를 쓰는 <see cref="TextMesh"/>다.
+    ///
+    /// 색은 런타임이 종류별 팔레트로 맞춘다(<c>DiceVisualPool.ApplyDiceMaterialsToFbx</c>).
+    /// 여기서 꽂는 재질은 폰트가 들고 있는 글리프 아틀라스 재질이라 바꾸면 글자가 사라진다.
     /// </summary>
-    private static Mesh BuildDigit(int value)
+    private static GameObject CreateDigitText(Transform parent, string name, int value)
     {
-        float halfHeight = DigitHeight * 0.5f;
-        float halfWidth = DigitWidth * 0.5f;
-        float inset = DigitStroke * 0.5f;
-        float armLength = halfHeight * 0.5f;
+        var obj = new GameObject(name, typeof(MeshRenderer), typeof(TextMesh));
+        obj.transform.SetParent(parent, false);
 
-        var vertices = new List<Vector3>();
+        Font font = AssetDatabase.LoadAssetAtPath<Font>(DigitFontPath)
+            ?? AssetDatabase.LoadAssetAtPath<Font>(DigitFallbackFontPath);
+        if (font == null) Debug.LogError($"[DiceShapeBaker] 면 숫자 폰트를 찾지 못했습니다: {DigitFontPath}");
 
-        // 가로 획: 위(a) 가운데(g) 아래(d)
-        if (HasSegment(value, 'a')) AddBar(vertices, new Vector2(0f, halfHeight - inset), DigitWidth, DigitStroke);
-        if (HasSegment(value, 'g')) AddBar(vertices, Vector2.zero, DigitWidth, DigitStroke);
-        if (HasSegment(value, 'd')) AddBar(vertices, new Vector2(0f, -halfHeight + inset), DigitWidth, DigitStroke);
+        TextMesh text = obj.GetComponent<TextMesh>();
+        text.text = value.ToString();
+        text.font = font;
+        text.fontSize = DigitFontSize;
+        text.characterSize = DigitCharacterSize;
+        text.anchor = TextAnchor.MiddleCenter;
+        text.alignment = TextAlignment.Center;
 
-        // 세로 획: 왼쪽 위(f) 오른쪽 위(b) 왼쪽 아래(e) 오른쪽 아래(c)
-        if (HasSegment(value, 'f')) AddBar(vertices, new Vector2(-halfWidth + inset, armLength), DigitStroke, halfHeight);
-        if (HasSegment(value, 'b')) AddBar(vertices, new Vector2(halfWidth - inset, armLength), DigitStroke, halfHeight);
-        if (HasSegment(value, 'e')) AddBar(vertices, new Vector2(-halfWidth + inset, -armLength), DigitStroke, halfHeight);
-        if (HasSegment(value, 'c')) AddBar(vertices, new Vector2(halfWidth - inset, -armLength), DigitStroke, halfHeight);
-
-        var mesh = new Mesh { name = $"Dice_Digit_{value}" };
-        mesh.SetVertices(vertices);
-        int[] triangles = new int[vertices.Count];
-        for (int i = 0; i < triangles.Length; i++) triangles[i] = i;
-        mesh.SetTriangles(triangles, 0);
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
-        return mesh;
+        MeshRenderer renderer = obj.GetComponent<MeshRenderer>();
+        renderer.sharedMaterial = font != null ? font.material : null;
+        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        renderer.receiveShadows = false;
+        return obj;
     }
 
-    private static bool HasSegment(int value, char segment)
-    {
-        string segments = value switch
-        {
-            1 => "bc",
-            2 => "abged",
-            3 => "abgcd",
-            4 => "fbgc",
-            5 => "afgcd",
-            _ => "afgecd"
-        };
-        return segments.IndexOf(segment) >= 0;
-    }
-
-    /// <summary>XZ 평면에 놓인 직사각형 획 하나. 위(+Y)에서 봤을 때 앞면이 보이도록 감는다.</summary>
-    private static void AddBar(List<Vector3> vertices, Vector2 center, float width, float height)
-    {
-        float hw = width * 0.5f;
-        float hh = height * 0.5f;
-        Vector3 a = new(center.x - hw, 0f, center.y - hh);
-        Vector3 b = new(center.x - hw, 0f, center.y + hh);
-        Vector3 c = new(center.x + hw, 0f, center.y + hh);
-        Vector3 d = new(center.x + hw, 0f, center.y - hh);
-
-        vertices.Add(a); vertices.Add(b); vertices.Add(c);
-        vertices.Add(a); vertices.Add(c); vertices.Add(d);
-    }
-
-    private static void BakeOctahedronPrefab(Mesh body, Mesh[] digits)
+    private static void BakeOctahedronPrefab(Mesh body)
     {
         var root = new GameObject("Die_Octahedron");
         CreateRenderer(root.transform, "Body", body);
@@ -296,9 +264,11 @@ public static class DiceShapeBaker
             Vector3 localUp = new Vector3(-dir.x * OctRadius / 3f, -dir.y * OctRadius / 3f, 2f * dir.z * OctRadius / 3f).normalized;
             if (localUp.sqrMagnitude < 0.001f) localUp = Vector3.Cross(n, Vector3.right).normalized;
 
-            GameObject digit = CreateRenderer(group.transform, $"Pip_{face + 1}_Digit", digits[faceValues[face] - 1]);
+            GameObject digit = CreateDigitText(group.transform, $"Pip_{face + 1}_Digit", faceValues[face]);
             digit.transform.localPosition = faceCenter + n * PipSurfaceLift;
-            digit.transform.localRotation = Quaternion.LookRotation(localUp, n);
+            // 글리프는 로컬 XY 평면에 서지만 글자가 바로 읽히는 쪽은 -Z다. 면 법선을 +Z로 맞추면
+            // 뒤에서 본 꼴이 되어 좌우가 뒤집히므로, -Z가 바깥을 보도록 세우고 꼭짓점 방향을 +Y로 둔다.
+            digit.transform.localRotation = Quaternion.LookRotation(-n, localUp);
             digit.transform.localScale = Vector3.one;
         }
 
