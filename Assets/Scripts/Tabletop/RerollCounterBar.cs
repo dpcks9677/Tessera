@@ -30,19 +30,19 @@ namespace Tessera.Tabletop
 
         private readonly List<MeshRenderer> gemRenderers = new();
         private readonly List<List<MeshRenderer>> gemRidgeRenderers = new();
-        private readonly List<Light> gemLights = new();
         private readonly float[] gemFadeProgress = new float[3] { 1f, 1f, 1f };
 
         private Material baseGemMat;
         private Material baseRidgeMat;
         private MaterialPropertyBlock propBlock;
 
-        // 수정구(RollOrb) 내부 오로라 리본(Caustics Wave)과 1:1 매칭된 맑고 청명한 사파이어 블루
-        private readonly Color activeBodyColor = new(0.12f, 0.48f, 0.75f, 0.98f);    // 수정구 오로라 리본 색상
-        private readonly Color inactiveBodyColor = new(0.015f, 0.06f, 0.15f, 0.95f); // 수정구 딥 쉐도우 미드나잇
-        private readonly Color activeEmissionColor = new(0.14f, 0.52f, 0.80f);        // 맑은 오로라 에미션 발광
-        private readonly Color activeRidgeColor = new(0.32f, 0.70f, 0.95f, 1.0f);     // 오로라 하이라이트 림
-        private readonly Color inactiveRidgeColor = new(0.03f, 0.08f, 0.16f, 0.90f);  // 소등 딥 림
+        // 보석은 Unlit 평면색이라 이 값이 곧 최종 픽셀 색이다. 카메라가 HDR을 끄고 씬에 블룸 볼륨도
+        // 없으므로 점등/소등은 오직 LDR 명도 차로만 읽힌다. 본체 휘도비를 약 21:1로 벌려 둔다.
+        // 알파는 반드시 1이다. _Surface 0인 Unlit 블렌드는 One/Zero라 알파를 버린다.
+        private readonly Color activeBodyColor = new(0.28f, 0.72f, 0.90f, 1f);       // 수정구 오로라 리본 톤
+        private readonly Color inactiveBodyColor = new(0.012f, 0.028f, 0.055f, 1f);  // 소등 딥 미드나잇
+        private readonly Color activeRidgeColor = new(0.62f, 0.95f, 1.00f, 1f);      // 패싯 능선 하이라이트
+        private readonly Color inactiveRidgeColor = new(0.030f, 0.055f, 0.090f, 1f); // 소등 딥 림
 
         public int RollsRemaining => rollsRemaining;
 
@@ -87,7 +87,6 @@ namespace Tessera.Tabletop
         {
             gemRenderers.Clear();
             gemRidgeRenderers.Clear();
-            gemLights.Clear();
 
             Transform platform = transform.Find("Sector_100_Stone_Platform");
             if (platform == null) return;
@@ -108,13 +107,35 @@ namespace Tessera.Tabletop
                     }
                 }
                 gemRidgeRenderers.Add(ridges);
-                gemLights.Add(gemRoot?.Find($"Gem_Light_{i}")?.GetComponent<Light>());
+
+                // 구운 프리팹에는 Gem_Light_{i}가 남아 있다. 연출에서 라이트를 걷어냈고 컬링 마스크가
+                // 장식 레이어를 제외해 보석을 비추지도 못하므로 꺼 둔다. 편집 모드에서 끄면 프리팹
+                // 인스턴스 오버라이드가 생겨 씬이 더러워지므로 플레이 모드에서만 만진다.
+                if (Application.isPlaying)
+                {
+                    Transform legacyLight = gemRoot?.Find($"Gem_Light_{i}");
+                    if (legacyLight != null) legacyLight.gameObject.SetActive(false);
+                }
             }
 
             baseGemMat = gemRenderers.Count > 0 ? gemRenderers[0]?.sharedMaterial : null;
             baseRidgeMat = gemRidgeRenderers.Count > 0 && gemRidgeRenderers[0].Count > 0
                 ? gemRidgeRenderers[0][0].sharedMaterial
                 : null;
+
+            SeedFadeProgress();
+        }
+
+        /// <summary>
+        /// 페이드 진행도를 현재 리롤 수에 맞춘다. 이걸 빼먹으면 지오메트리를 다시 물어올 때마다
+        /// 3개가 모두 켜진 상태에서 시작해 잘못된 페이드 아웃이 한 번 재생된다.
+        /// </summary>
+        private void SeedFadeProgress()
+        {
+            for (int i = 0; i < gemFadeProgress.Length; i++)
+            {
+                gemFadeProgress[i] = (i < rollsRemaining) ? 1.0f : 0.0f;
+            }
         }
 
         public void SetRollsRemaining(int count, int max = 3)
@@ -127,7 +148,6 @@ namespace Tessera.Tabletop
         // 1회성 생성 경로의 문자열 접근은 그대로 둔다. 거기서는 조회 비용이 의미가 없다.
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
         private static readonly int ColorId = Shader.PropertyToID("_Color");
-        private static readonly int EmissionColorId = Shader.PropertyToID("_EmissionColor");
 
         private void Update()
         {
@@ -138,10 +158,10 @@ namespace Tessera.Tabletop
             // OnValidate 미리보기 때문에 그대로 둔다.
             if (!Application.isPlaying) return;
 
-            if (propBlock == null) propBlock = new MaterialPropertyBlock();
+            propBlock ??= new MaterialPropertyBlock();
 
-            float t = Time.time;
-            float pulse = 1.0f + Mathf.Sin(t * 2.2f) * 0.18f; // 은은한 오로라 호흡 펄스
+            // 최댓값 0.90에 곱해도 0.99라 LDR 타깃에서 클리핑되지 않는다.
+            float pulse = 1.0f + Mathf.Sin(Time.time * 2.2f) * 0.10f; // 은은한 오로라 호흡 펄스
 
             // 3개 보석 각각에 대해 부드러운 페이드 아웃/인 전환 보간 (0.4초)
             for (int i = 0; i < 3; i++)
@@ -150,55 +170,46 @@ namespace Tessera.Tabletop
                 gemFadeProgress[i] = Mathf.MoveTowards(gemFadeProgress[i], targetFade, Time.deltaTime * 2.5f);
                 float f = gemFadeProgress[i];
 
-                // 1. 보석 본체 색상 및 에미션 페이드 (오로라 리본 색상 매칭)
-                if (i < gemRenderers.Count && gemRenderers[i] != null)
+                // 1. 보석 본체 평면색 페이드. 라이팅에 기대지 않으므로 이 값이 그대로 화면에 나온다.
+                if (i < gemRenderers.Count)
                 {
-                    Color curBody = Color.Lerp(inactiveBodyColor, activeBodyColor, f);
-                    Color curEmit = Color.Lerp(Color.black, activeEmissionColor * (0.75f * pulse), f);
-
-                    gemRenderers[i].GetPropertyBlock(propBlock);
-                    propBlock.SetColor(BaseColorId, curBody);
-                    propBlock.SetColor(ColorId, curBody);
-                    propBlock.SetColor(EmissionColorId, curEmit);
-                    gemRenderers[i].SetPropertyBlock(propBlock);
+                    SetRendererColor(gemRenderers[i], Color.Lerp(inactiveBodyColor, activeBodyColor * pulse, f));
                 }
 
-                // 2. 6방향 리지 라인 색상 페이드
+                // 2. 6방향 리지 라인. 가상 격자에서 서브픽셀이라 형태를 그리지는 못하므로,
+                //    본체와 같은 방향으로만 움직여 어쩌다 찍히는 픽셀이 판독을 거스르지 않게 한다.
                 if (i < gemRidgeRenderers.Count && gemRidgeRenderers[i] != null)
                 {
-                    Color curRidge = Color.Lerp(inactiveRidgeColor, activeRidgeColor, f);
-                    Color curRidgeEmit = Color.Lerp(Color.black, activeRidgeColor * (0.80f * pulse), f);
-
+                    Color ridge = Color.Lerp(inactiveRidgeColor, activeRidgeColor * pulse, f);
                     for (int r = 0; r < gemRidgeRenderers[i].Count; r++)
                     {
-                        if (gemRidgeRenderers[i][r] == null) continue;
-                        gemRidgeRenderers[i][r].GetPropertyBlock(propBlock);
-                        propBlock.SetColor(BaseColorId, curRidge);
-                        propBlock.SetColor(ColorId, curRidge);
-                        propBlock.SetColor(EmissionColorId, curRidgeEmit);
-                        gemRidgeRenderers[i][r].SetPropertyBlock(propBlock);
+                        SetRendererColor(gemRidgeRenderers[i][r], ridge);
                     }
                 }
-
-                // 3. 포인트 라이트 강도 페이드
-                if (i < gemLights.Count && gemLights[i] != null)
-                {
-                    gemLights[i].intensity = f * 0.22f;
-                    gemLights[i].enabled = f > 0.01f;
-                }
             }
+        }
+
+        /// <summary>
+        /// RunicSlateMatrix.SetRendererColor와 같은 경로다. _Color는 URP/Unlit에서 폐기된 프로퍼티라
+        /// 셰이더가 읽지 않지만, 다른 프롭과 쓰기 지점을 맞추고 Lit 폴백에서도 동작하게 남겨 둔다.
+        /// </summary>
+        private void SetRendererColor(MeshRenderer renderer, Color color)
+        {
+            if (renderer == null) return;
+
+            color.a = 1f; // Color.Lerp가 알파도 섞는다. Unlit 불투명 블렌드는 알파를 버리므로 고정한다.
+            renderer.GetPropertyBlock(propBlock);
+            propBlock.SetColor(BaseColorId, color);
+            propBlock.SetColor(ColorId, color);
+            renderer.SetPropertyBlock(propBlock);
+            propBlock.Clear();
         }
 
         public void BuildGeometry()
         {
             gemRenderers.Clear();
             gemRidgeRenderers.Clear();
-            gemLights.Clear();
-
-            for (int i = 0; i < 3; i++)
-            {
-                gemFadeProgress[i] = (i < rollsRemaining) ? 1.0f : 0.0f;
-            }
+            SeedFadeProgress();
 
             for (int i = transform.childCount - 1; i >= 0; i--)
             {
@@ -216,7 +227,7 @@ namespace Tessera.Tabletop
             }
 
             Shader litShader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            Shader stoneShader = Shader.Find("Universal Render Pipeline/Unlit") ?? litShader;
+            Shader unlitShader = Shader.Find("Universal Render Pipeline/Unlit") ?? litShader;
 
             // 1. RollOrb의 lowerBase_stone 및 upperBase_stone, goldTrim, goldDark와 100% 동일한 머티리얼 구성
             RollOrb rollOrb = FindFirstObjectByType<RollOrb>();
@@ -253,20 +264,21 @@ namespace Tessera.Tabletop
             }
 
             if (lowerStoneMat == null)
-                lowerStoneMat = CreateMat(stoneShader, "Orb_StoneRimMat", new Color(0.34f, 0.38f, 0.42f), 0.04f, 0.28f);
+                lowerStoneMat = CreateMat(unlitShader, "Orb_StoneRimMat", new Color(0.34f, 0.38f, 0.42f), 0.04f, 0.28f);
             if (upperStoneMat == null)
-                upperStoneMat = CreateMat(stoneShader, "Orb_StoneBaseMat", new Color(0.52f, 0.56f, 0.60f), 0.05f, 0.32f);
+                upperStoneMat = CreateMat(unlitShader, "Orb_StoneBaseMat", new Color(0.52f, 0.56f, 0.60f), 0.05f, 0.32f);
             if (goldTrimMat == null)
                 goldTrimMat = CreateMat(litShader, "Orb_GoldTrimMat", new Color(0.86f, 0.68f, 0.28f), 0.88f, 0.68f);
             if (goldDarkMat == null)
                 goldDarkMat = CreateMat(litShader, "Orb_GoldDarkMat", new Color(0.58f, 0.44f, 0.16f), 0.85f, 0.52f);
 
-            // 2. 오로라 리본과 동일한 사파이어 보석 및 리지 기본 머티리얼
-            baseGemMat = CreateMat(litShader, "Counter_HexGemBaseMat", activeBodyColor, 0.12f, 0.95f);
-            baseGemMat.EnableKeyword("_EMISSION");
-
-            baseRidgeMat = CreateMat(litShader, "Counter_GemRidgeBaseMat", activeRidgeColor, 0.15f, 0.95f);
-            baseRidgeMat.EnableKeyword("_EMISSION");
+            // 2. 보석 본체와 리지는 라이팅에 기대지 않는 Unlit 평면색이다. 색만으로 점등/소등을 표현한다.
+            //    이 경로는 굽기 전 씬에서만 돈다. 구운 프리팹은
+            //    Assets/Art/Generated/Tabletop/Materials/3D_Reroll_Counter_Bar_Counter_*.mat 두 개를 쓰므로
+            //    셰이더나 색을 바꿀 때 그쪽도 같이 맞춰야 한다. 머티리얼 이름은 베이커가 에셋 파일명을
+            //    만드는 근거이므로 바꾸지 않는다(TabletopPrefabBaker.ExtractMaterials).
+            baseGemMat = CreateUnlitMat(unlitShader, "Counter_HexGemBaseMat", activeBodyColor);
+            baseRidgeMat = CreateUnlitMat(unlitShader, "Counter_GemRidgeBaseMat", activeRidgeColor);
 
             // 3. 100도 부채꼴 스톤 베이스 지오메트리 생성 (RollOrb 외벽에서 바깥으로 확장되는 Sector Ring 구조 - Z-fighting 완전 차단)
             const float StartAngle = -50f;
@@ -390,20 +402,6 @@ namespace Tessera.Tabletop
                     }
                 }
                 gemRidgeRenderers.Add(ridges);
-
-                // 4-3. 사파이어 보석 전용 은은한 내부 포인트 라이트 (바닥 스톤 색상 오염 방지를 위해 보석 내부로 범위 한정)
-                GameObject lightObj = new($"Gem_Light_{i}");
-                lightObj.transform.SetParent(gemRoot.transform, false);
-                lightObj.transform.localPosition = new Vector3(0f, gemElevation + 0.06f, 0f);
-                Light l = lightObj.AddComponent<Light>();
-                l.type = LightType.Point;
-                l.color = new Color(0.14f, 0.55f, 0.88f);
-                l.range = 0.22f; // 보석 본체 내부로 범위를 좁혀 바닥 스톤으로의 파란빛 유출 차단
-                l.intensity = 0.18f;
-                l.shadows = LightShadows.None;
-                // 동일 머티리얼을 쓰는 스톤 베이스가 보석의 파란 로컬 라이트로 변색되지 않도록 장식 레이어를 제외한다.
-                l.cullingMask &= ~(1 << DecorationLayer);
-                gemLights.Add(l);
             }
         }
 
@@ -640,6 +638,15 @@ namespace Tessera.Tabletop
             if (m.HasProperty("_Color")) m.SetColor("_Color", color);
             if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", metallic);
             if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", smoothness);
+            return m;
+        }
+
+        /// <summary>라이팅을 받지 않는 평면색 재질. 색이 곧 화면 픽셀이므로 금속감·매끄러움을 두지 않는다.</summary>
+        private static Material CreateUnlitMat(Shader shader, string name, Color color)
+        {
+            Material m = new(shader) { name = name };
+            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", color);
+            if (m.HasProperty("_Color")) m.SetColor("_Color", color);
             return m;
         }
 
