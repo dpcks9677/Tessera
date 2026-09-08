@@ -7,6 +7,10 @@ Shader "DicePoC/CosmicCore"
         _CoreIntensity ("Core Intensity", Range(0.0, 10.0)) = 2.70
         _PulseSpeed ("Pulse Speed", Range(0.0, 6.0)) = 1.35
         _PulseAmount ("Pulse Amount", Range(0.0, 0.5)) = 0.10
+
+        [Header(Augment State)]
+        _AugmentTint ("Augment Tint (a = strength)", Color) = (0.62, 0.24, 0.92, 0.0)
+        _AugmentDrain ("Augment Drain", Range(0.0, 1.0)) = 0.0
     }
 
     SubShader
@@ -33,6 +37,7 @@ Shader "DicePoC/CosmicCore"
             #pragma fragment Frag
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "CosmicAugmentState.hlsl"
 
             struct Attributes
             {
@@ -50,9 +55,11 @@ Shader "DicePoC/CosmicCore"
             CBUFFER_START(UnityPerMaterial)
                 float4 _CoreColor;
                 float4 _CoreHotColor;
+                float4 _AugmentTint;
                 float _CoreIntensity;
                 float _PulseSpeed;
                 float _PulseAmount;
+                float _AugmentDrain;
             CBUFFER_END
 
             Varyings Vert(Attributes input)
@@ -78,6 +85,8 @@ Shader "DicePoC/CosmicCore"
                 float3 glow = _CoreColor.rgb * (center * 0.72 + rim * 0.14);
                 glow += _CoreHotColor.rgb * hotCenter * 1.10;
                 glow *= _CoreIntensity * pulse;
+                // 가산 블렌딩이라 화면 기여가 glow * alpha다. glow만 줄여야 정확히 65%가 된다.
+                glow = ApplyCosmicAugmentState(glow, _AugmentTint, _AugmentDrain);
                 return float4(glow, saturate(center * 0.62 + hotCenter * 0.30 + rim * 0.10));
             }
             ENDHLSL

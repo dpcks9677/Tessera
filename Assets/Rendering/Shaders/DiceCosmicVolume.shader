@@ -21,6 +21,10 @@ Shader "DicePoC/CosmicVolume"
         _CoreRadius ("Core Radius", Range(0.1, 0.6)) = 0.39
         _StarIntensity ("Star Intensity", Range(0.0, 8.0)) = 2.65
         _TwinkleSpeed ("Twinkle Speed", Range(0.0, 8.0)) = 2.2
+
+        [Header(Augment State)]
+        _AugmentTint ("Augment Tint (a = strength)", Color) = (0.62, 0.24, 0.92, 0.0)
+        _AugmentDrain ("Augment Drain", Range(0.0, 1.0)) = 0.0
     }
 
     SubShader
@@ -47,6 +51,7 @@ Shader "DicePoC/CosmicVolume"
             #pragma fragment Frag
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "CosmicAugmentState.hlsl"
 
             struct Attributes
             {
@@ -67,6 +72,7 @@ Shader "DicePoC/CosmicVolume"
                 float4 _CloudColor;
                 float4 _CoreColor;
                 float4 _StarColor;
+                float4 _AugmentTint;
                 float _Brightness;
                 float _Density;
                 float _Opacity;
@@ -76,6 +82,7 @@ Shader "DicePoC/CosmicVolume"
                 float _CoreRadius;
                 float _StarIntensity;
                 float _TwinkleSpeed;
+                float _AugmentDrain;
             CBUFFER_END
 
             float Hash31(float3 p)
@@ -187,6 +194,10 @@ Shader "DicePoC/CosmicVolume"
                 finalColor += _NebulaColor.rgb * accumulatedAlpha * 0.18;
                 float thicknessGlow = saturate(travelDistance * 1.35);
                 finalColor += _NebulaColor.rgb * thicknessGlow * 0.10;
+                finalColor = ApplyCosmicAugmentState(finalColor, _AugmentTint, _AugmentDrain);
+
+                // finalAlpha는 순수 기하 값이라 상태에 따라 건드리지 않는다. 이 셰이더는 ZWrite On이라
+                // 알파를 같이 낮추면 뒤의 크리스탈 셸이 뚫고 나와 정렬 결함이 된다.
                 float finalAlpha = saturate(0.30 + accumulatedAlpha * _Opacity);
                 return float4(finalColor, finalAlpha);
             }

@@ -8,6 +8,10 @@ Shader "DicePoC/CosmicTesseract"
         _Opacity ("Opacity", Range(0.0, 1.0)) = 0.62
         _FlowSpeed ("Flow Speed", Range(0.0, 6.0)) = 1.15
         _FlowScale ("Flow Scale", Range(1.0, 20.0)) = 8.0
+
+        [Header(Augment State)]
+        _AugmentTint ("Augment Tint (a = strength)", Color) = (0.62, 0.24, 0.92, 0.0)
+        _AugmentDrain ("Augment Drain", Range(0.0, 1.0)) = 0.0
     }
 
     SubShader
@@ -34,6 +38,7 @@ Shader "DicePoC/CosmicTesseract"
             #pragma fragment Frag
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "CosmicAugmentState.hlsl"
 
             struct Attributes
             {
@@ -53,10 +58,12 @@ Shader "DicePoC/CosmicTesseract"
             CBUFFER_START(UnityPerMaterial)
                 float4 _LineColor;
                 float4 _HotColor;
+                float4 _AugmentTint;
                 float _Intensity;
                 float _Opacity;
                 float _FlowSpeed;
                 float _FlowScale;
+                float _AugmentDrain;
             CBUFFER_END
 
             Varyings Vert(Attributes input)
@@ -79,7 +86,9 @@ Shader "DicePoC/CosmicTesseract"
                 float steadyGlow = 0.78 + wave * 0.22;
                 float3 lineColor = lerp(_LineColor.rgb, _HotColor.rgb, hotPulse * 0.72);
                 float alpha = saturate(_Opacity * input.color.a * (0.82 + hotPulse * 0.18));
-                return float4(lineColor * _Intensity * steadyGlow, alpha);
+                // alpha는 정점 색이 실은 선 페이드다. 건드리면 선 끝이 뭉툭해진다.
+                float3 emission = ApplyCosmicAugmentState(lineColor * _Intensity * steadyGlow, _AugmentTint, _AugmentDrain);
+                return float4(emission, alpha);
             }
             ENDHLSL
         }

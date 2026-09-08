@@ -6,6 +6,17 @@ using UnityEngine.Rendering;
 
 namespace Tessera.Tabletop
 {
+    /// <summary>코스믹 큐브가 표시하는 현재 플레이어의 굴림 예산 상태.</summary>
+    public enum RollBudgetState
+    {
+        /// <summary>기본 굴림이 남아 있다.</summary>
+        Normal,
+        /// <summary>기본 굴림은 소진했지만 등가교환을 아직 쓸 수 있다.</summary>
+        AugmentReady,
+        /// <summary>기본 굴림도 등가교환도 없다.</summary>
+        Drained
+    }
+
     /// <summary>
     /// 주사위 트레이 하단 우측에 배치되는 3D 스타일라이즈드 코스믹 큐브(Cosmic Cube) 롤 오브젝트
     /// - 외부 라이트 편차를 제거하여 3개 보이는 면 모두 100% 균등하고 깊은 비비드 아쿠아 성운 조도 유지
@@ -29,6 +40,11 @@ namespace Tessera.Tabletop
         private float hoverLerp;
         private float clickFlashLerp;
         private Coroutine clickFeedbackRoutine;
+
+        [Header("Roll Budget State")]
+        [SerializeField] private RollBudgetState rollBudgetState = RollBudgetState.Normal;
+        private float augmentTintLerp;
+        private float drainLerp;
 
         [Header("Rotation & Spin State")]
         [SerializeField] private float idleRotationSpeed = 8.0f; // 초당 8도 기본 자전
@@ -93,6 +109,11 @@ namespace Tessera.Tabletop
         // 결정 외곽은 가까운 시안과 넓은 코발트 후광을 겹쳐 네온 깊이를 만든다.
         private readonly Color nearHaloColor = new(0.02f, 1.80f, 3.60f, 0.44f);
         private readonly Color outerHaloColor = new(0.00f, 0.45f, 2.40f, 0.20f);
+
+        // 등가교환 대기 틴트. Material.SetColor는 감마 보정을 하지 않으므로 이 값이 그대로
+        // 선형 공간 색으로 셰이더에 들어간다. 위 후광 색과 같은 규약이다.
+        // allowHDR이 꺼져 있어 1.0을 넘기지 않는다.
+        private readonly Color augmentTintColor = new(0.62f, 0.24f, 0.92f, 1.0f);
 
         private void Awake()
         {
@@ -294,6 +315,26 @@ namespace Tessera.Tabletop
             isInteractable = interactable;
         }
 
+        /// <summary>
+        /// 현재 플레이어의 굴림 예산 상태를 표시한다.
+        ///
+        /// <see cref="SetInteractable"/>과는 별개의 신호다. isInteractable은 굴림 애니메이션과
+        /// 턴 전환마다 매번 껐다 켜지는 "지금 클릭해도 되는가"이고, 이쪽은 한 턴 안에서 단조롭게
+        /// 변하는 "굴릴 것이 남았는가"다. 두 개를 하나로 합치면 매 굴림마다 큐브가 회색으로 깜빡인다.
+        ///
+        /// 매 갱신마다 같은 값으로 다시 불려도 목표만 다시 세우므로 연출이 끊기지 않는다.
+        /// </summary>
+        public void SetRollBudgetState(RollBudgetState state, bool animate = true)
+        {
+            rollBudgetState = state;
+            if (animate && Application.isPlaying) return;
+
+            // 편집 모드에서는 Update가 돌지 않으므로 머티리얼에 쓰지 않는다.
+            // 구운 에셋을 더럽히지 않기 위한 이 컴포넌트의 기존 규율을 그대로 지킨다.
+            augmentTintLerp = state == RollBudgetState.AugmentReady ? 1f : 0f;
+            drainLerp = state == RollBudgetState.Drained ? 1f : 0f;
+        }
+
         public void TriggerClickFeedback()
         {
             OnClicked?.Invoke();
@@ -460,6 +501,8 @@ namespace Tessera.Tabletop
         private static readonly int IntensityId = Shader.PropertyToID("_Intensity");
         private static readonly int OpacityId = Shader.PropertyToID("_Opacity");
         private static readonly int FlowSpeedId = Shader.PropertyToID("_FlowSpeed");
+        private static readonly int AugmentTintId = Shader.PropertyToID("_AugmentTint");
+        private static readonly int AugmentDrainId = Shader.PropertyToID("_AugmentDrain");
 
         private void Update()
         {
@@ -501,6 +544,17 @@ namespace Tessera.Tabletop
             float target = (isHovered && isInteractable) ? 1f : 0f;
             hoverLerp = Mathf.MoveTowards(hoverLerp, target, dt * 5f);
 
+            // 3-2. 굴림 예산 상태 보간. isInteractable과 달리 하드 삼항이 아니라 이징이다.
+            float tintTarget = rollBudgetState == RollBudgetState.AugmentReady ? 1f : 0f;
+            float drainTarget = rollBudgetState == RollBudgetState.Drained ? 1f : 0f;
+            augmentTintLerp = Mathf.MoveTowards(augmentTintLerp, tintTarget, dt * 2.2f);
+            drainLerp = Mathf.MoveTowards(drainLerp, drainTarget, dt * 2.2f);
+
+            // 일렁임은 신규 파라미터 없이 기존 후광 세기를 흔들어 만든다.
+            float shimmer = augmentTintLerp * (0.5f + 0.5f * Mathf.Sin(time * 2.6f));
+            Color augmentTint = augmentTintColor;
+            augmentTint.a = augmentTintLerp * (0.72f + shimmer * 0.28f);
+
             // 4. 내부 체적은 깊은 인디고와 HDR 시안의 대비를 유지하며 상태에 따라 점화된다.
             if (cosmicCubeMaterial != null)
             {
@@ -512,6 +566,8 @@ namespace Tessera.Tabletop
                 float coreIntensity = 2.45f + (hoverLerp * 0.38f) + (clickFlashLerp * 0.75f);
                 cosmicCubeMaterial.SetFloat(CoreIntensityId, coreIntensity);
                 cosmicCubeMaterial.SetFloat(TwinkleSpeedId, Mathf.Lerp(2.20f, 3.15f, hoverLerp));
+                cosmicCubeMaterial.SetColor(AugmentTintId, augmentTint);
+                cosmicCubeMaterial.SetFloat(AugmentDrainId, drainLerp);
             }
 
             // 투명 외피는 기본 상태에서도 네온 모서리를 유지한다.
@@ -521,18 +577,24 @@ namespace Tessera.Tabletop
                 crystalFrontMaterial.SetFloat(EdgeIntensityId, shellEdgeIntensity);
                 crystalFrontMaterial.SetFloat(ThicknessIntensityId, 0.70f + hoverLerp * 0.12f);
                 crystalFrontMaterial.SetFloat(RefractionStrengthId, 0.18f + hoverLerp * 0.06f);
+                crystalFrontMaterial.SetColor(AugmentTintId, augmentTint);
+                crystalFrontMaterial.SetFloat(AugmentDrainId, drainLerp);
             }
             if (crystalInnerMaterialA != null)
             {
                 crystalInnerMaterialA.SetFloat(EdgeIntensityId, 0.10f + hoverLerp * 0.03f);
                 crystalInnerMaterialA.SetFloat(ThicknessIntensityId, 0.56f + hoverLerp * 0.07f);
                 crystalInnerMaterialA.SetFloat(RefractionStrengthId, 0.22f + hoverLerp * 0.04f);
+                crystalInnerMaterialA.SetColor(AugmentTintId, augmentTint);
+                crystalInnerMaterialA.SetFloat(AugmentDrainId, drainLerp);
             }
             if (crystalInnerMaterialB != null)
             {
                 crystalInnerMaterialB.SetFloat(EdgeIntensityId, 0.04f + hoverLerp * 0.02f);
                 crystalInnerMaterialB.SetFloat(ThicknessIntensityId, 0.42f + hoverLerp * 0.05f);
                 crystalInnerMaterialB.SetFloat(RefractionStrengthId, 0.17f + hoverLerp * 0.03f);
+                crystalInnerMaterialB.SetColor(AugmentTintId, augmentTint);
+                crystalInnerMaterialB.SetFloat(AugmentDrainId, drainLerp);
             }
 
             // 중앙 에너지 코어는 레퍼런스처럼 호버 시 은은하게 점화된다.
@@ -541,6 +603,8 @@ namespace Tessera.Tabletop
                 float coreGlow = 2.70f + (hoverLerp * 0.65f) + (clickFlashLerp * 1.15f);
                 energyCoreMaterial.SetFloat(CoreIntensityId, coreGlow);
                 energyCoreMaterial.SetFloat(PulseAmountId, Mathf.Lerp(0.08f, 0.14f, hoverLerp));
+                energyCoreMaterial.SetColor(AugmentTintId, augmentTint);
+                energyCoreMaterial.SetFloat(AugmentDrainId, drainLerp);
             }
 
             // 두 겹의 확장 렌더러가 기본 발광과 호버 시 넓어지는 육각 후광을 만든다.
@@ -548,13 +612,17 @@ namespace Tessera.Tabletop
             {
                 float enabled = isInteractable ? 1.0f : 0.35f;
                 hoverOutlineMaterial.SetFloat(OutlineIntensityId,
-                    0.42f * enabled + hoverLerp * 0.70f + clickFlashLerp * 0.60f);
+                    0.42f * enabled + hoverLerp * 0.70f + clickFlashLerp * 0.60f + shimmer * 0.34f);
+                hoverOutlineMaterial.SetColor(AugmentTintId, augmentTint);
+                hoverOutlineMaterial.SetFloat(AugmentDrainId, drainLerp);
             }
             if (outerHaloMaterial != null)
             {
                 float enabled = isInteractable ? 1.0f : 0.30f;
                 outerHaloMaterial.SetFloat(OutlineIntensityId,
-                    0.20f * enabled + hoverLerp * 0.38f + clickFlashLerp * 0.30f);
+                    0.20f * enabled + hoverLerp * 0.38f + clickFlashLerp * 0.30f + shimmer * 0.22f);
+                outerHaloMaterial.SetColor(AugmentTintId, augmentTint);
+                outerHaloMaterial.SetFloat(AugmentDrainId, drainLerp);
             }
 
             if (tesseractMaterial != null)
@@ -564,6 +632,8 @@ namespace Tessera.Tabletop
                     0.90f * enabled + hoverLerp * 0.48f + clickFlashLerp * 0.88f);
                 tesseractMaterial.SetFloat(OpacityId, Mathf.Lerp(0.62f, 0.78f, hoverLerp) * enabled);
                 tesseractMaterial.SetFloat(FlowSpeedId, Mathf.Lerp(1.15f, 1.90f, hoverLerp));
+                tesseractMaterial.SetColor(AugmentTintId, augmentTint);
+                tesseractMaterial.SetFloat(AugmentDrainId, drainLerp);
             }
 
             // 5. 내부 별자리 심볼 갱신
@@ -829,7 +899,9 @@ namespace Tessera.Tabletop
                 filter.sharedMesh = tesseractMesh;
             }
 
-            tesseractMaterial = Application.isPlaying ? renderer.material : renderer.sharedMaterial;
+            // 다른 레이어와 같이 가드를 통해 사본을 받는다. 바로 다음 줄의 Configure가 편집 모드에서
+            // 구운 에셋에 직접 써서 커밋된 .mat을 더럽히던 경로였다.
+            tesseractMaterial = RuntimeAssetGuard.GetWritableMaterial(renderer);
             if (shader != null && (tesseractMaterial == null || tesseractMaterial.shader != shader))
             {
                 tesseractMaterial = new Material(shader) { name = "Cosmic_Tesseract_Mat" };

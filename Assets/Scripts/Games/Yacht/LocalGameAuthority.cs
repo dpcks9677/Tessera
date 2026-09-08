@@ -56,6 +56,19 @@ namespace Tessera.Games.Yacht
         public YachtGameState CurrentState => state;
         public YachtGameOptions Options => options.Clone();
         public IYachtRuleSet RuleSet => rules;
+        /// <summary>
+        /// 등가교환을 지금 발동할 수 있는가. 규칙(보유·3회 제한·기본 굴림 소진)은
+        /// <see cref="YachtAugmentRuntime.CanUseEquivalentExchange"/> 한 곳에만 둔다.
+        /// 화면이 코스믹 큐브 상태를 정할 때 그 규칙을 다시 쓰지 않게 하기 위한 통로다.
+        /// </summary>
+        public bool CanUseEquivalentExchange(int playerIndex)
+        {
+            // AugmentContext.Player가 AugmentPlayers를 무방비로 인덱싱하므로 여기서 먼저 막는다.
+            if (state.Mode != YachtGameMode.Augmented) return false;
+            if (playerIndex < 0 || state.AugmentPlayers == null || playerIndex >= state.AugmentPlayers.Length) return false;
+            return augmentRuntime.CanUseEquivalentExchange(state, playerIndex, out _, out _);
+        }
+
         public float CurrentTurnDurationSeconds => state.Mode == YachtGameMode.Augmented
             ? augmentRuntime.GetTurnDuration(state, state.CurrentPlayerIndex, options.TurnDurationSeconds)
             : options.TurnDurationSeconds;
@@ -605,6 +618,14 @@ namespace Tessera.Games.Yacht
             && CurrentPlayerIndex < AuthorityState.AugmentPlayers.Length
             && !AuthorityState.AugmentPlayers[CurrentPlayerIndex].TableFlipUsed
             && ContainsOwnedAugment(CurrentPlayerIndex, YachtAugmentRuntime.TableFlipId);
+
+        /// <summary>
+        /// 현재 플레이어가 등가교환을 지금 발동할 수 있는가. 규칙은 증강 런타임이 소유한다.
+        ///
+        /// 위상 게이트를 따로 두지 않는다. 규칙 자체가 HasRolled와 굴림 소진을 요구하고
+        /// Commit이 HasRolled를 지우므로 턴 전환·게임 종료에서 이미 false다.
+        /// </summary>
+        public bool CanUseEquivalentExchange => authority.CanUseEquivalentExchange(CurrentPlayerIndex);
         public IReadOnlyDictionary<ScoreCategory, int> CurrentCandidates
         {
             get

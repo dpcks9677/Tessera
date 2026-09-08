@@ -15,6 +15,10 @@ Shader "DicePoC/CosmicCrystalShell"
         _EdgeIntensity ("Edge Intensity", Range(0.0, 10.0)) = 2.35
         _EdgeWidth ("Edge Width", Range(0.005, 0.15)) = 0.043
         _ShellExpansion ("Shell Expansion", Range(0.0, 0.08)) = 0.018
+
+        [Header(Augment State)]
+        _AugmentTint ("Augment Tint (a = strength)", Color) = (0.62, 0.24, 0.92, 0.0)
+        _AugmentDrain ("Augment Drain", Range(0.0, 1.0)) = 0.0
         [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull", Float) = 2
     }
 
@@ -42,6 +46,7 @@ Shader "DicePoC/CosmicCrystalShell"
             #pragma fragment Frag
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "CosmicAugmentState.hlsl"
 
             struct Attributes
             {
@@ -63,6 +68,7 @@ Shader "DicePoC/CosmicCrystalShell"
                 float4 _EdgeColor;
                 float4 _WarmReflectionColor;
                 float4 _ThicknessColor;
+                float4 _AugmentTint;
                 float _SurfaceAlpha;
                 float _ThicknessIntensity;
                 float _ThicknessWidth;
@@ -71,6 +77,7 @@ Shader "DicePoC/CosmicCrystalShell"
                 float _EdgeIntensity;
                 float _EdgeWidth;
                 float _ShellExpansion;
+                float _AugmentDrain;
                 float _Cull;
             CBUFFER_END
 
@@ -125,7 +132,9 @@ Shader "DicePoC/CosmicCrystalShell"
                 finalColor += _EdgeColor.rgb * edge * _EdgeIntensity;
                 finalColor += _EdgeColor.rgb * coolSpecular * 1.55;
                 finalColor += _WarmReflectionColor.rgb * warmSpecular * 0.08;
+                finalColor = ApplyCosmicAugmentState(finalColor, _AugmentTint, _AugmentDrain);
 
+                // alpha는 프레넬·엣지·스페큘러 기하 값이다. 상태 표현은 RGB에서만 한다.
                 float alpha = saturate(
                     _SurfaceAlpha
                     + fresnel * 0.20

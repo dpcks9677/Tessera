@@ -511,6 +511,8 @@ namespace Tessera.Games.AugmentedYacht
                 string message = GetAugmentEventMessage(pendingRollResult);
                 RefreshAugmentPresentation(message);
                 UpdateStatusText(message);
+                // 이 분기는 SetRollInteraction을 타지 않는다. 증강이 굴림 예산 조건을 바꿨을 수 있으므로 직접 부른다.
+                RefreshRollBudgetState();
                 return;
             }
 
@@ -589,6 +591,33 @@ namespace Tessera.Games.AugmentedYacht
         {
             rollCosmicCube?.SetInteractable(interactable);
             rollOrb?.SetInteractable(interactable);
+            RefreshRollBudgetState();
+        }
+
+        /// <summary>
+        /// 굴림 예산을 코스믹 큐브 상태로 옮긴다. 판 뒤집기는 게이트가 아니다.
+        /// 등가교환만이 "보라(대기)"와 "회색(소진)"을 가른다.
+        ///
+        /// CanRoll이 아니라 RollsRemaining을 본다. CanRoll은 위상을, RefreshGameInteraction의
+        /// canRoll은 dice.AllKept를 함께 접는데 둘 다 이 신호에 속하지 않고 이미 isInteractable을 탄다.
+        /// </summary>
+        public static RollBudgetState ResolveRollBudgetState(int rollsRemaining, bool equivalentExchangeReady)
+        {
+            if (rollsRemaining > 0) return RollBudgetState.Normal;
+            return equivalentExchangeReady ? RollBudgetState.AugmentReady : RollBudgetState.Drained;
+        }
+
+        /// <summary>
+        /// 코스믹 큐브의 굴림 예산 상태를 다시 계산한다. 상호작용 토글과 같은 자리에서 도는 이유는
+        /// 하나다. 굴림 수를 건드리거나 턴을 넘기는 모든 경로가 이미 여기를 지나므로, 여기 한 곳에
+        /// 두면 상태가 고착될 경로가 남지 않는다. 두 신호 자체는 큐브 안에서 여전히 분리되어 있다.
+        /// </summary>
+        private void RefreshRollBudgetState()
+        {
+            if (rollCosmicCube == null) return;
+            rollCosmicCube.SetRollBudgetState(gameSession == null
+                ? RollBudgetState.Normal
+                : ResolveRollBudgetState(gameSession.RollsRemaining, gameSession.CanUseEquivalentExchange));
         }
 
         public void RefreshAugmentPresentation(string message = null)

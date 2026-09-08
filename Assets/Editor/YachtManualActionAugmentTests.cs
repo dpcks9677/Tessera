@@ -1,6 +1,8 @@
 using System;
 using NUnit.Framework;
+using Tessera.Games.AugmentedYacht;
 using Tessera.Games.Yacht;
+using Tessera.Tabletop;
 
 namespace Tessera.Editor.Tests
 {
@@ -98,6 +100,30 @@ namespace Tessera.Editor.Tests
             // 4회차 시도 시 이미 사용 완료
             Assert.That(runtime.CanUseEquivalentExchange(state, 0, out var code2, out _), Is.False);
             Assert.That(code2, Is.EqualTo(YachtCommandErrorCode.AugmentAlreadyUsed));
+        }
+
+        [Test]
+        public void 등가교환_미보유_플레이어는_사용불가이며_예외가_없다()
+        {
+            // 코스믹 큐브의 소진(회색) 상태가 바로 이 경로다. 화면이 갱신마다 밟으므로
+            // false를 돌려주는 것보다 예외가 나지 않는 것이 더 중요한 단언이다.
+            state.HasRolled = true;
+            state.RollsRemaining = 0;
+
+            Assert.That(runtime.CanUseEquivalentExchange(state, 0, out var code, out _), Is.False);
+            Assert.That(code, Is.EqualTo(YachtCommandErrorCode.AugmentRequired));
+        }
+
+        [Test]
+        public void 굴림예산_상태는_남은굴림과_등가교환_가능여부로_정해진다()
+        {
+            // 굴림이 남아 있으면 등가교환 보유 여부와 무관하게 평소 상태다.
+            Assert.That(YachtTurnFlowPresenter.ResolveRollBudgetState(3, false), Is.EqualTo(RollBudgetState.Normal));
+            Assert.That(YachtTurnFlowPresenter.ResolveRollBudgetState(3, true), Is.EqualTo(RollBudgetState.Normal));
+
+            // 소진 후에는 등가교환만이 보라(대기)와 회색(소진)을 가른다. 판 뒤집기는 게이트가 아니다.
+            Assert.That(YachtTurnFlowPresenter.ResolveRollBudgetState(0, true), Is.EqualTo(RollBudgetState.AugmentReady));
+            Assert.That(YachtTurnFlowPresenter.ResolveRollBudgetState(0, false), Is.EqualTo(RollBudgetState.Drained));
         }
 
         [Test]
