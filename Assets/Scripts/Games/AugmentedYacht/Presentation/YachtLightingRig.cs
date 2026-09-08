@@ -17,6 +17,7 @@ namespace Tessera.Games.AugmentedYacht
     public sealed class YachtLightingRig : MonoBehaviour
     {
         private const string KeyLightName = "Key Light";
+        private const string FillLightName = "Fill Light";
 
         /// <summary>URP의 SSAO 피처 타입 이름. 어셈블리 참조 없이 찾기 위해 문자열로 비교한다.</summary>
         private const string AmbientOcclusionFeatureTypeName = "ScreenSpaceAmbientOcclusion";
@@ -39,6 +40,16 @@ namespace Tessera.Games.AugmentedYacht
         [SerializeField] private float shadowNormalBias = 0.03f;
 
         /// <summary>
+        /// 필라이트가 가져가는 밝기 비중(0~1). 키라이트가 나머지를 쓴다.
+        ///
+        /// 키라이트는 yaw -35도라 트레이 안쪽 벽 중 +X를 보는 왼쪽 면만 비춘다. 오른쪽 면은
+        /// 주변광만 받아 왼쪽보다 60% 어두웠다. yaw를 뒤집은 필라이트가 그 면을 채운다.
+        /// 프리셋 강도를 둘로 나눠 쓰므로 위를 보는 면(림 윗면·펠트 바닥)의 밝기는 그대로다.
+        /// </summary>
+        [Header("Fill Light")]
+        [SerializeField, Range(0f, 0.5f)] private float fillLightShare = 0.25f;
+
+        /// <summary>
         /// 키라이트 프리셋. 배열 순서가 곧 전환 순서다(<see cref="TogglePreset"/>).
         ///
         /// 색이 옅은 Soft Neutral을 앞에 두고 Warm Amber를 그다음에 둔다. 앰버는 주사위 바탕과
@@ -58,6 +69,7 @@ namespace Tessera.Games.AugmentedYacht
         /// <summary>Soft Neutral을 기본으로 시작한다.</summary>
         [SerializeField] private int currentPresetIndex = 0;
         private Light keyLight;
+        private Light fillLight;
 
         /// <summary>연출 방식(M10.8). Cel에서는 그림자를 하드로 바꾸고 SSAO를 끈다.</summary>
         private RenderStyle renderStyle = RenderStyle.Baseline;
@@ -94,7 +106,27 @@ namespace Tessera.Games.AugmentedYacht
             keyLight.shadowStrength = shadowStrength;
             keyLight.shadowBias = shadowBias;
             keyLight.shadowNormalBias = shadowNormalBias;
+
+            ConfigureFillLight();
             ApplyCurrentPreset();
+        }
+
+        /// <summary>
+        /// 필라이트를 키라이트의 yaw만 뒤집은 방향으로 세운다. 그림자는 끈다.
+        ///
+        /// 디렉셔널 둘이 그림자를 뿌리면 프롭마다 반대 방향 그림자가 겹쳐 렌더 오류처럼 보인다.
+        /// URP Forward는 메인 디렉셔널 하나만 그림자를 지원하므로 켜도 의도대로 나오지 않는다.
+        /// </summary>
+        private void ConfigureFillLight()
+        {
+            if (!TryResolveFillLight()) return;
+
+            fillLight.enabled = true;
+            fillLight.type = LightType.Directional;
+            fillLight.transform.rotation = Quaternion.Euler(
+                keyLightEulerAngles.x, -keyLightEulerAngles.y, keyLightEulerAngles.z);
+            fillLight.cullingMask |= TesseraLayers.Mask(TesseraLayers.Dice);
+            fillLight.shadows = LightShadows.None;
         }
 
         /// <summary>
@@ -166,10 +198,18 @@ namespace Tessera.Games.AugmentedYacht
             if (presets.Length == 0) return;
 
             KeyLightPreset preset = presets[currentPresetIndex];
+            float fillIntensity = preset.Intensity * fillLightShare;
+
             if (TryResolveKeyLight())
             {
                 keyLight.color = preset.Color;
-                keyLight.intensity = preset.Intensity;
+                keyLight.intensity = preset.Intensity - fillIntensity;
+            }
+
+            if (TryResolveFillLight())
+            {
+                fillLight.color = preset.Color;
+                fillLight.intensity = fillIntensity;
             }
 
             PresetChanged?.Invoke(preset.Name);
@@ -182,6 +222,15 @@ namespace Tessera.Games.AugmentedYacht
             GameObject found = GameObject.Find(KeyLightName);
             keyLight = found != null ? found.GetComponent<Light>() : null;
             return keyLight != null;
+        }
+
+        private bool TryResolveFillLight()
+        {
+            if (fillLight != null) return true;
+
+            GameObject found = GameObject.Find(FillLightName);
+            fillLight = found != null ? found.GetComponent<Light>() : null;
+            return fillLight != null;
         }
     }
 }

@@ -35,11 +35,13 @@ namespace Tessera.Core
 
         // 트레이 비주얼의 고정 X 오프셋. TrayCenterZ와 같은 역할을 X에서 한다.
         //
-        // 주사위 루트는 CenterSectionX(-0.39)에 있고 트레이 비주얼은 씬에서 -0.62로 옮겨져 있다
-        // (커밋 c6d3533, 에디터에서 직접 배치한 값). 두 좌표계가 0.23만큼 어긋나 있어 정렬·킵
-        // 주사위가 트레이보다 오른쪽으로 밀려 보였다. 이 값을 트레이 기준 좌표에 더해 맞춘다.
-        // TabletopSurfaceBuilder도 이 값을 써서 굽기 때문에 다시 구워도 배치가 되돌아가지 않는다.
-        public const float TrayCenterX = -0.23f;
+        // 트레이는 주사위 루트(CenterSectionX)와 X를 공유한다. 예전에는 씬에서 손으로 옮긴
+        // -0.62가 그대로 굳어 -0.23이었는데, 이 값이 킵·정렬 좌표에만 반영되고 PlayBounds X에는
+        // 빠져 있어 두 가지가 어긋났다. 하나는 트레이가 상판·러너·카메라 중심(모두 CenterSectionX)
+        // 보다 0.23 왼쪽으로 놓인 것이고, 다른 하나는 물리 벽 범위가 트레이 안쪽 벽보다 0.23
+        // 오른쪽으로 밀린 것이다. 0으로 되돌려 둘 다 없앤다. 프리셋은 원래 x [-3.0, 3.0] 벽으로
+        // 구워졌으므로 다시 굽지 않아도 이 정렬과 맞는다.
+        public const float TrayCenterX = 0f;
 
         // 트레이 내부 바닥 착지 시 Y 중심 좌표 (0.2 + 0.39 = 0.59f)
         public const float FloorRestY = RollSurfaceY + DieHalfSize; // 0.59f
@@ -61,7 +63,7 @@ namespace Tessera.Core
         public const float KeepSpacingSourceX = 22f;
         public const float KeepCenterSourceZ = 58f; // 12시 방향 (+Z)
 
-        public const float KeepStartX = TrayCenterX + KeepStartSourceX * TrayScale;   // -2.87f
+        public const float KeepStartX = TrayCenterX + KeepStartSourceX * TrayScale;   // -2.64f
         public const float KeepSpacingX = KeepSpacingSourceX * TrayScale;   //  1.32f
         public const float KeepCenterZ = TrayCenterZ + KeepCenterSourceZ * TrayScale; // +3.18f
 
@@ -77,8 +79,8 @@ namespace Tessera.Core
         public const float PlayBoundsSourceMinZ = -52f;
         public const float PlayBoundsSourceMaxZ = 46f;
 
-        public const float PlayBoundsMinX = PlayBoundsSourceMinX * TrayScale;
-        public const float PlayBoundsMaxX = PlayBoundsSourceMaxX * TrayScale;
+        public const float PlayBoundsMinX = TrayCenterX + PlayBoundsSourceMinX * TrayScale;
+        public const float PlayBoundsMaxX = TrayCenterX + PlayBoundsSourceMaxX * TrayScale;
         public const float PlayBoundsMinZ = TrayCenterZ + PlayBoundsSourceMinZ * TrayScale;
         public const float PlayBoundsMaxZ = TrayCenterZ + PlayBoundsSourceMaxZ * TrayScale;
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
@@ -72,6 +72,9 @@ namespace Tessera.Games.AugmentedYacht
 
         private const float CameraPitchAngle = 75.0f;
 
+        /// <summary>필라이트가 가져가는 밝기 비중. 런타임에는 YachtLightingRig가 프리셋 강도로 다시 나눈다.</summary>
+        private const float FillLightShare = 0.25f;
+
         /// <summary>씬에 이미 배치된 레이아웃을 찾는다. 하나라도 없으면 false를 준다.</summary>
         public static bool ResolveExistingLayout(SceneRefs refs)
         {
@@ -109,8 +112,11 @@ namespace Tessera.Games.AugmentedYacht
 
             DestroySceneObjectsNamed("Full Field World Camera", "Low Resolution World Camera");
 
-            Transform existingLight = refs.LayoutRoot != null ? refs.LayoutRoot.Find("Key Light") : null;
-            if (existingLight != null) DestroyObject(existingLight.gameObject);
+            Transform existingKeyLight = refs.LayoutRoot != null ? refs.LayoutRoot.Find("Key Light") : null;
+            if (existingKeyLight != null) DestroyObject(existingKeyLight.gameObject);
+
+            Transform existingFillLight = refs.LayoutRoot != null ? refs.LayoutRoot.Find("Fill Light") : null;
+            if (existingFillLight != null) DestroyObject(existingFillLight.gameObject);
 
             GameObject cameraObject = new("Full Field World Camera", typeof(Camera), typeof(AudioListener));
             cameraObject.transform.SetParent(refs.LayoutRoot, false);
@@ -127,13 +133,24 @@ namespace Tessera.Games.AugmentedYacht
             Light key = lightObject.GetComponent<Light>();
             key.type = LightType.Directional;
             key.color = new Color(1f, 0.93f, 0.78f);
-            key.intensity = 1.45f;
+            key.intensity = 1.45f * (1f - FillLightShare);
             key.shadows = LightShadows.Soft;
             key.shadowStrength = 0.58f;
             key.shadowBias = 0.005f;
             key.shadowNormalBias = 0.03f;
             lightObject.transform.rotation = Quaternion.Euler(60f, -35f, 0f);
             lightObject.transform.SetParent(refs.LayoutRoot, true);
+
+            // 키라이트가 비추지 못하는 -X 방향 면(트레이 안쪽 오른쪽 벽 등)을 채운다.
+            // yaw만 뒤집고 그림자는 끈다. 자세한 이유는 YachtLightingRig.ConfigureFillLight 참고.
+            GameObject fillObject = new("Fill Light", typeof(Light));
+            Light fill = fillObject.GetComponent<Light>();
+            fill.type = LightType.Directional;
+            fill.color = new Color(1f, 0.93f, 0.78f);
+            fill.intensity = 1.45f * FillLightShare;
+            fill.shadows = LightShadows.None;
+            fillObject.transform.rotation = Quaternion.Euler(60f, 35f, 0f);
+            fillObject.transform.SetParent(refs.LayoutRoot, true);
         }
 
         /// <summary>월드 카메라의 위치·각도·직교 크기를 규정값으로 되돌린다.</summary>
