@@ -28,7 +28,7 @@
 | 다음 행동 | 주사위 눈 렌더링 방식 논의. 이후 `M17-T3`·`M17-T10`·`M17-T11`(상태 표시 묶음) 또는 `M17-T7`(무작위 완주 테스트) |
 | 마지막 완료 작업 | `M17-T16` 테이블 나뭇결 픽셀화 (판자별 절차 생성 텍스처, 옹이·균열 추가) |
 | 차단 요소 | 없음 |
-| 마지막 갱신일 | 2026-09-07 |
+| 마지막 갱신일 | 2026-09-08 |
 
 ### 상태 표기 규칙
 
@@ -1172,7 +1172,17 @@ npm run validate:augments
 
 ## 13. 작업 세션 로그
 
-최신 로그를 위에 추가한다. 작업을 끝낼 때 아래 항목을 빠뜨리지 않는다.
+### 2026-09-08 — Antigravity (한글 폰트 Mulmaru 적용 및 폴백 구성)
+
+- 시작 상태: 한글 텍스트(증강 카드, HUD 등) 렌더링 시 영문 폰트 Alagard의 한글 글리프 부재로 시스템 고딕 폰트로 자동 폴백되어 픽셀 아트 스타일 불일치 발생
+- 완료 내용:
+  - 다운로드 폴더의 물마루(Mulmaru) 픽셀 폰트 에셋(`Assets/Fonts/Mulmaru.ttf`) 및 라이선스 고지(`Mulmaru-LICENSE.txt`) 추가
+  - 영문 폰트 `alagard.ttf.meta` 및 `m6x11.ttf.meta`의 `fallbackFontReferences`에 Mulmaru 등록
+  - 에디터 자동 폴백 보장 도구(`Assets/Editor/FontFallbackSetup.cs`) 및 단위 테스트(`FontFallbackTests.cs`) 작성
+  - 증강 카드(`AugmentCardView`) 및 게임 HUD(`YachtHudFactory`)의 폰트 로드 1순위를 `Mulmaru.ttf`로 지정하여 한글 UI의 직접 픽셀 렌더링 보장
+  - 카드 텍스트 생성 시 `FilterMode.Point` 설정 추가로 픽셀 글리프 번짐 방지
+- 변경 파일: `Assets/Fonts/Mulmaru.ttf`, `Assets/Fonts/Mulmaru-LICENSE.txt`, `Assets/Fonts/alagard.ttf.meta`, `Assets/Fonts/m6x11.ttf.meta`, `Assets/Editor/FontFallbackSetup.cs`, `Assets/Editor/FontFallbackTests.cs`, `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs`, `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtHudFactory.cs`, `docs/augmented_yacht_work_plan.md`
+- 실행한 검증: C# 컴파일 오류 0 (`Assembly-CSharp.csproj`, `Assembly-CSharp-Editor.csproj` 빌드 성공)
 
 ### 2026-09-07 — Claude (`M17-T8` 후속: 8면 면 숫자 폰트 전환과 렌더링 결함 세 건 수정)
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Tessera.Games.Yacht;
 using UnityEngine;
@@ -316,6 +316,10 @@ namespace Tessera.Games.AugmentedYacht
 
             Text text = textObject.GetComponent<Text>();
             text.font = LoadFont();
+            if (text.font != null && text.font.material != null && text.font.material.mainTexture != null)
+            {
+                text.font.material.mainTexture.filterMode = FilterMode.Point;
+            }
             text.text = value;
             text.fontSize = fontSize;
             text.alignment = alignment;
@@ -328,7 +332,8 @@ namespace Tessera.Games.AugmentedYacht
         {
             Font font = null;
 #if UNITY_EDITOR
-            font = UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/alagard.ttf")
+            font = UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/Mulmaru.ttf")
+                ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/alagard.ttf")
                 ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/m6x11.ttf");
 #endif
             return font ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");

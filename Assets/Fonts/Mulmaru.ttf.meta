@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: e252a28b97694323b6d8f7bf8de1c77a
+guid: 6174a0648b66445d8696e2e3f8043237
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,9 +9,8 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - Alagard
-  fallbackFontReferences:
-  - {fileID: 12800000, guid: 6174a0648b66445d8696e2e3f8043237, type: 3}
+  - Mulmaru
+  fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 2
   ascentCalculationMode: 1
