@@ -1,4 +1,3 @@
-using System;
 using NUnit.Framework;
 using Tessera.Games.AugmentedYacht;
 using UnityEngine;
@@ -6,14 +5,19 @@ using UnityEngine;
 namespace Tessera.Editor.Tests
 {
     /// <summary>
-    /// 변형 증강 우표 스티커의 절차 생성을 고정하는 테스트입니다.
-    /// 좌표를 박아 두면 톱니 간격을 조정할 때마다 깨지므로 기하 구조만 검사합니다.
+    /// 변형 증강 러너 스티커의 절차 생성을 고정하는 테스트입니다.
+    ///
+    /// 이 스티커는 한 텍셀이 픽셀 필터 화면의 한 픽셀이라는 전제로 그려집니다. 그래서 금테가
+    /// 몸통 가장자리에서 정확히 몇 텍셀 안쪽인지, 그림자가 정확히 몇 텍셀 밀렸는지가 곧 화면
+    /// 결과입니다. 좌표를 세는 테스트가 여기서는 과하지 않습니다.
     /// 시각 사양은 <c>docs/augmented_yacht_m17_vfx_spec.md</c> §3.1.1입니다.
     /// </summary>
     [TestFixture]
     public sealed class AugmentStickerTextureTests
     {
         private const int Size = AugmentStickerTexture.DefaultSize;
+        private const int Offset = AugmentStickerTexture.ShadowOffset;
+        private const int Inset = AugmentStickerTexture.BorderInset;
 
         private static readonly Color32 Indigo = new(0x36, 0x4b, 0x6e, 0xff);
 
@@ -27,77 +31,72 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 네_변에_톱니가_같은_개수로_생긴다()
+        public void 몸통은_톱니_없이_꽉_찬_사각형이다()
         {
             Color32[] pixels = Pixels(AugmentStickerTexture.DefaultBase);
 
-            int bottom = TransparentRuns(pixels, i => i);
-            int top = TransparentRuns(pixels, i => ((Size - 1) * Size) + i);
-            int left = TransparentRuns(pixels, i => i * Size);
-            int right = TransparentRuns(pixels, i => (i * Size) + Size - 1);
-
-            Assert.That(bottom, Is.GreaterThan(1), "톱니가 하나도 없으면 우표로 읽히지 않습니다.");
-            Assert.That(new[] { top, left, right }, Is.All.EqualTo(bottom));
-        }
-
-        [Test]
-        public void 톱니_사이에_몸통이_남는다()
-        {
-            Color32[] pixels = Pixels(AugmentStickerTexture.DefaultBase);
-
-            int body = 0;
-            for (int x = 0; x < Size; x++) if (pixels[x].a != 0) body++;
-
-            Assert.That(body, Is.GreaterThanOrEqualTo(Size / 3),
-                "톱니가 너무 깊으면 우표가 아니라 톱니바퀴로 보입니다.");
-        }
-
-        [Test]
-        public void 네_귀퉁이는_뚫리지_않는다()
-        {
-            Color32[] pixels = Pixels(AugmentStickerTexture.DefaultBase);
-
-            Assert.That(pixels[0].a, Is.Not.Zero);
-            Assert.That(pixels[Size - 1].a, Is.Not.Zero);
-            Assert.That(pixels[(Size - 1) * Size].a, Is.Not.Zero);
-            Assert.That(pixels[(Size * Size) - 1].a, Is.Not.Zero);
-        }
-
-        [Test]
-        public void 좌우와_상하로_대칭이다()
-        {
-            Color32[] pixels = Pixels(AugmentStickerTexture.DefaultBase);
-
-            for (int y = 0; y < Size; y++)
+            for (int y = Offset; y < Size; y++)
             {
-                for (int x = 0; x < Size; x++)
+                for (int x = Offset; x < Size; x++)
                 {
-                    Assert.That(pixels[(y * Size) + x], Is.EqualTo(pixels[(y * Size) + Size - 1 - x]),
-                        $"좌우 대칭이 깨졌습니다: ({x}, {y})");
-                    Assert.That(pixels[(y * Size) + x], Is.EqualTo(pixels[((Size - 1 - y) * Size) + x]),
-                        $"상하 대칭이 깨졌습니다: ({x}, {y})");
+                    Assert.That(pixels[(y * Size) + x].a, Is.Not.Zero, $"몸통에 구멍이 있습니다: ({x}, {y})");
                 }
             }
         }
 
         [Test]
-        public void 내부_금테는_끊김_없는_사각_링이고_안쪽은_비어_있다()
+        public void 그림자는_한쪽_모서리로만_한_칸_밀린다()
+        {
+            Color32[] pixels = Pixels(AugmentStickerTexture.DefaultBase);
+            Color32 shadow = AugmentStickerTexture.DefaultShadow;
+
+            // 텍스처 왼쪽 끝 열과 아래 끝 행이 그림자다(화면에서는 오른쪽·아래).
+            for (int y = 0; y <= Size - 1 - Offset; y++)
+                Assert.That(IsSame(pixels[(y * Size)], shadow), Is.True, $"한쪽 그림자가 빠졌습니다: y={y}");
+            for (int x = 0; x <= Size - 1 - Offset; x++)
+                Assert.That(IsSame(pixels[x], shadow), Is.True, $"다른 쪽 그림자가 빠졌습니다: x={x}");
+
+            // 반대쪽 두 변에는 그림자가 없다. 있으면 사방으로 번진 테두리지 그림자가 아니다.
+            for (int y = Offset; y < Size; y++)
+                Assert.That(IsSame(pixels[(y * Size) + Size - 1], shadow), Is.False, $"반대쪽에 그림자가 생겼습니다: y={y}");
+            for (int x = Offset; x < Size; x++)
+                Assert.That(IsSame(pixels[((Size - 1) * Size) + x], shadow), Is.False, $"반대쪽에 그림자가 생겼습니다: x={x}");
+        }
+
+        [Test]
+        public void 그림자_바깥_두_귀퉁이만_비어_있다()
+        {
+            Color32[] pixels = Pixels(AugmentStickerTexture.DefaultBase);
+
+            int empty = 0;
+            foreach (Color32 pixel in pixels) if (pixel.a == 0) empty++;
+
+            Assert.That(empty, Is.EqualTo(2 * Offset * Offset),
+                "몸통을 밀어 만든 그림자라 어긋난 두 귀퉁이 말고는 빌 곳이 없습니다.");
+            Assert.That(pixels[0].a, Is.Not.Zero, "밀린 쪽 귀퉁이는 그림자가 채웁니다.");
+            Assert.That(pixels[(Size * Size) - 1].a, Is.Not.Zero, "반대쪽 귀퉁이는 몸통이 채웁니다.");
+        }
+
+        [Test]
+        public void 금테는_몸통_가장자리에서_정해진_칸수만큼_안쪽이다()
         {
             Color32[] pixels = Pixels(AugmentStickerTexture.DefaultBase);
             Color32 gold = AugmentStickerTexture.DefaultBorder;
 
-            int inset = -1;
-            for (int i = 0; i < Size && inset < 0; i++)
-                if (IsSame(pixels[(i * Size) + (Size / 2)], gold)) inset = i;
-            Assert.That(inset, Is.GreaterThan(0), "금테를 찾지 못했습니다.");
+            int lineX0 = Offset + Inset;
+            int lineX1 = Size - 1 - Inset;
+            int lineY0 = Offset + Inset;
+            int lineY1 = Size - 1 - Inset;
 
-            int far = Size - 1 - inset;
-            for (int i = inset; i <= far; i++)
+            for (int x = lineX0; x <= lineX1; x++)
             {
-                Assert.That(IsSame(pixels[(inset * Size) + i], gold), Is.True, $"아래 링이 끊겼습니다: x={i}");
-                Assert.That(IsSame(pixels[(far * Size) + i], gold), Is.True, $"위 링이 끊겼습니다: x={i}");
-                Assert.That(IsSame(pixels[(i * Size) + inset], gold), Is.True, $"왼쪽 링이 끊겼습니다: y={i}");
-                Assert.That(IsSame(pixels[(i * Size) + far], gold), Is.True, $"오른쪽 링이 끊겼습니다: y={i}");
+                Assert.That(IsSame(pixels[(lineY0 * Size) + x], gold), Is.True, $"아래 금테가 끊겼습니다: x={x}");
+                Assert.That(IsSame(pixels[(lineY1 * Size) + x], gold), Is.True, $"위 금테가 끊겼습니다: x={x}");
+            }
+            for (int y = lineY0; y <= lineY1; y++)
+            {
+                Assert.That(IsSame(pixels[(y * Size) + lineX0], gold), Is.True, $"왼쪽 금테가 끊겼습니다: y={y}");
+                Assert.That(IsSame(pixels[(y * Size) + lineX1], gold), Is.True, $"오른쪽 금테가 끊겼습니다: y={y}");
             }
 
             Assert.That(IsSame(pixels[((Size / 2) * Size) + (Size / 2)], gold), Is.False,
@@ -105,22 +104,29 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 색상코드를_바꿔도_실루엣과_금테는_그대로다()
+        public void 색상코드를_바꿔도_금테와_그림자는_그대로다()
         {
             Color32[] burgundy = Pixels(AugmentStickerTexture.DefaultBase);
             Color32[] indigo = Pixels(Indigo);
             Color32 gold = AugmentStickerTexture.DefaultBorder;
+            Color32 shadow = AugmentStickerTexture.DefaultShadow;
 
             int goldCount = 0;
+            int shadowCount = 0;
             int bodyDiff = 0;
             for (int i = 0; i < burgundy.Length; i++)
             {
-                Assert.That(indigo[i].a == 0, Is.EqualTo(burgundy[i].a == 0), $"톱니 실루엣이 달라졌습니다: {i}");
+                Assert.That(indigo[i].a == 0, Is.EqualTo(burgundy[i].a == 0), $"실루엣이 달라졌습니다: {i}");
 
                 if (IsSame(burgundy[i], gold))
                 {
                     goldCount++;
                     Assert.That(IsSame(indigo[i], gold), Is.True, $"금테 픽셀이 변했습니다: {i}");
+                }
+                else if (IsSame(burgundy[i], shadow))
+                {
+                    shadowCount++;
+                    Assert.That(IsSame(indigo[i], shadow), Is.True, $"그림자 픽셀이 변했습니다: {i}");
                 }
                 else if (burgundy[i].a != 0 && !IsSame(burgundy[i], indigo[i]))
                 {
@@ -129,18 +135,36 @@ namespace Tessera.Editor.Tests
             }
 
             Assert.That(goldCount, Is.GreaterThan(0));
+            Assert.That(shadowCount, Is.GreaterThan(0));
             Assert.That(bodyDiff, Is.GreaterThan(0), "베이스 색을 바꿨는데 몸통이 그대로면 색상코드가 먹지 않은 것입니다.");
         }
 
         [Test]
-        public void 가로로_긴_칸_크기에서도_구조가_유지된다()
+        public void 가로로_긴_실제_칸_크기에서도_구조가_유지된다()
         {
+            const int width = 59;
+            const int height = 15;
             Color32[] pixels = AugmentStickerTexture.CreatePixels(
-                AugmentStickerTexture.DefaultBase, AugmentStickerTexture.DefaultBorder, 240, 52);
+                AugmentStickerTexture.DefaultBase, AugmentStickerTexture.DefaultBorder, width, height);
+            Color32 gold = AugmentStickerTexture.DefaultBorder;
 
-            Assert.That(pixels.Length, Is.EqualTo(240 * 52));
-            Assert.That(pixels[0].a, Is.Not.Zero, "귀퉁이는 크기와 무관하게 유지돼야 합니다.");
-            Assert.That(pixels[239].a, Is.Not.Zero);
+            Assert.That(pixels.Length, Is.EqualTo(width * height));
+
+            // 금테 두께는 칸이 가로로 길어져도 한 줄이다. 늘어나면 픽셀 필터에서 뭉개진다.
+            int column = width / 2;
+            int goldRows = 0;
+            for (int y = 0; y < height; y++) if (IsSame(pixels[(y * width) + column], gold)) goldRows++;
+            Assert.That(goldRows, Is.EqualTo(2), "세로로 자르면 금테는 위아래 한 줄씩이어야 합니다.");
+        }
+
+        [Test]
+        public void 최소_크기_아래로_요청해도_최소_크기로_만든다()
+        {
+            // 8보다 작게 부르면 8로 올린다. 그래야 그림자 한 칸과 금테 한 줄이 들어간다.
+            Color32[] pixels = AugmentStickerTexture.CreatePixels(
+                AugmentStickerTexture.DefaultBase, AugmentStickerTexture.DefaultBorder, 1, 1);
+
+            Assert.That(pixels.Length, Is.EqualTo(8 * 8));
         }
 
         private static Color32[] Pixels(Color32 baseColor) =>
@@ -148,18 +172,5 @@ namespace Tessera.Editor.Tests
 
         private static bool IsSame(Color32 left, Color32 right) =>
             left.r == right.r && left.g == right.g && left.b == right.b && left.a == right.a;
-
-        private static int TransparentRuns(Color32[] pixels, Func<int, int> index)
-        {
-            int runs = 0;
-            bool inRun = false;
-            for (int i = 0; i < Size; i++)
-            {
-                bool hole = pixels[index(i)].a == 0;
-                if (hole && !inRun) runs++;
-                inRun = hole;
-            }
-            return runs;
-        }
     }
 }

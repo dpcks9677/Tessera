@@ -46,23 +46,26 @@ namespace Tessera.Games.AugmentedYacht
         private readonly Button[] p2ScoreButtons = new Button[14];
 
         /// <summary>
-        /// 변형 증강 우표 스티커 자리다. 족보 행마다 하나씩 있고 기본은 꺼져 있다.
-        /// 핫시트라 현재 플레이어 것만 보여주므로 P1·P2로 나누지 않는다.
+        /// 변형 증강 러너 스티커 자리다. 족보 행마다 플레이어별로 하나씩 있고 기본은 꺼져 있다.
+        /// 두 사람이 각자 Categories 열을 가지므로 두 벌을 동시에 띄운다.
         /// </summary>
-        private readonly StickerSlotView[] stickerSlots = new StickerSlotView[14];
+        private readonly StickerSlotView[][] stickerSlots = { new StickerSlotView[14], new StickerSlotView[14] };
 
-        /// <summary>진행 중인 스티커 연출이다. 같은 칸에 새 연출이 오면 이전 것을 끊는다.</summary>
+        /// <summary>
+        /// 진행 중인 스티커 연출이다. 같은 칸에 새 연출이 오면 이전 것을 끊는다.
+        /// 키는 <see cref="StickerKey"/>가 만드는 플레이어·족보 조합이다.
+        /// </summary>
         private readonly Dictionary<int, Coroutine> stickerAnimations = new();
 
         /// <summary>베이스 색마다 한 장씩 굽는 천 재질이다. 칸 크기가 같으므로 색만으로 구분한다.</summary>
         private readonly Dictionary<uint, Material> stickerMaterials = new();
 
-        /// <summary>Categories 칸 하나의 캔버스 픽셀 크기다. 스티커 천 텍스처를 이 크기로 굽는다.</summary>
-        private Vector2Int stickerCellPixels = new(240, 52);
+        /// <summary>펼쳐진 천 한 장의 텍셀 크기다. 화면 픽셀과 1:1이 되도록 굽는다.</summary>
+        private Vector2Int stickerPatchPixels = new(59, 15);
 
         /// <summary>원래 칸의 족보 아이콘과 이름이다. 스티커가 덮으면 감춘다.</summary>
-        private readonly Image[] categoryIcons = new Image[14];
-        private readonly Text[] categoryLabels = new Text[14];
+        private readonly Image[][] categoryIcons = { new Image[14], new Image[14] };
+        private readonly Text[][] categoryLabels = { new Text[14], new Text[14] };
 
         /// <summary>스티커 천이 종이 위로 떠오르는 높이와 두께다. 표보다 살짝 튀어나와야 부피가 읽힌다.</summary>
         private const float StickerLift = 0.004f;
@@ -71,6 +74,67 @@ namespace Tessera.Games.AugmentedYacht
         /// <summary>천이 칸 밖으로 삐져나오는 폭이다. 표에 딱 맞으면 인쇄처럼 보여 얹은 느낌이 안 난다.</summary>
         private const float StickerOverhangX = 0.055f;
         private const float StickerOverhangZ = 0.030f;
+
+        /// <summary>
+        /// 천 텍스처를 굽는 밀도다. 한 텍셀이 픽셀 필터 화면의 한 픽셀이 되도록 맞춘다.
+        ///
+        /// 캔버스는 1920 화면 픽셀당 100 캔버스 단위이고(<see cref="CanvasUnitsPerWorldUnit"/>),
+        /// 픽셀 필터의 굵은 프리셋(<c>PixelFilterSettings.ResolutionB</c>, 480×270)이 그 1920을 4로
+        /// 나눈다. 그래서 4로 나눈 밀도로 굽는다.
+        ///
+        /// 이보다 촘촘히 구우면 필터가 축소하면서 금테 한 줄이 텍셀 사이에 끼고, 행마다 서브픽셀
+        /// 위치가 달라 같은 금테가 행마다 다른 자리에 나타난다. 굵은 쪽 프리셋에 맞췄으므로 가는
+        /// 프리셋(640×360)에서는 확대만 일어나 금테가 사라지지 않는다.
+        /// </summary>
+        private const float StickerPixelsPerUnit = CanvasUnitsPerWorldUnit / 4f;
+
+        // --- 열 배치 ---
+        //
+        // 표는 가로로 여섯 칸이다:
+        //   [P1 아이콘][P1 Categories][P1 점수][P2 점수][P2 Categories][P2 아이콘]
+        //
+        // 아이콘 섹터와 점수 열은 폭이 고정이고, Categories 예산 하나를 두 사람이 나눠 쓴다.
+        // 현재 턴인 쪽이 예산을 전부 가져가므로 반대쪽은 0으로 접힌다. 아이콘 섹터는 접히지
+        // 않으므로 상대의 변형 증강 스티커가 아이콘 폭만큼 남아 계속 읽힌다.
+
+        /// <summary>표 좌우 여백. 양피지 안쪽에 안정적으로 앉히는 비율이다.</summary>
+        private const float SideMargin = 0.055f;
+
+        /// <summary>본문 폭 대비 아이콘 섹터 한 칸의 비율이다. 22px 아이콘과 좌우 여백이 들어간다.</summary>
+        private const float IconSectorRatio = 0.085f;
+
+        /// <summary>본문 폭 대비 점수 열 한 칸의 비율이다.</summary>
+        private const float ScoreColumnRatio = 0.215f;
+
+        /// <summary>두 사람이 나눠 쓰는 Categories 예산이다. 나머지 전부를 가져간다.</summary>
+        private const float CategoryBudgetRatio = 1f - (IconSectorRatio + ScoreColumnRatio) * 2f;
+
+        private const int ColumnCount = 6;
+        private const int ColumnP1Icons = 0;
+        private const int ColumnP1Categories = 1;
+        private const int ColumnP1Scores = 2;
+        private const int ColumnP2Scores = 3;
+        private const int ColumnP2Categories = 4;
+        private const int ColumnP2Icons = 5;
+
+        /// <summary>접힘·펴짐 전환 시간이다. 스티커 부착 연출과 같은 결로 맞춘다.</summary>
+        private const float ExpandSeconds = 0.35f;
+
+        /// <summary>
+        /// 이름 열이 이 정도 열려야 글자가 보이기 시작한다. 접히는 쪽은 폭이 줄기 전에 먼저
+        /// 사라지고, 펴지는 쪽은 폭이 거의 다 열린 뒤 나타난다.
+        /// </summary>
+        private const float CategoryFadeIn = 0.35f;
+        private const float CategoryFadeFull = 0.90f;
+
+        private readonly RectTransform[] columnRects = new RectTransform[ColumnCount];
+        private readonly CanvasGroup[] categoryGroups = new CanvasGroup[2];
+        private readonly float[] columnBounds = new float[ColumnCount + 1];
+
+        /// <summary>0이면 P1 이름 열이 펴진 상태, 1이면 P2 쪽이다. 그 사이는 전환 중이다.</summary>
+        private float expandT;
+        private float expandTarget;
+        private Coroutine expandAnimation;
 
         /// <summary>붙는 연출. 손에 든 천을 비스듬히 내려 눌러 붙이는 동작이다.</summary>
         private const float StickerDropHeight = 0.26f;
@@ -102,14 +166,17 @@ namespace Tessera.Games.AugmentedYacht
             /// <summary>
             /// 천이 제자리에 앉았을 때의 위치·자세·크기다. 연출이 중간에 끊겨도 여기로 되돌린다.
             /// 애니메이션 시작 시점의 값을 기준으로 삼으면, 이전 연출이 끊긴 자세를
-            /// 제자리로 착각해 어긋난 채 굳는다.
+            /// 제자리로 착각해 어긋난 채 굳는다. 열이 접히고 펴질 때마다 가로 성분이 갱신되므로
+            /// 연출 코루틴도 시작할 때 붙잡지 말고 매 프레임 다시 읽어야 한다.
             /// </summary>
             public Vector3 PatchRestScale = Vector3.one;
             public Vector3 PatchRestPosition;
             public Quaternion PatchRestRotation = Quaternion.identity;
         }
         private readonly Dictionary<ScoreCategory, int> candidateScores = new();
-        private Text p1BonusProgressText;
+
+        /// <summary>보너스 진행도다. 각자 자기 Categories 열에 들어간다.</summary>
+        private readonly Text[] bonusProgressTexts = new Text[2];
         private Text p1HeaderText;
         private Text p2HeaderText;
         private int activePlayerIndex = -1;
@@ -409,12 +476,25 @@ namespace Tessera.Games.AugmentedYacht
 
         public void BuildHighResScoreSheetUI()
         {
+            if (expandAnimation != null)
+            {
+                StopCoroutine(expandAnimation);
+                expandAnimation = null;
+            }
+            expandT = expandTarget;
+
             Array.Clear(p1ScoreLabels, 0, p1ScoreLabels.Length);
             Array.Clear(p2ScoreLabels, 0, p2ScoreLabels.Length);
-            Array.Clear(stickerSlots, 0, stickerSlots.Length);
-            Array.Clear(categoryIcons, 0, categoryIcons.Length);
-            Array.Clear(categoryLabels, 0, categoryLabels.Length);
             DestroyStickerPatches();
+            for (int p = 0; p < 2; p++)
+            {
+                Array.Clear(stickerSlots[p], 0, stickerSlots[p].Length);
+                Array.Clear(categoryIcons[p], 0, categoryIcons[p].Length);
+                Array.Clear(categoryLabels[p], 0, categoryLabels[p].Length);
+                bonusProgressTexts[p] = null;
+                categoryGroups[p] = null;
+            }
+            Array.Clear(columnRects, 0, columnRects.Length);
             Array.Clear(p1ScoreSlots, 0, p1ScoreSlots.Length);
             Array.Clear(p2ScoreSlots, 0, p2ScoreSlots.Length);
             Array.Clear(p1ScoreButtons, 0, p1ScoreButtons.Length);
@@ -481,13 +561,9 @@ namespace Tessera.Games.AugmentedYacht
             Color inkMain = new Color32(28, 16, 8, 255); // 100% 선명한 딥 챠콜 브라운 잉크
 
             // --- 정규화 비율 좌표계 (Normalized Anchor System) ---
-            // U (가로 비율): [ 족보명/아이콘(52%) | P1 점수(24%) | P2 점수(24%) ]
-            float mX = 0.055f; // 좌우 여백 5.5% (양피지 내부 안정적 안착)
-            float wX = 1.0f - mX * 2f;
-            float u0 = mX;
-            float u1 = u0 + wX * 0.52f;
-            float u2 = u1 + wX * 0.24f;
-            float u3 = u2 + wX * 0.24f;
+            // U (가로 비율): 열 컨테이너 여섯 개가 나눠 가진다. 경계는 ResolveColumnBounds가 정하고
+            // 행 요소는 자기 열 안에서 0..1로 앵커된다. 그래서 접힘·펴짐 전환이 컨테이너 여섯 개의
+            // 가로 앵커만 건드리면 되고, 행을 하나하나 다시 계산하지 않는다.
 
             // V (세로 비율): 상단 누름돌(Paperweight) 아래 공간 확보 및 15개 행 완벽 균등 분할
             float mY_Top = 0.070f;    // 상단 누름돌(Paperweight) 여백 7.0% (누름돌 하단과 쾌적한 거리 확보)
@@ -498,26 +574,47 @@ namespace Tessera.Games.AugmentedYacht
             float VTop(int r) => 1.0f - (mY_Top + r * rowH_norm);
             float VBottom(int r) => 1.0f - (mY_Top + (r + 1) * rowH_norm);
 
-            // 스티커 바탕은 Categories 칸과 1:1로 굽는다. 늘리면 우표 톱니가 뭉개진다.
-            stickerCellPixels = new Vector2Int(
-                Mathf.Max(8, Mathf.RoundToInt((u1 - u0) * sheetWidth * CanvasUnitsPerWorldUnit)),
-                Mathf.Max(8, Mathf.RoundToInt(rowH_norm * sheetHeight * CanvasUnitsPerWorldUnit)));
+            // 천 바탕은 다 펴진 천 한 장 크기로 굽는다. 칸이 아니라 천이어야 한다 — 천은 오버행만큼
+            // 칸보다 크고, 텍스처는 칸이 아니라 천 면에 입혀지므로 칸 크기로 구우면 늘어난다.
+            float bodyWidth = 1f - SideMargin * 2f;
+            float patchWidth = ((IconSectorRatio + CategoryBudgetRatio) * bodyWidth * sheetWidth) + (StickerOverhangX * 2f);
+            float patchHeight = (rowH_norm * sheetHeight) + (StickerOverhangZ * 2f);
+            stickerPatchPixels = new Vector2Int(
+                Mathf.Max(8, Mathf.RoundToInt(patchWidth * StickerPixelsPerUnit)),
+                Mathf.Max(8, Mathf.RoundToInt(patchHeight * StickerPixelsPerUnit)));
 
-            // 1. 짝수 행 제브라 틴트 (Row 1..13 중 짝수)
+            // 1. 전체 폭 밴드는 열 경계와 무관하다. 오버레이 직속으로 두고 먼저 그려 바닥에 깐다.
+            float bandLeft = SideMargin;
+            float bandRight = 1f - SideMargin;
+
             for (int r = 1; r < 14; r++)
             {
                 if (r == 7) continue;
                 if (r % 2 == 0)
                 {
-                    CreateBox(overlayObj.transform, $"Zebra_{r}", new Vector2(u0, VBottom(r)), new Vector2(u3, VTop(r)), Vector2.zero, Vector2.zero, zebraTint);
+                    CreateBox(overlayObj.transform, $"Zebra_{r}", new Vector2(bandLeft, VBottom(r)), new Vector2(bandRight, VTop(r)), Vector2.zero, Vector2.zero, zebraTint);
                 }
             }
 
-            // 2. Row 0: Header Band (CATEGORIES, P1, P2) - 빈 칸 없이 1:1 완벽 통합
-            CreateBox(overlayObj.transform, "Header_Band", new Vector2(u0, VBottom(0)), new Vector2(u3, VTop(0)), Vector2.zero, Vector2.zero, headerBandColor);
-            CreateLabel(overlayObj.transform, "Header_Categories", fontHeader, "CATEGORIES", new Vector2(u0, VBottom(0)), new Vector2(u1, VTop(0)), new Vector2(16f, 0f), new Vector2(-4f, 0f), 24, FontStyle.Normal, headerTextGold, TextAnchor.MiddleLeft);
-            p1HeaderText = CreateLabel(overlayObj.transform, "Header_P1", fontHeader, "P1", new Vector2(u1, VBottom(0)), new Vector2(u2, VTop(0)), Vector2.zero, Vector2.zero, 26, FontStyle.Normal, playerHeaderGold, TextAnchor.MiddleCenter);
-            p2HeaderText = CreateLabel(overlayObj.transform, "Header_P2", fontHeader, "P2", new Vector2(u2, VBottom(0)), new Vector2(u3, VTop(0)), Vector2.zero, Vector2.zero, 26, FontStyle.Normal, playerHeaderGold, TextAnchor.MiddleCenter);
+            CreateBox(overlayObj.transform, "Header_Band", new Vector2(bandLeft, VBottom(0)), new Vector2(bandRight, VTop(0)), Vector2.zero, Vector2.zero, headerBandColor);
+            CreateBox(overlayObj.transform, "Bonus_Band", new Vector2(bandLeft, VBottom(7)), new Vector2(bandRight, VTop(7)), Vector2.zero, Vector2.zero, bonusBandColor);
+            CreateBox(overlayObj.transform, "Footer_Band", new Vector2(bandLeft, VBottom(14)), new Vector2(bandRight, VTop(14)), Vector2.zero, Vector2.zero, footerBandColor);
+
+            // 2. 열 컨테이너 여섯 개. 이름 열만 접히므로 잘라내기와 알파를 가진다.
+            columnRects[ColumnP1Icons] = CreateColumn(overlayObj.transform, "P1_Icons", false);
+            columnRects[ColumnP1Categories] = CreateColumn(overlayObj.transform, "P1_Categories", true);
+            columnRects[ColumnP1Scores] = CreateColumn(overlayObj.transform, "P1_Scores", false);
+            columnRects[ColumnP2Scores] = CreateColumn(overlayObj.transform, "P2_Scores", false);
+            columnRects[ColumnP2Categories] = CreateColumn(overlayObj.transform, "P2_Categories", true);
+            columnRects[ColumnP2Icons] = CreateColumn(overlayObj.transform, "P2_Icons", false);
+
+            categoryGroups[0] = columnRects[ColumnP1Categories].GetComponent<CanvasGroup>();
+            categoryGroups[1] = columnRects[ColumnP2Categories].GetComponent<CanvasGroup>();
+
+            Transform[] iconColumns = { columnRects[ColumnP1Icons], columnRects[ColumnP2Icons] };
+            Transform[] nameColumns = { columnRects[ColumnP1Categories], columnRects[ColumnP2Categories] };
+            Transform[] scoreColumns = { columnRects[ColumnP1Scores], columnRects[ColumnP2Scores] };
+            Text[][] scoreLabels = { p1ScoreLabels, p2ScoreLabels };
 
             // 3. 족보 데이터
             string[] upperNames = { "Aces", "Deuces", "Threes", "Fours", "Fives", "Sixes" };
@@ -525,67 +622,54 @@ namespace Tessera.Games.AugmentedYacht
             string[] lowerNames = { "Choice", "4 of a Kind", "Full House", "S. Straight", "L. Straight", "Yacht" };
             string[] lowerIcons = { "choice", "4oak", "fullhouse", "s_straight", "l_straight", "yacht" };
 
-            // 상단 섹션 (Row 1..6: Aces ~ Sixes)
-            for (int i = 0; i < 6; i++)
+            // 4. 족보 행 12개 (Row 1..6 Aces~Sixes, Row 8..13 Choice~Yacht)
+            for (int row = 0; row < 12; row++)
             {
-                int r = i + 1;
+                bool upper = row < 6;
+                int offset = upper ? row : row - 6;
+                int r = upper ? offset + 1 : offset + 8;
+                ScoreCategory category = upper
+                    ? (ScoreCategory)offset
+                    : (ScoreCategory)((int)ScoreCategory.Choice + offset);
+                int categoryIndex = (int)category;
+                int labelIndex = upper ? offset : offset + 7;
+                string iconName = upper ? upperIcons[offset] : lowerIcons[offset];
+                string displayName = upper ? upperNames[offset] : lowerNames[offset];
 
-                // 점수 슬롯 배경 박스
-                ConfigureScoreSlot(CreateBox(overlayObj.transform, $"P1_Slot_Box_{r}", new Vector2(u1, VBottom(r)), new Vector2(u2, VTop(r)), new Vector2(3f, 3f), new Vector2(-3f, -3f), slotInsetColor), 0, (ScoreCategory)i);
-                ConfigureScoreSlot(CreateBox(overlayObj.transform, $"P2_Slot_Box_{r}", new Vector2(u2, VBottom(r)), new Vector2(u3, VTop(r)), new Vector2(3f, 3f), new Vector2(-3f, -3f), slotInsetColor), 1, (ScoreCategory)i);
+                for (int p = 0; p < 2; p++)
+                {
+                    // 점수 슬롯 배경 박스
+                    ConfigureScoreSlot(CreateBox(scoreColumns[p], $"P{p + 1}_Slot_Box_{r}", new Vector2(0f, VBottom(r)), new Vector2(1f, VTop(r)), new Vector2(3f, 3f), new Vector2(-3f, -3f), slotInsetColor), p, category);
 
-                // Col 0: 아이콘 + 족보명
-                categoryIcons[i] = CreateIcon(overlayObj.transform, upperIcons[i], new Vector2(u0, VBottom(r)), new Vector2(u1, VTop(r)), 22f, inkMain);
-                categoryLabels[i] = CreateLabel(overlayObj.transform, $"Label_Upper_{i}", fontMain, upperNames[i], new Vector2(u0, VBottom(r)), new Vector2(u1, VTop(r)), new Vector2(44f, 0f), new Vector2(-4f, 0f), 24, FontStyle.Normal, inkMain, TextAnchor.MiddleLeft);
+                    categoryIcons[p][categoryIndex] = CreateIcon(iconColumns[p], iconName, VBottom(r), VTop(r), 22f, inkMain);
+                    categoryLabels[p][categoryIndex] = CreateLabel(nameColumns[p], $"Label_{category}", fontMain, displayName, new Vector2(0f, VBottom(r)), new Vector2(1f, VTop(r)), new Vector2(8f, 0f), new Vector2(-8f, 0f), 24, FontStyle.Normal, inkMain, NameAlignment(p));
 
-                // Col 1 & 2: 점수 슬롯 라벨
-                p1ScoreLabels[i] = CreateLabel(overlayObj.transform, $"P1_Score_Label_{i}", fontHeader, "-", new Vector2(u1, VBottom(r)), new Vector2(u2, VTop(r)), Vector2.zero, Vector2.zero, 28, FontStyle.Normal, inkMain, TextAnchor.MiddleCenter);
-                p2ScoreLabels[i] = CreateLabel(overlayObj.transform, $"P2_Score_Label_{i}", fontHeader, "-", new Vector2(u2, VBottom(r)), new Vector2(u3, VTop(r)), Vector2.zero, Vector2.zero, 28, FontStyle.Normal, inkMain, TextAnchor.MiddleCenter);
+                    scoreLabels[p][labelIndex] = CreateLabel(scoreColumns[p], $"P{p + 1}_Score_Label_{labelIndex}", fontHeader, "-", new Vector2(0f, VBottom(r)), new Vector2(1f, VTop(r)), Vector2.zero, Vector2.zero, 28, FontStyle.Normal, inkMain, TextAnchor.MiddleCenter);
+
+                    // 스티커는 그 행의 표기를 덮는 것이므로 같은 열에서 뒤에 만든다.
+                    stickerSlots[p][categoryIndex] = CreateStickerSlot(
+                        p, $"P{p + 1}_Sticker_{r}", iconColumns[p], nameColumns[p], VBottom(r), VTop(r), fontMain);
+                }
             }
 
-            // 4. Row 7: Bonus Row
-            CreateBox(overlayObj.transform, "Bonus_Band", new Vector2(u0, VBottom(7)), new Vector2(u3, VTop(7)), Vector2.zero, Vector2.zero, bonusBandColor);
-            p1BonusProgressText = CreateLabel(overlayObj.transform, "Bonus_Progress_Text", fontMain, "Bonus (0/63)", new Vector2(u0, VBottom(7)), new Vector2(u1, VTop(7)), new Vector2(16f, 0f), new Vector2(-4f, 0f), 23, FontStyle.Normal, bonusTextDark, TextAnchor.MiddleLeft);
-            p1ScoreLabels[6] = CreateLabel(overlayObj.transform, "P1_Score_Label_6", fontHeader, "+35", new Vector2(u1, VBottom(7)), new Vector2(u2, VTop(7)), Vector2.zero, Vector2.zero, 26, FontStyle.Normal, bonusScoreGold, TextAnchor.MiddleCenter);
-            p2ScoreLabels[6] = CreateLabel(overlayObj.transform, "P2_Score_Label_6", fontHeader, "+35", new Vector2(u2, VBottom(7)), new Vector2(u3, VTop(7)), Vector2.zero, Vector2.zero, 26, FontStyle.Normal, bonusScoreGold, TextAnchor.MiddleCenter);
+            // 5. Row 0 헤더. 플레이어 이름은 자기 점수 열에, CATEGORIES는 자기 이름 열에 물린다.
+            //    헤더가 열 밖에 있으면 열이 접힐 때 제 칸을 잃고 밀려난다.
+            p1HeaderText = CreateLabel(scoreColumns[0], "Header_P1", fontHeader, "P1", new Vector2(0f, VBottom(0)), new Vector2(1f, VTop(0)), Vector2.zero, Vector2.zero, 26, FontStyle.Normal, playerHeaderGold, TextAnchor.MiddleCenter);
+            p2HeaderText = CreateLabel(scoreColumns[1], "Header_P2", fontHeader, "P2", new Vector2(0f, VBottom(0)), new Vector2(1f, VTop(0)), Vector2.zero, Vector2.zero, 26, FontStyle.Normal, playerHeaderGold, TextAnchor.MiddleCenter);
 
-            // 5. 하단 섹션 (Row 8..13: Choice ~ Yacht)
-            for (int i = 0; i < 6; i++)
+            // 6. Row 7 보너스 · Row 14 합계. 라벨은 각자 이름 열에, 값은 각자 점수 열에 들어간다.
+            for (int p = 0; p < 2; p++)
             {
-                int r = i + 8;
+                CreateLabel(nameColumns[p], "Header_Categories", fontHeader, "CATEGORIES", new Vector2(0f, VBottom(0)), new Vector2(1f, VTop(0)), new Vector2(8f, 0f), new Vector2(-8f, 0f), 24, FontStyle.Normal, headerTextGold, NameAlignment(p));
 
-                // 점수 슬롯 배경 박스
-                ScoreCategory category = (ScoreCategory)((int)ScoreCategory.Choice + i);
-                ConfigureScoreSlot(CreateBox(overlayObj.transform, $"P1_Slot_Box_{r}", new Vector2(u1, VBottom(r)), new Vector2(u2, VTop(r)), new Vector2(3f, 3f), new Vector2(-3f, -3f), slotInsetColor), 0, category);
-                ConfigureScoreSlot(CreateBox(overlayObj.transform, $"P2_Slot_Box_{r}", new Vector2(u2, VBottom(r)), new Vector2(u3, VTop(r)), new Vector2(3f, 3f), new Vector2(-3f, -3f), slotInsetColor), 1, category);
+                bonusProgressTexts[p] = CreateLabel(nameColumns[p], "Bonus_Progress_Text", fontMain, "Bonus (0/63)", new Vector2(0f, VBottom(7)), new Vector2(1f, VTop(7)), new Vector2(8f, 0f), new Vector2(-8f, 0f), 23, FontStyle.Normal, bonusTextDark, NameAlignment(p));
+                scoreLabels[p][6] = CreateLabel(scoreColumns[p], $"P{p + 1}_Score_Label_6", fontHeader, "+35", new Vector2(0f, VBottom(7)), new Vector2(1f, VTop(7)), Vector2.zero, Vector2.zero, 26, FontStyle.Normal, bonusScoreGold, TextAnchor.MiddleCenter);
 
-                // Col 0: 아이콘 + 족보명
-                categoryIcons[(int)category] = CreateIcon(overlayObj.transform, lowerIcons[i], new Vector2(u0, VBottom(r)), new Vector2(u1, VTop(r)), 22f, inkMain);
-                categoryLabels[(int)category] = CreateLabel(overlayObj.transform, $"Label_Lower_{i}", fontMain, lowerNames[i], new Vector2(u0, VBottom(r)), new Vector2(u1, VTop(r)), new Vector2(44f, 0f), new Vector2(-4f, 0f), 24, FontStyle.Normal, inkMain, TextAnchor.MiddleLeft);
-
-                // Col 1 & 2: 점수 슬롯 라벨
-                p1ScoreLabels[i + 7] = CreateLabel(overlayObj.transform, $"P1_Score_Label_{i + 7}", fontHeader, "-", new Vector2(u1, VBottom(r)), new Vector2(u2, VTop(r)), Vector2.zero, Vector2.zero, 28, FontStyle.Normal, inkMain, TextAnchor.MiddleCenter);
-                p2ScoreLabels[i + 7] = CreateLabel(overlayObj.transform, $"P2_Score_Label_{i + 7}", fontHeader, "-", new Vector2(u2, VBottom(r)), new Vector2(u3, VTop(r)), Vector2.zero, Vector2.zero, 28, FontStyle.Normal, inkMain, TextAnchor.MiddleCenter);
+                CreateLabel(nameColumns[p], "Footer_Total", fontHeader, "TOTAL", new Vector2(0f, VBottom(14)), new Vector2(1f, VTop(14)), new Vector2(8f, 0f), new Vector2(-8f, 0f), 26, FontStyle.Normal, footerTextGold, NameAlignment(p));
+                scoreLabels[p][13] = CreateLabel(scoreColumns[p], $"P{p + 1}_Score_Label_13", fontHeader, "0", new Vector2(0f, VBottom(14)), new Vector2(1f, VTop(14)), Vector2.zero, Vector2.zero, 32, FontStyle.Normal, footerScoreGold, TextAnchor.MiddleCenter);
             }
 
-            // 6. Row 14: Footer Band (TOTAL) - 푸터 밴드 내에 TOTAL 및 점수 완벽 통합
-            CreateBox(overlayObj.transform, "Footer_Band", new Vector2(u0, VBottom(14)), new Vector2(u3, VTop(14)), Vector2.zero, Vector2.zero, footerBandColor);
-            CreateLabel(overlayObj.transform, "Footer_Total", fontHeader, "TOTAL", new Vector2(u0, VBottom(14)), new Vector2(u1, VTop(14)), new Vector2(16f, 0f), new Vector2(-4f, 0f), 26, FontStyle.Normal, footerTextGold, TextAnchor.MiddleLeft);
-            p1ScoreLabels[13] = CreateLabel(overlayObj.transform, "P1_Score_Label_13", fontHeader, "0", new Vector2(u1, VBottom(14)), new Vector2(u2, VTop(14)), Vector2.zero, Vector2.zero, 32, FontStyle.Normal, footerScoreGold, TextAnchor.MiddleCenter);
-            p2ScoreLabels[13] = CreateLabel(overlayObj.transform, "P2_Score_Label_13", fontHeader, "0", new Vector2(u2, VBottom(14)), new Vector2(u3, VTop(14)), Vector2.zero, Vector2.zero, 32, FontStyle.Normal, footerScoreGold, TextAnchor.MiddleCenter);
-
-            // 스티커는 표를 덮는 것이므로 마지막에 만든다. 먼저 만들면 족보 이름이 위로 겹쳐 그려진다.
-            for (int i = 0; i < 6; i++)
-            {
-                stickerSlots[i] = CreateStickerSlot(
-                    overlayObj.transform, $"Sticker_{i + 1}",
-                    new Vector2(u0, VBottom(i + 1)), new Vector2(u1, VTop(i + 1)), fontMain);
-
-                var lower = (ScoreCategory)((int)ScoreCategory.Choice + i);
-                stickerSlots[(int)lower] = CreateStickerSlot(
-                    overlayObj.transform, $"Sticker_{i + 8}",
-                    new Vector2(u0, VBottom(i + 8)), new Vector2(u1, VTop(i + 8)), fontMain);
-            }
+            ApplyColumnLayout(expandT);
 
             // UI를 다 만든 뒤 레이어와 직렬화 제외를 자식까지 한 번에 적용한다.
             SetLayerRecursively(overlayObj, TesseraLayers.CrispUI);
@@ -593,6 +677,172 @@ namespace Tessera.Games.AugmentedYacht
 
             RefreshAllScores();
         }
+
+        /// <summary>P2 쪽은 좌우가 뒤집힌 배치라 이름이 아이콘 섹터를 향해 붙어야 대칭이 맞는다.</summary>
+        private static TextAnchor NameAlignment(int playerIndex) =>
+            playerIndex == 0 ? TextAnchor.MiddleLeft : TextAnchor.MiddleRight;
+
+        /// <summary>
+        /// 열 하나를 담는 빈 컨테이너다. 행 요소는 이 안에서 0..1로 앵커되므로 접힘·펴짐이
+        /// 이 컨테이너의 가로 앵커 하나로 끝난다.
+        ///
+        /// 이름 열은 접히는 동안 글자가 점수 열로 삐져나오면 안 되므로 잘라내고, 폭이 줄기 전에
+        /// 알파로 먼저 사라진다. 폭만 줄이면 접히는 마지막 순간까지 글자가 뭉개진 채 남는다.
+        /// </summary>
+        private static RectTransform CreateColumn(Transform parent, string name, bool collapsible)
+        {
+            GameObject column = new(name, typeof(RectTransform));
+            column.transform.SetParent(parent, false);
+
+            RectTransform rect = column.GetComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            if (collapsible)
+            {
+                column.AddComponent<RectMask2D>();
+                column.AddComponent<CanvasGroup>();
+            }
+            return rect;
+        }
+
+        /// <summary>
+        /// 펴짐 계수로 여섯 열의 가로 경계 일곱 개를 구한다.
+        /// <paramref name="expandT"/>가 0이면 P1 이름 열이 예산을 전부 가져가고, 1이면 P2 쪽이다.
+        /// 아이콘 섹터와 점수 열은 폭이 고정이라 계수와 무관하다.
+        /// </summary>
+        public static void ResolveColumnBounds(float expandT, float[] bounds)
+        {
+            if (bounds == null || bounds.Length < ColumnCount + 1) return;
+
+            float t = Mathf.Clamp01(expandT);
+            float body = 1f - SideMargin * 2f;
+            float icon = IconSectorRatio * body;
+            float score = ScoreColumnRatio * body;
+            float budget = CategoryBudgetRatio * body;
+
+            bounds[0] = SideMargin;
+            bounds[1] = bounds[0] + icon;
+            bounds[2] = bounds[1] + budget * (1f - t);
+            bounds[3] = bounds[2] + score;
+            bounds[4] = bounds[3] + score;
+            bounds[5] = bounds[4] + budget * t;
+            bounds[6] = 1f - SideMargin;
+        }
+
+        private void ApplyColumnLayout(float t)
+        {
+            ResolveColumnBounds(t, columnBounds);
+
+            for (int c = 0; c < ColumnCount; c++)
+            {
+                RectTransform rect = columnRects[c];
+                if (rect == null) continue;
+                rect.anchorMin = new Vector2(columnBounds[c], 0f);
+                rect.anchorMax = new Vector2(columnBounds[c + 1], 1f);
+                rect.offsetMin = Vector2.zero;
+                rect.offsetMax = Vector2.zero;
+            }
+
+            float clamped = Mathf.Clamp01(t);
+            if (categoryGroups[0] != null) categoryGroups[0].alpha = CategoryAlpha(1f - clamped);
+            if (categoryGroups[1] != null) categoryGroups[1].alpha = CategoryAlpha(clamped);
+
+            UpdateStickerPatchBounds();
+        }
+
+        private static float CategoryAlpha(float openRatio) =>
+            Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(CategoryFadeIn, CategoryFadeFull, openRatio));
+
+        /// <summary>
+        /// 천 조각은 캔버스 밖 월드 오브젝트라 열이 접혀도 저 혼자 따라오지 않는다.
+        /// 덮는 범위는 [아이콘 섹터 + 이름 열]이므로 이름 열이 접히면 아이콘 폭만 남는다.
+        /// </summary>
+        private void UpdateStickerPatchBounds()
+        {
+            for (int p = 0; p < 2; p++)
+            {
+                float left = p == 0 ? columnBounds[ColumnP1Icons] : columnBounds[ColumnP2Categories];
+                float right = p == 0 ? columnBounds[ColumnP1Scores] : columnBounds[ColumnCount];
+                float centerX = (((left + right) * 0.5f) - 0.5f) * sheetWidth;
+                float width = ((right - left) * sheetWidth) + (StickerOverhangX * 2f);
+
+                for (int i = 0; i < stickerSlots[p].Length; i++)
+                {
+                    StickerSlotView slot = stickerSlots[p][i];
+                    if (slot?.Patch == null) continue;
+
+                    Vector3 rest = slot.PatchRestPosition;
+                    rest.x = centerX;
+                    slot.PatchRestPosition = rest;
+
+                    Vector3 scale = slot.PatchRestScale;
+                    scale.x = width;
+                    slot.PatchRestScale = scale;
+
+                    slot.Patch.transform.localScale = scale;
+
+                    // 연출 중인 천은 코루틴이 매 프레임 제자리를 다시 읽어 쓴다. 여기서 덮으면 튄다.
+                    if (!stickerAnimations.ContainsKey(StickerKey(p, i)))
+                    {
+                        slot.Patch.transform.localPosition = rest;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 이름 열을 이 플레이어 쪽으로 편다. 목표가 그대로면 아무것도 하지 않는다 —
+        /// 턴 흐름이 같은 값으로 여러 번 부르기 때문이다.
+        /// </summary>
+        private void SetExpandTarget(int playerIndex)
+        {
+            float target = playerIndex == 1 ? 1f : 0f;
+            if (Mathf.Approximately(expandTarget, target) && expandAnimation == null) return;
+            expandTarget = target;
+
+            // 에디터이거나 비활성일 때는 코루틴이 돌지 않으므로 최종 상태만 맞춘다.
+            if (!Application.isPlaying || !isActiveAndEnabled)
+            {
+                if (expandAnimation != null)
+                {
+                    StopCoroutine(expandAnimation);
+                    expandAnimation = null;
+                }
+                expandT = target;
+                ApplyColumnLayout(expandT);
+                return;
+            }
+
+            if (expandAnimation != null) StopCoroutine(expandAnimation);
+            expandAnimation = StartCoroutine(AnimateColumnExpand());
+        }
+
+        private IEnumerator AnimateColumnExpand()
+        {
+            float from = expandT;
+            float elapsed = 0f;
+
+            while (elapsed < ExpandSeconds)
+            {
+                float t = Mathf.Clamp01(elapsed / ExpandSeconds);
+                float eased = 1f - Mathf.Pow(1f - t, 3f); // 빠르게 벌어지고 끝에서 잦아든다.
+
+                expandT = Mathf.LerpUnclamped(from, expandTarget, eased);
+                ApplyColumnLayout(expandT);
+
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            expandT = expandTarget;
+            ApplyColumnLayout(expandT);
+            expandAnimation = null;
+        }
+
+        private static int StickerKey(int playerIndex, int categoryIndex) => playerIndex * 14 + categoryIndex;
 
         private void ConfigureScoreSlot(GameObject slotObject, int playerIndex, ScoreCategory category)
         {
@@ -636,16 +886,18 @@ namespace Tessera.Games.AugmentedYacht
             return box;
         }
 
-        private static Image CreateIcon(Transform parent, string iconName, Vector2 anchorMin, Vector2 anchorMax, float size, Color? tint = null)
+        /// <summary>아이콘 섹터 한 칸의 한가운데에 놓는다. 섹터 폭이 아이콘에 딱 맞게 좁다.</summary>
+        private static Image CreateIcon(Transform parent, string iconName, float vBottom, float vTop, float size, Color? tint = null)
         {
             GameObject obj = new($"Icon_{iconName}", typeof(RectTransform), typeof(Image));
             obj.transform.SetParent(parent, false);
 
+            float centerV = (vBottom + vTop) * 0.5f;
             RectTransform rect = obj.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(anchorMin.x, (anchorMin.y + anchorMax.y) * 0.5f);
-            rect.anchorMax = new Vector2(anchorMin.x, (anchorMin.y + anchorMax.y) * 0.5f);
-            rect.pivot = new Vector2(0f, 0.5f);
-            rect.anchoredPosition = new Vector2(16f, 0f);
+            rect.anchorMin = new Vector2(0.5f, centerV);
+            rect.anchorMax = new Vector2(0.5f, centerV);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
             rect.sizeDelta = new Vector2(size, size);
 
             Image img = obj.GetComponent<Image>();
@@ -660,15 +912,15 @@ namespace Tessera.Games.AugmentedYacht
 
         /// <summary>
         /// 변형 증강 스티커 자리를 만든다. 천은 월드 오브젝트로, 아이콘과 이름은 CrispUI로 나눈다.
-        /// 칸 안의 배치는 원래 칸과 똑같다(왼쪽 16px에 아이콘, 44px부터 이름).
+        /// 아이콘은 아이콘 섹터에, 이름은 이름 열에 들어가므로 이름 열이 접히면 아이콘만 남는다.
         /// </summary>
-        private StickerSlotView CreateStickerSlot(Transform overlayParent, string name, Vector2 anchorMin, Vector2 anchorMax, Font font)
+        private StickerSlotView CreateStickerSlot(int playerIndex, string name, Transform iconColumn, Transform nameColumn, float vBottom, float vTop, Font font)
         {
             var view = new StickerSlotView
             {
-                Patch = CreateStickerPatch(name, anchorMin, anchorMax),
-                Icon = CreateStickerIcon(overlayParent, name),
-                Label = CreateStickerLabel(overlayParent, name, anchorMin, anchorMax, font)
+                Patch = CreateStickerPatch(name, vBottom, vTop),
+                Icon = CreateStickerIcon(iconColumn, name),
+                Label = CreateStickerLabel(nameColumn, name, vBottom, vTop, font, NameAlignment(playerIndex))
             };
 
             view.PatchRenderer = view.Patch != null ? view.Patch.GetComponent<MeshRenderer>() : null;
@@ -686,7 +938,7 @@ namespace Tessera.Games.AugmentedYacht
         /// 표 위에 얹는 천 조각이다. 칸보다 조금 크고 두께가 있어 얹은 부피가 읽힌다.
         /// <see cref="DecorationLayer"/>에 두어 월드 카메라가 그리므로 픽셀 필터를 그대로 통과한다.
         /// </summary>
-        private GameObject CreateStickerPatch(string name, Vector2 anchorMin, Vector2 anchorMax)
+        private GameObject CreateStickerPatch(string name, float vBottom, float vTop)
         {
             if (topLayerObject == null) return null;
 
@@ -697,18 +949,18 @@ namespace Tessera.Games.AugmentedYacht
             patch.transform.SetParent(topLayerObject.transform, false);
             RemoveCollider(patch);
 
-            float centerU = (anchorMin.x + anchorMax.x) * 0.5f;
-            float centerV = (anchorMin.y + anchorMax.y) * 0.5f;
+            float centerV = (vBottom + vTop) * 0.5f;
 
+            // 가로는 열이 접히고 펴질 때마다 바뀌므로 ApplyColumnLayout이 잡는다. 여기선 세로만 정한다.
             patch.transform.localPosition = new Vector3(
-                (centerU - 0.5f) * sheetWidth,
+                0f,
                 (sheetThickness * 0.5f) + StickerLift,
                 (centerV - 0.5f) * sheetHeight);
             patch.transform.localRotation = Quaternion.identity;
             patch.transform.localScale = new Vector3(
-                ((anchorMax.x - anchorMin.x) * sheetWidth) + (StickerOverhangX * 2f),
+                1f,
                 StickerThickness,
-                ((anchorMax.y - anchorMin.y) * sheetHeight) + (StickerOverhangZ * 2f));
+                ((vTop - vBottom) * sheetHeight) + (StickerOverhangZ * 2f));
 
             return patch;
         }
@@ -732,21 +984,21 @@ namespace Tessera.Games.AugmentedYacht
         }
 
         /// <summary>원래 칸의 족보 이름과 같은 자리·크기다. 버건디 천 위라 글자색만 밝게 바꾼다.</summary>
-        private static Text CreateStickerLabel(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax, Font font)
+        private static Text CreateStickerLabel(Transform parent, string name, float vBottom, float vTop, Font font, TextAnchor alignment)
         {
             GameObject obj = new($"{name}_Label", typeof(RectTransform), typeof(Text));
             obj.transform.SetParent(parent, false);
 
             RectTransform rect = obj.GetComponent<RectTransform>();
-            rect.anchorMin = anchorMin;
-            rect.anchorMax = anchorMax;
-            rect.offsetMin = new Vector2(44f, 0f);
+            rect.anchorMin = new Vector2(0f, vBottom);
+            rect.anchorMax = new Vector2(1f, vTop);
+            rect.offsetMin = new Vector2(8f, 0f);
             rect.offsetMax = new Vector2(-8f, 0f);
 
             Text text = obj.GetComponent<Text>();
             text.font = font;
             text.fontSize = 24;
-            text.alignment = TextAnchor.MiddleLeft;
+            text.alignment = alignment;
             text.horizontalOverflow = HorizontalWrapMode.Overflow;
             text.verticalOverflow = VerticalWrapMode.Overflow;
             text.color = StickerInk;
@@ -758,17 +1010,17 @@ namespace Tessera.Games.AugmentedYacht
         /// 변형 증강 스티커를 칸에 붙입니다. 바탕은 색상코드로 그 자리에서 굽고,
         /// 그 위에 증강 아이콘과 이름을 원래 칸과 같은 배치로 올립니다.
         /// </summary>
-        public void SetSticker(ScoreCategory category, Color32 baseColor, Color32 borderColor, Sprite icon, string label)
+        public void SetSticker(int playerIndex, ScoreCategory category, Color32 baseColor, Color32 borderColor, Sprite icon, string label)
         {
-            StickerSlotView slot = StickerSlot(category);
+            StickerSlotView slot = StickerSlot(playerIndex, category);
             if (slot == null) return;
 
             if (slot.PatchRenderer != null) slot.PatchRenderer.sharedMaterial = ResolveStickerMaterial(baseColor, borderColor);
 
             // 원래 족보 표기는 감춘다. 천이 그 위를 덮었는데 글자만 뚫고 나오면 겹쳐 읽힌다.
-            SetCategoryRowVisible(category, false);
+            SetCategoryRowVisible(playerIndex, category, false);
 
-            AlignStickerIcon(slot, category);
+            AlignStickerIcon(slot, playerIndex, category);
             slot.Icon.sprite = icon;
             slot.Icon.color = icon != null ? StickerInk : new Color(1f, 1f, 1f, 0f);
             slot.Icon.enabled = icon != null;
@@ -779,9 +1031,9 @@ namespace Tessera.Games.AugmentedYacht
         }
 
         /// <summary>스티커 아이콘을 원래 족보 아이콘과 같은 자리에 맞춘다.</summary>
-        private void AlignStickerIcon(StickerSlotView slot, ScoreCategory category)
+        private void AlignStickerIcon(StickerSlotView slot, int playerIndex, ScoreCategory category)
         {
-            Image origin = CategoryIcon(category);
+            Image origin = CategoryIcon(playerIndex, category);
             if (origin == null || slot.Icon == null) return;
 
             var source = origin.transform as RectTransform;
@@ -795,18 +1047,20 @@ namespace Tessera.Games.AugmentedYacht
             target.sizeDelta = source.sizeDelta;
         }
 
-        private void SetCategoryRowVisible(ScoreCategory category, bool visible)
+        private void SetCategoryRowVisible(int playerIndex, ScoreCategory category, bool visible)
         {
+            if (playerIndex < 0 || playerIndex > 1) return;
             int index = (int)category;
-            if (index < 0 || index >= categoryIcons.Length) return;
-            if (categoryIcons[index] != null) categoryIcons[index].enabled = visible;
-            if (categoryLabels[index] != null) categoryLabels[index].enabled = visible;
+            if (index < 0 || index >= categoryIcons[playerIndex].Length) return;
+            if (categoryIcons[playerIndex][index] != null) categoryIcons[playerIndex][index].enabled = visible;
+            if (categoryLabels[playerIndex][index] != null) categoryLabels[playerIndex][index].enabled = visible;
         }
 
-        private Image CategoryIcon(ScoreCategory category)
+        private Image CategoryIcon(int playerIndex, ScoreCategory category)
         {
+            if (playerIndex < 0 || playerIndex > 1) return null;
             int index = (int)category;
-            return index >= 0 && index < categoryIcons.Length ? categoryIcons[index] : null;
+            return index >= 0 && index < categoryIcons[playerIndex].Length ? categoryIcons[playerIndex][index] : null;
         }
 
         private static void SetStickerActive(StickerSlotView slot, bool active)
@@ -821,48 +1075,52 @@ namespace Tessera.Games.AugmentedYacht
         /// 한 칸의 스티커를 뗍니다. 표시가 실제로 바뀐 칸만 건드려야 합니다.
         /// 갱신 때마다 전부 뗐다 붙이면 방금 시작한 부착 연출이 곧바로 끊깁니다.
         /// </summary>
-        public void ClearSticker(ScoreCategory category)
+        public void ClearSticker(int playerIndex, ScoreCategory category)
         {
-            StickerSlotView slot = StickerSlot(category);
+            StickerSlotView slot = StickerSlot(playerIndex, category);
             if (slot == null) return;
 
-            int index = (int)category;
-            if (stickerAnimations.TryGetValue(index, out Coroutine running))
+            int key = StickerKey(playerIndex, (int)category);
+            if (stickerAnimations.TryGetValue(key, out Coroutine running))
             {
                 if (running != null) StopCoroutine(running);
-                stickerAnimations.Remove(index);
+                stickerAnimations.Remove(key);
             }
 
             ResetStickerTransform(slot);
             SetStickerActive(slot, false);
-            SetCategoryRowVisible(category, true);
+            SetCategoryRowVisible(playerIndex, category, true);
         }
 
         /// <summary>표를 다시 만들 때 이전 천 조각을 걷어낸다. 오버레이와 달리 종이 레이어의 자식이다.</summary>
         private void DestroyStickerPatches()
         {
-            for (int i = 0; i < stickerSlots.Length; i++)
+            for (int p = 0; p < stickerSlots.Length; p++)
             {
-                GameObject patch = stickerSlots[i]?.Patch;
-                if (patch == null) continue;
-                if (Application.isPlaying) Destroy(patch);
-                else DestroyImmediate(patch);
+                for (int i = 0; i < stickerSlots[p].Length; i++)
+                {
+                    GameObject patch = stickerSlots[p][i]?.Patch;
+                    if (patch == null) continue;
+                    if (Application.isPlaying) Destroy(patch);
+                    else DestroyImmediate(patch);
+                }
             }
         }
 
         /// <summary>스티커 자리를 돌려줍니다. 없으면 null입니다.</summary>
-        private StickerSlotView StickerSlot(ScoreCategory category)
+        private StickerSlotView StickerSlot(int playerIndex, ScoreCategory category)
         {
+            if (playerIndex < 0 || playerIndex > 1) return null;
             int index = (int)category;
-            return index >= 0 && index < stickerSlots.Length ? stickerSlots[index] : null;
+            return index >= 0 && index < stickerSlots[playerIndex].Length ? stickerSlots[playerIndex][index] : null;
         }
 
         /// <summary>그 칸에 스티커 자리가 준비돼 있는지 봅니다.</summary>
-        public bool HasStickerSlot(ScoreCategory category) => StickerSlot(category) != null;
+        public bool HasStickerSlot(int playerIndex, ScoreCategory category) => StickerSlot(playerIndex, category) != null;
 
         /// <summary>
         /// 천 재질이다. 조명을 받아야 부피가 읽히므로 Lit 셰이더를 쓰고, 광택은 천답게 낮춘다.
-        /// 우표 톱니는 알파 컷아웃으로 실루엣까지 파낸다.
+        /// 그림자 바깥 두 귀퉁이만 비므로 알파 컷아웃으로 잘라 낸다.
         /// </summary>
         private Material ResolveStickerMaterial(Color32 baseColor, Color32 borderColor)
         {
@@ -871,7 +1129,7 @@ namespace Tessera.Games.AugmentedYacht
 
             Shader litShader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
             Texture2D texture = AugmentStickerTexture.Create(
-                baseColor, borderColor, stickerCellPixels.x, stickerCellPixels.y);
+                baseColor, borderColor, stickerPatchPixels.x, stickerPatchPixels.y);
 
             var material = new Material(litShader) { name = "Augment Sticker Cloth" };
             material.mainTexture = texture;
@@ -890,42 +1148,39 @@ namespace Tessera.Games.AugmentedYacht
         }
 
         /// <summary>`S0` 부착. 천이 비스듬히 내려와 칸 위에 눌러 붙습니다.</summary>
-        public void PlayStickerAttach(ScoreCategory category) => PlaySticker(category, attach: true);
+        public void PlayStickerAttach(int playerIndex, ScoreCategory category) => PlaySticker(playerIndex, category, attach: true);
 
         /// <summary>`S2` 낙인. 그 칸으로 점수를 확정한 순간 천이 한 번 꾹 눌립니다.</summary>
-        public void PlayStickerStamp(ScoreCategory category) => PlaySticker(category, attach: false);
+        public void PlayStickerStamp(int playerIndex, ScoreCategory category) => PlaySticker(playerIndex, category, attach: false);
 
-        private void PlaySticker(ScoreCategory category, bool attach)
+        private void PlaySticker(int playerIndex, ScoreCategory category, bool attach)
         {
-            StickerSlotView slot = StickerSlot(category);
+            StickerSlotView slot = StickerSlot(playerIndex, category);
             if (slot?.Patch == null || !slot.Patch.activeSelf) return;
 
-            int index = (int)category;
-            if (stickerAnimations.TryGetValue(index, out Coroutine running) && running != null) StopCoroutine(running);
+            int key = StickerKey(playerIndex, (int)category);
+            if (stickerAnimations.TryGetValue(key, out Coroutine running) && running != null) StopCoroutine(running);
 
             // 에디터이거나 비활성일 때는 코루틴이 돌지 않으므로 최종 상태만 맞춘다.
             if (!Application.isPlaying || !isActiveAndEnabled)
             {
                 ResetStickerTransform(slot);
-                stickerAnimations.Remove(index);
+                stickerAnimations.Remove(key);
                 return;
             }
 
-            stickerAnimations[index] = StartCoroutine(
-                attach ? AnimateStickerAttach(slot, index) : AnimateStickerPress(slot, index, StickerStampSeconds));
+            stickerAnimations[key] = StartCoroutine(
+                attach ? AnimateStickerAttach(slot, key) : AnimateStickerPress(slot, key, StickerStampSeconds));
         }
 
         /// <summary>
         /// 천을 비스듬히 들고 내려와 칸 위에 얹는 동작이다. 크기는 건드리지 않는다.
         /// 위에서 떨어져 기울기가 펴지며 닿고, 닿은 뒤 한 번 꾹 눌러 마무리한다.
         /// </summary>
-        private IEnumerator AnimateStickerAttach(StickerSlotView slot, int index)
+        private IEnumerator AnimateStickerAttach(StickerSlotView slot, int key)
         {
             Transform patch = slot.Patch.transform;
-            Vector3 rest = slot.PatchRestPosition;
-            Quaternion restRotation = slot.PatchRestRotation;
-            Vector3 from = rest + new Vector3(StickerDropSlideX, StickerDropHeight, StickerDropSlideZ);
-            Quaternion tilt = restRotation * Quaternion.Euler(StickerTiltPitch, 0f, StickerTiltRoll);
+            var dropOffset = new Vector3(StickerDropSlideX, StickerDropHeight, StickerDropSlideZ);
 
             // 글자와 아이콘은 천이 거의 닿을 때쯤 드러나야 같이 내려온 것처럼 보인다.
             SetStickerAlpha(slot, 0f);
@@ -938,7 +1193,12 @@ namespace Tessera.Games.AugmentedYacht
                 float t = Mathf.Clamp01(elapsed / StickerAttachSeconds);
                 float eased = 1f - Mathf.Pow(1f - t, 3f); // 빠르게 떨어지고 끝에서 잦아든다.
 
-                patch.localPosition = Vector3.LerpUnclamped(from, rest, eased);
+                // 제자리는 매 프레임 다시 읽는다. 연출 도중에 열이 접히거나 펴지면 자리가 움직인다.
+                Vector3 rest = slot.PatchRestPosition;
+                Quaternion restRotation = slot.PatchRestRotation;
+                Quaternion tilt = restRotation * Quaternion.Euler(StickerTiltPitch, 0f, StickerTiltRoll);
+
+                patch.localPosition = Vector3.LerpUnclamped(rest + dropOffset, rest, eased);
                 patch.localRotation = Quaternion.SlerpUnclamped(tilt, restRotation, eased);
                 SetStickerAlpha(slot, Mathf.InverseLerp(0.55f, 0.95f, t));
 
@@ -946,18 +1206,17 @@ namespace Tessera.Games.AugmentedYacht
                 yield return null;
             }
 
-            patch.localPosition = rest;
-            patch.localRotation = restRotation;
+            patch.localPosition = slot.PatchRestPosition;
+            patch.localRotation = slot.PatchRestRotation;
             SetStickerAlpha(slot, 1f);
 
-            yield return AnimateStickerPress(slot, index, StickerPressSeconds);
+            yield return AnimateStickerPress(slot, key, StickerPressSeconds);
         }
 
         /// <summary>천을 한 번 꾹 눌렀다 놓는다. 닿는 순간의 마무리이자 낙인 연출이다.</summary>
-        private IEnumerator AnimateStickerPress(StickerSlotView slot, int index, float duration)
+        private IEnumerator AnimateStickerPress(StickerSlotView slot, int key, float duration)
         {
             Transform patch = slot.Patch.transform;
-            Vector3 rest = slot.PatchRestPosition;
             float elapsed = 0f;
 
             while (elapsed < duration)
@@ -966,14 +1225,14 @@ namespace Tessera.Games.AugmentedYacht
 
                 float t = Mathf.Clamp01(elapsed / duration);
                 float press = Mathf.Sin(t * Mathf.PI); // 눌렸다가 제자리로 돌아온다.
-                patch.localPosition = rest + (Vector3.down * (StickerPressDepth * press));
+                patch.localPosition = slot.PatchRestPosition + (Vector3.down * (StickerPressDepth * press));
 
                 elapsed += Time.deltaTime;
                 yield return null;
             }
 
             ResetStickerTransform(slot);
-            stickerAnimations.Remove(index);
+            stickerAnimations.Remove(key);
         }
 
         private static void SetStickerAlpha(StickerSlotView slot, float alpha)
@@ -1038,10 +1297,15 @@ namespace Tessera.Games.AugmentedYacht
             label.color = color;
         }
 
+        /// <summary>
+        /// 현재 턴인 쪽으로 표를 돌린다. 그 사람 이름 열이 펴지고 반대쪽은 접힌다.
+        /// <paramref name="playerIndex"/>가 -1이면 아무도 활성이 아닌 상태이므로 열은 그대로 둔다.
+        /// </summary>
         public void SetActivePlayer(int playerIndex, bool canSelectScore)
         {
             activePlayerIndex = playerIndex >= 0 && playerIndex <= 1 ? playerIndex : -1;
             selectionEnabled = canSelectScore;
+            if (activePlayerIndex >= 0) SetExpandTarget(activePlayerIndex);
             RefreshAllScores();
         }
 
@@ -1057,6 +1321,7 @@ namespace Tessera.Games.AugmentedYacht
                 }
             }
             selectionEnabled = activePlayerIndex >= 0 && candidateScores.Count > 0;
+            if (activePlayerIndex >= 0) SetExpandTarget(activePlayerIndex);
             RefreshAllScores();
         }
 
@@ -1086,8 +1351,8 @@ namespace Tessera.Games.AugmentedYacht
 
         public void RefreshAllScores()
         {
-            UpdatePlayerScoreUI(players[0], p1ScoreLabels, p1BonusProgressText);
-            UpdatePlayerScoreUI(players[1], p2ScoreLabels, null);
+            UpdatePlayerScoreUI(players[0], p1ScoreLabels, bonusProgressTexts[0]);
+            UpdatePlayerScoreUI(players[1], p2ScoreLabels, bonusProgressTexts[1]);
             ApplyCandidatePreviews();
             RefreshInteractionVisuals();
         }

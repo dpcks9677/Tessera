@@ -8,7 +8,7 @@ namespace Tessera.Editor.Tests
 {
     /// <summary>
     /// 변형 증강 스티커의 색상코드와 붙을 자리를 고정합니다.
-    /// 점수표 Categories 열은 두 플레이어가 함께 쓰므로 한 번에 한 사람 것만 보여야 합니다.
+    /// 점수표는 플레이어마다 Categories 열을 하나씩 가지므로 수집도 한 사람 단위입니다.
     /// 근거는 <c>docs/augmented_yacht_m17_vfx_spec.md</c> §3.1.1입니다.
     /// </summary>
     [TestFixture]
@@ -31,6 +31,35 @@ namespace Tessera.Editor.Tests
                 Assert.That((int)category, Is.InRange(0, 13), $"{definition.Id}의 대상 칸이 점수표 밖입니다.");
                 Assert.That(AugmentStickerCatalog.BaseColor(definition.Id).a, Is.Not.Zero, definition.Id);
             }
+        }
+
+        [Test]
+        public void 활성_변형증강_18개가_모두_영문_축약표기를_가진다()
+        {
+            var runtime = new YachtAugmentRuntime();
+            const string fallback = "<축약어 없음>";
+
+            foreach (YachtAugmentDefinition definition in runtime.GetDefinitions())
+            {
+                if (definition.Kind != YachtAugmentKind.Modification) continue;
+
+                string mark = AugmentStickerCatalog.MarkLabel(definition.Id, fallback);
+                Assert.That(mark, Is.Not.EqualTo(fallback), $"{definition.Id}의 축약 표기가 없습니다.");
+                Assert.That(mark, Is.Not.Empty, definition.Id);
+
+                foreach (char c in mark)
+                {
+                    Assert.That(c, Is.LessThan((char)128),
+                        $"{definition.Id}의 축약 표기 '{mark}'에 비ASCII 문자가 있습니다. 스티커 표기는 영문입니다.");
+                }
+            }
+        }
+
+        [Test]
+        public void 축약어가_없는_증강은_증강_이름을_그대로_쓴다()
+        {
+            Assert.That(AugmentStickerCatalog.MarkLabel("존재하지-않는-증강", "폴백"), Is.EqualTo("폴백"));
+            Assert.That(AugmentStickerCatalog.MarkLabel(null, "폴백"), Is.EqualTo("폴백"));
         }
 
         [Test]

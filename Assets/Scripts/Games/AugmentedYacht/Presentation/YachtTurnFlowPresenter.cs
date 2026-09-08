@@ -27,8 +27,11 @@ namespace Tessera.Games.AugmentedYacht
 
         private readonly List<AugmentStickerPlacement> stickerBuffer = new();
         private readonly List<AugmentVfxRequest> vfxBuffer = new();
-        /// <summary>지금 붙어 있는 스티커다. 칸마다 어느 증강인지까지 들고 있어야 교체를 알아본다.</summary>
-        private readonly Dictionary<ScoreCategory, string> shownStickers = new();
+        /// <summary>
+        /// 지금 붙어 있는 스티커다. 칸마다 어느 증강인지까지 들고 있어야 교체를 알아본다.
+        /// 점수표가 플레이어별 Categories 열을 가지므로 두 사람 것을 따로 센다.
+        /// </summary>
+        private readonly Dictionary<ScoreCategory, string>[] shownStickers = { new(), new() };
         private readonly Dictionary<ScoreCategory, string> nextStickers = new();
         private readonly List<ScoreCategory> attachedStickers = new();
         private readonly List<ScoreCategory> removedStickers = new();
@@ -644,7 +647,8 @@ namespace Tessera.Games.AugmentedYacht
         /// <summary>
         /// 점수표에 붙는 변형 증강 스티커를 현재 상태에 맞춘다.
         ///
-        /// Categories 열은 두 플레이어가 함께 쓰므로 한 번에 한 사람 것만 보여준다(사용자 확정).
+        /// 두 사람이 각자 Categories 열을 가지므로 양쪽 것을 모두 붙인다. 접힌 쪽은 아이콘 섹터
+        /// 폭만 남으므로 상대가 무엇을 교체했는지는 증강 아이콘으로 읽는다.
         /// 새로 생긴 스티커에는 부착 연출을, 확정한 칸에는 낙인 연출을 준다.
         /// 시각 사양은 <c>docs/augmented_yacht_m17_vfx_spec.md</c> §3.1.1이다.
         /// </summary>
@@ -652,16 +656,24 @@ namespace Tessera.Games.AugmentedYacht
         {
             if (scoreSheet == null || gameSession == null) return;
 
-            // 드래프트 도중에는 손대지 않는다. 한 명이 고를 때마다 붙었다 떨어지면 어수선하고,
-            // 상대가 고르는 동안 내 스티커가 사라진다. 드래프트가 끝난 뒤 한 번에 붙인다.
+            // 드래프트 도중에는 손대지 않는다. 한 명이 고를 때마다 붙었다 떨어지면 어수선하다.
+            // 드래프트가 끝난 뒤 한 번에 붙인다.
             if (gameSession.IsDrafting) return;
 
-            int viewer = gameSession.CurrentPlayerIndex;
-            AugmentStickerCatalog.CollectFor(gameSession.State, viewer, stickerBuffer);
+            for (int playerIndex = 0; playerIndex < 2; playerIndex++) SyncAugmentStickers(playerIndex);
+
+            PlayPendingStickerStamps();
+        }
+
+        private void SyncAugmentStickers(int playerIndex)
+        {
+            AugmentStickerCatalog.CollectFor(gameSession.State, playerIndex, stickerBuffer);
 
             nextStickers.Clear();
             attachedStickers.Clear();
             removedStickers.Clear();
+
+            Dictionary<ScoreCategory, string> shown = shownStickers[playerIndex];
 
             for (int i = 0; i < stickerBuffer.Count; i++)
             {
@@ -669,7 +681,7 @@ namespace Tessera.Games.AugmentedYacht
                 YachtAugmentDefinition definition = YachtAugmentRuntime.Lookup(placement.AugmentId);
                 if (definition == null) continue;
 
-                if (!scoreSheet.HasStickerSlot(placement.Category))
+                if (!scoreSheet.HasStickerSlot(playerIndex, placement.Category))
                 {
                     Debug.LogWarning($"[증강 스티커] {placement.Category} 칸의 슬롯이 없습니다. 점수표 UI가 아직 만들어지지 않았습니다.");
                     continue;
@@ -678,28 +690,27 @@ namespace Tessera.Games.AugmentedYacht
                 nextStickers[placement.Category] = placement.AugmentId;
 
                 // 같은 증강이 이미 그 칸에 붙어 있으면 그대로 둔다. 다시 붙이면 진행 중인 연출이 끊긴다.
-                if (shownStickers.TryGetValue(placement.Category, out string current)
+                if (shown.TryGetValue(placement.Category, out string current)
                     && string.Equals(current, placement.AugmentId, StringComparison.Ordinal)) continue;
 
                 scoreSheet.SetSticker(
+                    playerIndex,
                     placement.Category,
                     AugmentStickerCatalog.BaseColor(placement.AugmentId),
                     AugmentStickerCatalog.BorderColor,
                     ResolveStickerIcon(placement.AugmentId),
-                    definition.DisplayName);
+                    AugmentStickerCatalog.MarkLabel(placement.AugmentId, definition.DisplayName));
                 attachedStickers.Add(placement.Category);
             }
 
-            foreach (KeyValuePair<ScoreCategory, string> shown in shownStickers)
-                if (!nextStickers.ContainsKey(shown.Key)) removedStickers.Add(shown.Key);
+            foreach (KeyValuePair<ScoreCategory, string> entry in shown)
+                if (!nextStickers.ContainsKey(entry.Key)) removedStickers.Add(entry.Key);
 
-            for (int i = 0; i < removedStickers.Count; i++) scoreSheet.ClearSticker(removedStickers[i]);
-            for (int i = 0; i < attachedStickers.Count; i++) scoreSheet.PlayStickerAttach(attachedStickers[i]);
+            for (int i = 0; i < removedStickers.Count; i++) scoreSheet.ClearSticker(playerIndex, removedStickers[i]);
+            for (int i = 0; i < attachedStickers.Count; i++) scoreSheet.PlayStickerAttach(playerIndex, attachedStickers[i]);
 
-            shownStickers.Clear();
-            foreach (KeyValuePair<ScoreCategory, string> next in nextStickers) shownStickers[next.Key] = next.Value;
-
-            PlayPendingStickerStamps();
+            shown.Clear();
+            foreach (KeyValuePair<ScoreCategory, string> next in nextStickers) shown[next.Key] = next.Value;
         }
 
         /// <summary>마지막 명령의 이벤트에서 낙인 연출을 뽑는다. 리비전이 같으면 이미 처리한 것이다.</summary>
@@ -718,8 +729,13 @@ namespace Tessera.Games.AugmentedYacht
             {
                 AugmentVfxRequest request = vfxBuffer[i];
                 if (request.Cue != AugmentVfxCue.StickerStamp) continue;
-                if (!shownStickers.ContainsKey(request.Category)) continue;
-                scoreSheet.PlayStickerStamp(request.Category);
+
+                // 낙인은 그 칸으로 점수를 확정한 사람 것이다. 이 시점에는 턴이 이미 넘어갔을 수
+                // 있으므로 현재 플레이어가 아니라 이벤트가 지목한 사람을 쓴다.
+                int actor = request.PlayerIndex;
+                if (actor < 0 || actor > 1) continue;
+                if (!shownStickers[actor].ContainsKey(request.Category)) continue;
+                scoreSheet.PlayStickerStamp(actor, request.Category);
             }
         }
 

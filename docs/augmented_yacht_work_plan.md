@@ -24,9 +24,9 @@
 |---|---|
 | 전체 상태 | M1~M6 완료, M7 완료 (T1~T4; T5~T12는 `M17`로 이동 `D-038`), M8 증강 시스템 구조 리팩토링 완료, M9 프리팹 이관 완료, M10 완료, M11 컨트롤러 분해 완료, M12·M13 구현 완료(`M13-T4`는 `M16-T6`으로 이관), M14·M15 완료, M16 셀 셰이딩 채택 보류(`DEFERRED`, 인프라 유지, `D-037`) |
 | 현재 마일스톤 | `M17` 증강 요트 로컬 핫시트 완성 |
-| 현재 작업 | `M17-T9` 증강 발동 VFX. 사양 문서 [`docs/augmented_yacht_m17_vfx_spec.md`](augmented_yacht_m17_vfx_spec.md)에 45개 중 11개 기입, 변형 계열 범용 설계(우표 스티커) 확정 |
+| 현재 작업 | `M17-T9` 증강 발동 VFX. 사양 문서 [`docs/augmented_yacht_m17_vfx_spec.md`](augmented_yacht_m17_vfx_spec.md)에 45개 중 11개 기입, 변형 계열 범용 설계(우표 스티커) 확정. 점수표 6열 재배치와 플레이어별 스티커 완료 (`D-040`) |
 | 다음 행동 | `M17-T9` 변형 계열 구현(후보 스탬프 → 스티커 텍스처 생성기 → 이벤트 디스패처). 이후 나머지 34개 연출 설명 기입 또는 `M17-T3`·`M17-T10`·`M17-T11`(상태 표시 묶음) |
-| 마지막 완료 작업 | `M17-T17` 드래프트 제시 구성과 선공 순서 규칙 (`D-039`) |
+| 마지막 완료 작업 | 점수표 6열 재배치와 턴별 Categories 접힘·펴짐 (`M17-T9`, `D-040`) |
 | 차단 요소 | 없음 |
 | 마지막 갱신일 | 2026-09-08 |
 
@@ -1146,6 +1146,7 @@ npm run validate:augments
 | `D-039` | 2026-09-08 | 드래프트 제시 구성(같은 대상 족보 변형 증강 중복 배제)과 선공 순서(1번 무작위, 2·3번 총점 하위 우선)를 규칙으로 확정하고, `M17-T2` 흡수나 `M17-T9` 부수 작업이 아니라 **신규 태스크 `M17-T17`**로 분리한다. | (1) 규칙을 바꾼 이유: 3장 제시에 같은 족보를 노리는 변형 증강이 겹치면 실질 선택지가 2장으로 줄어드는데, 200회 표본에서 12회 발생해 무시할 빈도가 아니었다. 선공이 `P1` 고정이면 2·3번 드래프트에서 앞선 쪽이 계속 먼저 골라 격차가 누적되므로 뒤처진 쪽에 우선권을 준다. 1번은 아직 점수 차가 없어 판단 근거가 없으므로 무작위가 맞다. (2) 신규 태스크로 분리한 이유: `M17-T2`는 "현재 플레이어만 선택 가능함"이 완료 조건인 화면 작업이라 권위 규칙 변경과 검증 방법이 다르고, 한 태스크에 넣으면 어느 쪽이 끝났는지 판정이 흐려진다. `M17-T9` 작업 중에 발견됐을 뿐 VFX와 인과가 없다. | `YachtDraftState.FirstPlayerIndex` 필드 추가(직렬화·`Clone` 포함). `FindNextDraftPlayer`가 선공부터 순환. `CreateDraftOptions`가 대상 족보 중복을 건너뜀. `CanAcquire`의 기존 보유자 중복 차단은 그대로. 권위가 순서를 결정하므로 `M18` 네트워크에서 클라이언트 재계산이 필요 없음 |
 | `D-038` | 2026-09-07 | `M7-T5`~`M7-T12`를 `M17`로 옮기고 `M7`을 `T1`~`T4`로 완료(`DONE`) 처리한다. 흡수분은 `M17-T8`~`M17-T15`(구 `M7-T5`~`M7-T12`). `M18`~`M20` 번호는 유지한다. `D-036`의 태그 분리(차단 최소분/폴리시분, 재번호 없음)를 대체한다. | 태그 분리는 한 마일스톤에 상태가 섞여 읽기 어려웠고, 구 `M7-T7`~`M7-T9`(상태·행동 표시)는 `M17-T3`·`M17-T4`와 실제로 겹침. 특수 주사위·VFX·폴백·검증도 "증강 요트 완주" 그래픽이라 `M17` 범위. `M7`은 카드 시각 시스템으로 완결됨 | `M17` 선행 `M7`, `M11` → `M11`. §6에서 `M7` `DONE`. §3.3의 폴리시분 행을 `M17-T13`~`M17-T15` 소속으로 수정. §2·§7 M7 절 갱신. 시각 사양 문서 [`docs/augmented_yacht_m7_graphics_plan.md`](augmented_yacht_m7_graphics_plan.md)는 `M17` 그래픽 작업 기준으로 계속 사용. §11·§13 과거 기록과 코드 주석의 `M7-Tn` 표기는 역사 기록이라 유지 |
 | `D-039` | 2026-09-08 | 테이블 나뭇결을 판자별 픽셀 텍스처로 바꾼다. `Assets/Editor/WoodPlankTextureGenerator.cs`가 판자마다 256×32 PNG를 굽고, 색은 §4 나무 토큰 두 개의 명암 램프 8색에서만 뽑는다. 임포터는 `Point`·밉맵 off·무압축. 반영은 `TabletopPrefabBaker` 전체 굽기 대신 판자 머티리얼 4개만 제자리 갱신한다. | 기존 `wood_grain_knots.png`는 블러 처리된 사인파 그라디언트라 픽셀 격자에 걸려도 인접 칸 색이 거의 같아 부드럽게 보였고, 결 말고는 패턴이 없었다. 타일링 `(1.5, 1.0)`은 판자 비율(38 : 4.9)과 어긋나 텍셀이 가로로 5배 늘어나 결이 문대졌다. 베이커를 쓰지 않은 이유는 `Bake()`가 프롭 15종을 전부 돌며 `DeleteAsset` 후 `SaveAsPrefabAsset`을 해 프리팹 GUID가 새로 발급되고 씬의 PrefabInstance 참조가 끊기기 때문이다. 판자 머티리얼 4개 때문에 씬 재이관까지 감수할 이유가 없다. | §4 팔레트 토큰은 그대로. `TesseraPixelPalette.Build()`의 8~15번이 나무 램프라는 인덱스 결합에 생성기가 의존하므로, 토큰 순서를 바꾸면 생성기의 `firstWoodIndex`도 함께 고쳐야 한다(생성기가 첫 색을 대조해 실패시킨다). 머티리얼 베이스 색은 흰색으로 바뀌었다. `TabletopSurfaceBuilder`는 판자별 텍스처를 로드하도록 갱신했고 전체 재생성 시의 단일 출처로 유지한다. 미참조가 된 `wood_grain_knots.png`는 남겨 둔다. 아트 가이드 §2 표면 질감 항목 갱신 |
+| `D-040` | 2026-09-08 | 점수표를 여섯 열 `[P1 아이콘][P1 Categories][P1 점수][P2 점수][P2 Categories][P2 아이콘]`로 다시 나누고, 현재 턴인 쪽 Categories 열만 펴고 반대쪽은 폭 0으로 접는다. 아이콘 섹터는 접히지 않는다. 변형 증강 스티커는 플레이어별로 두 벌을 동시에 띄운다. `D-039`(2026-09-08, 드래프트) 이전에 확정했던 "현재 플레이어 것만 표시"를 대체한다. | 세 열 구조에서는 Categories 열이 공용이라 상대의 변형 증강을 아예 볼 수 없었고, 두 사람이 같은 칸을 교체하는 증강을 각각 가지면 충돌했다. 열을 플레이어별로 가르면 소유자가 위치로 드러나고 충돌도 사라진다. 접힌 쪽까지 이름을 남기면 이름 열 폭이 절반으로 줄어 족보 이름이 안 들어가므로, 아이콘 섹터만 남기고 이름은 접는다. 상대 정보는 증강 아이콘으로 읽는다 | `ParchmentScoreSheet`가 열 컨테이너 6개를 만들고 `ResolveColumnBounds`가 경계를 정함. 스티커 API(`SetSticker`·`ClearSticker`·`PlayStickerAttach`·`PlayStickerStamp`·`HasStickerSlot`)에 `playerIndex` 추가. `YachtTurnFlowPresenter.SyncAugmentStickers`가 두 사람 몫을 각각 동기화. 보너스 진행도가 양쪽 각자 값으로 나옴(이전에는 P1 것만). 전환 0.35초 ease-out cubic. 시각 사양은 [`docs/augmented_yacht_m17_vfx_spec.md`](augmented_yacht_m17_vfx_spec.md) §3.1.1 |
 
 ---
 
@@ -1173,6 +1174,35 @@ npm run validate:augments
 ---
 
 ## 13. 작업 세션 로그
+
+### 2026-09-08 — Claude (점수표 6열 재배치와 턴별 Categories 접힘·펴짐)
+
+- 작업 ID: `M17-T9` (진행 중), 결정 `D-040`
+- 시작 상태: 점수표가 `[Categories 52% | P1 24% | P2 24%]` 세 열이었다. Categories 열이 공용이라 변형 증강 스티커를 한 번에 한 사람 것만 붙일 수 있었고(`AugmentStickerCatalog.CollectFor(state, CurrentPlayerIndex, ...)`), 상대가 어떤 족보를 교체했는지 볼 방법이 없었다. 사양 문서 §8에 미결로 남아 있던 항목이다
+- 사용자 결정: 표를 `[P1 아이콘][P1 Categories][P1 점수][P2 점수][P2 Categories][P2 아이콘]` 여섯 열로 나누고, 현재 턴인 쪽 이름 열만 펴고 반대쪽은 0으로 접는다. 접힌 쪽에는 축소된 천 패치가 아이콘 섹터에 남아 상대의 변형 증강이 보인다. 전환은 0.35초 ease-out cubic (`D-040`)
+- 완료 내용:
+  - `ParchmentScoreSheet`가 열 컨테이너 6개를 만들고 행 요소를 그 안에 `0..1`로 앵커. 전환은 컨테이너 여섯 개의 가로 앵커만 바꾼다
+  - `ResolveColumnBounds(expandT, bounds)` 순수 함수로 경계 7개 계산. 화면 없이 검증 가능한 유일한 지점
+  - 이름 열에 `RectMask2D` + `CanvasGroup`. 폭이 줄기 전에 알파로 먼저 사라져 글자가 점수 열로 삐져나오지 않는다
+  - 스티커 슬롯·족보 아이콘·족보 이름을 플레이어별 두 벌로 분리. 공개 API 다섯 개에 `playerIndex` 추가
+  - 천 패치가 `[아이콘 섹터 + Categories]`를 덮도록 넓히고, 전환 매 프레임 가로 위치·크기를 다시 잡음
+  - `YachtTurnFlowPresenter.SyncAugmentStickers`가 두 사람 몫을 각각 동기화. `shownStickers`도 플레이어별
+  - `Assets/Editor/ScoreSheetColumnLayoutTests.cs` 신규 (열 경계 14건)
+- 확인한 사실:
+  - 낙인(`S2`) 연출은 `AugmentVfxRequest.PlayerIndex`를 써야 한다. 이 시점에는 턴이 이미 넘어갔을 수 있어 `CurrentPlayerIndex`로는 엉뚱한 쪽에 찍힌다
+  - 부착·낙인 코루틴이 시작 시점의 제자리를 붙잡고 있었다. 열이 접히고 펴지면 그 값이 낡으므로 매 프레임 다시 읽도록 바꿨다
+  - 보너스 진행도가 P1 것만 그려지고 있었다(`UpdatePlayerScoreUI(players[1], p2ScoreLabels, null)`). 이름 열이 둘로 갈라지면서 양쪽 각자 값이 나온다
+  - 머리글을 열 밖에 두고 그룹 세 열을 덮게 했더니 `P1`·`P2`가 점수 열을 벗어나 이름 열 위로 밀려났다(사용자 지적). 머리글도 다른 행과 같이 자기 열 안에 넣어야 접힘을 그대로 따라온다. `CATEGORIES` 머리글도 각자 이름 열에 되살렸다
+  - 스티커 실루엣을 우표 톱니에서 각진 사각형 러너로 바꾸고, 오른쪽·아래 1px 불투명 그림자를 넣었다. 재질이 알파 컷아웃이라 반투명 그림자는 쓸 수 없다
+  - 금테가 행마다 다른 자리에 나타난 원인은 굽는 해상도였다. 캔버스 해상도(100/단위)로 구운 텍스처가 픽셀 필터 화면 발자국보다 4배 촘촘해서, 점 샘플링이 행마다 다른 텍셀을 골랐다. `StickerPixelsPerUnit = CanvasUnitsPerWorldUnit / 4`로 굽고 크기를 칸이 아니라 천 전체로 재도록 바꿔 한 텍셀 = 화면 한 픽셀로 맞췄다(펴진 천 59×15 텍셀)
+  - 스티커 글자를 증강 이름(한글) 대신 영문 축약 표기로 바꿨다. 원본은 `augmented-dice` 프로젝트 `src/augments.json`의 `mark` 태그이고, 활성 변형 증강 18종 전부에 값이 있었다. `AugmentStickerCatalog.Marks`로 옮기고 `MarkLabel(augmentId, fallback)`으로 읽는다
+- 변경 파일: `Assets/Scripts/Games/AugmentedYacht/Presentation/ParchmentScoreSheet.cs`, `.../YachtTurnFlowPresenter.cs`, `.../AugmentStickerCatalog.cs`, `Assets/Editor/ScoreSheetColumnLayoutTests.cs`, `Assets/Editor/AugmentStickerCatalogTests.cs`, `docs/augmented_yacht_m17_vfx_spec.md`, `docs/augmented_yacht_work_plan.md`
+- 실행한 검증:
+  - C# 컴파일 오류 0
+  - EditMode 875건 실행. `ScoreSheetColumnLayoutTests` 14건 전부 통과. 실패 7건은 모두 변경과 무관한 기존 실패(`FontFallbackTests` 2건, `YachtGameRulesTests.LuckySevens_중간획득시...` 1건, UnitySkills 패키지 자체 테스트 4건)
+  - `Tessera/Rebuild Score Sheet` 메뉴 실행 후 플레이 모드 진입, 게임 뷰 캡처로 6열 배치·좌우 대칭·접힘 상태 육안 확인 (P1 펴짐 / P2 펴짐 두 경우)
+- 남은 문제/차단 요소: 결정 표에 `D-039`가 두 번 있다(드래프트 순서 / 테이블 나뭇결). 이번 작업 이전부터 있던 문제이고 손대지 않았다
+- 다음 작업: `M17-T9` 나머지 34개 연출 설명 기입
 
 ### 2026-09-08 — Claude (`M17-T17` 드래프트 제시 구성과 선공 순서)
 

@@ -41,6 +41,46 @@ namespace Tessera.Games.AugmentedYacht
             { YachtAugmentRuntime.ReverseChoiceId, new Color32(0x36, 0x4b, 0x6e, 0xff) }
         };
 
+        /// <summary>
+        /// 스티커에 찍는 축약 표기입니다. 원본은 `augmented-dice` 프로젝트 `src/augments.json`의
+        /// `mark` 태그입니다.
+        ///
+        /// `head-and-tail`만 원본과 다릅니다. 원본 `mark`는 길이 때문에 `Head &amp; Run`으로 줄여 놓은
+        /// 대체어이고, 실제 이름은 `Head &amp; Tail`입니다. 여기 칸은 그 길이가 들어가므로 제 이름을 씁니다.
+        ///
+        /// 증강 이름(<see cref="YachtAugmentDefinition.DisplayName"/>)은 한글이고 "더블 라지 스트레이트"처럼
+        /// 길어서 족보 칸에 들어가지 않습니다. 스티커는 그 칸의 규칙이 무엇으로 바뀌었는지 알리는
+        /// 표기이므로, 같은 칸에 들어가는 다른 족보 이름들과 같은 언어·같은 축약 방식을 씁니다.
+        /// </summary>
+        private static readonly Dictionary<string, string> Marks = new(StringComparer.Ordinal)
+        {
+            { YachtAugmentRuntime.LuckySevensId, "L. Sevens" },
+            { YachtAugmentRuntime.PerfectSquaresId, "P. Squares" },
+            { YachtAugmentRuntime.GamblerId, "Gambler" },
+            { YachtAugmentRuntime.ThreeOfAKindId, "3 of a Kind" },
+            { YachtAugmentRuntime.TinyHouseId, "Tiny House" },
+            { YachtAugmentRuntime.TwoPairId, "Two Pair" },
+            { YachtAugmentRuntime.HeadAndTailId, "Head & Tail" },
+            { YachtAugmentRuntime.EvensId, "Evens" },
+            { YachtAugmentRuntime.OddsId, "Odds" },
+            { YachtAugmentRuntime.DoubleLargeStraightId, "L. Straight" },
+            { YachtAugmentRuntime.PrimeCollectionId, "P. Collection" },
+            { YachtAugmentRuntime.DuplexHouseId, "D. House" },
+            { YachtAugmentRuntime.MountainId, "Mountain" },
+            { YachtAugmentRuntime.HighDiceId, "High Dice" },
+            { YachtAugmentRuntime.SecondChoiceId, "2nd Choice" },
+            { YachtAugmentRuntime.FibonacciId, "Fib. Numbers" },
+            { YachtAugmentRuntime.ReverseChoiceId, "R. Choice" },
+            { YachtAugmentRuntime.BlackjackId, "Blackjack" }
+        };
+
+        /// <summary>
+        /// 스티커에 찍을 표기입니다. 축약어가 없으면 <paramref name="fallback"/>(증강 이름)을 씁니다.
+        /// 새 변형 증강을 넣고 <see cref="Marks"/>를 채우지 않으면 그 칸만 한글로 나옵니다.
+        /// </summary>
+        public static string MarkLabel(string augmentId, string fallback) =>
+            augmentId != null && Marks.TryGetValue(augmentId, out string mark) ? mark : fallback;
+
         /// <summary>스티커를 붙이는 증강인지 봅니다. 변형 계열만 대상입니다.</summary>
         public static bool HasSticker(YachtAugmentDefinition definition) =>
             definition != null && definition.Kind == YachtAugmentKind.Modification;
@@ -60,8 +100,8 @@ namespace Tessera.Games.AugmentedYacht
         }
 
         /// <summary>
-        /// 지금 화면에 보여야 할 스티커를 모읍니다.
-        /// 점수표 Categories 열은 두 플레이어가 함께 쓰므로 한 번에 한 사람 것만 표시합니다.
+        /// 한 플레이어가 지금 붙이고 있어야 할 스티커를 모읍니다.
+        /// 점수표는 플레이어마다 Categories 열을 하나씩 가지므로 두 사람 것을 각각 부릅니다.
         /// <paramref name="output"/>은 비우고 채웁니다.
         /// </summary>
         public static void CollectFor(
