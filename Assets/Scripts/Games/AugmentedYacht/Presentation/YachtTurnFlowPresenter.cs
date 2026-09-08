@@ -21,6 +21,20 @@ namespace Tessera.Games.AugmentedYacht
     public sealed class YachtTurnFlowPresenter : MonoBehaviour
     {
         private ParchmentScoreSheet scoreSheet;
+
+        /// <summary>증강 아이콘이다. 스티커 위에 올리며 Resources 조회를 매번 하지 않도록 담아 둔다.</summary>
+        private readonly Dictionary<string, Sprite> stickerIcons = new();
+
+        private readonly List<AugmentStickerPlacement> stickerBuffer = new();
+        private readonly List<AugmentVfxRequest> vfxBuffer = new();
+        /// <summary>지금 붙어 있는 스티커다. 칸마다 어느 증강인지까지 들고 있어야 교체를 알아본다.</summary>
+        private readonly Dictionary<ScoreCategory, string> shownStickers = new();
+        private readonly Dictionary<ScoreCategory, string> nextStickers = new();
+        private readonly List<ScoreCategory> attachedStickers = new();
+        private readonly List<ScoreCategory> removedStickers = new();
+
+        /// <summary>이미 연출로 소비한 명령의 리비전이다. 같은 이벤트를 두 번 재생하지 않는다.</summary>
+        private long lastVfxRevision = -1;
         private AugmentTrayPresenter augmentTray;
         private YachtDiceRoundPresenter dice;
         private RollOrb rollOrb;
@@ -624,6 +638,100 @@ namespace Tessera.Games.AugmentedYacht
         {
             TrayRebindRequested?.Invoke();
             augmentTray?.Refresh(gameSession, Phase.IsInteractive(), message);
+            SyncAugmentStickers();
+        }
+
+        /// <summary>
+        /// 점수표에 붙는 변형 증강 스티커를 현재 상태에 맞춘다.
+        ///
+        /// Categories 열은 두 플레이어가 함께 쓰므로 한 번에 한 사람 것만 보여준다(사용자 확정).
+        /// 새로 생긴 스티커에는 부착 연출을, 확정한 칸에는 낙인 연출을 준다.
+        /// 시각 사양은 <c>docs/augmented_yacht_m17_vfx_spec.md</c> §3.1.1이다.
+        /// </summary>
+        private void SyncAugmentStickers()
+        {
+            if (scoreSheet == null || gameSession == null) return;
+
+            // 드래프트 도중에는 손대지 않는다. 한 명이 고를 때마다 붙었다 떨어지면 어수선하고,
+            // 상대가 고르는 동안 내 스티커가 사라진다. 드래프트가 끝난 뒤 한 번에 붙인다.
+            if (gameSession.IsDrafting) return;
+
+            int viewer = gameSession.CurrentPlayerIndex;
+            AugmentStickerCatalog.CollectFor(gameSession.State, viewer, stickerBuffer);
+
+            nextStickers.Clear();
+            attachedStickers.Clear();
+            removedStickers.Clear();
+
+            for (int i = 0; i < stickerBuffer.Count; i++)
+            {
+                AugmentStickerPlacement placement = stickerBuffer[i];
+                YachtAugmentDefinition definition = YachtAugmentRuntime.Lookup(placement.AugmentId);
+                if (definition == null) continue;
+
+                if (!scoreSheet.HasStickerSlot(placement.Category))
+                {
+                    Debug.LogWarning($"[증강 스티커] {placement.Category} 칸의 슬롯이 없습니다. 점수표 UI가 아직 만들어지지 않았습니다.");
+                    continue;
+                }
+
+                nextStickers[placement.Category] = placement.AugmentId;
+
+                // 같은 증강이 이미 그 칸에 붙어 있으면 그대로 둔다. 다시 붙이면 진행 중인 연출이 끊긴다.
+                if (shownStickers.TryGetValue(placement.Category, out string current)
+                    && string.Equals(current, placement.AugmentId, StringComparison.Ordinal)) continue;
+
+                scoreSheet.SetSticker(
+                    placement.Category,
+                    AugmentStickerCatalog.BaseColor(placement.AugmentId),
+                    AugmentStickerCatalog.BorderColor,
+                    ResolveStickerIcon(placement.AugmentId),
+                    definition.DisplayName);
+                attachedStickers.Add(placement.Category);
+            }
+
+            foreach (KeyValuePair<ScoreCategory, string> shown in shownStickers)
+                if (!nextStickers.ContainsKey(shown.Key)) removedStickers.Add(shown.Key);
+
+            for (int i = 0; i < removedStickers.Count; i++) scoreSheet.ClearSticker(removedStickers[i]);
+            for (int i = 0; i < attachedStickers.Count; i++) scoreSheet.PlayStickerAttach(attachedStickers[i]);
+
+            shownStickers.Clear();
+            foreach (KeyValuePair<ScoreCategory, string> next in nextStickers) shownStickers[next.Key] = next.Value;
+
+            PlayPendingStickerStamps();
+        }
+
+        /// <summary>마지막 명령의 이벤트에서 낙인 연출을 뽑는다. 리비전이 같으면 이미 처리한 것이다.</summary>
+        private void PlayPendingStickerStamps()
+        {
+            YachtGameCommandResult result = gameSession.LastCommandResult;
+            if (result?.Events == null || result.Events.Length == 0) return;
+
+            long revision = gameSession.State.Revision;
+            if (revision == lastVfxRevision) return;
+            lastVfxRevision = revision;
+
+            vfxBuffer.Clear();
+            AugmentVfxPlanner.Plan(result.Events, gameSession.State, vfxBuffer);
+            for (int i = 0; i < vfxBuffer.Count; i++)
+            {
+                AugmentVfxRequest request = vfxBuffer[i];
+                if (request.Cue != AugmentVfxCue.StickerStamp) continue;
+                if (!shownStickers.ContainsKey(request.Category)) continue;
+                scoreSheet.PlayStickerStamp(request.Category);
+            }
+        }
+
+        /// <summary>증강 고유 아이콘이다. 카드와 같은 경로를 쓴다(<c>D-022</c>).</summary>
+        private Sprite ResolveStickerIcon(string augmentId)
+        {
+            if (string.IsNullOrEmpty(augmentId)) return null;
+            if (stickerIcons.TryGetValue(augmentId, out Sprite cached)) return cached;
+
+            Sprite icon = Resources.Load<Sprite>($"AugmentIcons/{augmentId}");
+            stickerIcons[augmentId] = icon;
+            return icon;
         }
 
         private void SetTimerText(float remaining)

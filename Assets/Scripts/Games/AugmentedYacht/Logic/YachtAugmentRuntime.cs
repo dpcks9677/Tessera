@@ -46,10 +46,14 @@ namespace Tessera.Games.Yacht
         public int[] OptionCardPresetIds = Array.Empty<int>();
         public int[] SelectionCounts = Array.Empty<int>();
 
+        /// <summary>이번 드래프트 라운드에서 먼저 고르는 플레이어입니다. 라운드가 시작될 때 한 번 정합니다.</summary>
+        public int FirstPlayerIndex = -1;
+
         public YachtDraftState Clone() => new()
         {
             IsActive = IsActive,
             PlayerIndex = PlayerIndex,
+            FirstPlayerIndex = FirstPlayerIndex,
             Options = (string[])(Options?.Clone() ?? Array.Empty<string>()),
             OptionCardPresetIds = (int[])(OptionCardPresetIds?.Clone() ?? Array.Empty<int>()),
             SelectionCounts = (int[])(SelectionCounts?.Clone() ?? Array.Empty<int>())
@@ -533,6 +537,7 @@ namespace Tessera.Games.Yacht
             if (state.Mode != YachtGameMode.Augmented || !IsDraftRound(state.CurrentRound)) return false;
 
             int expected = ExpectedSelectionCount(state.CurrentRound);
+            if (!state.Draft.IsActive) state.Draft.FirstPlayerIndex = DetermineFirstDraftPlayer(state, random);
             int playerIndex = FindNextDraftPlayer(state, expected);
             if (playerIndex < 0) return false;
 
@@ -918,10 +923,39 @@ namespace Tessera.Games.Yacht
 
         private static int FindNextDraftPlayer(YachtGameState state, int expected)
         {
-            for (int i = 0; i < state.Draft.SelectionCounts.Length; i++)
-                if (state.Draft.SelectionCounts[i] < expected) return i;
+            int count = state.Draft.SelectionCounts.Length;
+            int first = state.Draft.FirstPlayerIndex;
+            if (first < 0 || first >= count) first = 0;
+            for (int i = 0; i < count; i++)
+            {
+                int index = (first + i) % count;
+                if (state.Draft.SelectionCounts[index] < expected) return index;
+            }
             return -1;
         }
+
+        /// <summary>
+        /// 이번 드래프트 라운드의 선공입니다. 첫 증강은 아직 점수 차가 없어 무작위로 정하고,
+        /// 두 번째부터는 총점이 낮은 쪽이 먼저 고릅니다. 동점이면 무작위입니다.
+        /// </summary>
+        private static int DetermineFirstDraftPlayer(YachtGameState state, IRandomSource random)
+        {
+            int count = state.Draft.SelectionCounts?.Length ?? 0;
+            if (count <= 1) return 0;
+            if (state.CurrentRound == 1) return random.NextInt(0, count);
+
+            int first = 0;
+            for (int i = 1; i < count; i++)
+            {
+                int score = DraftTotalScore(state, i);
+                int best = DraftTotalScore(state, first);
+                if (score < best || (score == best && random.NextBool())) first = i;
+            }
+            return first;
+        }
+
+        private static int DraftTotalScore(YachtGameState state, int playerIndex) =>
+            state.Players != null && playerIndex < state.Players.Length ? state.Players[playerIndex].totalScore : 0;
 
         private string[] CreateDraftOptions(YachtGameState state, int playerIndex, IRandomSource random)
         {
@@ -929,10 +963,21 @@ namespace Tessera.Games.Yacht
             for (int i = 0; i < AllDefinitions.Length; i++)
                 if (CanAcquire(state, playerIndex, AllDefinitions[i].Id)) candidates.Add(AllDefinitions[i].Id);
             Shuffle(candidates, random);
-            int count = Math.Min(DraftOptionCount, candidates.Count);
-            var result = new string[count];
-            for (int i = 0; i < count; i++) result[i] = candidates[i];
-            return result;
+
+            // 같은 족보를 교체하는 변형 증강이 한 번에 둘 이상 나오면 실제 선택지가 줄어든다.
+            var result = new List<string>(DraftOptionCount);
+            var takenTargets = new List<string>();
+            for (int i = 0; i < candidates.Count && result.Count < DraftOptionCount; i++)
+            {
+                YachtAugmentDefinition definition = FindDefinition(candidates[i]);
+                if (definition?.Kind == YachtAugmentKind.Modification)
+                {
+                    if (takenTargets.Contains(definition.Target)) continue;
+                    takenTargets.Add(definition.Target);
+                }
+                result.Add(candidates[i]);
+            }
+            return result.ToArray();
         }
 
         private bool CanAcquire(YachtGameState state, int playerIndex, string augmentId)
