@@ -64,6 +64,55 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
+        public void 정렬하면_어떤_면이든_숫자가_정방향으로_선다()
+        {
+            UnityEngine.Random.InitState(20260908);
+
+            Vector3 screenUp = Quaternion.Euler(-15f, 0f, 0f) * Vector3.forward;
+            Vector3 cameraDirection = Quaternion.Euler(-15f, 0f, 0f) * Vector3.up;
+
+            for (int i = 0; i < 200; i++)
+            {
+                Quaternion landing = UnityEngine.Random.rotationUniform;
+                int face = UnityEngine.Random.Range(1, 9);
+
+                // 착지 회전에서 눈을 바꿔 새긴 뒤(Visual) 카메라 정렬(루트)을 얹는 실제 순서.
+                int physicalTop = DiceFaceOrientation.GetOctaTopFace(landing);
+                Quaternion remap = DiceFaceOrientation.GetOctaVisualRemapRotation(landing, face);
+                Quaternion root = DiceFaceOrientation.GetOctaCameraFacingRotation(physicalTop);
+                Quaternion shown = root * remap;
+
+                Assert.That(Vector3.Dot(shown * DiceFaceOrientation.OctaFaceNormals[face - 1], cameraDirection),
+                    Is.GreaterThan(0.999f), $"{face}번 면이 카메라를 향하지 않습니다.");
+                Assert.That(Vector3.Dot(shown * DiceFaceOrientation.GetOctaFaceUpAxis(face), screenUp),
+                    Is.GreaterThan(0.999f), $"{face}번 면의 숫자가 누워 있습니다.");
+            }
+        }
+
+        [Test]
+        public void 눈_바꿔_새기는_회전은_팔면체_대칭이라_실루엣이_변하지_않는다()
+        {
+            // 대칭 회전이면 축 꼭짓점이 다시 축 꼭짓점으로 간다. 아니면 몸체가 다른 모양으로 보인다.
+            Vector3[] corners = { Vector3.right, Vector3.up, Vector3.forward };
+
+            for (int physicalTop = 1; physicalTop <= 8; physicalTop++)
+            {
+                Quaternion landing = DiceFaceOrientation.GetOctaCameraFacingRotation(physicalTop, 90f);
+                for (int face = 1; face <= 8; face++)
+                {
+                    Quaternion remap = DiceFaceOrientation.GetOctaVisualRemapRotation(landing, face);
+                    foreach (Vector3 corner in corners)
+                    {
+                        Vector3 moved = remap * corner;
+                        float best = Mathf.Max(Mathf.Abs(moved.x), Mathf.Abs(moved.y), Mathf.Abs(moved.z));
+                        Assert.That(best, Is.GreaterThan(0.999f),
+                            $"{physicalTop}번 면 착지에서 {face}번 면으로 바꿀 때 실루엣이 틀어집니다.");
+                    }
+                }
+            }
+        }
+
+        [Test]
         public void 팔면주사위는_프리셋의_뒤쪽_슬롯을_쓴다()
         {
             var types = new[]

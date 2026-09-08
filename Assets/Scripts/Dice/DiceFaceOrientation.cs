@@ -156,13 +156,22 @@ namespace Tessera.Dice
         /// <summary>
         /// 착지 회전은 그대로 두고, 목표 면이 위로 오도록 8면 주사위를 제자리에서 돌린다.
         /// 6면과 달리 면이 축과 나란하지 않아 별도 표가 필요하다.
+        ///
+        /// 면 법선만 맞추면(<see cref="Quaternion.FromToRotation"/>) 축 둘레의 롤이 정해지지 않는다.
+        /// 그 회전은 8면체의 대칭 회전이 아니라서 몸체 실루엣이 어긋나고, 숫자도 0°/60°/180°로
+        /// 제각기 누워 정렬 결과가 여러 모양으로 갈린다. 6면과 같이 면 법선과 글자 윗방향을
+        /// 함께 맞춰 8면체 대칭 회전만 나오게 한다.
         /// </summary>
         public static Quaternion GetOctaVisualRemapRotation(Quaternion landingRotation, int targetFaceIndex)
         {
             int physicalTop = GetOctaTopFace(landingRotation);
-            Vector3 source = GetOctaFaceNormal(targetFaceIndex);
-            Vector3 target = GetOctaFaceNormal(physicalTop);
-            return Quaternion.FromToRotation(source, target);
+            Quaternion sourceBasis = Quaternion.LookRotation(
+                GetOctaFaceNormal(targetFaceIndex),
+                GetOctaFaceUpAxis(targetFaceIndex));
+            Quaternion targetBasis = Quaternion.LookRotation(
+                GetOctaFaceNormal(physicalTop),
+                GetOctaFaceUpAxis(physicalTop));
+            return targetBasis * Quaternion.Inverse(sourceBasis);
         }
 
         private static Vector3 GetOctaFaceNormal(int faceIndex)
