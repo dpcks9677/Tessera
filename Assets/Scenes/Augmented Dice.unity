@@ -4834,47 +4834,47 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1001585063}
     m_Modifications:
-    - target: {fileID: 3560691874101799480, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
+    - target: {fileID: 313306770226994608, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
       propertyPath: m_LocalPosition.x
       value: 13.48
       objectReference: {fileID: 0}
-    - target: {fileID: 3560691874101799480, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
+    - target: {fileID: 313306770226994608, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
       propertyPath: m_LocalPosition.y
       value: 0.08
       objectReference: {fileID: 0}
-    - target: {fileID: 3560691874101799480, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
+    - target: {fileID: 313306770226994608, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
       propertyPath: m_LocalPosition.z
       value: -7.9
       objectReference: {fileID: 0}
-    - target: {fileID: 3560691874101799480, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
+    - target: {fileID: 313306770226994608, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
       propertyPath: m_LocalRotation.w
       value: 0.57357645
       objectReference: {fileID: 0}
-    - target: {fileID: 3560691874101799480, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
+    - target: {fileID: 313306770226994608, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
       propertyPath: m_LocalRotation.x
       value: -0
       objectReference: {fileID: 0}
-    - target: {fileID: 3560691874101799480, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
+    - target: {fileID: 313306770226994608, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
       propertyPath: m_LocalRotation.y
       value: 0.81915206
       objectReference: {fileID: 0}
-    - target: {fileID: 3560691874101799480, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
+    - target: {fileID: 313306770226994608, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
       propertyPath: m_LocalRotation.z
       value: -0
       objectReference: {fileID: 0}
-    - target: {fileID: 3560691874101799480, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
+    - target: {fileID: 313306770226994608, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 3560691874101799480, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
+    - target: {fileID: 313306770226994608, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 3560691874101799480, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
+    - target: {fileID: 313306770226994608, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 4602338182111029706, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
+    - target: {fileID: 2506968754557547214, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
       propertyPath: m_Name
       value: 3D Inkwell and Quill Decoration
       objectReference: {fileID: 0}
@@ -4885,7 +4885,7 @@ PrefabInstance:
   m_SourcePrefab: {fileID: 100100000, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
 --- !u!4 &1497574235 stripped
 Transform:
-  m_CorrespondingSourceObject: {fileID: 3560691874101799480, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
+  m_CorrespondingSourceObject: {fileID: 313306770226994608, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
   m_PrefabInstance: {fileID: 1497574234}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &1503485932

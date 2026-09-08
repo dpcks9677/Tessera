@@ -12,6 +12,16 @@ namespace Tessera.Tabletop
     {
         private const int DecorationLayer = 11;
 
+        // 깃펜 로컬 좌표계: +Y가 닙 끝(y=0)에서 깃털 팁(y≈3.97) 방향.
+        private const float NibLength = 0.59f;
+        private const float CollarBandY = 0.60f;
+        private const float RachisStartY = 0.71f;
+        private const float RachisLength = 3.26f;
+        private const float BladeStartY = 0.75f;
+        private const float BladeLength = 3.22f;
+        private const float SpineCurveX = 0.035f;
+        private const float SpineCurveZ = 0.012f;
+
         private void Awake()
         {
             EnsureGeometry();
@@ -54,14 +64,18 @@ namespace Tessera.Tabletop
         {
             Transform quillRoot = transform.Find("Quill Pen Root");
             if (quillRoot == null) return true;
+            Transform nib = quillRoot.Find("Quill_Nib");
             Transform shaft = quillRoot.Find("Quill_Curved_Shaft");
             Transform blade = quillRoot.Find("Quill_Feather_Blade");
-            if (shaft == null || blade == null) return true;
-            MeshFilter shaftMf = shaft.GetComponent<MeshFilter>();
-            MeshFilter bladeMf = blade.GetComponent<MeshFilter>();
-            if (shaftMf == null || shaftMf.sharedMesh == null || shaftMf.sharedMesh.vertexCount == 0) return true;
-            if (bladeMf == null || bladeMf.sharedMesh == null || bladeMf.sharedMesh.vertexCount == 0) return true;
+            if (nib == null || shaft == null || blade == null) return true;
+            if (IsMeshMissing(nib) || IsMeshMissing(shaft) || IsMeshMissing(blade)) return true;
             return false;
+        }
+
+        private static bool IsMeshMissing(Transform target)
+        {
+            MeshFilter filter = target.GetComponent<MeshFilter>();
+            return filter == null || filter.sharedMesh == null || filter.sharedMesh.vertexCount == 0;
         }
 
         public static InkwellAndQuill Create(Transform parent, Vector3 worldPosition, Quaternion? rotation = null, Vector3? scale = null)
@@ -104,6 +118,9 @@ namespace Tessera.Tabletop
             Material blackCeramicRimMat = CreateMaterial("Black Ceramic Rim Material", litShader, new Color(0.05f, 0.05f, 0.06f), 0.35f, 0.92f);
             Material liquidInkMat = CreateMaterial("Liquid Ink Material", litShader, new Color(0.02f, 0.02f, 0.02f), 0.10f, 0.96f);
             Material goldTrimMat = CreateMaterial("Antique Gold Trim Material", litShader, new Color(0.78f, 0.58f, 0.22f), 0.82f, 0.68f);
+
+            // 백랍/은 금속 (깃펜 닙 & 삼엽 장식 칼라)
+            Material pewterSilverMat = CreateMaterial("Pewter Silver Material", litShader, new Color(0.72f, 0.74f, 0.78f), 0.90f, 0.75f);
 
             // 깃털 펜 머티리얼 (깃대 뼈대 & 스타일라이즈드 깃털 텍스처)
             Material quillShaftMat = CreateMaterial("Quill Shaft Material", litShader, new Color(0.93f, 0.89f, 0.80f), 0.04f, 0.45f);
@@ -164,15 +181,33 @@ namespace Tessera.Tabletop
             // 사선 틸트: Pitch 40°, Yaw -65°, Roll 20°
             quillRoot.transform.localRotation = Quaternion.Euler(40f, -65f, 20f);
 
-            // 3-1. 펜촉 (금속 골든 닙)
-            GameObject nib = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            nib.name = "Quill_Nib";
-            SetupPart(nib, quillRoot.transform, new Vector3(0f, 0.12f, 0f), Vector3.zero, new Vector3(0.06f, 0.14f, 0.06f), goldTrimMat);
+            // 3-1. 펜촉 (길고 가느다란 원뿔형 은 닙, 펜 전체 길이의 약 40%)
+            GameObject nibObj = new("Quill_Nib");
+            MeshFilter nibMf = nibObj.AddComponent<MeshFilter>();
+            nibMf.sharedMesh = BuildNibMesh();
+            nibObj.AddComponent<MeshRenderer>();
+            SetupPart(nibObj, quillRoot.transform, Vector3.zero, Vector3.zero, Vector3.one, pewterSilverMat);
 
-            // 3-2. 펜대-깃털 연결 장식 링 (Ornate Gold Ferrule)
-            GameObject ferrule = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            ferrule.name = "Quill_Ferrule";
-            SetupPart(ferrule, quillRoot.transform, new Vector3(0f, 0.28f, 0f), Vector3.zero, new Vector3(0.085f, 0.035f, 0.085f), goldTrimMat);
+            // 3-2. 펜대-깃털 연결 장식 칼라 (밴드 + 비드 + 삼엽 장식)
+            GameObject collarBand = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            collarBand.name = "Quill_Collar_Band";
+            SetupPart(collarBand, quillRoot.transform, new Vector3(0f, CollarBandY, 0f), Vector3.zero, new Vector3(0.105f, 0.055f, 0.105f), pewterSilverMat);
+
+            GameObject collarBead = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            collarBead.name = "Quill_Collar_Bead";
+            SetupPart(collarBead, quillRoot.transform, new Vector3(0f, 0.68f, 0f), Vector3.zero, new Vector3(0.13f, 0.10f, 0.13f), pewterSilverMat);
+
+            GameObject leafLeft = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            leafLeft.name = "Quill_Collar_Leaf_L";
+            SetupPart(leafLeft, quillRoot.transform, new Vector3(-0.075f, 0.75f, 0f), Vector3.zero, new Vector3(0.055f, 0.055f, 0.055f), pewterSilverMat);
+
+            GameObject leafRight = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            leafRight.name = "Quill_Collar_Leaf_R";
+            SetupPart(leafRight, quillRoot.transform, new Vector3(0.075f, 0.75f, 0f), Vector3.zero, new Vector3(0.055f, 0.055f, 0.055f), pewterSilverMat);
+
+            GameObject leafCenter = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            leafCenter.name = "Quill_Collar_Leaf_C";
+            SetupPart(leafCenter, quillRoot.transform, new Vector3(0f, 0.81f, 0f), Vector3.zero, new Vector3(0.055f, 0.055f, 0.055f), pewterSilverMat);
 
             // 3-3. 프로시저럴 곡선 깃대 (Tapered Curved Spine / Rachis)
             GameObject shaftObj = new("Quill_Curved_Shaft");
@@ -192,18 +227,45 @@ namespace Tessera.Tabletop
         }
 
         /// <summary>
+        /// 깃대(Rachis)와 깃판이 공유하는 스파인 오프셋. 두 메쉬가 같은 곡선을 따라야 깃판이 깃대에서 떨어지지 않는다.
+        /// 칼라 아래(닙 구간)는 t가 0으로 클램프되어 오프셋이 없다.
+        /// </summary>
+        private static Vector3 SpineOffset(float y)
+        {
+            float t = Mathf.Clamp01(Mathf.InverseLerp(RachisStartY, RachisStartY + RachisLength, y));
+            return new Vector3(
+                Mathf.Pow(t, 1.35f) * SpineCurveX,
+                0f,
+                Mathf.Sin(t * Mathf.PI * 0.85f) * SpineCurveZ);
+        }
+
+        /// <summary>
+        /// 길고 가느다란 원뿔형 은 닙. 아래쪽 끝(y=0)이 펜촉이다.
+        /// </summary>
+        private static Mesh BuildNibMesh()
+        {
+            return BuildTaperedTubeMesh("Procedural_Quill_Nib", 0f, NibLength, 0.004f, 0.050f, 1.35f, 20);
+        }
+
+        /// <summary>
         /// 깃털 중심을 따라 완만하게 위로 뻗어나가며 가늘어지는 곡선형 깃대(Rachis) 3D 메쉬 생성
         /// </summary>
         private static Mesh BuildCurvedShaftMesh()
         {
-            Mesh mesh = new() { name = "Procedural_Quill_Shaft" };
+            return BuildTaperedTubeMesh("Procedural_Quill_Shaft", RachisStartY, RachisLength, 0.030f, 0.004f, 1f, 28);
+        }
 
-            const int segments = 28;
+        /// <summary>
+        /// 스파인을 따라 굵기가 변하는 개방형 튜브 메쉬. 닙과 깃대가 공유한다.
+        /// radiusGamma가 1보다 크면 시작 굵기를 더 오래 유지한다.
+        /// </summary>
+        private static Mesh BuildTaperedTubeMesh(
+            string meshName, float startY, float totalLength,
+            float baseRadius, float tipRadius, float radiusGamma, int segments)
+        {
+            Mesh mesh = new() { name = meshName };
+
             const int radialSegments = 8;
-            const float startY = 0.25f;
-            const float totalLength = 2.45f;
-            const float baseRadius = 0.026f;
-            const float tipRadius = 0.005f;
 
             int vertCount = (segments + 1) * radialSegments;
             Vector3[] vertices = new Vector3[vertCount];
@@ -215,12 +277,10 @@ namespace Tessera.Tabletop
                 float t = (float)s / segments;
                 float y = startY + t * totalLength;
 
-                // 완만한 자연스러운 곡선 (상단으로 갈수록 살짝 우측/후방으로 휨)
-                float curveX = Mathf.Pow(t, 1.35f) * 0.085f;
-                float curveZ = Mathf.Sin(t * Mathf.PI * 0.85f) * 0.030f;
-                Vector3 center = new(curveX, y, curveZ);
+                Vector3 spine = SpineOffset(y);
+                Vector3 center = new(spine.x, y, spine.z);
 
-                float radius = Mathf.Lerp(baseRadius, tipRadius, t);
+                float radius = Mathf.Lerp(baseRadius, tipRadius, Mathf.Pow(t, radiusGamma));
 
                 for (int r = 0; r < radialSegments; r++)
                 {
@@ -278,14 +338,14 @@ namespace Tessera.Tabletop
         {
             Mesh mesh = new() { name = "Procedural_Quill_Feather_Blade" };
 
-            const int slices = 48;          // 높이 방향 세그먼트 (매끄러운 곡선)
+            const int slices = 96;          // 높이 방향 세그먼트 (깃가지 6개 × 16슬라이스로 노치 경계 정렬)
             const int cols = 7;             // 횡단면 정점 수 (더 둥글고 부드러운 날개 곡면)
-            const float startY = 0.42f;
-            const float totalLength = 2.25f;
+            const int barbCount = 6;        // 넓은 깃면 가장자리에 드러나는 갈라진 깃가지 수
+            const float startY = BladeStartY;
+            const float totalLength = BladeLength;
 
             int vertCount = (slices + 1) * cols;
             Vector3[] vertices = new Vector3[vertCount];
-            Vector3[] normals = new Vector3[vertCount];
             Vector2[] uvs = new Vector2[vertCount];
 
             for (int s = 0; s <= slices; s++)
@@ -293,43 +353,57 @@ namespace Tessera.Tabletop
                 float t = (float)s / slices; // 0.0 (하단) ~ 1.0 (최상단 팁)
                 float y = startY + t * totalLength;
 
-                // 깃대 중심 스플라인과 일치하는 곡선 좌표
-                float curveX = Mathf.Pow(t, 1.35f) * 0.085f;
-                float curveZ = Mathf.Sin(t * Mathf.PI * 0.85f) * 0.030f;
-                Vector3 center = new(curveX, y, curveZ);
+                Vector3 spine = SpineOffset(y);
+                Vector3 center = new(spine.x, y, spine.z);
 
-                // 1. 매끄러운 깃털 타원 실루엣 (Smooth Feather Silhouette - 찢어짐 없는 유기적 곡선)
-                // - 하단 기저부(0.0~0.15): 부드러운 꽃봉오리 확장
-                // - 중앙 바디(0.15~0.75): 35% 높이에서 최대 폭(0.40f) 달성 후 완만하게 수렴
-                // - 상단 팁(0.75~1.0): 날렵하고 뾰족한 끝으로 우아하게 마감
+                // 1. 좁고 길쭉한 깃털 실루엣
+                // - 하단 기저부(0.0~0.12): 부드러운 확장
+                // - 최대 폭(0.30f)은 30% 높이
+                // - 상단(0.30~1.0): 긴 코사인 수렴으로 날카로운 팁 마감
                 float baseWidth;
-                if (t < 0.15f)
+                if (t < 0.12f)
                 {
-                    float u = t / 0.15f;
-                    baseWidth = Mathf.Sin(u * Mathf.PI * 0.5f) * 0.28f;
+                    float u = t / 0.12f;
+                    baseWidth = Mathf.Sin(u * Mathf.PI * 0.5f) * 0.20f;
                 }
-                else if (t < 0.40f)
+                else if (t < 0.30f)
                 {
-                    float u = (t - 0.15f) / 0.25f;
-                    baseWidth = Mathf.Lerp(0.28f, 0.41f, Mathf.Sin(u * Mathf.PI * 0.5f));
+                    float u = (t - 0.12f) / 0.18f;
+                    baseWidth = Mathf.Lerp(0.20f, 0.30f, Mathf.Sin(u * Mathf.PI * 0.5f));
                 }
                 else
                 {
-                    float u = (t - 0.40f) / 0.60f;
-                    // 상단 끝으로 갈수록 부드러운 코사인 곡선으로 뾰족하게 수렴
-                    baseWidth = Mathf.Cos(u * Mathf.PI * 0.5f) * 0.41f;
-                    baseWidth = Mathf.Pow(Mathf.Max(0f, baseWidth / 0.41f), 0.85f) * 0.41f;
+                    float u = (t - 0.30f) / 0.70f;
+                    // 부동소수 오차로 cos가 미세 음수가 되면 Pow가 NaN을 낸다. 반드시 클램프한다.
+                    float taper = Mathf.Max(0f, Mathf.Cos(u * Mathf.PI * 0.5f));
+                    baseWidth = Mathf.Pow(taper, 0.9f) * 0.30f;
                 }
 
-                // 2. 조류 비행 깃의 자연스러운 비대칭 폭 (좌측: 바깥 날개 1.14, 우측: 안쪽 날개 0.86)
-                float leftWidth = baseWidth * 1.14f;
-                float rightWidth = baseWidth * 0.86f;
+                // 2. 강한 비대칭 폭 (좌측: 바깥 날개 1.20, 우측: 안쪽 날개 0.72)
+                float leftWidth = baseWidth * 1.20f;
+                float rightWidth = baseWidth * 0.72f;
 
-                // 3. 횡단면 7개 정점 계산 (중심 깃대에서 외곽으로 완만하게 둥글어지는 파라볼릭 아치)
+                // 3. 넓은 깃면 가장자리의 갈라진 깃가지 노치.
+                //    k가 1에서 0으로 감기는 지점에서 폭이 급격히 복귀하며 V자 컷이 생긴다.
+                float k = Mathf.Repeat(t * barbCount, 1f);
+                float notchFade = 1f - Mathf.InverseLerp(0.55f, 0.95f, t); // 팁 근처는 갈라짐 없음
+                float notchDepth = 0.22f * k * notchFade;
+
+                // 4. 횡단면 7개 정점 계산 (중심 깃대에서 외곽으로 완만하게 둥글어지는 파라볼릭 아치)
                 for (int c = 0; c < cols; c++)
                 {
                     float colFactor = (c - 3) / 3.0f; // -1.0(좌외곽) ~ 0(중심) ~ 1.0(우외곽)
-                    float spanX = colFactor < 0 ? (-colFactor * leftWidth) : (colFactor * rightWidth);
+                    float spanX;
+                    if (colFactor < 0f)
+                    {
+                        // 깃대에 가까운 컬럼일수록 노치를 약하게 먹여 뿌리 쪽은 붙어 있게 한다.
+                        float notch = 1f - notchDepth * -colFactor;
+                        spanX = colFactor * leftWidth * notch;
+                    }
+                    else
+                    {
+                        spanX = colFactor * rightWidth;
+                    }
 
                     // 깃대 중심에서 외곽으로 갈수록 뒤쪽(-Z)으로 완만하게 굽어지는 부드러운 돔 곡면
                     float camberZ = -Mathf.Pow(Mathf.Abs(colFactor), 1.6f) * 0.038f;
@@ -342,14 +416,12 @@ namespace Tessera.Tabletop
                     // UV 매핑: U는 0(좌) ~ 1(우), V는 0(하) ~ 1(상)
                     float uCoord = (float)c / (cols - 1);
                     uvs[idx] = new Vector2(uCoord, t);
-
-                    normals[idx] = new Vector3(0f, 0f, 1f);
                 }
             }
 
-            // 양면 렌더링(Double-sided) 삼각형 인덱스 구성 (앞면 + 뒷면)
+            // 앞면 인덱스로 노멀을 먼저 계산한다.
             int quadCount = slices * (cols - 1);
-            int[] triangles = new int[quadCount * 6 * 2];
+            int[] frontTriangles = new int[quadCount * 6];
             int triIdx = 0;
 
             for (int s = 0; s < slices; s++)
@@ -361,30 +433,52 @@ namespace Tessera.Tabletop
                     int i2 = (s + 1) * cols + (c + 1);
                     int i3 = s * cols + (c + 1);
 
-                    // 앞면 (Front Face)
-                    triangles[triIdx++] = i0;
-                    triangles[triIdx++] = i1;
-                    triangles[triIdx++] = i2;
+                    frontTriangles[triIdx++] = i0;
+                    frontTriangles[triIdx++] = i1;
+                    frontTriangles[triIdx++] = i2;
 
-                    triangles[triIdx++] = i0;
-                    triangles[triIdx++] = i2;
-                    triangles[triIdx++] = i3;
-
-                    // 뒷면 (Back Face)
-                    triangles[triIdx++] = i0;
-                    triangles[triIdx++] = i2;
-                    triangles[triIdx++] = i1;
-
-                    triangles[triIdx++] = i0;
-                    triangles[triIdx++] = i3;
-                    triangles[triIdx++] = i2;
+                    frontTriangles[triIdx++] = i0;
+                    frontTriangles[triIdx++] = i2;
+                    frontTriangles[triIdx++] = i3;
                 }
             }
 
             mesh.vertices = vertices;
             mesh.uv = uvs;
-            mesh.triangles = triangles;
+            mesh.triangles = frontTriangles;
             mesh.RecalculateNormals();
+            Vector3[] frontNormals = mesh.normals;
+
+            // 양면 렌더링: 뒷면은 정점을 복제해 반대 노멀을 준다.
+            // 정점을 공유하면 RecalculateNormals가 앞뒤 노멀을 평균 내 음영이 무너진다.
+            Vector3[] doubledVertices = new Vector3[vertCount * 2];
+            Vector3[] doubledNormals = new Vector3[vertCount * 2];
+            Vector2[] doubledUvs = new Vector2[vertCount * 2];
+            for (int i = 0; i < vertCount; i++)
+            {
+                doubledVertices[i] = vertices[i];
+                doubledVertices[i + vertCount] = vertices[i];
+                doubledNormals[i] = frontNormals[i];
+                doubledNormals[i + vertCount] = -frontNormals[i];
+                doubledUvs[i] = uvs[i];
+                doubledUvs[i + vertCount] = uvs[i];
+            }
+
+            int[] triangles = new int[frontTriangles.Length * 2];
+            Array.Copy(frontTriangles, triangles, frontTriangles.Length);
+            for (int i = 0; i < frontTriangles.Length; i += 3)
+            {
+                int target = frontTriangles.Length + i;
+                triangles[target] = frontTriangles[i] + vertCount;
+                triangles[target + 1] = frontTriangles[i + 2] + vertCount;
+                triangles[target + 2] = frontTriangles[i + 1] + vertCount;
+            }
+
+            mesh.Clear();
+            mesh.vertices = doubledVertices;
+            mesh.normals = doubledNormals;
+            mesh.uv = doubledUvs;
+            mesh.triangles = triangles;
             mesh.RecalculateBounds();
             return mesh;
         }
@@ -403,11 +497,11 @@ namespace Tessera.Tabletop
                 filterMode = FilterMode.Bilinear
             };
 
-            // 3단 웜 판타지 컬러 팔레트
-            Color centerIvory = new(0.98f, 0.95f, 0.88f, 1.0f);     // 웜 바닐라 크림 / 아이보리
-            Color middleWarmToffee = new(0.74f, 0.48f, 0.27f, 1.0f); // 웜 토피 브라운 / 골든 앰버
-            Color edgeMahogany = new(0.38f, 0.20f, 0.10f, 1.0f);    // 앤틱 마호가니 에스프레소
-            Color spineBright = new(1.0f, 0.99f, 0.95f, 1.0f);      // 중심 깃대 하이라이트
+            // 수채화 톤 웜 브라운 팔레트
+            Color wideVaneCream = new(0.90f, 0.82f, 0.70f, 1.0f);    // 넓은 깃면 안쪽 크림
+            Color middleWarmToffee = new(0.72f, 0.50f, 0.30f, 1.0f); // 웜 토피 브라운 / 골든 앰버
+            Color edgeMahogany = new(0.34f, 0.20f, 0.12f, 1.0f);     // 앤틱 마호가니 에스프레소
+            Color spineBright = new(0.96f, 0.93f, 0.86f, 1.0f);      // 중심 깃대 하이라이트
 
             Color[] pixels = new Color[width * height];
 
@@ -417,35 +511,29 @@ namespace Tessera.Tabletop
 
                 for (int x = 0; x < width; x++)
                 {
-                    float u = (float)x / width; // 0 (좌) ~ 0.5 (중심) ~ 1 (우)
+                    float u = (float)x / width; // 0 (넓은 깃면 외곽) ~ 0.5 (깃대) ~ 1 (좁은 깃면 외곽)
                     float distFromCenter = Mathf.Abs(u - 0.5f) * 2.0f; // 0.0 (중심) ~ 1.0 (외곽)
+                    bool isNarrowVane = u > 0.5f;
 
                     // 1. 깃대에서 바깥쪽으로 뻗어나가는 40° 사선 결(Barb) 좌표
                     float barbLine = v - distFromCenter * 0.35f;
 
-                    // 미세한 깃털 결 (다중 주파수 합성)
-                    float barbNoise1 = Mathf.Sin(barbLine * 140f * Mathf.PI * 2f);
-                    float barbNoise2 = Mathf.Sin(barbLine * 280f * Mathf.PI * 2f);
-                    float barbPattern = (barbNoise1 * 0.6f + barbNoise2 * 0.4f) * 0.06f;
+                    // 굵은 수채화 붓결 (다중 주파수 합성)
+                    float barbNoise1 = Mathf.Sin(barbLine * 90f * Mathf.PI * 2f);
+                    float barbNoise2 = Mathf.Sin(barbLine * 180f * Mathf.PI * 2f);
+                    float barbPattern = (barbNoise1 * 0.6f + barbNoise2 * 0.4f) * 0.08f;
 
-                    // 2. 중심 -> 중간 -> 외곽 3단 그라데이션
+                    // 2. 비대칭 그라데이션.
+                    //    넓은 깃면(u < 0.5)은 크림 -> 토피, 좁은 깃면(u > 0.5)은 토피 -> 마호가니로 빠르게 어두워진다.
                     float blendDist = Mathf.Clamp01(Mathf.Pow(distFromCenter, 1.15f) + barbPattern);
-                    Color col;
-                    if (blendDist < 0.45f)
-                    {
-                        float t1 = blendDist / 0.45f;
-                        col = Color.Lerp(centerIvory, middleWarmToffee, t1);
-                    }
-                    else
-                    {
-                        float t2 = (blendDist - 0.45f) / 0.55f;
-                        col = Color.Lerp(middleWarmToffee, edgeMahogany, t2);
-                    }
+                    Color col = isNarrowVane
+                        ? Color.Lerp(middleWarmToffee, edgeMahogany, blendDist)
+                        : Color.Lerp(wideVaneCream, middleWarmToffee, blendDist);
 
                     // 3. 상단 팁 앤틱 마호가니 블렌드
-                    if (v > 0.60f)
+                    if (v > 0.62f)
                     {
-                        float tipFactor = Mathf.Clamp01((v - 0.60f) / 0.40f);
+                        float tipFactor = Mathf.Clamp01((v - 0.62f) / 0.38f);
                         col = Color.Lerp(col, edgeMahogany, tipFactor * 0.80f);
                     }
 
@@ -493,7 +581,7 @@ namespace Tessera.Tabletop
 
                     // 40° 사선 방향의 결 노멀 벡터 계산
                     float barbLine = v - distFromCenter * 0.35f;
-                    float barbSlope = Mathf.Cos(barbLine * 140f * Mathf.PI * 2f);
+                    float barbSlope = Mathf.Cos(barbLine * 90f * Mathf.PI * 2f);
 
                     float nx = -sign * 0.25f + barbSlope * 0.15f;
                     float ny = barbSlope * 0.12f;

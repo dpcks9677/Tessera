@@ -266,11 +266,15 @@ namespace Tessera.EditorTools
         {
             if (AssetImporter.GetAtPath(assetPath) is not TextureImporter importer) return;
 
-            importer.textureType = TextureImporterType.Default;
+            // 노멀맵을 sRGB 컬러 텍스처로 임포트하면 감마 디코드된 값이 _BumpMap에 들어가 음영이 깨진다.
+            // 생성 코드가 텍스처 이름을 "..._Normal"로 붙이므로 파일명으로 판별한다.
+            bool isNormalMap = Path.GetFileNameWithoutExtension(assetPath).EndsWith("_Normal", StringComparison.Ordinal);
+
+            importer.textureType = isNormalMap ? TextureImporterType.NormalMap : TextureImporterType.Default;
             importer.wrapMode = TextureWrapMode.Repeat;
             importer.filterMode = FilterMode.Bilinear;
             importer.mipmapEnabled = true;
-            importer.sRGBTexture = true;
+            importer.sRGBTexture = !isNormalMap;
             importer.textureCompression = TextureImporterCompression.CompressedHQ;
             importer.SaveAndReimport();
         }
