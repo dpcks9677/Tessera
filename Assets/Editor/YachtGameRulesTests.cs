@@ -257,8 +257,9 @@ namespace Tessera.Editor.Tests
                 CurrentPlayerIndex = 0,
                 Players = new[] { new PlayerScoreData(), new PlayerScoreData() }
             };
-            state.Players[0].upperScores[0] = 4;
-            state.Players[1].upperScores[0] = 2;
+            // 총점이 낮은 쪽이 선공이 되는 규칙(D-039)에 맞춰 플레이어 0의 총점을 더 낮게 둔다.
+            state.Players[0].upperScores[0] = 2;
+            state.Players[1].upperScores[0] = 4;
             state.Players[0].RecalculateTotal();
             state.Players[1].RecalculateTotal();
             runtime.Initialize(state, 2);
@@ -266,12 +267,13 @@ namespace Tessera.Editor.Tests
             var random = new SequenceRandomSource(4, 3, 2, 1);
 
             Assert.That(runtime.TryBeginDraft(state, random, out _), Is.True);
+            Assert.That(state.Draft.PlayerIndex, Is.Zero);
             state.Draft.Options = new[] { YachtAugmentRuntime.LuckySevensId };
             Assert.That(runtime.TrySelectAugment(state, 0, YachtAugmentRuntime.LuckySevensId, random,
                 out _, out _, out _), Is.True);
 
             Assert.That(state.Players[0].upperScores[0], Is.EqualTo(-1));
-            Assert.That(state.Players[1].upperScores[0], Is.EqualTo(2));
+            Assert.That(state.Players[1].upperScores[0], Is.EqualTo(4));
             Assert.That(state.AugmentPlayers[0].ExtraTurns, Is.EqualTo(1));
             Assert.That(state.AugmentPlayers[1].ExtraTurns, Is.Zero);
             Assert.That(state.AugmentPlayers[0].OwnedIds, Does.Contain(YachtAugmentRuntime.LuckySevensId));
