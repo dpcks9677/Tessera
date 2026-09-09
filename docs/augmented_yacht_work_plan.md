@@ -24,9 +24,9 @@
 |---|---|
 | 전체 상태 | M1~M6 완료, M7 완료 (T1~T4; T5~T12는 `M17`로 이동 `D-038`), M8 증강 시스템 구조 리팩토링 완료, M9 프리팹 이관 완료, M10 완료, M11 컨트롤러 분해 완료, M12·M13 구현 완료(`M13-T4`는 `M16-T6`으로 이관), M14·M15 완료, M16 셀 셰이딩 채택 보류(`DEFERRED`, 인프라 유지, `D-037`) |
 | 현재 마일스톤 | `M17` 증강 요트 로컬 핫시트 완성 |
-| 현재 작업 | `M17-T18` 점수 칸 호버 깃펜 필기 연출. `M17-T18-1`~`M17-T18-4` 완료, `M17-T18-5` 화면 확인 남음. 상세는 [`docs/quill_hover_writing_animation_plan.md`](quill_hover_writing_animation_plan.md). `M17-T9` 증강 발동 VFX는 중단 후 복귀 예정 |
-| 다음 행동 | `M17-T18-5` 화면 확인: Play Mode에서 호버 시 깃펜이 실제로 칸에 따라붙고 포인터를 빼면 잉크통으로 복귀하는지 검증. 이후 `M17-T9` 복귀 |
-| 마지막 완료 작업 | 점수표 6열 재배치와 턴별 Categories 접힘·펴짐 (`M17-T9`, `D-040`) |
+| 현재 작업 | `M17-T19` 깃펜 깃털 흰색 전환과 갈라짐 연출. `M17-T19-0`~`M17-T19-5` 완료, `M17-T19-6` 에셋 갱신과 화면 확인 남음. 상세는 [`docs/quill_feather_appearance_plan.md`](quill_feather_appearance_plan.md). `M17-T18-5` 화면 확인도 아직 열려 있어 `M17-T19-6`과 한 세션에 합쳐 진행한다. `M17-T9` 증강 발동 VFX는 중단 후 복귀 예정 |
+| 다음 행동 | `M17-T19-6`과 `M17-T18-5`를 한 세션에서 화면 확인: Play Mode에서 잉크통 꽂힘 자세와 점수 칸 호버 필기 자세 양쪽으로 깃펜 깃털이 오프화이트로 갈라져 보이는지, 호버 시 칸에 따라붙고 복귀하는지 검증. 이후 `M17-T9` 복귀 |
+| 마지막 완료 작업 | 깃펜 깃털 공유 상수 격자·팔레트·알파 슬릿·노치·머티리얼 알파 클립·베이크 파이프라인 구현 (`M17-T19-1`~`M17-T19-5`) |
 | 차단 요소 | 없음 |
 | 마지막 갱신일 | 2026-09-09 |
 
@@ -927,6 +927,7 @@ M16 완료 조건:
 - **판정 근거.** M16 완료 조건(주사위 정지 크롭 밝기 밴드 3 이하)을 충족하지 못했고, 측정에서 전제가 틀렸음이 드러났다. Baseline 주사위도 이미 면 안쪽 77 % 평면·밴드 7개라 주사위는 3D로 읽히던 원인이 아니었다. 남은 밴드는 나무결 텍스처 표면과 미변환 특수 연출 셰이더(`M16-T7`)에 있어, 그 둘을 처리해야 채택 여부를 화면으로 판단할 수 있다. 그래픽 작업은 `M17`로 모으기로 했으므로(`D-036`·`D-038`) 여기서 판단을 확정하지 않고 인프라만 남긴 채 보류한다.
 - **유지하는 것.** `RenderStyle { Baseline, Cel }` 런타임 토글, `Tessera/CelSurface` 셰이더, `CelStyleSwitcher`, `PixelReadabilityMetrics`와 측정 도구를 모두 남긴다. 기본값은 `Baseline`이라 화면은 M15까지와 같다. 인프라 유지 비용은 토글 뒤 기본 Off라 낮고, 채택이 확정되면 별도 정리 마일스톤에서 Baseline 경로를 제거한다(`D-034`).
 - **`M16-T7`.** `DEFERRED`. 그래픽 패스에서 Cel을 재개할 때 진행한다. 텍스처 표면 처리, 엣지 임계값 재조정, Cel 육안 비교도 함께 이월한다.
+- **`M17-T19` 알파 클립 이월분(2026-09-09).** 셀 모드는 알파 클립을 나르지 않는다(`CelVariantOf`가 `_BaseColor`·`_BaseMap`·`_Metallic`만 전달하고 `CelSurface.shader`의 `frag`는 `.rgb`만 샘플하며 `clip`이 없다). `M17-T19`에서 깃펜 깃털에 알파 클립 슬릿을 도입했으므로, Cel 재개 시 `CelSurface.shader`에 `clip` 한 줄과 `CelVariantOf`의 `_Cutoff`·`_AlphaClip` 전달을 추가해야 깃펜이 Cel 모드에서 갈라짐 없이 통짜로 보이는 회귀를 막을 수 있다. `DEFERRED` 판정 자체는 바꾸지 않는다.
 - **`PC_Renderer.m_RenderingMode`.** Forward(`0`) 유지. Deferred(`2`)로 복구하지 않는다. `Mobile_Renderer`가 이미 `0`이고 광원이 사실상 하나라 Deferred 이점이 없으며, Cel 재개 시 엣지 피처가 Forward를 요구한다. Baseline 외형 변화 육안 확인은 남았으나 광원 수가 적어 무시 가능 범위로 본다.
 - **독립적으로 남는 성과.** 저해상도 실렌더(픽셀 크롤 4.3 % → 3.4 %)와 셀 셰이더 버그 2건 수정은 이미 트리에 있고 Cel 채택과 무관하게 유효하다.
 
@@ -952,6 +953,7 @@ M16 완료 조건:
 | `M17-T17` | 드래프트 제시 구성과 선공 순서 규칙 | `DONE` | 같은 대상 족보를 교체하는 변형 증강이 한 제시에 둘 이상 나오지 않고, 1번 증강은 무작위·2·3번 증강은 총점이 낮은 쪽이 먼저 선택(2026-09-08). `D-039` |
 | `M17-T16` | 테이블 나뭇결 픽셀화 | `DONE` | 결 경계가 계단으로 끊기고, 판자 4장이 서로 다른 결·옹이·균열을 가짐(2026-09-08). `D-037`이 남긴 "나무결 텍스처 표면" 항목 해소 |
 | `M17-T18` | 점수 칸 호버 깃펜 필기 연출 | `DOING` | 기입 가능한 칸을 가리키면 깃펜이 잉크통에서 나와 그 칸에 닙을 대고, 칸을 옮기면 따라붙고, 포인터를 빼면 잉크통으로 복귀. 그동안에도 점수표 전체가 읽힘. `M17-T18-1`~`M17-T18-4` 완료, `M17-T18-5` 화면 확인 남음(2026-09-09). 상세는 [`docs/quill_hover_writing_animation_plan.md`](quill_hover_writing_animation_plan.md) |
+| `M17-T19` | 깃펜 깃털 흰색 전환과 갈라짐 연출 | `DOING` | 깃털이 오프화이트로 읽히고 깃가지 사이가 실제로 갈라져 보임. 잉크통 꽂힘 자세와 필기 자세 양쪽에서 확인. `M17-T19-0`~`M17-T19-5` 완료, `M17-T19-6` 에셋 갱신과 화면 확인 남음(2026-09-09). 상세는 [`docs/quill_feather_appearance_plan.md`](quill_feather_appearance_plan.md) |
 
 `M17-T8`~`M17-T12`의 시각 사양은 [`docs/augmented_yacht_m7_graphics_plan.md`](augmented_yacht_m7_graphics_plan.md)를 기준으로 한다 (구 `M7-T5`~`M7-T9`). `M17-T8` 특수 주사위는 `augmented-dice` 프로젝트 구현을 재사용한다.
 
@@ -1149,6 +1151,7 @@ npm run validate:augments
 | `D-039` | 2026-09-08 | 테이블 나뭇결을 판자별 픽셀 텍스처로 바꾼다. `Assets/Editor/WoodPlankTextureGenerator.cs`가 판자마다 256×32 PNG를 굽고, 색은 §4 나무 토큰 두 개의 명암 램프 8색에서만 뽑는다. 임포터는 `Point`·밉맵 off·무압축. 반영은 `TabletopPrefabBaker` 전체 굽기 대신 판자 머티리얼 4개만 제자리 갱신한다. | 기존 `wood_grain_knots.png`는 블러 처리된 사인파 그라디언트라 픽셀 격자에 걸려도 인접 칸 색이 거의 같아 부드럽게 보였고, 결 말고는 패턴이 없었다. 타일링 `(1.5, 1.0)`은 판자 비율(38 : 4.9)과 어긋나 텍셀이 가로로 5배 늘어나 결이 문대졌다. 베이커를 쓰지 않은 이유는 `Bake()`가 프롭 15종을 전부 돌며 `DeleteAsset` 후 `SaveAsPrefabAsset`을 해 프리팹 GUID가 새로 발급되고 씬의 PrefabInstance 참조가 끊기기 때문이다. 판자 머티리얼 4개 때문에 씬 재이관까지 감수할 이유가 없다. | §4 팔레트 토큰은 그대로. `TesseraPixelPalette.Build()`의 8~15번이 나무 램프라는 인덱스 결합에 생성기가 의존하므로, 토큰 순서를 바꾸면 생성기의 `firstWoodIndex`도 함께 고쳐야 한다(생성기가 첫 색을 대조해 실패시킨다). 머티리얼 베이스 색은 흰색으로 바뀌었다. `TabletopSurfaceBuilder`는 판자별 텍스처를 로드하도록 갱신했고 전체 재생성 시의 단일 출처로 유지한다. 미참조가 된 `wood_grain_knots.png`는 남겨 둔다. 아트 가이드 §2 표면 질감 항목 갱신 |
 | `D-040` | 2026-09-08 | 점수표를 여섯 열 `[P1 아이콘][P1 Categories][P1 점수][P2 점수][P2 Categories][P2 아이콘]`로 다시 나누고, 현재 턴인 쪽 Categories 열만 펴고 반대쪽은 폭 0으로 접는다. 아이콘 섹터는 접히지 않는다. 변형 증강 스티커는 플레이어별로 두 벌을 동시에 띄운다. `D-039`(2026-09-08, 드래프트) 이전에 확정했던 "현재 플레이어 것만 표시"를 대체한다. | 세 열 구조에서는 Categories 열이 공용이라 상대의 변형 증강을 아예 볼 수 없었고, 두 사람이 같은 칸을 교체하는 증강을 각각 가지면 충돌했다. 열을 플레이어별로 가르면 소유자가 위치로 드러나고 충돌도 사라진다. 접힌 쪽까지 이름을 남기면 이름 열 폭이 절반으로 줄어 족보 이름이 안 들어가므로, 아이콘 섹터만 남기고 이름은 접는다. 상대 정보는 증강 아이콘으로 읽는다 | `ParchmentScoreSheet`가 열 컨테이너 6개를 만들고 `ResolveColumnBounds`가 경계를 정함. 스티커 API(`SetSticker`·`ClearSticker`·`PlayStickerAttach`·`PlayStickerStamp`·`HasStickerSlot`)에 `playerIndex` 추가. `YachtTurnFlowPresenter.SyncAugmentStickers`가 두 사람 몫을 각각 동기화. 보너스 진행도가 양쪽 각자 값으로 나옴(이전에는 P1 것만). 전환 0.35초 ease-out cubic. 시각 사양은 [`docs/augmented_yacht_m17_vfx_spec.md`](augmented_yacht_m17_vfx_spec.md) §3.1.1 |
 | `D-041` | 2026-09-09 | `SOLID-T01` 착수 시 계획서 기술과 실제 코드가 어긋난 것이 확인돼, 계획서를 실제 코드 기준으로 교정하고 작업 범위를 사다리 11개 분기로 한정한다. | 사다리 11개 중 10개가 핸들러 `OnSelected`와 중복인 죽은 코드였고, 계획서가 지목한 5개(`GoldenDie`, `EquivalentExchange`, `Gambit`, `DoubleDown`, `PiggyBank`)는 애초에 사다리 밖이었음 | `SOLID-T02` 이후 태스크도 착수 전 실제 코드와 대조가 필요함 |
+| `D-042` | 2026-09-09 | 깃펜 깃털을 오프화이트 아이보리 + 알베도 알파 클립 슬릿으로 전환한다. 반영은 `TabletopPrefabBaker` 전체 재베이크 대신 깃털 관련 4개 경로만 같은 GUID로 덮어쓰는 `QuillFeatherAssetRefresh` 전용 도구로 한다. `QuillCrispUiMask` 깊이 마스크와 알파 슬릿의 불일치는 수용하고 탈출구만 명세한다. | 웜 브라운 3단 팔레트와 얕은 실루엣 노치만으로는 흰 깃펜·깃가지 갈라짐으로 읽히지 않았다. 전체 재베이크는 `BakeProp`이 `DeleteAsset` 후 `SaveAsPrefabAsset`을 해 프리팹 GUID를 재발급하므로 씬 인스턴스 15개 참조와 `AugmentedYachtController.quillHoverAnimator` 직렬화 참조가 끊긴다. `CrispUiDepthMask.shader`에 텍스처 샘플을 추가하면 모든 깃펜 파츠가 공유하는 static 머티리얼 구조가 파츠별 상태를 요구하게 돼 비용이 설계를 깬다 | `docs/quill_feather_appearance_plan.md` 신설. `TabletopPrefabBaker`에 밉 커버리지 보존 2줄과 `isNormalMap` 가드 추가, 헬퍼 `internal` 승격. 화면 확인에서 글자 획이 눈에 띄게 끊기면 `CrispUiDepthMask.shader`에 클립을 추가하는 탈출구를 §9에 사전 명세함 |
 
 ---
 
@@ -1176,6 +1179,24 @@ npm run validate:augments
 ---
 
 ## 13. 작업 세션 로그
+
+### 2026-09-09 — Claude (`M17-T19` 깃펜 깃털 흰색 전환과 갈라짐 연출)
+
+- 작업 ID: `M17-T19` (시작 상태 `DOING`)
+- 시작 상태: `M17-T18` 호버 필기 연출로 깃펜이 화면 중앙에 자주 올라오면서, 깃털이 웜 브라운 3단 그라데이션이라 흰 깃펜으로 안 읽히고 얕은 실루엣 노치뿐이라 깃가지가 갈라진 느낌이 없다는 두 문제가 드러남
+- 사용자 결정: 흰색 바탕은 오프화이트 아이보리 + 웜 그레이 결로, 갈라짐은 알베도 알파 클립 슬릿 + 메시 노치 강화를 병행하는 것으로 확정
+- 한 일:
+  - 픽셀 예산 재계산: 480×270 필터에서 깃면이 화면 7~15 px뿐임을 확인하고, 이를 근거로 `BarbSlant = 1/6`·`SlitCycles = 12`(각도 33.8도, 최악 구멍 1.5~2.2 px)를 채택
+  - 공유 상수 격자(`BarbCount`·`SlitCycles`·`BarbSlant`·`SlitDuty` 등)와 아이보리 4색 팔레트로 교체
+  - 알베도 알파 슬릿 함수와 메시 노치(`MaxNotchDepth 0.40`, `NotchSharpness 1.8`) 강화 구현
+  - 머티리얼에 알파 클립(`_Cutoff`·`_ALPHATEST_ON`·`_AlphaClip`·큐 2450) 적용
+  - 베이커에 밉 커버리지 보존 2줄과 `isNormalMap` 가드 추가, 헬퍼 `internal` 승격, 전용 갱신 도구 `QuillFeatherAssetRefresh` 신설(전체 재베이크 대신 4개 경로만 같은 GUID로 덮어써 프리팹 GUID 재발급을 피함)
+  - `QuillCrispUiMask` 깊이 마스크와 알파 슬릿의 불일치를 수용하고 탈출구를 사전 명세
+  - 상세 계획서 [`docs/quill_feather_appearance_plan.md`](quill_feather_appearance_plan.md) 신규 작성
+- 실행한 검증: `M17-T19-1`~`M17-T19-5` 범위의 EditMode 테스트 9개(`QuillFeatherAppearanceTests`)와 컴파일 확인. `M17-T19-6` 에셋 갱신·화면 확인은 미실시
+- 결정 기록: `D-042`
+- 남은 문제/차단 요소: `M17-T19-6`(에셋 4종 갱신과 화면 확인) 미실시. `M17-T18-5`(호버 필기 화면 확인)도 아직 열려 있어 두 화면 확인을 한 세션에 합쳐 진행하기로 함
+- 다음 작업: `M17-T19-6`을 `M17-T18-5`와 합쳐 진행. 이후 `M17-T9` 증강 발동 VFX 복귀
 
 ### 2026-09-09 — Claude Opus 5 (`SOLID-T01` 증강 획득 초기화 자율화)
 

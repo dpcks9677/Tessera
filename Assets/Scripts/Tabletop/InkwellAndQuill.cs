@@ -57,6 +57,31 @@ namespace Tessera.Tabletop
         private const float SpineCurveX = 0.035f;
         private const float SpineCurveZ = 0.012f;
 
+        // ── 깃가지 갈라짐 격자 ─────────────────────────────────────────────
+        // 알베도 알파 슬릿·결 음영·노멀맵·메시 노치가 같은 격자를 쓴다.
+        // 상수 근거는 docs/quill_feather_appearance_plan.md의 픽셀 예산 절에 있다.
+        // SlitCycles × BarbSlant 가 정수이고 SlitCycles 가 BarbCount 의 배수라는 두 조건이
+        // 슬릿과 메시 노치 정렬의 전부다. 셋 중 하나라도 바꾸면 두 조건을 다시 확인해야 한다.
+        private const int BarbCount = 6;               // 실루엣 노치 수. slices 96 = 6 × 16 전제를 유지한다
+        private const int SlitCycles = 12;             // 텍스처 슬릿 수 = 2 × BarbCount
+        private const float BarbSlant = 1f / 6f;       // 깃가지가 깃대에서 33.8도 벌어진다
+        private const float SlitDuty = 0.40f;          // 완전 개방 시 슬릿이 한 주기에서 차지하는 비율
+        private const float RachisHold = 0.22f;        // 이 안쪽은 항상 붙어 있다 (깃대 + 깃가지 뿌리)
+        private const float VaneOpen = 0.92f;          // 여기부터 완전 개방
+        private const float SlitRootStart = 0.06f;
+        private const float SlitRootFull = 0.16f;
+        private const float SlitTipStart = 0.72f;
+        private const float SlitTipEnd = 0.88f;        // 팁은 막아 실루엣이 부서지지 않게 한다
+        private const float FeatherCutoff = 0.5f;      // 머티리얼 _Cutoff. TabletopPrefabBaker 의 alphaTestReferenceValue 와 같아야 한다
+        private const float MaxNotchDepth = 0.40f;
+        private const float NotchSharpness = 1.8f;
+
+        // 오프화이트 아이보리 깃털. 음영은 웜 그레이~베이지로만 얕게 준다.
+        private static readonly Color VaneIvory = new(0.95f, 0.94f, 0.91f);
+        private static readonly Color VaneShadowBeige = new(0.86f, 0.83f, 0.76f);
+        private static readonly Color BarbGrooveGray = new(0.78f, 0.75f, 0.70f);
+        private static readonly Color RachisHighlight = new(0.99f, 0.98f, 0.96f);
+
         private void Awake()
         {
             EnsureGeometry();
@@ -174,7 +199,20 @@ namespace Tessera.Tabletop
             {
                 quillFeatherMat.SetTexture("_BumpMap", featherNormal);
                 quillFeatherMat.EnableKeyword("_NORMALMAP");
-                quillFeatherMat.SetFloat("_BumpScale", 0.75f);
+                quillFeatherMat.SetFloat("_BumpScale", 1.0f);
+            }
+
+            // 깃가지 사이 틈은 알베도 알파로 뚫는다.
+            // _ALPHATEST_ON 키워드만으로는 부족하다. URP 머티리얼 검증기가 _AlphaClip 프로퍼티를 읽어
+            // 키워드와 렌더 큐, RenderType 태그를 재유도하므로 프로퍼티를 세팅하지 않으면
+            // 에셋으로 구울 때 키워드가 도로 꺼진다. 두 개를 반드시 같이 쓴다.
+            quillFeatherMat.SetFloat("_Cutoff", FeatherCutoff);
+            quillFeatherMat.EnableKeyword("_ALPHATEST_ON");
+            if (quillFeatherMat.HasProperty("_AlphaClip"))
+            {
+                quillFeatherMat.SetFloat("_AlphaClip", 1f);
+                quillFeatherMat.SetOverrideTag("RenderType", "TransparentCutout");
+                quillFeatherMat.renderQueue = (int)RenderQueue.AlphaTest;
             }
 
             // 2. 원통형 블랙 잉크통 (Cylindrical Black Inkwell)
@@ -470,6 +508,24 @@ namespace Tessera.Tabletop
         }
 
         /// <summary>
+        /// 넓은 깃면 컬럼의 폭 배수. 1이면 온전하고 작을수록 깊게 파인다.
+        /// MaxNotchDepth 0.40 은 원칙적 상한이다. 컬럼 최외곽에서 좌측 반폭이
+        /// baseWidth × 1.20 × 0.60 = baseWidth × 0.72 로 우측 반폭과 정확히 같아진다.
+        /// 더 깊이 가면 노치 바닥에서 좌우 비대칭이 뒤집혀 Primary Feather 실루엣이 깨진다.
+        /// </summary>
+        /// <param name="t">깃판 하단 0 에서 팁 1 까지의 정규화 높이</param>
+        /// <param name="colFactor">-1(좌 외곽) ~ 0(중심) ~ 1(우 외곽)</param>
+        public static float FeatherNotchScale(float t, float colFactor)
+        {
+            if (colFactor >= 0f) return 1f; // 좁은 깃면에는 노치를 넣지 않는다
+
+            float k = Mathf.Repeat(t * BarbCount, 1f);
+            float notchFade = 1f - Mathf.InverseLerp(0.55f, 0.95f, t); // 팁 근처는 갈라짐 없음
+            float notchDepth = MaxNotchDepth * Mathf.Pow(k, NotchSharpness) * notchFade;
+            return 1f - notchDepth * -colFactor;
+        }
+
+        /// <summary>
         /// 실제 조류 깃털(Primary Feather)의 우아한 비대칭 타원형 실루엣과 부드러운 아치 곡면을 가진 3D 깃판 메쉬 생성
         /// </summary>
         private static Mesh BuildProceduralFeatherMesh()
@@ -478,7 +534,6 @@ namespace Tessera.Tabletop
 
             const int slices = 96;          // 높이 방향 세그먼트 (깃가지 6개 × 16슬라이스로 노치 경계 정렬)
             const int cols = 7;             // 횡단면 정점 수 (더 둥글고 부드러운 날개 곡면)
-            const int barbCount = 6;        // 넓은 깃면 가장자리에 드러나는 갈라진 깃가지 수
             const float startY = BladeStartY;
             const float totalLength = BladeLength;
 
@@ -521,27 +576,13 @@ namespace Tessera.Tabletop
                 float leftWidth = baseWidth * 1.20f;
                 float rightWidth = baseWidth * 0.72f;
 
-                // 3. 넓은 깃면 가장자리의 갈라진 깃가지 노치.
-                //    k가 1에서 0으로 감기는 지점에서 폭이 급격히 복귀하며 V자 컷이 생긴다.
-                float k = Mathf.Repeat(t * barbCount, 1f);
-                float notchFade = 1f - Mathf.InverseLerp(0.55f, 0.95f, t); // 팁 근처는 갈라짐 없음
-                float notchDepth = 0.22f * k * notchFade;
-
-                // 4. 횡단면 7개 정점 계산 (중심 깃대에서 외곽으로 완만하게 둥글어지는 파라볼릭 아치)
+                // 3. 횡단면 7개 정점 계산 (중심 깃대에서 외곽으로 완만하게 둥글어지는 파라볼릭 아치)
                 for (int c = 0; c < cols; c++)
                 {
                     float colFactor = (c - 3) / 3.0f; // -1.0(좌외곽) ~ 0(중심) ~ 1.0(우외곽)
-                    float spanX;
-                    if (colFactor < 0f)
-                    {
-                        // 깃대에 가까운 컬럼일수록 노치를 약하게 먹여 뿌리 쪽은 붙어 있게 한다.
-                        float notch = 1f - notchDepth * -colFactor;
-                        spanX = colFactor * leftWidth * notch;
-                    }
-                    else
-                    {
-                        spanX = colFactor * rightWidth;
-                    }
+                    float spanX = colFactor < 0f
+                        ? colFactor * leftWidth * FeatherNotchScale(t, colFactor)
+                        : colFactor * rightWidth;
 
                     // 깃대 중심에서 외곽으로 갈수록 뒤쪽(-Z)으로 완만하게 굽어지는 부드러운 돔 곡면
                     float camberZ = -Mathf.Pow(Mathf.Abs(colFactor), 1.6f) * 0.038f;
@@ -622,7 +663,59 @@ namespace Tessera.Tabletop
         }
 
         /// <summary>
-        /// 40° 사선 깃털 결(Fine Barbs)과 3단 웜 판타지 그라데이션이 적용된 512x1024 깃털 텍스처 생성
+        /// 깃가지 사이 틈의 알파. 1이면 깃면, 0이면 뚫린 틈이다.
+        /// 깃대 쪽(RachisHold 안쪽)과 뿌리, 팁은 붙어 있고 외곽으로 갈수록 벌어진다.
+        /// 알파 클립용이라 이진값을 준다. 반값은 밉맵 커버리지 보존 계산을 흐린다.
+        /// u 에 대해 대칭이라 임포터가 랩 모드를 Repeat 으로 바꿔도 좌우 이음매가 생기지 않는다.
+        /// </summary>
+        public static float FeatherSlitAlpha(float u, float v)
+        {
+            float dist = Mathf.Abs(u - 0.5f) * 2f;
+
+            float openness = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(RachisHold, VaneOpen, dist));
+            float rootFade = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(SlitRootStart, SlitRootFull, v));
+            float tipFade = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(SlitTipStart, SlitTipEnd, v));
+            float amount = openness * rootFade * tipFade;
+
+            float phase = Mathf.Repeat((v - dist * BarbSlant) * SlitCycles, 1f);
+            float toCenter = Mathf.Min(phase, 1f - phase) * 2f; // 0 = 슬릿 중심, 1 = 깃가지 중심
+
+            return toCenter < SlitDuty * amount ? 0f : 1f;
+        }
+
+        /// <summary>깃털 알베도 색. 알파는 FeatherSlitAlpha 가 따로 정한다.</summary>
+        public static Color FeatherAlbedo(float u, float v)
+        {
+            float distFromCenter = Mathf.Abs(u - 0.5f) * 2.0f; // 0.0 (중심) ~ 1.0 (외곽)
+            bool isNarrowVane = u > 0.5f;
+
+            // 1. 깃대에서 바깥쪽으로 뻗어나가는 사선 결(Barb) 좌표
+            float barbLine = v - distFromCenter * BarbSlant;
+
+            // 굵은 수채화 붓결 (다중 주파수 합성)
+            float barbNoise1 = Mathf.Sin(barbLine * SlitCycles * Mathf.PI * 2f);
+            float barbNoise2 = Mathf.Sin(barbLine * SlitCycles * 2 * Mathf.PI * 2f);
+            float barbPattern = (barbNoise1 * 0.6f + barbNoise2 * 0.4f) * 0.18f;
+
+            // 2. 비대칭 그라데이션.
+            //    넓은 깃면(u < 0.5)은 아이보리 -> 베이지, 좁은 깃면(u > 0.5)은 아이보리 -> 그레이로 얕게 어두워진다.
+            float blendDist = Mathf.Clamp01(Mathf.Pow(distFromCenter, 1.15f) + barbPattern);
+            Color col = isNarrowVane
+                ? Color.Lerp(VaneIvory, BarbGrooveGray, blendDist)
+                : Color.Lerp(VaneIvory, VaneShadowBeige, blendDist);
+
+            // 3. 중심 깃대(Spine) 하이라이트
+            if (distFromCenter < 0.08f)
+            {
+                float spineBlend = 1.0f - (distFromCenter / 0.08f);
+                col = Color.Lerp(col, RachisHighlight, spineBlend * 0.60f);
+            }
+
+            return col;
+        }
+
+        /// <summary>
+        /// 40° 사선 깃털 결(Fine Barbs)과 오프화이트 아이보리 그라데이션이 적용된 512x1024 깃털 텍스처 생성
         /// </summary>
         private static Texture2D GenerateStylizedFeatherTexture()
         {
@@ -635,12 +728,6 @@ namespace Tessera.Tabletop
                 filterMode = FilterMode.Bilinear
             };
 
-            // 수채화 톤 웜 브라운 팔레트
-            Color wideVaneCream = new(0.90f, 0.82f, 0.70f, 1.0f);    // 넓은 깃면 안쪽 크림
-            Color middleWarmToffee = new(0.72f, 0.50f, 0.30f, 1.0f); // 웜 토피 브라운 / 골든 앰버
-            Color edgeMahogany = new(0.34f, 0.20f, 0.12f, 1.0f);     // 앤틱 마호가니 에스프레소
-            Color spineBright = new(0.96f, 0.93f, 0.86f, 1.0f);      // 중심 깃대 하이라이트
-
             Color[] pixels = new Color[width * height];
 
             for (int y = 0; y < height; y++)
@@ -650,38 +737,9 @@ namespace Tessera.Tabletop
                 for (int x = 0; x < width; x++)
                 {
                     float u = (float)x / width; // 0 (넓은 깃면 외곽) ~ 0.5 (깃대) ~ 1 (좁은 깃면 외곽)
-                    float distFromCenter = Mathf.Abs(u - 0.5f) * 2.0f; // 0.0 (중심) ~ 1.0 (외곽)
-                    bool isNarrowVane = u > 0.5f;
 
-                    // 1. 깃대에서 바깥쪽으로 뻗어나가는 40° 사선 결(Barb) 좌표
-                    float barbLine = v - distFromCenter * 0.35f;
-
-                    // 굵은 수채화 붓결 (다중 주파수 합성)
-                    float barbNoise1 = Mathf.Sin(barbLine * 90f * Mathf.PI * 2f);
-                    float barbNoise2 = Mathf.Sin(barbLine * 180f * Mathf.PI * 2f);
-                    float barbPattern = (barbNoise1 * 0.6f + barbNoise2 * 0.4f) * 0.08f;
-
-                    // 2. 비대칭 그라데이션.
-                    //    넓은 깃면(u < 0.5)은 크림 -> 토피, 좁은 깃면(u > 0.5)은 토피 -> 마호가니로 빠르게 어두워진다.
-                    float blendDist = Mathf.Clamp01(Mathf.Pow(distFromCenter, 1.15f) + barbPattern);
-                    Color col = isNarrowVane
-                        ? Color.Lerp(middleWarmToffee, edgeMahogany, blendDist)
-                        : Color.Lerp(wideVaneCream, middleWarmToffee, blendDist);
-
-                    // 3. 상단 팁 앤틱 마호가니 블렌드
-                    if (v > 0.62f)
-                    {
-                        float tipFactor = Mathf.Clamp01((v - 0.62f) / 0.38f);
-                        col = Color.Lerp(col, edgeMahogany, tipFactor * 0.80f);
-                    }
-
-                    // 4. 중심 깃대(Spine) 하이라이트
-                    if (distFromCenter < 0.08f)
-                    {
-                        float spineBlend = 1.0f - (distFromCenter / 0.08f);
-                        col = Color.Lerp(col, spineBright, spineBlend * 0.60f);
-                    }
-
+                    Color col = FeatherAlbedo(u, v);
+                    col.a = FeatherSlitAlpha(u, v);
                     pixels[y * width + x] = col;
                 }
             }
@@ -717,12 +775,12 @@ namespace Tessera.Tabletop
                     float distFromCenter = Mathf.Abs(u - 0.5f) * 2.0f;
                     float sign = u >= 0.5f ? 1f : -1f;
 
-                    // 40° 사선 방향의 결 노멀 벡터 계산
-                    float barbLine = v - distFromCenter * 0.35f;
-                    float barbSlope = Mathf.Cos(barbLine * 90f * Mathf.PI * 2f);
+                    // 사선 방향의 결 노멀 벡터 계산
+                    float barbLine = v - distFromCenter * BarbSlant;
+                    float barbSlope = Mathf.Cos(barbLine * SlitCycles * Mathf.PI * 2f);
 
-                    float nx = -sign * 0.25f + barbSlope * 0.15f;
-                    float ny = barbSlope * 0.12f;
+                    float nx = -sign * 0.25f + barbSlope * 0.22f;
+                    float ny = barbSlope * 0.18f;
                     float nz = 1.0f;
 
                     Vector3 norm = new Vector3(nx, ny, nz).normalized;
