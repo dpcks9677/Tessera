@@ -125,3 +125,43 @@ Rules:
 - Unity Editor 조작(스크립트·씬·프리팹·에셋·머티리얼·테스트 실행 등)은 **`unity-skills` 스킬**로 수행합니다.
 - 이 스킬의 원본은 <https://github.com/Besty0728/Unity-Skills> 입니다. 갱신·재설치 시 이 저장소를 기준으로 합니다.
 - 개념 질문만이고 Editor 상태를 건드리지 않으면 스킬 없이 `skills/` 하위 해당 문서만 읽습니다.
+
+## 오케스트레이션
+
+설계 판단은 Opus high가 하고, 실행은 Sonnet medium 서브에이전트가 맡습니다. 무거운 파일 읽기·빌드 로그·테스트 출력은 서브에이전트 컨텍스트에서 소비되고, 설계자에게는 요약만 올라옵니다.
+
+### 구성
+
+에이전트는 `.claude/agents/` 에 있습니다. 전부 `model: sonnet`, `effort: medium` 입니다.
+
+| 에이전트 | 역할 | Unity 접근 |
+|---|---|---|
+| `tessera-scout` | graphify 기반 조사. 읽기 전용 | 없음 |
+| `tessera-implementer` | 확정된 설계대로 C# 수정 | 없음 |
+| `tessera-verifier` | 컴파일·EditMode 테스트 실행과 판정 | 있음 |
+| `tessera-scribe` | 계획서 상태표·세션 로그 갱신. `docs/` 한정 | 없음 |
+| `tessera-reviewer` | 지정된 렌즈 하나로 감사. 읽기 전용 | 없음 |
+| `tessera-unity-operator` | 씬·프리팹·머티리얼·에셋 조작 | 있음 |
+
+스킬은 `.claude/skills/tessera-*` 에 있습니다. 전부 `model: opus`, `effort: high` 입니다.
+
+| 스킬 | 용도 |
+|---|---|
+| `/tessera-task <ID>` | 작업계획서 태스크 하나를 조사·설계·구현·검증·기록까지 수행 |
+| `/tessera-audit <대상>` | 프로젝트 고유 규칙 렌즈로 병렬 감사 |
+| `/tessera-unity <작업>` | Unity 씬·프리팹 작업을 조사부터 시각 확인까지 수행 |
+| `/tessera-plan-sync` | 계획서 상태와 실제 코드·커밋의 불일치 교정 |
+
+### 규칙
+
+- 사용자가 태스크 ID(`Mnn-Tnn`, `SOLID-Tnn`)를 지목해 작업을 요청하면 `/tessera-task` 흐름을 탑니다.
+- 코드 위치·호출 관계·영향 범위 조사는 직접 grep하지 말고 `tessera-scout` 에 위임합니다.
+- **Unity 접근 에이전트(`tessera-verifier`, `tessera-unity-operator`)는 동시에 둘 이상 실행하지 않습니다.** Unity Editor는 REST 서버 하나에 붙은 단일 인스턴스라 동시 조작 시 씬이 깨집니다. 나머지 네 에이전트는 Unity 도구를 갖지 않아 구조적으로 충돌하지 않습니다.
+- 파일 작업(조사·구현·문서)은 대상 파일 집합이 겹치지 않을 때만 병렬로 최대 3개까지 돌립니다.
+- 서브에이전트는 대화 이력을 물려받지 않습니다. 필요한 맥락을 매 호출 프롬프트에 전부 실어야 합니다. `CLAUDE.md`, `AGENTS.md`, PreToolUse 훅은 상속됩니다.
+- **서브에이전트는 커밋하지 않습니다.** 커밋·푸시는 위 「커밋 & 푸시」 규칙대로 매번 사용자 허가를 받습니다.
+- 계획서와 실제 코드가 어긋나면 임의로 판단해 진행하지 말고 사용자에게 확인합니다. 실제로 어긋난 사례가 있습니다(`D-041`).
+
+### 새 에이전트·스킬 등록 시점
+
+에이전트 정의 파일을 새로 만들면 **사용자 턴 경계에서만 인식됩니다.** 만든 직후 같은 턴에 `Agent` 로 띄우면 `not found` 로 실패합니다. 스킬은 같은 턴 안에서도 잠시 뒤 인식됩니다.
