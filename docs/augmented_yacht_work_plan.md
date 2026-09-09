@@ -24,11 +24,11 @@
 |---|---|
 | 전체 상태 | M1~M6 완료, M7 완료 (T1~T4; T5~T12는 `M17`로 이동 `D-038`), M8 증강 시스템 구조 리팩토링 완료, M9 프리팹 이관 완료, M10 완료, M11 컨트롤러 분해 완료, M12·M13 구현 완료(`M13-T4`는 `M16-T6`으로 이관), M14·M15 완료, M16 셀 셰이딩 채택 보류(`DEFERRED`, 인프라 유지, `D-037`) |
 | 현재 마일스톤 | `M17` 증강 요트 로컬 핫시트 완성 |
-| 현재 작업 | `M17-T9` 증강 발동 VFX. 사양 문서 [`docs/augmented_yacht_m17_vfx_spec.md`](augmented_yacht_m17_vfx_spec.md)에 45개 중 11개 기입, 변형 계열 범용 설계(우표 스티커) 확정. 점수표 6열 재배치와 플레이어별 스티커 완료 (`D-040`) |
-| 다음 행동 | `M17-T9` 변형 계열 구현(후보 스탬프 → 스티커 텍스처 생성기 → 이벤트 디스패처). 이후 나머지 34개 연출 설명 기입 또는 `M17-T3`·`M17-T10`·`M17-T11`(상태 표시 묶음) |
+| 현재 작업 | `M17-T18` 점수 칸 호버 깃펜 필기 연출. `M17-T18-1`~`M17-T18-4` 완료, `M17-T18-5` 화면 확인 남음. 상세는 [`docs/quill_hover_writing_animation_plan.md`](quill_hover_writing_animation_plan.md). `M17-T9` 증강 발동 VFX는 중단 후 복귀 예정 |
+| 다음 행동 | `M17-T18-5` 화면 확인: Play Mode에서 호버 시 깃펜이 실제로 칸에 따라붙고 포인터를 빼면 잉크통으로 복귀하는지 검증. 이후 `M17-T9` 복귀 |
 | 마지막 완료 작업 | 점수표 6열 재배치와 턴별 Categories 접힘·펴짐 (`M17-T9`, `D-040`) |
 | 차단 요소 | 없음 |
-| 마지막 갱신일 | 2026-09-08 |
+| 마지막 갱신일 | 2026-09-09 |
 
 ### 상태 표기 규칙
 
@@ -951,7 +951,7 @@ M16 완료 조건:
 | `M17-T15` | 해상도·가독성·성능 검증 (구 `M7-T12`) | `DEFERRED` | `M17` 핵심 완주 뒤. 32·48·64px·목표 해상도, 프레임·메모리 |
 | `M17-T17` | 드래프트 제시 구성과 선공 순서 규칙 | `DONE` | 같은 대상 족보를 교체하는 변형 증강이 한 제시에 둘 이상 나오지 않고, 1번 증강은 무작위·2·3번 증강은 총점이 낮은 쪽이 먼저 선택(2026-09-08). `D-039` |
 | `M17-T16` | 테이블 나뭇결 픽셀화 | `DONE` | 결 경계가 계단으로 끊기고, 판자 4장이 서로 다른 결·옹이·균열을 가짐(2026-09-08). `D-037`이 남긴 "나무결 텍스처 표면" 항목 해소 |
-| `M17-T18` | 점수 칸 호버 깃펜 필기 연출 | `TODO` | 기입 가능한 칸을 가리키면 깃펜이 잉크통에서 나와 그 칸에 닙을 대고, 칸을 옮기면 따라붙고, 포인터를 빼면 잉크통으로 복귀. 그동안에도 점수표 전체가 읽힘. 상세는 [`docs/quill_hover_writing_animation_plan.md`](quill_hover_writing_animation_plan.md) |
+| `M17-T18` | 점수 칸 호버 깃펜 필기 연출 | `DOING` | 기입 가능한 칸을 가리키면 깃펜이 잉크통에서 나와 그 칸에 닙을 대고, 칸을 옮기면 따라붙고, 포인터를 빼면 잉크통으로 복귀. 그동안에도 점수표 전체가 읽힘. `M17-T18-1`~`M17-T18-4` 완료, `M17-T18-5` 화면 확인 남음(2026-09-09). 상세는 [`docs/quill_hover_writing_animation_plan.md`](quill_hover_writing_animation_plan.md) |
 
 `M17-T8`~`M17-T12`의 시각 사양은 [`docs/augmented_yacht_m7_graphics_plan.md`](augmented_yacht_m7_graphics_plan.md)를 기준으로 한다 (구 `M7-T5`~`M7-T9`). `M17-T8` 특수 주사위는 `augmented-dice` 프로젝트 구현을 재사용한다.
 
@@ -1148,6 +1148,7 @@ npm run validate:augments
 | `D-038` | 2026-09-07 | `M7-T5`~`M7-T12`를 `M17`로 옮기고 `M7`을 `T1`~`T4`로 완료(`DONE`) 처리한다. 흡수분은 `M17-T8`~`M17-T15`(구 `M7-T5`~`M7-T12`). `M18`~`M20` 번호는 유지한다. `D-036`의 태그 분리(차단 최소분/폴리시분, 재번호 없음)를 대체한다. | 태그 분리는 한 마일스톤에 상태가 섞여 읽기 어려웠고, 구 `M7-T7`~`M7-T9`(상태·행동 표시)는 `M17-T3`·`M17-T4`와 실제로 겹침. 특수 주사위·VFX·폴백·검증도 "증강 요트 완주" 그래픽이라 `M17` 범위. `M7`은 카드 시각 시스템으로 완결됨 | `M17` 선행 `M7`, `M11` → `M11`. §6에서 `M7` `DONE`. §3.3의 폴리시분 행을 `M17-T13`~`M17-T15` 소속으로 수정. §2·§7 M7 절 갱신. 시각 사양 문서 [`docs/augmented_yacht_m7_graphics_plan.md`](augmented_yacht_m7_graphics_plan.md)는 `M17` 그래픽 작업 기준으로 계속 사용. §11·§13 과거 기록과 코드 주석의 `M7-Tn` 표기는 역사 기록이라 유지 |
 | `D-039` | 2026-09-08 | 테이블 나뭇결을 판자별 픽셀 텍스처로 바꾼다. `Assets/Editor/WoodPlankTextureGenerator.cs`가 판자마다 256×32 PNG를 굽고, 색은 §4 나무 토큰 두 개의 명암 램프 8색에서만 뽑는다. 임포터는 `Point`·밉맵 off·무압축. 반영은 `TabletopPrefabBaker` 전체 굽기 대신 판자 머티리얼 4개만 제자리 갱신한다. | 기존 `wood_grain_knots.png`는 블러 처리된 사인파 그라디언트라 픽셀 격자에 걸려도 인접 칸 색이 거의 같아 부드럽게 보였고, 결 말고는 패턴이 없었다. 타일링 `(1.5, 1.0)`은 판자 비율(38 : 4.9)과 어긋나 텍셀이 가로로 5배 늘어나 결이 문대졌다. 베이커를 쓰지 않은 이유는 `Bake()`가 프롭 15종을 전부 돌며 `DeleteAsset` 후 `SaveAsPrefabAsset`을 해 프리팹 GUID가 새로 발급되고 씬의 PrefabInstance 참조가 끊기기 때문이다. 판자 머티리얼 4개 때문에 씬 재이관까지 감수할 이유가 없다. | §4 팔레트 토큰은 그대로. `TesseraPixelPalette.Build()`의 8~15번이 나무 램프라는 인덱스 결합에 생성기가 의존하므로, 토큰 순서를 바꾸면 생성기의 `firstWoodIndex`도 함께 고쳐야 한다(생성기가 첫 색을 대조해 실패시킨다). 머티리얼 베이스 색은 흰색으로 바뀌었다. `TabletopSurfaceBuilder`는 판자별 텍스처를 로드하도록 갱신했고 전체 재생성 시의 단일 출처로 유지한다. 미참조가 된 `wood_grain_knots.png`는 남겨 둔다. 아트 가이드 §2 표면 질감 항목 갱신 |
 | `D-040` | 2026-09-08 | 점수표를 여섯 열 `[P1 아이콘][P1 Categories][P1 점수][P2 점수][P2 Categories][P2 아이콘]`로 다시 나누고, 현재 턴인 쪽 Categories 열만 펴고 반대쪽은 폭 0으로 접는다. 아이콘 섹터는 접히지 않는다. 변형 증강 스티커는 플레이어별로 두 벌을 동시에 띄운다. `D-039`(2026-09-08, 드래프트) 이전에 확정했던 "현재 플레이어 것만 표시"를 대체한다. | 세 열 구조에서는 Categories 열이 공용이라 상대의 변형 증강을 아예 볼 수 없었고, 두 사람이 같은 칸을 교체하는 증강을 각각 가지면 충돌했다. 열을 플레이어별로 가르면 소유자가 위치로 드러나고 충돌도 사라진다. 접힌 쪽까지 이름을 남기면 이름 열 폭이 절반으로 줄어 족보 이름이 안 들어가므로, 아이콘 섹터만 남기고 이름은 접는다. 상대 정보는 증강 아이콘으로 읽는다 | `ParchmentScoreSheet`가 열 컨테이너 6개를 만들고 `ResolveColumnBounds`가 경계를 정함. 스티커 API(`SetSticker`·`ClearSticker`·`PlayStickerAttach`·`PlayStickerStamp`·`HasStickerSlot`)에 `playerIndex` 추가. `YachtTurnFlowPresenter.SyncAugmentStickers`가 두 사람 몫을 각각 동기화. 보너스 진행도가 양쪽 각자 값으로 나옴(이전에는 P1 것만). 전환 0.35초 ease-out cubic. 시각 사양은 [`docs/augmented_yacht_m17_vfx_spec.md`](augmented_yacht_m17_vfx_spec.md) §3.1.1 |
+| `D-041` | 2026-09-09 | `SOLID-T01` 착수 시 계획서 기술과 실제 코드가 어긋난 것이 확인돼, 계획서를 실제 코드 기준으로 교정하고 작업 범위를 사다리 11개 분기로 한정한다. | 사다리 11개 중 10개가 핸들러 `OnSelected`와 중복인 죽은 코드였고, 계획서가 지목한 5개(`GoldenDie`, `EquivalentExchange`, `Gambit`, `DoubleDown`, `PiggyBank`)는 애초에 사다리 밖이었음 | `SOLID-T02` 이후 태스크도 착수 전 실제 코드와 대조가 필요함 |
 
 ---
 
@@ -1175,6 +1176,14 @@ npm run validate:augments
 ---
 
 ## 13. 작업 세션 로그
+
+### 2026-09-09 — Claude Opus 5 (`SOLID-T01` 증강 획득 초기화 자율화)
+
+- 작업 ID: `SOLID-T01` (`DONE`)
+- 변경: `YachtAugmentRuntime.ApplyAugment`의 증강 ID별 if-else 사다리(11개 분기, 63줄) 삭제. `FastStraight`에 `IOnAugmentSelected` 구현 추가(`FastStraightState`와 레거시 `context.Player` 필드를 함께 초기화하는 기존 이중 기록 패턴을 따름). 나머지 10개 분기는 대응 핸들러 `OnSelected`가 이미 같은 초기화를 수행하고 있어 삭제만으로 충분했음. `Modification` 분기·`ResetFilledTarget` 호출·`IOnAugmentSelected` 디스패처·`replacement` 이벤트 발행 블록은 유지
+- 착수 중 계획서(`docs/solid_refactoring_work_plan.md`) 기술과 실제 코드가 어긋난 것을 확인해 해당 절을 실제 범위로 교정함(`D-041`)
+- 검증: EditMode 전체 884건 중 874 통과, 6 실패(전부 무관, 기존 실패), 4 스킵. 계획서가 지목한 `YachtQuestAugmentTests`, `YachtEnhanceAugmentTests`, `YachtManualActionAugmentTests`는 전부 통과. 신규 컴파일 경고 없음
+- 다음 작업: `SOLID-T02` (`Describe` switch 제거)
 
 ### 2026-09-09 — Claude (`M17-T18` 깃펜 호버 필기 연출 계획 수립)
 

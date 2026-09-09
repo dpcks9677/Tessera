@@ -4881,13 +4881,50 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 2506968754557547214, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1497574237}
+    - targetCorrespondingSourceObject: {fileID: 2506968754557547214, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1497574238}
   m_SourcePrefab: {fileID: 100100000, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
 --- !u!4 &1497574235 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 313306770226994608, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
   m_PrefabInstance: {fileID: 1497574234}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1497574236 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2506968754557547214, guid: 064fa42d39601014aa72f2053a07ff0a, type: 3}
+  m_PrefabInstance: {fileID: 1497574234}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1497574237
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1497574236}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c85afdee7df7e29499ded4e0e69f472b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Tessera.Tabletop.QuillHoverAnimator
+  writingScale: 1
+  writingYawDegrees: 15
+--- !u!114 &1497574238
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1497574236}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 16ecee960bf5e90439e4b6d85d1319d5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Tessera.Tabletop.QuillCrispUiMask
 --- !u!1 &1503485932
 GameObject:
   m_ObjectHideFlags: 0

@@ -47,6 +47,11 @@ namespace Tessera.Games.AugmentedYacht
         [SerializeField] private RunicSlateMatrix runicSlateMatrix;
         [SerializeField] private TabletopTrinketCluster trinketCluster;
         [SerializeField] private TurnBalanceIndicator turnBalanceIndicator;
+        [SerializeField] private QuillHoverAnimator quillHoverAnimator;
+
+        /// <summary>깃펜이 따라갈 칸이다. -1이면 가리키는 칸이 없어 잉크통으로 돌아간다(<c>M17-T18</c>).</summary>
+        private int quillHoverPlayerIndex = -1;
+        private ScoreCategory quillHoverCategory;
 
         private DicePresetCatalog presetCatalog;
         private BakedDiceController bakedDiceController;
@@ -211,6 +216,33 @@ namespace Tessera.Games.AugmentedYacht
             turnFlow?.UpdateTimerTextPosition();
             cameraRig?.FitFullScreen();
             cameraRig?.SyncCrispUiTargetToScreen();
+            FeedQuillHoverTarget();
+        }
+
+        /// <summary>
+        /// 호버 중인 칸의 월드 좌표를 깃펜에 넘긴다(<c>M17-T18</c>). 매 프레임 다시 읽는 이유는
+        /// 점수표가 이름 열을 접고 펴는 동안 칸 좌표와 폭이 계속 움직이기 때문이다.
+        /// 깃펜은 LateUpdate에서 움직이므로 여기서 넘긴 값이 같은 프레임에 반영된다.
+        /// </summary>
+        private void FeedQuillHoverTarget()
+        {
+            if (quillHoverAnimator == null) return;
+
+            if (quillHoverPlayerIndex < 0
+                || parchmentScoreSheet == null
+                || !parchmentScoreSheet.TryGetSlotAnchor(quillHoverPlayerIndex, quillHoverCategory, out Vector3 worldPoint, out _))
+            {
+                quillHoverAnimator.ClearWritingTarget();
+                return;
+            }
+
+            quillHoverAnimator.SetWritingTarget(worldPoint, parchmentScoreSheet.transform.up);
+        }
+
+        private void OnScoreSlotHoverChanged(int playerIndex, ScoreCategory? category)
+        {
+            quillHoverPlayerIndex = category.HasValue ? playerIndex : -1;
+            if (category.HasValue) quillHoverCategory = category.Value;
         }
 
         /// <summary>씬에 이미 배치된 레이아웃을 찾아 참조를 잇는다.</summary>
@@ -231,6 +263,9 @@ namespace Tessera.Games.AugmentedYacht
         private void InitializeYachtGame()
         {
             if (!Application.isPlaying || parchmentScoreSheet == null) return;
+
+            parchmentScoreSheet.ScoreSlotHoverChanged -= OnScoreSlotHoverChanged;
+            parchmentScoreSheet.ScoreSlotHoverChanged += OnScoreSlotHoverChanged;
 
             hud = YachtSceneAssembler.BuildGameFlowUi(CreateHudActions());
             EnsureAugmentTray();
@@ -613,6 +648,7 @@ namespace Tessera.Games.AugmentedYacht
             runicSlateMatrix = BindProp(runicSlateMatrix);
             trinketCluster = BindProp(trinketCluster);
             turnBalanceIndicator = BindProp(turnBalanceIndicator);
+            quillHoverAnimator = BindProp(quillHoverAnimator);
 
             RefreshScoreSheetStructure();
             if (rerollCounterBar != null) rerollCounterBar.SetRollsRemaining(3, 3);
@@ -680,6 +716,7 @@ namespace Tessera.Games.AugmentedYacht
                 turnFlow.ModeStarted -= OnModeStarted;
                 turnFlow.TrayRebindRequested -= EnsureAugmentTray;
             }
+            if (parchmentScoreSheet != null) parchmentScoreSheet.ScoreSlotHoverChanged -= OnScoreSlotHoverChanged;
             cameraRig?.Dispose();
             dicePool?.Dispose();
             celStyleSwitcher.Dispose();

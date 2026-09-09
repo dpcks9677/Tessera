@@ -14,6 +14,41 @@ namespace Tessera.Tabletop
 
         // 깃펜 로컬 좌표계: +Y가 닙 끝(y=0)에서 깃털 팁(y≈3.97) 방향.
         private const float NibLength = 0.59f;
+
+        // --- 닙 형상. 금속판 한 장을 만 것이라 마는 반지름은 어디서나 같다(BuildNibMesh 참고). ---
+
+        /// <summary>판을 마는 반지름. 원통 구간의 굵기이자 어깨에서의 반폭이다. 칼라 밴드(0.0525) 안에 들어간다.</summary>
+        private const float NibRollRadius = 0.050f;
+
+        /// <summary>
+        /// 폭이 가장 넓어지는 어깨의 위치. 닙 길이에 대한 비율이다.
+        ///
+        /// 닙 전체 길이(0.59)와 최대 폭(원통 지름 0.10)은 프리팹에 이미 구워진 칼라와 맞물려 있어
+        /// 건드릴 수 없다. 그래서 오각형이 읽히도록 조절할 수 있는 것은 어깨 위치뿐이다. 어깨를
+        /// 앞으로 당길수록 원통이 길어지고 판은 짧고 넓어진다. 0.38이면 판이 세로:가로 2:1이 되어
+        /// 실물 닙 비율에 가장 가깝다.
+        /// </summary>
+        private const float NibShoulderRatio = 0.38f;
+
+        /// <summary>여기서부터 밑동까지는 한 바퀴 감긴 원통이다.</summary>
+        private const float NibCylinderRatio = 0.50f;
+
+        /// <summary>어깨에서 끝으로 좁아지는 곡선의 지수. 1이면 곧은 변, 클수록 끝이 뾰족해진다.</summary>
+        private const float NibTaperExponent = 1.10f;
+
+        private const float NibThickness = 0.0040f;
+        private const float NibTipThickness = 0.0010f;
+
+        /// <summary>
+        /// 판의 넓은 면이 펜 축을 중심으로 어느 쪽을 보는지. 실물 펜도 닙이 몸통에 정해진 각도로
+        /// 박혀 있고, 그래서 쥐면 넓은 면이 위를 본다.
+        ///
+        /// 이 값은 필기 자세에서 넓은 면이 카메라를 향하도록 맞췄다. 필기 자세는 잉크통 꽂힘 자세에
+        /// 세로축 회전을 더한 것이고(<c>QuillHoverAnimator</c>) 카메라는 피치 75도로 내려다본다.
+        /// 두 조건을 넣고 풀면 -59도에서 가장 정면이 되므로 -60도로 둔다. 이 각을 벗어날수록 날이
+        /// 옆으로 서서 화면에서는 그냥 가느다란 침처럼 보인다.
+        /// </summary>
+        private const float NibRollOffsetDegrees = -60f;
         private const float CollarBandY = 0.60f;
         private const float RachisStartY = 0.71f;
         private const float RachisLength = 3.26f;
@@ -240,11 +275,114 @@ namespace Tessera.Tabletop
         }
 
         /// <summary>
-        /// 길고 가느다란 원뿔형 은 닙. 아래쪽 끝(y=0)이 펜촉이다.
+        /// 만년필 닙. 아래쪽 끝(y=0)이 펜촉이다.
+        ///
+        /// 실물 닙은 금속판 한 장을 둥글게 만 것이라, 굽은 반지름은 어디서나 같고 판을 자른 모양만
+        /// 다르다. 그래서 여기서도 마는 반지름 하나를 고정하고 <b>판의 폭</b>과 <b>감는 각</b>만
+        /// 위치에 따라 바꾼다. 그 둘이 함께 움직이면 실루엣이 저절로 원통+오각형이 된다.
+        ///
+        ///   - 뒤쪽 <see cref="NibCylinderRatio"/> 구간: 감는 각이 한 바퀴에 가까워 <b>원통</b>이다.
+        ///     펜 몸통에 끼워지는 부분이라 굵기가 일정하다.
+        ///   - <see cref="NibShoulderRatio"/> 지점: 감는 각이 반 바퀴라 폭이 가장 넓다. 이것이 어깨다.
+        ///   - 어깨에서 끝까지: 폭이 줄며 두 변이 한 점으로 모인다.
+        ///
+        /// 위에서 본 윤곽은 밑변 하나, 원통이 만드는 나란한 두 변, 끝으로 모이는 두 변, 합해서
+        /// 오각형이다. 어깨 모서리는 폭 곡선의 기울기를 0으로 만들어 살짝 둥글린다.
+        ///
+        /// 슬릿·숨구멍·각인 같은 세부는 넣지 않는다. 픽셀 필터를 지나면 남지 않는다.
         /// </summary>
         private static Mesh BuildNibMesh()
         {
-            return BuildTaperedTubeMesh("Procedural_Quill_Nib", 0f, NibLength, 0.004f, 0.050f, 1.35f, 20);
+            const int lengthSegments = 24;
+
+            // 단면 호를 몇 점으로 그릴지. 앞뒤 두 겹이 한 고리를 이루므로 고리 정점은 이것의 두 배다.
+            const int arcPoints = 10;
+            const int ringVertices = arcPoints * 2;
+
+            // 한 바퀴를 다 감으면 호의 양 끝이 겹쳐 넓이 0인 삼각형이 생긴다. 살짝 덜 감아 실틈을
+            // 남긴다. 실물도 판을 말아 붙이지 않으므로 아래쪽에 같은 틈이 있다.
+            const float maxWrap = Mathf.PI * 0.96f;
+
+            const float shoulderY = NibLength * NibShoulderRatio;
+            const float cylinderY = NibLength * NibCylinderRatio;
+
+            Mesh mesh = new() { name = "Procedural_Quill_Nib" };
+
+            Vector3[] vertices = new Vector3[(lengthSegments + 1) * ringVertices];
+            Vector2[] uvs = new Vector2[vertices.Length];
+
+            for (int s = 0; s <= lengthSegments; s++)
+            {
+                float t = (float)s / lengthSegments;
+                float y = t * NibLength;
+
+                Vector3 spine = SpineOffset(y);
+                Vector3 center = new(spine.x, y, spine.z);
+
+                // 판의 반폭. 끝에서 0, 어깨에서 마는 반지름과 같아진다. 어깨에서 기울기가 0이라
+                // 모서리가 각지지 않고 둥글게 모인다.
+                float taper = Mathf.Clamp01(y / shoulderY);
+                float halfWidth = NibRollRadius * (1f - Mathf.Pow(1f - taper, NibTaperExponent));
+
+                // 감는 각. 어깨까지는 폭이 정하고, 어깨부터 원통 구간까지 한 바퀴로 닫힌다.
+                float openWrap = Mathf.Asin(Mathf.Clamp01(halfWidth / NibRollRadius));
+                float closing = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(shoulderY, cylinderY, y));
+                float wrap = Mathf.Lerp(openWrap, maxWrap, closing);
+
+                float halfThickness = Mathf.Lerp(NibTipThickness, NibThickness, taper) * 0.5f;
+
+                for (int a = 0; a < arcPoints; a++)
+                {
+                    float along = (float)a / (arcPoints - 1);
+                    float angle = (NibRollOffsetDegrees * Mathf.Deg2Rad) + Mathf.Lerp(-wrap, wrap, along);
+                    Vector3 direction = new(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+
+                    // 고리는 바깥 면을 -각에서 +각으로 돈 뒤 안쪽 면을 되짚어 닫는다.
+                    int outer = (s * ringVertices) + a;
+                    int inner = (s * ringVertices) + (ringVertices - 1 - a);
+
+                    vertices[outer] = center + (direction * (NibRollRadius + halfThickness));
+                    vertices[inner] = center + (direction * (NibRollRadius - halfThickness));
+                    uvs[outer] = new Vector2(along * 0.5f, t);
+                    uvs[inner] = new Vector2(1f - (along * 0.5f), t);
+                }
+            }
+
+            // 끝 고리는 한 점으로 모은다. 폭도 감는 각도 0이라 이미 거의 모여 있지만, 완전히 붙여야
+            // 닙 끝이 뭉툭하게 보이지 않는다. 닙 끝은 애니메이터가 종이에 대는 기준점이기도 하다.
+            Vector3 tip = SpineOffset(0f);
+            for (int a = 0; a < ringVertices; a++) vertices[a] = new Vector3(tip.x, 0f, tip.z);
+
+            int[] triangles = new int[lengthSegments * ringVertices * 6];
+            int triIdx = 0;
+
+            for (int s = 0; s < lengthSegments; s++)
+            {
+                for (int r = 0; r < ringVertices; r++)
+                {
+                    int nextR = (r + 1) % ringVertices;
+
+                    int i0 = (s * ringVertices) + r;
+                    int i1 = ((s + 1) * ringVertices) + r;
+                    int i2 = ((s + 1) * ringVertices) + nextR;
+                    int i3 = (s * ringVertices) + nextR;
+
+                    triangles[triIdx++] = i0;
+                    triangles[triIdx++] = i1;
+                    triangles[triIdx++] = i2;
+
+                    triangles[triIdx++] = i0;
+                    triangles[triIdx++] = i2;
+                    triangles[triIdx++] = i3;
+                }
+            }
+
+            mesh.vertices = vertices;
+            mesh.uv = uvs;
+            mesh.triangles = triangles;
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            return mesh;
         }
 
         /// <summary>

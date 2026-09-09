@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
 using Tessera.Core;
@@ -173,6 +174,56 @@ namespace Tessera.Games.AugmentedYacht
             public Vector3 PatchRestPosition;
             public Quaternion PatchRestRotation = Quaternion.identity;
         }
+
+        /// <summary>
+        /// 점수 칸 하나의 포인터 출입을 표에 알린다. 칸마다 하나씩 붙는다.
+        ///
+        /// <see cref="Button.interactable"/>이 꺼져 있어도 포인터 이벤트 자체는 들어오므로 여기서
+        /// 직접 걸러 낸다. 이 검사 하나로 상대 열, 이미 채운 칸, 선택 비활성 구간이 모두 빠진다.
+        /// 기입 가능 조건은 <see cref="UpdateSlotState"/>가 이미 그 플래그에 넣어 두었다.
+        /// </summary>
+        private sealed class ScoreSlotHoverRelay : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+        {
+            public ParchmentScoreSheet Sheet;
+            public Button Button;
+            public int PlayerIndex;
+            public ScoreCategory Category;
+
+            public void OnPointerEnter(PointerEventData eventData)
+            {
+                if (Sheet == null || Button == null || !Button.interactable) return;
+                Sheet.SetHoveredSlot(PlayerIndex, Category);
+            }
+
+            public void OnPointerExit(PointerEventData eventData)
+            {
+                if (Sheet == null) return;
+                Sheet.ExitHoveredSlot(PlayerIndex, Category);
+            }
+        }
+
+        /// <summary>
+        /// 점수 열 전체의 포인터 출입을 표에 알린다. 열 컨테이너에 하나 붙는다.
+        ///
+        /// 칸은 족보 행에만 있고 보너스 행·합계 행·헤더 행에는 없다. 그래서 칸만 보고 있으면
+        /// 위아래 칸을 오갈 때 그 사이를 지나는 동안 호버가 끊긴다. 열 안에 머물러 있는 한
+        /// 마지막 칸을 놓지 않도록, 진짜로 열을 벗어났는지를 이쪽이 판정한다.
+        /// </summary>
+        private sealed class ScoreColumnHoverRelay : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+        {
+            public ParchmentScoreSheet Sheet;
+            public int PlayerIndex;
+
+            public void OnPointerEnter(PointerEventData eventData)
+            {
+                if (Sheet != null) Sheet.SetScoreColumnHovered(PlayerIndex, true);
+            }
+
+            public void OnPointerExit(PointerEventData eventData)
+            {
+                if (Sheet != null) Sheet.SetScoreColumnHovered(PlayerIndex, false);
+            }
+        }
         private readonly Dictionary<ScoreCategory, int> candidateScores = new();
 
         /// <summary>보너스 진행도다. 각자 자기 Categories 열에 들어간다.</summary>
@@ -195,6 +246,82 @@ namespace Tessera.Games.AugmentedYacht
             new IReadOnlyPlayerScoreData[] { new PlayerScoreData(), new PlayerScoreData() };
 
         public event Action<int, ScoreCategory> ScoreSelected;
+
+        /// <summary>
+        /// 기입 가능한 칸에 포인터가 들어오거나 나갔다. 나갔을 때는 <c>category</c>가 <c>null</c>이고
+        /// <c>playerIndex</c>는 직전까지 가리키던 칸의 것이다. 깃펜 연출(<c>M17-T18</c>)이 듣는다.
+        /// </summary>
+        public event Action<int, ScoreCategory?> ScoreSlotHoverChanged;
+
+        /// <summary>지금 포인터가 올라와 있는 칸이다. 없으면 <see cref="hoveredPlayerIndex"/>가 -1이다.</summary>
+        private int hoveredPlayerIndex = -1;
+        private ScoreCategory hoveredCategory;
+
+        /// <summary>포인터가 그 사람의 점수 열 안에 있는지. 칸과 칸 사이에서도 참이다.</summary>
+        private readonly bool[] scoreColumnHovered = new bool[2];
+
+        private void SetHoveredSlot(int playerIndex, ScoreCategory category)
+        {
+            if (hoveredPlayerIndex == playerIndex && hoveredCategory == category) return;
+            hoveredPlayerIndex = playerIndex;
+            hoveredCategory = category;
+            ScoreSlotHoverChanged?.Invoke(playerIndex, category);
+        }
+
+        /// <summary>
+        /// 이 칸에서 포인터가 나갔다. 열 안에 머물러 있으면 놓지 않는다. 보너스 행·합계 행·헤더 행에는
+        /// 칸이 없고 칸 사이에도 틈이 있어서, 그때마다 놓으면 깃펜이 잉크통으로 돌아갔다 온다.
+        ///
+        /// 인접한 칸으로 옮겨 갈 때 새 칸의 Enter가 먼저 오는 경우가 있어, 지금 기억하는 칸과 다르면
+        /// 무시한다. 그러지 않으면 방금 들어온 호버를 지워 버린다.
+        /// </summary>
+        private void ExitHoveredSlot(int playerIndex, ScoreCategory category)
+        {
+            if (hoveredPlayerIndex != playerIndex || hoveredCategory != category) return;
+            if (scoreColumnHovered[playerIndex]) return;
+            ReleaseHoveredSlot(playerIndex, category);
+        }
+
+        /// <summary>열 안에 있든 없든 놓는다. 칸이 잠기거나 표가 다시 만들어질 때 쓴다.</summary>
+        private void ReleaseHoveredSlot(int playerIndex, ScoreCategory category)
+        {
+            if (hoveredPlayerIndex != playerIndex || hoveredCategory != category) return;
+            hoveredPlayerIndex = -1;
+            ScoreSlotHoverChanged?.Invoke(playerIndex, null);
+        }
+
+        /// <summary>포인터가 점수 열에 드나들었다. 열을 벗어나는 순간이 곧 깃펜을 놓는 순간이다.</summary>
+        private void SetScoreColumnHovered(int playerIndex, bool inside)
+        {
+            if (playerIndex < 0 || playerIndex > 1) return;
+            scoreColumnHovered[playerIndex] = inside;
+            if (!inside) ReleaseHoveredSlot(playerIndex, hoveredCategory);
+        }
+
+        /// <summary>
+        /// 칸 중앙의 월드 좌표와 칸의 월드 폭이다. 칸이 아직 만들어지지 않았거나 레이아웃이 잡히기
+        /// 전이면 false다. 열이 접히고 펴지는 동안 폭이 매 프레임 바뀌므로 캐시하지 않는다.
+        /// </summary>
+        public bool TryGetSlotAnchor(int playerIndex, ScoreCategory category, out Vector3 worldPoint, out float cellWidth)
+        {
+            worldPoint = default;
+            cellWidth = 0f;
+
+            if (playerIndex < 0 || playerIndex > 1) return false;
+            int categoryIndex = (int)category;
+            Image[] slots = playerIndex == 0 ? p1ScoreSlots : p2ScoreSlots;
+            if (categoryIndex < 0 || categoryIndex >= slots.Length) return false;
+
+            Image slot = slots[categoryIndex];
+            if (slot == null) return false;
+
+            RectTransform rect = slot.rectTransform;
+            cellWidth = rect.rect.width * rect.lossyScale.x;
+            if (cellWidth <= 0f) return false;
+
+            worldPoint = rect.position;
+            return true;
+        }
 
         /// <summary>권위 세션이 만들어진 뒤 그 점수표 뷰를 연결한다.</summary>
         public void BindPlayers(IReadOnlyList<IReadOnlyPlayerScoreData> authorityPlayers)
@@ -483,6 +610,10 @@ namespace Tessera.Games.AugmentedYacht
             }
             expandT = expandTarget;
 
+            // 칸이 통째로 다시 만들어지므로 붙잡고 있던 호버도 놓는다. 지금 슬롯은 곧 사라진다.
+            if (hoveredPlayerIndex >= 0) ReleaseHoveredSlot(hoveredPlayerIndex, hoveredCategory);
+            scoreColumnHovered[0] = scoreColumnHovered[1] = false;
+
             Array.Clear(p1ScoreLabels, 0, p1ScoreLabels.Length);
             Array.Clear(p2ScoreLabels, 0, p2ScoreLabels.Length);
             DestroyStickerPatches();
@@ -610,6 +741,9 @@ namespace Tessera.Games.AugmentedYacht
 
             categoryGroups[0] = columnRects[ColumnP1Categories].GetComponent<CanvasGroup>();
             categoryGroups[1] = columnRects[ColumnP2Categories].GetComponent<CanvasGroup>();
+
+            ConfigureScoreColumnHover(columnRects[ColumnP1Scores], 0);
+            ConfigureScoreColumnHover(columnRects[ColumnP2Scores], 1);
 
             Transform[] iconColumns = { columnRects[ColumnP1Icons], columnRects[ColumnP2Icons] };
             Transform[] nameColumns = { columnRects[ColumnP1Categories], columnRects[ColumnP2Categories] };
@@ -844,6 +978,26 @@ namespace Tessera.Games.AugmentedYacht
 
         private static int StickerKey(int playerIndex, int categoryIndex) => playerIndex * 14 + categoryIndex;
 
+        /// <summary>
+        /// 점수 열을 통째로 포인터 판정 대상으로 만든다. 보이지 않는 판이라 색은 완전히 투명하다.
+        ///
+        /// 열 컨테이너는 칸들의 부모이므로, 칸 위에 있을 때도 이 판이 함께 들어온 것으로 잡힌다.
+        /// 그래서 칸을 벗어나 보너스 행으로 내려가도 열은 계속 들어온 상태로 남고, 열 밖으로 나가야
+        /// 비로소 나간 것으로 판정된다. 칸보다 뒤에 있으므로 클릭은 그대로 칸이 받는다.
+        /// </summary>
+        private void ConfigureScoreColumnHover(RectTransform column, int playerIndex)
+        {
+            if (column == null) return;
+
+            Image surface = column.gameObject.AddComponent<Image>();
+            surface.color = Color.clear;
+            surface.raycastTarget = true;
+
+            ScoreColumnHoverRelay relay = column.gameObject.AddComponent<ScoreColumnHoverRelay>();
+            relay.Sheet = this;
+            relay.PlayerIndex = playerIndex;
+        }
+
         private void ConfigureScoreSlot(GameObject slotObject, int playerIndex, ScoreCategory category)
         {
             if (slotObject == null) return;
@@ -861,6 +1015,12 @@ namespace Tessera.Games.AugmentedYacht
             colors.disabledColor = image.color;
             button.colors = colors;
             button.onClick.AddListener(() => OnScoreSlotClicked(playerIndex, category));
+
+            ScoreSlotHoverRelay relay = slotObject.AddComponent<ScoreSlotHoverRelay>();
+            relay.Sheet = this;
+            relay.Button = button;
+            relay.PlayerIndex = playerIndex;
+            relay.Category = category;
 
             int categoryIndex = (int)category;
             Image[] slots = playerIndex == 0 ? p1ScoreSlots : p2ScoreSlots;
@@ -1407,6 +1567,10 @@ namespace Tessera.Games.AugmentedYacht
                 && playerIndex == activePlayerIndex
                 && !IsScoreFilled(playerIndex, category)
                 && candidateScores.ContainsKey(category);
+
+            // 포인터가 올라와 있는 채로 칸이 잠길 수 있다. 점수를 확정한 직후가 그렇다.
+            // 이때 Exit는 오지 않으므로 여기서 놓아 주지 않으면 호버가 영영 남는다.
+            if (!button.interactable) ReleaseHoveredSlot(playerIndex, category);
         }
 
         private void UpdatePlayerScoreUI(IReadOnlyPlayerScoreData data, Text[] labels, Text bonusText)
