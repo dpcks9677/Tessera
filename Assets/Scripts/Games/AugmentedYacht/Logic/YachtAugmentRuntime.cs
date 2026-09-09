@@ -379,121 +379,18 @@ namespace Tessera.Games.Yacht
         public const int StepByStepUpperBonusThreshold = 58;
         public const int DraftOptionCount = 3;
 
-        private static readonly YachtAugmentDefinition[] Definitions =
-        {
-            Enhance(YachtBankId, "요트 뱅크"),
-            Quest(FastStraightId, "재빠른 스트레이트", true),
-            Quest(NoTimeToWasteId, "낭비할 시간 없다"),
-            Quest(StepByStepId, "차근차근", true),
-            Quest(HoldoutId, "알박기"),
-            Quest(CautiousStraightId, "신중한 스트레이트"),
-            Quest(EveryLittleId, "티끌 모아 태산"),
-            Quest(CopycatId, "카피캣"),
-            Quest(DoublingId, "더블링"),
-            Quest(NozdormuId, "노즈도르무"),
-            Dice(WeightedDiceId, "묵직한 주사위"),
-            Enhance(MomentumId, "추진력"),
-            Dice(GoldenDieId, "황금 주사위"),
-            Dice(OctahedronId, "8면 주사위", new[] { TableFlipId }),
-            Dice(PromotionDieId, "프로모션 주사위"),
-            Dice(CoupleDiceId, "커플 주사위"),
-            Dice(SevensDiceId, "세븐스 다이스"),
-            Action(TableFlipId, "판 뒤집기", new[] { OctahedronId }),
-            Action(EquivalentExchangeId, "등가교환"),
-            Quest(BountyHunterId, "현상금 사냥꾼"),
-            Enhance(DuelId, "결투"),
-            new YachtAugmentDefinition { Id = RandomBoxId, DisplayName = "랜덤 박스", Description = Describe(RandomBoxId), Kind = YachtAugmentKind.Enhance },
-            Quest(ProphetId, "예지자"),
-            Action(GambitId, "갬빗"),
-            Action(DoubleDownId, "더블 다운"),
-            Enhance(PiggyBankId, "저금통"),
-            Action(DiceAlchemyId, "주사위 연금술")
-        };
-
         /// <summary>
-        /// 처리기로 이관된 증강의 정의와 아직 이관하지 않은 정의를 합친 전체 목록입니다.
-        /// 카탈로그 등록 순서를 앞에 두어 이관 전후로 노출 순서가 바뀌지 않게 합니다.
+        /// 처리기로 등록된 모든 증강 정의 목록입니다. 카탈로그 등록 순서를 그대로 유지합니다.
         /// </summary>
         private static readonly YachtAugmentDefinition[] AllDefinitions = BuildAllDefinitions();
 
         private static YachtAugmentDefinition[] BuildAllDefinitions()
         {
             IReadOnlyList<IAugmentHandler> handlers = YachtAugmentCatalog.All;
-            var result = new List<YachtAugmentDefinition>(handlers.Count + Definitions.Length);
+            var result = new List<YachtAugmentDefinition>(handlers.Count);
             for (int i = 0; i < handlers.Count; i++) result.Add(handlers[i].CreateDefinition());
-            for (int i = 0; i < Definitions.Length; i++)
-                if (YachtAugmentCatalog.Find(Definitions[i].Id) == null) result.Add(Definitions[i]);
             return result.ToArray();
         }
-
-        private static YachtAugmentDefinition Quest(string id, string name, bool phaseOneOnly = false) => new()
-        {
-            Id = id,
-            DisplayName = name,
-            Description = Describe(id),
-            Target = "Quest",
-            Kind = YachtAugmentKind.Quest,
-            IsQuest = true,
-            PhaseOneOnly = phaseOneOnly
-        };
-
-        private static YachtAugmentDefinition Dice(string id, string name, string[] conflicts = null) => new()
-        {
-            Id = id,
-            DisplayName = name,
-            Description = Describe(id),
-            Kind = YachtAugmentKind.Enhance,
-            Conflicts = conflicts ?? Array.Empty<string>()
-        };
-
-        private static YachtAugmentDefinition Action(string id, string name, string[] conflicts = null) => new()
-        {
-            Id = id,
-            DisplayName = name,
-            Description = Describe(id),
-            Kind = YachtAugmentKind.Enhance,
-            Conflicts = conflicts ?? Array.Empty<string>()
-        };
-
-        private static YachtAugmentDefinition Enhance(string id, string name) => new()
-        {
-            Id = id,
-            DisplayName = name,
-            Description = Describe(id),
-            Kind = YachtAugmentKind.Enhance
-        };
-
-        private static string Describe(string id) => id switch
-        {
-            YachtBankId => "3턴 동안 가장 왼쪽 킵 주사위를 점수에서 제외해 최대 15까지 저축하고 다음 내 턴에 받습니다.",
-            FastStraightId => "8번째 내 턴까지 두 Straight를 모두 기입하면 +15점입니다.",
-            NoTimeToWasteId => "연속 3턴 첫 굴림 직후 기입하면 +15점입니다.",
-            StepByStepId => "Aces부터 Sixes까지 순서대로 기입하면 상단 기준 58과 보너스 55를 적용합니다.",
-            HoldoutId => "9번째 내 턴 이후 Full House를 기입하면 +7점입니다.",
-            CautiousStraightId => "Small Straight 뒤 Large Straight를 기입하면 +7점입니다.",
-            EveryLittleId => "점수 기입에 사용한 눈 1을 누적 7개 모으면 +15점입니다.",
-            CopycatId => "상대가 쓴 족보를 3회 따라 쓰거나 같은 하단 점수를 따라 쓰면 +10점입니다.",
-            DoublingId => "0점이 아닌 같은 기본 점수를 두 번 기입하면 +10점입니다.",
-            NozdormuId => "다음 드래프트 전까지 내 턴을 15초로 진행하고 완료하면 +9점입니다.",
-            WeightedDiceId => "주사위 하나의 면을 4·4·5·5·6·6으로 바꿉니다.",
-            MomentumId => "기본 점수 0점 다음 턴의 양수 기본 점수를 한 번 1.5배로 강화합니다.",
-            GoldenDieId => "황금 주사위가 1·2·3이면 최종 점수에 +2점을 더합니다.",
-            OctahedronId => "주사위 둘을 1·2·3·4·4·5·5·6의 8면 주사위로 바꿉니다.",
-            PromotionDieId => "눈 1로 시작해 내 턴마다 성장하고 눈 6으로 기입하면 일반 주사위가 됩니다.",
-            CoupleDiceId => "커플 주사위 둘의 눈이 같으면 최종 점수에 +3점을 더합니다.",
-            SevensDiceId => "주사위 둘을 2~7 면으로 바꾸고 눈 7과 확장 Straight를 허용합니다.",
-            TableFlipId => "게임당 한 번 비킵 주사위를 굴림 소모 없이 다시 굴립니다.",
-            EquivalentExchangeId => "기본 굴림 소진 후 최대 3회, -5점씩 내고 추가 굴림을 합니다.",
-            BountyHunterId => "매 턴 무작위 빈 족보를 목표로 3회 기입하면 최대 +15점입니다. 스크래치마다 3점 감소합니다.",
-            DuelId => "획득 라운드 점수를 비교해 승리 +10점, 동점 +5점을 받습니다.",
-            RandomBoxId => "상단 기준을 58로 낮추고 양쪽 선택 후 퀘스트가 아닌 무작위 증강으로 교체됩니다.",
-            ProphetId => "3턴 동안 제시된 숫자와 같은 기본 점수를 기입할 때마다 +7점입니다.",
-            GambitId => "한 번 선언해 이번 턴은 일반 주사위 4개, 다음 내 턴은 6개를 사용합니다.",
-            DoubleDownId => "9번째 내 턴부터 한 번 기본 점수를 1.5배, 추진력과 함께면 2배로 강화합니다.",
-            PiggyBankId => "남은 굴림마다 3을 저축하고 12에 도달할 때마다 +12점을 받습니다.",
-            DiceAlchemyId => "게임당 한 번 첫 굴림 후 비킵 주사위 눈을 최저 1까지 1씩 낮춥니다.",
-            _ => string.Empty
-        };
 
         public IReadOnlyList<YachtAugmentDefinition> GetDefinitions()
         {
@@ -740,7 +637,7 @@ namespace Tessera.Games.Yacht
             IReadOnlyList<YachtDieState> scoringDice = GetScoringDice(state, playerIndex, dice);
             YachtAugmentPlayerState player = state.AugmentPlayers[playerIndex];
             Dictionary<ScoreCategory, int> baseScores = CalculateScoringDiceScores(state, playerIndex, scoringDice);
-            int diceBonus = YachtAugmentScoreEngine.CalculateDiceBonus(scoringDice);
+            int diceBonus = YachtAugmentScoreEngine.CalculateDiceBonus(state, playerIndex, scoringDice);
             var result = new YachtScoreCandidate[YachtScoreCalculator.ScorableCategories.Length];
             var queryContext = new AugmentQueryContext(state, playerIndex);
             List<IScoreEnhancementModifier> modifiers = YachtAugmentDispatcher.Collect<IScoreEnhancementModifier>(state, playerIndex);
@@ -1065,69 +962,6 @@ namespace Tessera.Games.Yacht
             if (definition?.Kind == YachtAugmentKind.Modification)
             {
                 if (Enum.TryParse(definition.Target, out ScoreCategory target)) ResetFilledTarget(state, playerIndex, target, runtime);
-            }
-            else if (augmentId == YachtBankId)
-            {
-                runtime.YachtBankRemainingTurns = 3;
-                runtime.YachtBankBalance = 0;
-                runtime.YachtBankPayoutPending = false;
-                runtime.YachtBankPaid = false;
-            }
-            else if (augmentId == FastStraightId)
-            {
-                runtime.FastSmallScored = false;
-                runtime.FastLargeScored = false;
-                runtime.FastRewarded = false;
-            }
-            else if (augmentId == NoTimeToWasteId)
-            {
-                runtime.NoTimeRemaining = 3;
-                runtime.NoTimeFailed = false;
-                runtime.NoTimeRewarded = false;
-            }
-            else if (augmentId == StepByStepId)
-            {
-                runtime.StepCategoryIndex = 0;
-                runtime.StepFailed = false;
-                runtime.StepRewarded = false;
-            }
-            else if (augmentId == NozdormuId)
-            {
-                runtime.NozdormuTargetTurn = state.CurrentRound < 6 ? 5 : state.CurrentRound < 9 ? 8 : 12;
-                runtime.NozdormuRewarded = false;
-            }
-            else if (augmentId == MomentumId)
-            {
-                runtime.MomentumState = 0;
-            }
-            else if (augmentId == PromotionDieId)
-            {
-                runtime.PromotionValue = 1;
-                runtime.PromotionActive = true;
-                runtime.PromotionSkipNextGrowth = true;
-            }
-            else if (augmentId == BountyHunterId)
-            {
-                runtime.BountyTargetCategory = -1;
-                runtime.BountySuccesses = 0;
-                runtime.BountyScratches = 0;
-                runtime.BountyRewarded = false;
-            }
-            else if (augmentId == DuelId)
-            {
-                runtime.DuelRound = state.CurrentRound;
-                runtime.DuelResolved = false;
-            }
-            else if (augmentId == ProphetId)
-            {
-                runtime.ProphetTurnsRemaining = 3;
-                runtime.ProphetTargets = Array.Empty<int>();
-            }
-            else if (augmentId == RandomBoxId)
-            {
-                state.Players[playerIndex].upperBonusThreshold = Math.Min(state.Players[playerIndex].upperBonusThreshold, 58);
-                state.Players[playerIndex].RecalculateTotal();
-                runtime.RandomBoxAwardId = null;
             }
 
             if (YachtAugmentCatalog.Find(augmentId) is IOnAugmentSelected selected)

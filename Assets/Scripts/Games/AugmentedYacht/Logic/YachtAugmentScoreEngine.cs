@@ -34,22 +34,16 @@ namespace Tessera.Games.Yacht
             };
         }
 
-        public static int CalculateDiceBonus(IReadOnlyList<YachtDieState> dice)
+        public static int CalculateDiceBonus(YachtGameState state, int playerIndex, IReadOnlyList<YachtDieState> dice)
         {
+            var context = new AugmentQueryContext(state, playerIndex);
+            List<IDiceBonusProvider> providers = YachtAugmentDispatcher.Collect<IDiceBonusProvider>(state, playerIndex);
             int bonus = 0;
-            int coupleValue = -1;
-            int coupleCount = 0;
-            bool coupleMatches = true;
-            for (int i = 0; i < (dice?.Count ?? 0); i++)
+            for (int i = 0; i < providers.Count; i++)
             {
-                YachtDieState die = dice[i];
-                if (die.Type == YachtDieType.Golden && die.Value >= 1 && die.Value <= 3) bonus += 2;
-                if (die.Type != YachtDieType.Couple) continue;
-                coupleCount++;
-                if (coupleValue < 0) coupleValue = die.Value;
-                else coupleMatches &= coupleValue == die.Value;
+                context.BindAugment(((IAugmentHandler)providers[i]).Id);
+                bonus += providers[i].CalculateDiceBonus(context, dice);
             }
-            if (coupleCount == 2 && coupleMatches) bonus += 3;
             return bonus;
         }
 

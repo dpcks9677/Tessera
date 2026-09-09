@@ -67,11 +67,11 @@ namespace Tessera.Editor.Tests
             Assert.That(state.Dice[0].Type, Is.EqualTo(YachtDieType.Golden));
 
             state.Dice[0].Value = 2;
-            int bonusWhen2 = YachtAugmentScoreEngine.CalculateDiceBonus(state.Dice);
+            int bonusWhen2 = YachtAugmentScoreEngine.CalculateDiceBonus(state, 0, state.Dice);
             Assert.That(bonusWhen2, Is.EqualTo(2));
 
             state.Dice[0].Value = 4;
-            int bonusWhen4 = YachtAugmentScoreEngine.CalculateDiceBonus(state.Dice);
+            int bonusWhen4 = YachtAugmentScoreEngine.CalculateDiceBonus(state, 0, state.Dice);
             Assert.That(bonusWhen4, Is.Zero);
         }
 
@@ -100,10 +100,10 @@ namespace Tessera.Editor.Tests
 
             state.Dice[0].Value = 4;
             state.Dice[1].Value = 4;
-            Assert.That(YachtAugmentScoreEngine.CalculateDiceBonus(state.Dice), Is.EqualTo(3));
+            Assert.That(YachtAugmentScoreEngine.CalculateDiceBonus(state, 0, state.Dice), Is.EqualTo(3));
 
             state.Dice[1].Value = 3;
-            Assert.That(YachtAugmentScoreEngine.CalculateDiceBonus(state.Dice), Is.Zero);
+            Assert.That(YachtAugmentScoreEngine.CalculateDiceBonus(state, 0, state.Dice), Is.Zero);
         }
 
         [Test]

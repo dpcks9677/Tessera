@@ -82,6 +82,12 @@ namespace Tessera.Games.Yacht
         bool TryGetEnhancement(AugmentQueryContext context, ScoreCategory category, int baseScore, out float multiplier, out string enhancementSource);
     }
 
+    /// <summary>보유한 주사위 상태에 따른 고정 보너스 점수를 계산합니다. (예: 황금 주사위, 커플 주사위)</summary>
+    public interface IDiceBonusProvider
+    {
+        int CalculateDiceBonus(AugmentQueryContext context, IReadOnlyList<YachtDieState> dice);
+    }
+
     /// <summary>턴 제한 시간을 보정합니다.</summary>
     public interface ITurnDurationModifier
     {

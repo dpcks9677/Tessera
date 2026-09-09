@@ -18,7 +18,7 @@ namespace Tessera.Games.Yacht
     }
 
     /// <summary>8턴 이내에 스몰 스트레이트와 라지 스트레이트를 모두 득점하면 +15점입니다.</summary>
-    public sealed class FastStraight : QuestAugment, IAfterScoreCommit
+    public sealed class FastStraight : QuestAugment, IOnAugmentSelected, IAfterScoreCommit
     {
         public const int DeadlineTurn = 8;
         public const int RewardScore = 15;
@@ -41,6 +41,18 @@ namespace Tessera.Games.Yacht
                 state.Rewarded = context.Player.FastRewarded;
             }
             return state;
+        }
+
+        public void OnSelected(AugmentSelectionContext context)
+        {
+            var state = context.State<FastStraightState>();
+            state.SmallScored = false;
+            state.LargeScored = false;
+            state.Rewarded = false;
+
+            context.Player.FastSmallScored = false;
+            context.Player.FastLargeScored = false;
+            context.Player.FastRewarded = false;
         }
 
         public void AfterScoreCommit(AugmentCommitContext context)
