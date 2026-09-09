@@ -33,10 +33,10 @@ AI 클라이언트가 작업을 수행할 때는 다음 원칙을 반드시 준�
 
 | 항목 | 현재 값 |
 |---|---|
-| 전체 상태 | Phase 1 진행 중 (`SOLID-T01`, `SOLID-T02`, `SOLID-T03` 완료, 9/12 남음) |
-| 현재 마일스톤 | Phase 1: 증강 시스템 OCP/SRP 해소 |
-| 현재 작업 | `SOLID-T04` 대기 중 |
-| 다음 행동 | `SOLID-T04` 작업 착수 (주사위 면 결정 로직 분리, `RollValue` switch 해소) |
+| 전체 상태 | Phase 1 완료, Phase 2 진행 중 (`SOLID-T01`~`SOLID-T04` 완료, 8/12 남음) |
+| 현재 마일스톤 | Phase 2: 룰셋 및 규칙 계층 LSP/ISP 정상화 |
+| 현재 작업 | `SOLID-T05` 대기 중 |
+| 다음 행동 | `SOLID-T05` 작업 착수 (`IYachtRuleSet` ISP 분리, `SelectPresetFile` 추출) |
 | 차단 요소 | 없음 |
 | 마지막 갱신일 | 2026-09-09 |
 
@@ -47,7 +47,7 @@ AI 클라이언트가 작업을 수행할 때는 다음 원칙을 반드시 준�
 | `SOLID-T01` | Phase 1 | 증강 획득 초기화 자율화 (`ApplyAugment` if-else 해소) | `YachtAugmentRuntime.cs`, 개별 `AugmentHandler` | `DONE` |
 | `SOLID-T02` | Phase 1 | 증강 설명 및 메타데이터 일원화 (`Describe` switch 제거) | `YachtAugmentRuntime.cs`, `IAugmentHandler` | `DONE` |
 | `SOLID-T03` | Phase 1 | 주사위 보너스 계산 OCP 준수 (`IDiceBonusProvider` 도입) | `YachtAugmentScoreEngine.cs`, `IAugmentHandler.cs` | `DONE` |
-| `SOLID-T04` | Phase 1 | 주사위 면 결정 로직 분리 (`RollValue` switch 해소) | `YachtAugmentRuntime.cs`, 주사위 핸들러 | `TODO` |
+| `SOLID-T04` | Phase 1 | 주사위 면 결정 로직 분리 (`RollValue` switch 해소) | `YachtAugmentRuntime.cs`, 주사위 핸들러 | `DONE` |
 | `SOLID-T05` | Phase 2 | `IYachtRuleSet` ISP 분리 (`SelectPresetFile` 추출) | `YachtGameCore.cs`, `IYachtRuleSet.cs` | `TODO` |
 | `SOLID-T06` | Phase 2 | `AugmentedYachtRuleSet`의 LSP 계약 정상화 | `YachtGameCore.cs`, `YachtAugmentRuntime.cs` | `TODO` |
 | `SOLID-T07` | Phase 2 | `YachtScoreCalculator` 가변 주사위 방어적 처리 | `YachtGameCore.cs` | `TODO` |
@@ -349,6 +349,16 @@ classDiagram
 - **Unity 직렬화 영향도**: 없음.
 - **검증 방법**:
   - `DiceFaceValueTests.cs`, `OctahedronOrientationTests.cs` 실행.
+  실제로 확인해 보니 이 두 파일 모두 `YachtAugmentRuntime.RollValue`를 호출하지 않았다. `OctahedronOrientationTests`는 물리 회전 계산과 프리셋 슬롯 순서만 다뤄 주제가 무관했다. `DiceFaceValueTests`는 시각용 면 매핑을 다루면서, 굴림 표와 같은 값을 테스트 파일 안에 다시 하드코딩한 `RuleValuesOf` 미러 헬퍼를 갖고 있었을 뿐이다. 착수 시점 `RollValue`의 실제 회귀 방어선은 `YachtEnhanceAugmentTests.cs`의 무거운 주사위·세븐스 주사위 굴림 테스트 두 건뿐이었고, 팔면체와 승급 주사위는 굴림 검증이 없었다. 또한 계획서는 `Heavy`, `Octahedron`, `Sevens`, `Promotion` 네 타입을 모두 면 배열 테이블로 추출할 수 있는 것처럼 서술했으나, `Promotion`은 면 배열이 아니라 주사위별 상태인 `YachtDieState.PromotionLevel`을 그대로 반환하며 난수도 쓰지 않는다. 정적 데이터 테이블로 표현할 수 없어 기존 분기를 유지했다. 면 배열 리터럴은 굴림 로직, `Assets/Scripts/Dice/DiceFaceValues.cs`, 위 테스트 미러 세 곳에 중복돼 있었으나, `DiceFaceValues`는 키가 `DieType`(시각용 열거형)이고 목적이 물리 면 인덱스 조회라 `YachtDieType` 기반 굴림 표와 통합할 수 없어 손대지 않았다.
+- **작업 범위 판단**: 계획서 대상 파일 목록에 테스트가 없었으나, 미러 테이블 중복 제거와 검증 공백 보강을 포함할지 사용자에게 확인해 "테이블 추출 + 중복 제거 + 테스트 보강" 범위로 진행했다.
+- **실제 수행한 변경** (4개 파일):
+  - 신규 `Assets/Scripts/Games/AugmentedYacht/Logic/YachtDieFaces.cs`: `TryGetFaces(YachtDieType type, out int[] faces)` 하나만 공개하는 정적 클래스. 내부는 `Dictionary<YachtDieType, int[]>`이며 `Heavy`, `Octahedron`, `Sevens` 세 항목만 담는다. 클래스 주석에 이 표가 굴림 결과 생성용이며 `DiceFaceValues`의 시각용 매핑과 별개 체계임을 명시했다.
+  - `YachtAugmentRuntime.RollValue`: switch 식을 제거하고 승급 분기를 맨 앞으로 옮긴 뒤 나머지를 테이블 조회로 대체. 시그니처와 동작은 불변이며, 표에 없는 타입(`Normal`, `Golden`, `Weird`, `Couple`)이 `baseRoll()`로 떨어지는 것도 그대로다.
+  - `Assets/Editor/DiceFaceValueTests.cs`: `RuleValuesOf` 헬퍼의 하드코딩 미러 테이블을 새 테이블 조회로 교체하고 폴백만 남겼다. 승급 주사위는 표에 없어 폴백 경로를 타므로 기존과 같은 기본 눈금을 반환한다. 이 헬퍼를 쓰는 테스트의 단정과 기대값은 바꾸지 않았다.
+  - `Assets/Editor/YachtEnhanceAugmentTests.cs`: 검증 공백을 메우는 테스트 두 건 추가. 팔면체 주사위의 굴림값이 면 배열 안에서만 나오는지, 승급 주사위가 난수와 무관하게 승급 레벨을 그대로 돌려주는지 단정한다. 기존 테스트는 수정하지 않았다.
+- **검증 결과**: 컴파일 통과, 새 경고 없음. 신규 파일의 `.meta`는 Unity 에셋 갱신으로 생성됐다. EditMode 전체 886개 실행(신규 2건 반영). 핵심 테스트 전부 통과: 무거운 주사위·세븐스 주사위 기존 굴림 테스트 2건, 신규 팔면체·승급 주사위 테스트 2건, `DiceFaceValueTests` 전체. Tessera 관련 실패는 `SOLID-T02` 시점에 확인된 기존 3건 그대로이며 새로 생긴 회귀는 없다.
+
+Phase 1(증강 시스템 OCP/SRP 해소)의 `SOLID-T01`~`SOLID-T04` 네 태스크가 모두 완료됐다. 다음은 Phase 2(룰셋 및 규칙 계층 LSP/ISP 정상화), 첫 작업은 `SOLID-T05`다.
 
 ---
 

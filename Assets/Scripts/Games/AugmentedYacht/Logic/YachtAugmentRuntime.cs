@@ -556,15 +556,8 @@ namespace Tessera.Games.Yacht
 
         public int RollValue(YachtDieState die, IRandomSource random, Func<int> baseRoll)
         {
-            int[] faces = die.Type switch
-            {
-                YachtDieType.Heavy => new[] { 4, 4, 5, 5, 6, 6 },
-                YachtDieType.Octahedron => new[] { 1, 2, 3, 4, 4, 5, 5, 6 },
-                YachtDieType.Sevens => new[] { 2, 3, 4, 5, 6, 7 },
-                _ => null
-            };
             if (die.Type == YachtDieType.Promotion) return Math.Max(1, die.PromotionLevel);
-            return faces == null ? baseRoll() : faces[random.NextInt(0, faces.Length)];
+            return YachtDieFaces.TryGetFaces(die.Type, out int[] faces) ? faces[random.NextInt(0, faces.Length)] : baseRoll();
         }
 
         public int GetDiceCount(YachtGameState state, int playerIndex, int defaultCount)

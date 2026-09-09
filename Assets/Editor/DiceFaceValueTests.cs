@@ -100,17 +100,11 @@ namespace Tessera.Editor.Tests
             }
         }
 
-        /// <summary>규칙 계층이 이 종류에서 만들 수 있는 눈. YachtAugmentRuntime.RollValue와 같은 표다.</summary>
+        /// <summary>규칙 계층이 이 종류에서 만들 수 있는 눈. YachtDieFaces와 같은 표를 그대로 조회한다.</summary>
         private static int[] RuleValuesOf(YachtDieType type)
         {
-            return type switch
-            {
-                YachtDieType.Heavy => new[] { 4, 4, 5, 5, 6, 6 },
-                YachtDieType.Octahedron => new[] { 1, 2, 3, 4, 4, 5, 5, 6 },
-                YachtDieType.Sevens => new[] { 2, 3, 4, 5, 6, 7 },
-                YachtDieType.Promotion => new[] { 1, 2, 3, 4, 5, 6 },
-                _ => new[] { 1, 2, 3, 4, 5, 6 }
-            };
+            if (YachtDieFaces.TryGetFaces(type, out int[] faces)) return faces;
+            return new[] { 1, 2, 3, 4, 5, 6 };
         }
     }
 }

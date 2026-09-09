@@ -90,6 +90,22 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
+        public void 팔면주사위_굴림값은_팔면체_눈금_안에서만_나온다()
+        {
+            state.AugmentPlayers[0].OwnedIds = new[] { YachtAugmentRuntime.OctahedronId };
+            runtime.ConfigureDice(state, 0, state.Dice);
+
+            Assert.That(state.Dice[0].Type, Is.EqualTo(YachtDieType.Octahedron));
+
+            var random = new SequenceRandom(0, 1, 2, 3, 4, 5, 6, 7);
+            for (int i = 0; i < 8; i++)
+            {
+                int val = runtime.RollValue(state.Dice[0], random, () => 1);
+                Assert.That(new[] { 1, 2, 3, 4, 5, 6 }, Contains.Item(val));
+            }
+        }
+
+        [Test]
         public void 커플주사위_슬롯2개를_Couple로_배정하고_눈이같으면_3점보너스를준다()
         {
             state.AugmentPlayers[0].OwnedIds = new[] { YachtAugmentRuntime.CoupleDiceId };
@@ -150,6 +166,27 @@ namespace Tessera.Editor.Tests
             state.Dice[0].Type = YachtDieType.Normal;
             runtime.ConfigureDice(state, 0, state.Dice);
             Assert.That(state.Dice[0].Type, Is.EqualTo(YachtDieType.Normal));
+        }
+
+        [Test]
+        public void 프로모션주사위_굴림값은_난수와_무관하게_승급레벨을_그대로_돌려준다()
+        {
+            var random = new SequenceRandom(0);
+            AcquireAugment(YachtAugmentRuntime.PromotionDieId);
+
+            // 두 번째 턴까지 준비해 승급 레벨을 2로 만든다
+            runtime.PrepareTurn(state, 0, random, true);
+            runtime.ConfigureDice(state, 0, state.Dice);
+            runtime.PrepareTurn(state, 0, random, true);
+            runtime.ConfigureDice(state, 0, state.Dice);
+            Assert.That(state.Dice[0].PromotionLevel, Is.EqualTo(2));
+
+            var rollRandom = new SequenceRandom(0, 1, 2, 3, 4);
+            for (int i = 0; i < 5; i++)
+            {
+                int val = runtime.RollValue(state.Dice[0], rollRandom, () => 1);
+                Assert.That(val, Is.EqualTo(2));
+            }
         }
 
         #endregion
