@@ -250,7 +250,8 @@ namespace Tessera.Games.AugmentedYacht
             RefreshAugmentPresentation(message);
             if (gameSession.IsDrafting)
             {
-                scoreSheet?.SetActivePlayer(gameSession.State.Draft.PlayerIndex, false);
+                // 드래프트 중에는 활성 플레이어를 넘기지 않는다(-1). D-040의 열 확장은 실제 턴에만 적용한다.
+                scoreSheet?.SetActivePlayer(-1, false);
                 UpdateStatusText(message);
                 return;
             }
@@ -315,7 +316,8 @@ namespace Tessera.Games.AugmentedYacht
                     turnDelay?.Stop(false);
                     SetTimerTextIdle();
                     SetRollInteraction(false);
-                    scoreSheet?.SetActivePlayer(gameSession.State.Draft.PlayerIndex, false);
+                    // 드래프트 중에는 활성 플레이어를 넘기지 않는다(-1). D-040의 열 확장은 실제 턴에만 적용한다.
+                    scoreSheet?.SetActivePlayer(-1, false);
                     RefreshAugmentPresentation(transitionMessage);
                     UpdateStatusText(transitionMessage);
                     return;
