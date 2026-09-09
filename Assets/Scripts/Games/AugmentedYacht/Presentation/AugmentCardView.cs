@@ -17,7 +17,7 @@ namespace Tessera.Games.AugmentedYacht
         Disabled
     }
 
-    /// <summary>증강 이름·효과·종류·대상·상태를 같은 정보 계층으로 표시하는 공통 카드 뷰입니다.</summary>
+    /// <summary>증강 이름·종류·효과를 같은 정보 계층으로 표시하는 공통 카드 뷰입니다.</summary>
     public sealed class AugmentCardView : MonoBehaviour
     {
         public const float TrayCardAspectRatio = 1.774f;
@@ -38,8 +38,6 @@ namespace Tessera.Games.AugmentedYacht
         private Text nameText;
         private Text descriptionText;
         private Text kindText;
-        private Text targetText;
-        private Text stateText;
         private Button button;
         private bool overlayContentOnly;
 
@@ -47,8 +45,6 @@ namespace Tessera.Games.AugmentedYacht
         public Text NameText => nameText;
         public Text DescriptionText => descriptionText;
         public Text KindText => kindText;
-        public Text TargetText => targetText;
-        public Text StateText => stateText;
         public Image Icon => icon;
         public Image Background => background;
         public Image StateAccent => stateAccent;
@@ -86,7 +82,6 @@ namespace Tessera.Games.AugmentedYacht
                 nameText.text = "알 수 없는 증강";
                 descriptionText.text = "표시 데이터를 찾을 수 없습니다.";
                 kindText.text = "미확인";
-                targetText.text = "대상 · 없음";
                 icon.sprite = overrideIcon != null ? overrideIcon : AugmentPixelIconFactory.Get(YachtAugmentKind.Enhance);
                 icon.color = overrideIcon != null ? Color.white : IconColor(YachtAugmentKind.Enhance);
                 SetState(AugmentCardDisplayState.Disabled);
@@ -96,7 +91,6 @@ namespace Tessera.Games.AugmentedYacht
             nameText.text = definition.DisplayName;
             descriptionText.text = Compact(definition.Description);
             kindText.text = KindLabel(definition.Kind);
-            targetText.text = $"대상 · {TargetLabel(definition.Target)}";
             Sprite augmentIcon = overrideIcon ?? Resources.Load<Sprite>($"AugmentIcons/{definition.Id}");
             icon.sprite = augmentIcon != null ? augmentIcon : AugmentPixelIconFactory.Get(definition.Kind);
             // 증강 고유 아이콘은 앤틱 잉크색이 구워져 있으므로 틴트하지 않는다.
@@ -107,16 +101,6 @@ namespace Tessera.Games.AugmentedYacht
         public void SetState(AugmentCardDisplayState state)
         {
             DisplayState = state;
-            stateText.text = state switch
-            {
-                AugmentCardDisplayState.Available => "[선택 가능]",
-                AugmentCardDisplayState.Selected => "[선택됨]",
-                AugmentCardDisplayState.Owned => "[보유 중]",
-                AugmentCardDisplayState.Conflict => "[충돌]",
-                AugmentCardDisplayState.Used => "[사용 완료]",
-                _ => "[비활성]"
-            };
-
             Color accent = state switch
             {
                 AugmentCardDisplayState.Available => AntiqueGold,
@@ -138,7 +122,6 @@ namespace Tessera.Games.AugmentedYacht
 
             if (overlayContentOnly) cardColor.a = 0f;
 
-            stateText.color = accent;
             stateAccent.color = accent;
             header.color = Color.Lerp(Crimson, accent, state == AugmentCardDisplayState.Available ? 0f : 0.28f);
             outline.effectColor = accent;
@@ -210,8 +193,9 @@ namespace Tessera.Games.AugmentedYacht
             float contentWidth = width * safeRect.width;
             float contentHeight = height * safeRect.height;
 
-            // 위에서 아래로 헤더 · 강조선 · 본문 · 푸터가 한 줄씩 쌓이는 배치다.
+            // 위에서 아래로 헤더 · 강조선 · 본문이 한 줄씩 쌓이는 배치다.
             // 각 행은 콘텐츠 사각형의 위아래 여백만으로 위치를 정하므로 카드 크기가 달라져도 비율이 유지된다.
+            // footerHeight는 그리는 행이 아니라 본문 아래에 남기는 여백이다.
             float headerHeight = 46f;
             float accentTop = headerHeight;
             float footerHeight = 22f;
@@ -230,27 +214,22 @@ namespace Tessera.Games.AugmentedYacht
 
             // 이름은 크림슨 헤더 위에 얹히므로 잉크색이 아니라 양피지색으로 뽑는다.
             nameText = CreateText(contentRoot, "Name", "증강", Vector2.zero, Vector2.zero, 22, TextAnchor.MiddleLeft, Parchment);
-            SetStretch(nameText.rectTransform, 44f, 100f, 0f, contentHeight - headerHeight);
-            stateText = CreateText(contentRoot, "State Badge", "[선택 가능]", Vector2.zero, Vector2.zero, 12, TextAnchor.MiddleRight, AntiqueGold);
-            SetStretch(stateText.rectTransform, contentWidth - 96f, 4f, 0f, contentHeight - headerHeight);
+            SetStretch(nameText.rectTransform, 44f, 84f, 0f, contentHeight - headerHeight);
+            kindText = CreateText(contentRoot, "Kind Badge", "종류", Vector2.zero, Vector2.zero, 17, TextAnchor.MiddleRight, AntiqueGold);
+            SetStretch(kindText.rectTransform, contentWidth - 76f, 4f, 0f, contentHeight - headerHeight);
 
             // 상태 강조선이 헤더와 본문을 가르는 구분선을 겸한다.
             stateAccent = CreateImage(contentRoot, "State Accent", Vector2.zero, Vector2.zero, AntiqueGold);
             SetStretch(stateAccent.rectTransform, 2f, 2f, accentTop, contentHeight - accentTop - 2f);
             stateAccent.raycastTarget = false;
 
-            descriptionText = CreateText(contentRoot, "Effect Body", "효과", Vector2.zero, Vector2.zero, 15, TextAnchor.UpperLeft, Ink);
-            SetStretch(descriptionText.rectTransform, 4f, 4f, accentTop + 8f, footerHeight + 6f);
+            descriptionText = CreateText(contentRoot, "Effect Body", "효과", Vector2.zero, Vector2.zero, 18, TextAnchor.UpperLeft, Ink);
+            SetStretch(descriptionText.rectTransform, 4f, 4f, accentTop + 16f, footerHeight + 6f);
             descriptionText.resizeTextForBestFit = true;
-            descriptionText.resizeTextMinSize = 12;
-            descriptionText.resizeTextMaxSize = 16;
+            descriptionText.resizeTextMinSize = 14;
+            descriptionText.resizeTextMaxSize = 19;
             descriptionText.horizontalOverflow = HorizontalWrapMode.Wrap;
             descriptionText.verticalOverflow = VerticalWrapMode.Truncate;
-
-            kindText = CreateText(contentRoot, "Kind Badge", "종류", Vector2.zero, Vector2.zero, 12, TextAnchor.MiddleLeft, AntiqueGold);
-            SetStretch(kindText.rectTransform, 4f, contentWidth * 0.6f, contentHeight - footerHeight, 0f);
-            targetText = CreateText(contentRoot, "Target Badge", "대상 · 없음", Vector2.zero, Vector2.zero, 12, TextAnchor.MiddleRight, new Color(0.25f, 0.19f, 0.15f, 1f));
-            SetStretch(targetText.rectTransform, contentWidth * 0.4f, 4f, contentHeight - footerHeight, 0f);
         }
 
         /// <summary>부모 사각형에 네 변 여백만으로 붙인다. 행 단위 배치를 좌표 계산 없이 표현하기 위한 것이다.</summary>
@@ -352,25 +331,6 @@ namespace Tessera.Games.AugmentedYacht
             YachtAugmentKind.Modification => "변형",
             YachtAugmentKind.Quest => "퀘스트",
             _ => "강화"
-        };
-
-        private static string TargetLabel(string target) => target switch
-        {
-            "Aces" => "에이스",
-            "Deuces" => "듀스",
-            "Threes" => "쓰리스",
-            "Fours" => "포스",
-            "Fives" => "파이브스",
-            "Sixes" => "식스스",
-            "Choice" => "초이스",
-            "FourOfAKind" => "포카인드",
-            "FullHouse" => "풀하우스",
-            "SmallStraight" => "스몰 스트레이트",
-            "LargeStraight" => "라지 스트레이트",
-            "Yacht" => "요트",
-            "Quest" => "퀘스트 진행",
-            null or "" => "플레이 상태",
-            _ => target
         };
 
         private static Color IconColor(YachtAugmentKind kind) => kind switch

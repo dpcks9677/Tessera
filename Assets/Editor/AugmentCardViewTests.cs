@@ -10,7 +10,7 @@ using UnityEngine.UI;
 public sealed class AugmentCardViewTests
 {
     [Test]
-    public void CommonCard_이름효과종류대상상태를_같은레이아웃에표시한다()
+    public void CommonCard_이름효과종류를_같은레이아웃에표시한다()
     {
         GameObject canvasObject = new("Augment Card Test Canvas", typeof(Canvas));
         try
@@ -35,8 +35,6 @@ public sealed class AugmentCardViewTests
 
             Assert.That(card.NameText.text, Is.EqualTo("럭키 세븐"));
             Assert.That(card.KindText.text, Is.EqualTo("변형"));
-            Assert.That(card.TargetText.text, Is.EqualTo("대상 · 에이스"));
-            Assert.That(card.StateText.text, Is.EqualTo("[선택 가능]"));
             Assert.That(card.Button.interactable, Is.True);
             // 설명은 더 이상 잘리지 않고 워드랩으로 전문이 들어간다.
             Assert.That(card.DescriptionText.text, Is.EqualTo(definition.Description));
@@ -50,15 +48,14 @@ public sealed class AugmentCardViewTests
         }
     }
 
-    [TestCase(AugmentCardDisplayState.Available, "[선택 가능]", true, 1f)]
-    [TestCase(AugmentCardDisplayState.Selected, "[선택됨]", false, 2f)]
-    [TestCase(AugmentCardDisplayState.Owned, "[보유 중]", false, 1f)]
-    [TestCase(AugmentCardDisplayState.Conflict, "[충돌]", false, 2f)]
-    [TestCase(AugmentCardDisplayState.Used, "[사용 완료]", false, 1f)]
-    [TestCase(AugmentCardDisplayState.Disabled, "[비활성]", false, 1f)]
-    public void CommonCard_상태별문구강조입력여부를_즉시구분한다(
+    [TestCase(AugmentCardDisplayState.Available, true, 1f)]
+    [TestCase(AugmentCardDisplayState.Selected, false, 2f)]
+    [TestCase(AugmentCardDisplayState.Owned, false, 1f)]
+    [TestCase(AugmentCardDisplayState.Conflict, false, 2f)]
+    [TestCase(AugmentCardDisplayState.Used, false, 1f)]
+    [TestCase(AugmentCardDisplayState.Disabled, false, 1f)]
+    public void CommonCard_상태별강조와입력여부를_즉시구분한다(
         AugmentCardDisplayState state,
-        string expectedLabel,
         bool expectedInteractable,
         float expectedOutlineDistance)
     {
@@ -81,9 +78,7 @@ public sealed class AugmentCardViewTests
             }, state);
 
             Assert.That(card.DisplayState, Is.EqualTo(state));
-            Assert.That(card.StateText.text, Is.EqualTo(expectedLabel));
             Assert.That(card.Button.interactable, Is.EqualTo(expectedInteractable));
-            Assert.That(card.StateAccent.color, Is.EqualTo(card.StateText.color));
             Assert.That(Mathf.Abs(card.CardOutline.effectDistance.x), Is.EqualTo(expectedOutlineDistance));
             Assert.That(card.Button.colors.disabledColor, Is.EqualTo(Color.white));
         }
@@ -298,7 +293,7 @@ public sealed class AugmentCardViewTests
     }
 
     [Test]
-    public void CommonCard_헤더_본문_푸터를_위에서아래로쌓는다()
+    public void CommonCard_헤더_본문을_위에서아래로쌓는다()
     {
         GameObject canvasObject = new("Augment Row Order Test Canvas", typeof(Canvas));
         try
@@ -308,22 +303,27 @@ public sealed class AugmentCardViewTests
                 new Vector2(460f, 460f / AugmentCardView.TrayCardAspectRatio),
                 new Vector2(.5f, .5f), null);
 
-            // 이름 헤더 · 상태 강조선 · 설명 본문 · 종류/대상 푸터가 위에서 아래로 이 순서대로 놓인다.
+            // 이름과 종류 배지가 한 헤더 행을 이루고, 그 아래로 상태 강조선 · 설명 본문이 놓인다.
             float nameTop = TopMargin(card.NameText.rectTransform);
+            float kindTop = TopMargin(card.KindText.rectTransform);
             float accentTop = TopMargin(card.StateAccent.rectTransform);
             float bodyTop = TopMargin(card.DescriptionText.rectTransform);
-            float kindTop = TopMargin(card.KindText.rectTransform);
 
+            Assert.That(kindTop, Is.EqualTo(nameTop).Within(.001f));
             Assert.That(nameTop, Is.LessThan(accentTop));
             Assert.That(accentTop, Is.LessThan(bodyTop));
-            Assert.That(bodyTop, Is.LessThan(kindTop));
-            Assert.That(TopMargin(card.TargetText.rectTransform), Is.EqualTo(kindTop).Within(.001f));
-            // 본문 아래 끝이 푸터보다 위에 있어야 두 행이 겹치지 않는다.
-            Assert.That(card.DescriptionText.rectTransform.offsetMin.y,
-                Is.GreaterThan(card.KindText.rectTransform.rect.height));
+            // 제목 행과 본문 사이 여백.
+            Assert.That(bodyTop - accentTop, Is.EqualTo(16f).Within(.001f));
+            // 본문 아래에는 그리는 행이 없어도 여백이 남는다.
+            Assert.That(card.DescriptionText.rectTransform.offsetMin.y, Is.GreaterThan(0f));
             Assert.That(card.NameText.alignment, Is.EqualTo(TextAnchor.MiddleLeft));
+            Assert.That(card.KindText.alignment, Is.EqualTo(TextAnchor.MiddleRight));
             Assert.That(card.DescriptionText.alignment, Is.EqualTo(TextAnchor.UpperLeft));
             Assert.That(card.Icon.transform.IsChildOf(card.ContentRoot), Is.True);
+            // 종류 배지와 본문은 각각 기본 배지·본문보다 크게 읽힌다.
+            Assert.That(card.KindText.fontSize, Is.EqualTo(17));
+            Assert.That(card.DescriptionText.resizeTextMinSize, Is.EqualTo(14));
+            Assert.That(card.DescriptionText.resizeTextMaxSize, Is.EqualTo(19));
         }
         finally
         {
