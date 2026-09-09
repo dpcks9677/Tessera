@@ -24,9 +24,9 @@
 |---|---|
 | 전체 상태 | M1~M6 완료, M7 완료 (T1~T4; T5~T12는 `M17`로 이동 `D-038`), M8 증강 시스템 구조 리팩토링 완료, M9 프리팹 이관 완료, M10 완료, M11 컨트롤러 분해 완료, M12·M13 구현 완료(`M13-T4`는 `M16-T6`으로 이관), M14·M15 완료, M16 셀 셰이딩 채택 보류(`DEFERRED`, 인프라 유지, `D-037`) |
 | 현재 마일스톤 | `M17` 증강 요트 로컬 핫시트 완성 |
-| 현재 작업 | `M17-T19` 깃펜 깃털 흰색 전환과 갈라짐 연출. `M17-T19-0`~`M17-T19-5` 완료, `M17-T19-6` 에셋 갱신과 화면 확인 남음. 상세는 [`docs/quill_feather_appearance_plan.md`](quill_feather_appearance_plan.md). `M17-T18-5` 화면 확인도 아직 열려 있어 `M17-T19-6`과 한 세션에 합쳐 진행한다. `M17-T9` 증강 발동 VFX는 중단 후 복귀 예정 |
-| 다음 행동 | `M17-T19-6`과 `M17-T18-5`를 한 세션에서 화면 확인: Play Mode에서 잉크통 꽂힘 자세와 점수 칸 호버 필기 자세 양쪽으로 깃펜 깃털이 오프화이트로 갈라져 보이는지, 호버 시 칸에 따라붙고 복귀하는지 검증. 이후 `M17-T9` 복귀 |
-| 마지막 완료 작업 | 깃펜 깃털 공유 상수 격자·팔레트·알파 슬릿·노치·머티리얼 알파 클립·베이크 파이프라인 구현 (`M17-T19-1`~`M17-T19-5`) |
+| 현재 작업 | `M17-T9-1` 56 `dice-alchemy` 연기 가림 연출. `M17-T9-1-1`~`M17-T9-1-4` 완료, `M17-T9-1-5` Play 모드 화면 확인 남음. 상세는 [`docs/augmented_yacht_m17_vfx_spec.md`](augmented_yacht_m17_vfx_spec.md) §9. `M17-T18-5`·`M17-T19-6` 화면 확인도 아직 열려 있다 |
+| 다음 행동 | `M17-T9-1-5` Play 모드 화면 확인: 연기가 킵 안 된 주사위를 가리는 0.25초 동안 눈 표시와 점수표 후보 점수 갱신이 보류되고, 가려진 순간 스냅 교체된 뒤 연기가 걷히는지 검증. 이어서 `M17-T19-6`과 `M17-T18-5` 화면 확인도 한 세션에서 처리 |
+| 마지막 완료 작업 | 56 `dice-alchemy` 연기 스프라이트·표시 갱신 지연 큐·`AugmentVfxPlanner` 확장·연기 컴포넌트 구현 (`M17-T9-1-1`~`M17-T9-1-4`) |
 | 차단 요소 | 없음 |
 | 마지막 갱신일 | 2026-09-09 |
 
@@ -943,7 +943,8 @@ M16 완료 조건:
 | `M17-T6` | 게임 종료 요약 | `TODO` | 점수와 증강 결과를 확인 가능함 |
 | `M17-T7` | 반복/무작위 전체 게임 테스트 | `TODO` | 여러 증강 조합으로 완주함 |
 | `M17-T8` | 특수 주사위 외형 구현 (구 `M7-T5`) | `DONE` | 8종 전부 화면에서 구분 확인(2026-09-07). 8면체 면의 숫자는 `CrispUI` 레이어로 올려 픽셀 필터를 우회 |
-| `M17-T9` | 증강 발동 VFX와 전환 연출 (구 `M7-T6`) | `TODO` | 발동 주체·대상·효과 결과가 과도한 텍스트 없이 전달됨 |
+| `M17-T9` | 증강 발동 VFX와 전환 연출 (구 `M7-T6`) | `TODO` | 발동 주체·대상·효과 결과가 과도한 텍스트 없이 전달됨. 사양과 하위 구현 계획은 [`docs/augmented_yacht_m17_vfx_spec.md`](augmented_yacht_m17_vfx_spec.md) |
+| `M17-T9-1` | 56 `dice-alchemy` 연기 가림 연출 | `DOING` | 연기가 킵 안 된 주사위를 가린 사이에 눈이 바뀌고, 점수표 후보 점수가 먼저 결과를 알리지 않음. `M17-T9-1-1`~`M17-T9-1-4` 완료, `M17-T9-1-5` Play 모드 화면 확인 남음(2026-09-09). 상세는 VFX 사양서 §9 |
 | `M17-T10` | 점수표 증강 표시 (구 `M7-T7`) | `TODO` | 교체된 족보·보너스·잠금·진행 조건을 점수표에서 확인 가능. `M17-T3`과 함께 |
 | `M17-T11` | 진행형 증강 상태 표시 (구 `M7-T8`) | `TODO` | 횟수·남은 턴·누적치·성공/실패 확인. `M17-T3`과 함께 |
 | `M17-T12` | 수동 증강 행동 피드백 (구 `M7-T9`) | `TODO` | 사용 가능 여부·입력 확인·성공/실패 이유 표현. `M17-T4`와 함께 |
@@ -1179,6 +1180,17 @@ npm run validate:augments
 ---
 
 ## 13. 작업 세션 로그
+
+### 2026-09-09 — Claude (`M17-T9-1` 56 `dice-alchemy` 연기 가림 연출)
+
+- 작업 ID: `M17-T9-1` (시작 상태 `TODO`, 현재 `DOING`)
+- 시작 상태: 증강 56 `dice-alchemy`는 연출이 하나도 없어, 굴림 없이 값만 바뀌면 주사위 눈이 예고 없이 툭 바뀌고 점수표 후보 점수가 먼저 결과를 알렸다. 계획은 `docs/augmented_yacht_m17_vfx_spec.md` §9에 이미 작성돼 있었다
+- 완료 내용: 연기 파티클이 킵하지 않은 주사위를 가리는 0.25초 동안 주사위 눈 표시와 점수표 후보 점수 갱신을 보류하고, 가려진 순간 스냅 교체한 뒤 연기가 걷히도록 구현. 로직은 그대로 두고 표시만 미룸. 하위 작업 `M17-T9-1-1`(연기 스프라이트)·`M17-T9-1-2`(표시 갱신 지연 큐 `I5`)·`M17-T9-1-3`(`AugmentVfxPlanner` 확장)·`M17-T9-1-4`(연기 컴포넌트)까지 완료. `M17-T9-1-5`(Play 모드 화면 확인)는 남음
+- 확인한 사실: 계획서 §9.5는 `AugmentedYachtController`가 연기 컴포넌트를 만들어 주입한다고 적었으나, 실제로는 `YachtDiceRoundPresenter`가 직접 지연 생성하도록 구현했다. `YachtTurnFlowPresenter.BindProps`가 이미 인자 11개이고 연기는 주사위 비주얼 소관이라 컨트롤러를 경유할 이유가 없었다. `AugmentedYachtController.cs`는 이번 작업으로 변경되지 않았다
+- 변경 파일: `Assets/Scripts/Dice/BakedDiceController.cs`, `Assets/Scripts/Games/AugmentedYacht/Presentation/DiceSmokePuffVfx.cs`(신규), `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtDiceRoundPresenter.cs`, `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentVfxPlanner.cs`, `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtTurnFlowPresenter.cs`, `Assets/Editor/DiceSmokeSpriteBaker.cs`(신규), `Assets/Resources/Vfx/DiceSmokePuff.png`(신규 에셋), `Assets/Editor/AugmentVfxPlannerTests.cs`
+- 실행한 검증: Unity 컴파일 통과, 신규 경고 없음. `AugmentVfxPlannerTests` 격리 실행 13/13 통과(기존 10 + 신규 3). 전체 EditMode 887개 중 Tessera 실패 3건(`FontFallbackTests` 2건, `YachtGameRulesTests.LuckySevens_중간획득시_보유자에이스만_초기화하고_추가턴을_준다` 1건) — 셋 다 이번 변경과 무관한 선행 실패로 손대지 않음. `DiceSmokePuff.png` 픽셀 검사에서 유니크 알파 `{0,64,128,192,255}` 5종만 확인, 안티에일리어싱 중간값 0건, 알파>0 픽셀 RGB 전부 (255,255,255)
+- 남은 문제/차단 요소: `M17-T9-1-5` Play 모드 화면 확인 미실시. `M17-T18-5`·`M17-T19-6` 화면 확인도 아직 열려 있어 세 화면 확인이 동시에 대기 중. §2 「한 번에 하나만 `DOING`」 규칙과 달리 `M17-T18`·`M17-T19`·`M17-T9-1` 셋 다 `DOING`으로 남아 있다. 임의로 상태를 바꾸지 않고 그대로 둠
+- 다음 작업: `M17-T9-1-5` Play 모드 화면 확인. 이후 `M17-T19-6`·`M17-T18-5`와 합쳐 진행
 
 ### 2026-09-09 — Claude (`M17-T19` 깃펜 깃털 흰색 전환과 갈라짐 연출)
 

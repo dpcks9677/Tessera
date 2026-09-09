@@ -28,6 +28,8 @@ namespace Tessera.Games.AugmentedYacht
         private BakedDiceController bakedDiceController;
         private DicePresetCatalog presetCatalog;
         private int diceCount = 5;
+        // 56 dice-alchemy 연기 가림 연출 전용. 필요할 때 지연 생성한다(M17-T9-1-5).
+        private DiceSmokePuffVfx smokeVfx;
 
         private Coroutine keepRoutine;
         private int rollIndex;
@@ -134,6 +136,54 @@ namespace Tessera.Games.AugmentedYacht
 
                 dieTypes[i] = visual;
                 dicePool?.ApplyDieType(activeDice[i], visual);
+            }
+        }
+
+        /// <summary>화면 사본의 눈 값을 주사위 면 회전에 반영한다. 위치와 정렬은 건드리지 않는다.</summary>
+        public void ApplyValuesToVisuals()
+        {
+            var transforms = new Transform[activeDice.Count];
+            for (int i = 0; i < activeDice.Count; i++)
+                transforms[i] = activeDice[i] != null ? activeDice[i].transform : null;
+
+            BakedDiceController.ApplyValuesInPlace(transforms, diceValues);
+        }
+
+        /// <summary>킵하지 않은 주사위 위로 연기를 터뜨린다.</summary>
+        public void BurstSmokeOverUnkeptDice()
+        {
+            var positions = new List<Vector3>();
+            for (int i = 0; i < activeDice.Count; i++)
+            {
+                if (i < keptDice.Count && keptDice[i]) continue;
+                if (activeDice[i] == null) continue;
+                positions.Add(activeDice[i].transform.position);
+            }
+            if (positions.Count == 0) return;
+
+            smokeVfx ??= GetComponent<DiceSmokePuffVfx>() ?? gameObject.AddComponent<DiceSmokePuffVfx>();
+            smokeVfx.Burst(positions);
+        }
+
+        /// <summary>
+        /// 킵하지 않은 주사위의 8면체 면 숫자 렌더러를 켜고 끈다.
+        ///
+        /// 8면체 숫자는 <see cref="DiceVisualPool.PromoteOctaDigitsToCrispUi"/>가 <see cref="TesseraLayers.CrispUI"/>
+        /// 레이어로 올린다. Crisp 카메라는 월드 화면 위에 합성되므로 월드 레이어에 있는 연기가 이 숫자를 가리지
+        /// 못한다. 그래서 연기가 가장 짙은 구간에만 잠깐 끈다.
+        /// </summary>
+        public void SetUnkeptCrispRenderersVisible(bool visible)
+        {
+            for (int i = 0; i < activeDice.Count; i++)
+            {
+                if (i < keptDice.Count && keptDice[i]) continue;
+                if (activeDice[i] == null) continue;
+
+                foreach (Renderer renderer in activeDice[i].GetComponentsInChildren<Renderer>(true))
+                {
+                    if (renderer.gameObject.layer != TesseraLayers.CrispUI) continue;
+                    renderer.enabled = visible;
+                }
             }
         }
 

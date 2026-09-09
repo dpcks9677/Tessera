@@ -90,6 +90,53 @@ public static class AugmentCardValidationRunner
     }
 
     /// <summary>
+    /// 주사위 연금술 증강이 제시될 때까지 새 게임을 다시 열고 그 증강을 고른다.
+    ///
+    /// 권위 계층은 드래프트에 제시된 증강만 받아들이므로 임의로 부여할 수 없다.
+    /// 56 dice-alchemy 연기 가림 연출(M17-T9-1) 화면 확인용.
+    /// </summary>
+    [MenuItem("Tessera/Validation/Visual Check/Draft Dice Alchemy")]
+    public static void DraftDiceAlchemy()
+    {
+        if (!EditorApplication.isPlaying)
+        {
+            Debug.LogError("[검증] 플레이 모드에서만 실행할 수 있습니다.");
+            return;
+        }
+
+        YachtTurnFlowPresenter flow = ResolveTurnFlow();
+
+        for (int attempt = 1; attempt <= 300; attempt++)
+        {
+            flow.StartNewGame(YachtGameMode.Augmented);
+            YachtGameSession session = flow.Session;
+            if (session == null || !session.IsDrafting) continue;
+
+            IReadOnlyList<string> options = session.State.Draft.Options;
+            if (options == null) continue;
+
+            int index = IndexOf(options, YachtAugmentRuntime.DiceAlchemyId);
+            if (index < 0) continue;
+
+            flow.SelectDraftOption(index);
+            Debug.Log($"[검증] {YachtAugmentRuntime.DiceAlchemyId} 증강을 {attempt}번째 드래프트에서 획득했습니다.");
+            return;
+        }
+
+        Debug.LogWarning("[검증] 300번 안에 주사위 연금술 증강이 제시되지 않았습니다.");
+    }
+
+    /// <summary>
+    /// 연기 가림 연출을 발동시킨다. 증강을 보유하고 첫 굴림을 마쳐 점수 선택 단계(YachtGamePhase.ScoreSelection)에
+    /// 있어야 발동한다.
+    /// </summary>
+    [MenuItem("Tessera/Validation/Visual Check/Use Dice Alchemy")]
+    public static void UseDiceAlchemy()
+    {
+        ResolveTurnFlow().UseAugmentAction(YachtAugmentRuntime.DiceAlchemyId);
+    }
+
+    /// <summary>
     /// 특수 주사위 외형을 한 화면에 늘어놓는다(M7-T5 시각 검수).
     ///
     /// 화면 사본에만 종류를 강제로 입히므로 권위 상태는 바뀌지 않는다. 다음 굴림이나 턴 전환에서

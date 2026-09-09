@@ -10,7 +10,10 @@ namespace Tessera.Games.AugmentedYacht
         StickerAttach,
 
         /// <summary>`S2` 낙인. 그 칸으로 점수를 확정한 순간 스티커가 눌립니다.</summary>
-        StickerStamp
+        StickerStamp,
+
+        /// <summary>연기가 주사위를 가린 사이에 눈이 바뀐다. 56 `dice-alchemy` 전용이다.</summary>
+        DiceSmokeSwap
     }
 
     public readonly struct AugmentVfxRequest
@@ -34,8 +37,9 @@ namespace Tessera.Games.AugmentedYacht
     ///
     /// <see cref="UnityEngine.MonoBehaviour"/>가 아닌 순수 클래스라 화면 없이 검증할 수 있습니다.
     /// 변형 증강은 발동 이벤트(<c>AugmentTriggered</c>)를 내지 않으므로 여기서도 그것을 보지 않습니다.
-    /// 획득(<c>AugmentSelected</c>·<c>AugmentReplaced</c>)과 점수 확정(<c>ScoreCommitted</c>)만 봅니다.
-    /// 근거는 <c>docs/augmented_yacht_m17_vfx_spec.md</c> §3.1.1에 있습니다.
+    /// 획득(<c>AugmentSelected</c>·<c>AugmentReplaced</c>)과 점수 확정(<c>ScoreCommitted</c>)에 더해,
+    /// 수동 행동 발동(<c>AugmentActionUsed</c>)도 봅니다.
+    /// 근거는 <c>docs/augmented_yacht_m17_vfx_spec.md</c> §3.1.1·§9.5에 있습니다.
     /// </summary>
     public static class AugmentVfxPlanner
     {
@@ -69,6 +73,10 @@ namespace Tessera.Games.AugmentedYacht
                     case YachtGameEventType.ScoreCommitted:
                         TryAddStamp(gameEvent, state, output);
                         break;
+
+                    case YachtGameEventType.AugmentActionUsed:
+                        TryAddDiceSmokeSwap(gameEvent, output);
+                        break;
                 }
             }
         }
@@ -99,6 +107,14 @@ namespace Tessera.Games.AugmentedYacht
                     AugmentVfxCue.StickerStamp, gameEvent.PlayerIndex, owned[i], category));
                 return;
             }
+        }
+
+        /// <summary>56 `dice-alchemy`가 눈을 바꾸는 순간에만 연기 가림 요청을 냅니다. 대상 주사위는 싣지 않고,
+        /// 소비하는 쪽이 상태의 <c>IsKept</c>로 판정합니다. <see cref="ScoreCategory"/>는 이 큐에서 의미가 없어 기본값을 넣습니다.</summary>
+        private static void TryAddDiceSmokeSwap(YachtGameEvent gameEvent, List<AugmentVfxRequest> output)
+        {
+            if (!string.Equals(gameEvent.AugmentId, YachtAugmentRuntime.DiceAlchemyId, System.StringComparison.Ordinal)) return;
+            output.Add(new AugmentVfxRequest(AugmentVfxCue.DiceSmokeSwap, gameEvent.PlayerIndex, gameEvent.AugmentId, default));
         }
 
         private static IReadOnlyList<string> OwnedIds(IReadOnlyYachtGameState state, int playerIndex)

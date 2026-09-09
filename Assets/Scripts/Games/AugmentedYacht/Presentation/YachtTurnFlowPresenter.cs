@@ -63,8 +63,15 @@ namespace Tessera.Games.AugmentedYacht
         private YachtGameCommandResult pendingRollResult;
         private string pendingTurnTransitionMessage;
         private Coroutine rollRoutine;
+        private Coroutine smokeRoutine;
 
         private const float TurnDurationSeconds = YachtGameOptions.DefaultTurnDurationSeconds;
+
+        // 56 dice-alchemy 연기 가림 타임라인. 값은 사양서 §9.4의 사용자 확정치다.
+        private const float SmokeDigitsHideSeconds = 0.15f;
+        private const float SmokeSwapSeconds = 0.25f;
+        private const float SmokeDigitsShowSeconds = 0.28f;
+        private const float SmokeTotalSeconds = 0.60f;
 
         /// <summary>모드가 시작됐다. 트레이 표시와 주사위 색상처럼 씬 쪽 표현은 컨트롤러가 맡는다.</summary>
         public event Action<YachtGameMode> ModeStarted;
@@ -187,6 +194,13 @@ namespace Tessera.Games.AugmentedYacht
             {
                 StopCoroutine(rollRoutine);
                 rollRoutine = null;
+            }
+            if (smokeRoutine != null)
+            {
+                StopCoroutine(smokeRoutine);
+                smokeRoutine = null;
+                dice?.SetUnkeptCrispRenderersVisible(true);
+                dice?.ApplyValuesToVisuals();
             }
             dice?.StopAnimations();
 
@@ -512,17 +526,25 @@ namespace Tessera.Games.AugmentedYacht
 
             if (pendingRollResult.RollPresentation == null)
             {
-                if (dice.VisualCount != gameSession.State.Dice.Count)
+                bool diceCountUnchanged = dice.VisualCount == gameSession.State.Dice.Count;
+                if (!diceCountUnchanged)
                 {
                     ResetDiceForTurn();
                     Phase = PresentationPhase.AwaitingRoll;
                 }
-                else
-                {
-                    dice.SyncFromAuthority(gameSession.State.Dice);
-                }
+
                 dice.SetVisible(true);
                 scoreSheet?.ClearCandidateScores();
+
+                // 56 dice-alchemy: 눈이 연기에 가려 바뀌는 사이 값 반영을 늦춘다. 대상 판정은
+                // AugmentVfxPlanner가 테이블 주도로 한다(사양서 §3.4).
+                if (diceCountUnchanged && HasDiceSmokeSwap(pendingRollResult))
+                {
+                    smokeRoutine = StartCoroutine(RunDiceSmokeSwapSequence(GetAugmentEventMessage(pendingRollResult)));
+                    return;
+                }
+
+                if (diceCountUnchanged) dice.SyncFromAuthority(gameSession.State.Dice);
                 if (gameSession.Phase == YachtGamePhase.ScoreSelection)
                     scoreSheet?.ShowCandidateScores(gameSession.CurrentPlayerIndex, gameSession.CurrentCandidates);
                 string message = GetAugmentEventMessage(pendingRollResult);
@@ -572,6 +594,52 @@ namespace Tessera.Games.AugmentedYacht
             RefreshGameInteraction();
             RefreshAugmentPresentation(GetAugmentEventMessage(gameSession.LastCommandResult));
             UpdateStatusText();
+        }
+
+        /// <summary>이 명령이 연기 가림 연출을 요구하는지. 어떤 증강이 그런지는 planner가 판정한다.</summary>
+        private bool HasDiceSmokeSwap(YachtGameCommandResult result)
+        {
+            if (result?.Events == null || result.Events.Length == 0) return false;
+
+            vfxBuffer.Clear();
+            AugmentVfxPlanner.Plan(result.Events, gameSession.State, vfxBuffer);
+            for (int i = 0; i < vfxBuffer.Count; i++)
+            {
+                if (vfxBuffer[i].Cue == AugmentVfxCue.DiceSmokeSwap) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 연기가 주사위를 가린 사이에 눈을 바꾼다(56 `dice-alchemy`).
+        ///
+        /// 로직은 이미 눈을 바꿨고 여기서 미루는 것은 표시뿐이다. 사양서 §9.4의 타임라인을 따른다.
+        /// </summary>
+        private IEnumerator RunDiceSmokeSwapSequence(string message)
+        {
+            if (gameSession == null || dice == null) yield break;
+            dice.BurstSmokeOverUnkeptDice();
+
+            yield return new WaitForSeconds(SmokeDigitsHideSeconds);
+            if (gameSession == null || dice == null) yield break;
+            dice.SetUnkeptCrispRenderersVisible(false);
+
+            yield return new WaitForSeconds(SmokeSwapSeconds - SmokeDigitsHideSeconds);
+            if (gameSession == null || dice == null) yield break;
+            dice.SyncFromAuthority(gameSession.State.Dice);
+            dice.ApplyValuesToVisuals();
+            if (gameSession.Phase == YachtGamePhase.ScoreSelection)
+                scoreSheet?.ShowCandidateScores(gameSession.CurrentPlayerIndex, gameSession.CurrentCandidates);
+            RefreshAugmentPresentation(message);
+            UpdateStatusText(message);
+
+            yield return new WaitForSeconds(SmokeDigitsShowSeconds - SmokeSwapSeconds);
+            if (gameSession == null || dice == null) yield break;
+            dice.SetUnkeptCrispRenderersVisible(true);
+
+            yield return new WaitForSeconds(SmokeTotalSeconds - SmokeDigitsShowSeconds);
+            smokeRoutine = null;
+            RefreshRollBudgetState();
         }
 
         public bool SetDieKept(int index, bool kept)
