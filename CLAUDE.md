@@ -95,6 +95,7 @@ Rules:
 - graphify가 충분한 컨텍스트를 못 주는 경우에만 직접 Read/Grep 으로 내려갑니다.
 - `graphify-out/graph.json` 이 없으면 `graphify update .` 로 먼저 생성합니다. 산출물은 git 추적 대상이 아니라 각자 생성합니다.
 - 예외로 `graphify-out/.graphify_labels.json` 과 같은 이름의 `.sig` 는 추적합니다. 노드·엣지·커뮤니티 분할은 AST에서 결정돼 같은 커밋이면 어디서든 똑같이 재생성되지만, 커뮤니티 이름은 LLM으로만 만들 수 있어 재생성이 불가능합니다. 이 두 파일 덕분에 새 환경에서 `graphify update .` 만 돌려도 같은 이름이 붙습니다.
+- **`PYTHONHASHSEED` 는 반드시 `0` 으로 고정된 상태에서 graphify를 돌립니다.** 커뮤니티 검출이 문자열 키 집합의 순회 순서에 의존하는데 그 순서가 프로세스마다 무작위라, 시드를 고정하지 않으면 같은 코드에서도 커뮤니티 경계가 흔들립니다. 그러면 저장된 이름이 대량으로 무효화돼 라벨 파일이 매번 수백 줄씩 바뀌고 기기 간 충돌이 납니다. `post-commit` 훅과 `.claude/settings.json` 이 이 값을 고정하므로 이 저장소에서 작업할 때는 신경 쓸 필요가 없지만, 다른 터미널에서 직접 실행할 때는 `PYTHONHASHSEED=0 graphify update .` 로 돌립니다.
 
 ## 커밋 & 푸시
 

@@ -128,6 +128,10 @@ yarn-error.log*
 /[Aa]ssets/_Recovery/
 /[Aa]ssets/_Recovery.meta
 
+# Unity가 만드는 빈 임시 폴더. 내용물이 없고 추적할 가치가 없다.
+/[Aa]ssets/Temp/
+/[Aa]ssets/Temp.meta
+
 # graphify 지식 그래프 산출물 (graphify update . 로 재생성)
 #
 # 디렉터리 자체가 아니라 내용물을 무시한다. 부모 디렉터리가 제외되면 그 안의 파일을
@@ -141,6 +145,13 @@ yarn-error.log*
 # 매번 다르다. 이 두 파일(합쳐 15KB)만 공유하면 다른 환경에서 graphify update . 를
 # 돌려도 같은 이름이 붙는다. .sig 는 커뮤니티별 내용 해시로, 저장된 이름이 아직
 # 유효한지 판정하는 데 쓰인다.
+#
+# 단, "같은 커밋이면 똑같이 재생성된다"는 PYTHONHASHSEED 가 고정됐을 때만 성립한다.
+# 커뮤니티 검출(networkx louvain)이 문자열 키 집합을 순회하는데 그 순서가 프로세스마다
+# 무작위라, 시드를 고정하지 않으면 같은 코드에서도 커뮤니티 경계가 흔들리고 저장된
+# 이름이 대량으로 무효화돼 이 파일이 수백 줄씩 바뀐다. post-commit 훅은 시드를 고정하고
+# 있으며, 손으로 돌리는 경우를 위해 .claude/settings.json 에도 PYTHONHASHSEED=0 을 둔다.
+# 그 밖의 터미널에서 직접 실행할 때는 PYTHONHASHSEED=0 graphify update . 로 돌린다.
 !/graphify-out/.graphify_labels.json
 !/graphify-out/.graphify_labels.json.sig
 
