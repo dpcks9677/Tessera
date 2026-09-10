@@ -14,6 +14,12 @@ namespace Tessera.Games.Yacht
         private readonly HashSet<string> acceptedCommandIds = new(StringComparer.Ordinal);
         private readonly YachtGameState state;
 
+        /// <summary>
+        /// 다음 굴림에서 난수 대신 쓸 눈. 화면의 디버그 패널이 세우고 한 번 쓰면 지워진다.
+        /// 굴림 확정 경로 안에 두어야 후보 점수·증강 훅·연출 최종 면이 모두 같은 값을 본다.
+        /// </summary>
+        private int[] forcedRollValues;
+
         public LocalGameAuthority(
             YachtGameOptions options = null,
             IRandomSource random = null,
@@ -160,11 +166,14 @@ namespace Tessera.Games.Yacht
             for (int i = 0; i < state.Dice.Length; i++)
             {
                 YachtDieState die = state.Dice[i];
-                if (!die.IsKept)
+                if (die.IsKept) continue;
+                if (TryTakeForcedValue(i, out int forced)) die.Value = forced;
+                else
                     die.Value = state.Mode == YachtGameMode.Augmented
                         ? augmentRuntime.RollValue(die, random, () => rules.RollValue(die, random))
                         : rules.RollValue(die, random);
             }
+            forcedRollValues = null;
             state.HasRolled = true;
             state.Phase = YachtGamePhase.ScoreSelection;
             UpdateCandidates();
@@ -396,6 +405,84 @@ namespace Tessera.Games.Yacht
             if (timeout) events.Add(new YachtGameEvent { Type = YachtGameEventType.TimeoutResolved, PlayerIndex = playerIndex, Category = category, Score = score });
             if (gameEnded) events.Add(new YachtGameEvent { Type = YachtGameEventType.GameEnded, PlayerIndex = playerIndex });
             return Accept(events.ToArray());
+        }
+
+        /// <summary>
+        /// 다음 굴림의 눈을 지정한다. 인덱스는 <see cref="YachtGameState.Dice"/>와 같고,
+        /// 0 이하이거나 배열 밖인 자리는 평소대로 난수를 쓴다. 킵된 주사위는 애초에 다시 굴리지 않는다.
+        /// null을 넣으면 예약이 풀린다. 한 번 굴리면 지워진다.
+        /// </summary>
+        public void SetForcedRollValues(int[] values)
+        {
+            forcedRollValues = values != null && values.Length > 0 ? (int[])values.Clone() : null;
+        }
+
+        private bool TryTakeForcedValue(int dieIndex, out int value)
+        {
+            value = 0;
+            if (forcedRollValues == null || dieIndex < 0 || dieIndex >= forcedRollValues.Length) return false;
+            if (forcedRollValues[dieIndex] <= 0) return false;
+            value = forcedRollValues[dieIndex];
+            return true;
+        }
+
+        /// <summary>
+        /// 드래프트를 거치지 않고 증강을 부여한다. 화면의 디버그 패널 전용이다.
+        ///
+        /// 권위는 드래프트에 제시된 증강만 받으므로, 지정한 증강 하나만 놓인 드래프트를 잠시 세워
+        /// 정규 경로인 <see cref="YachtAugmentRuntime.TrySelectAugment"/>를 통과시킨다. 그래야
+        /// 획득 시점 훅과 변형 증강의 대상 칸 초기화가 실제 획득과 똑같이 일어난다.
+        /// 원래 드래프트와 위상은 그대로 돌려놓는다.
+        /// </summary>
+        public bool DebugGrantAugment(int playerIndex, string augmentId, out YachtGameEvent[] events, out string error)
+        {
+            events = Array.Empty<YachtGameEvent>();
+            error = null;
+            if (state.Mode != YachtGameMode.Augmented)
+            {
+                error = "일반 모드에서는 증강을 부여할 수 없습니다.";
+                return false;
+            }
+            if (playerIndex < 0 || state.AugmentPlayers == null || playerIndex >= state.AugmentPlayers.Length)
+            {
+                error = "플레이어 인덱스가 잘못되었습니다.";
+                return false;
+            }
+            if (string.IsNullOrEmpty(augmentId))
+            {
+                error = "증강을 고르지 않았습니다.";
+                return false;
+            }
+
+            YachtDraftState savedDraft = state.Draft.Clone();
+            YachtGamePhase savedPhase = state.Phase;
+
+            state.Draft = new YachtDraftState
+            {
+                IsActive = true,
+                PlayerIndex = playerIndex,
+                FirstPlayerIndex = playerIndex,
+                Options = new[] { augmentId },
+                OptionCardPresetIds = new[] { visualRandom.NextInt(0, YachtAugmentRuntime.CardVisualPresetCount) },
+                SelectionCounts = new int[options.PlayerCount]
+            };
+            state.Phase = YachtGamePhase.Draft;
+
+            bool granted = augmentRuntime.TrySelectAugment(
+                state, playerIndex, augmentId, random, visualRandom, out events, out _, out error);
+
+            state.Draft = savedDraft;
+            state.Phase = savedPhase;
+            if (!granted) return false;
+
+            // 정규 경로(SelectAugment)와 같은 뒤처리다. 굴리기 전이면 이번 턴 주사위 구성을 다시 잡는다.
+            if (state.Phase == YachtGamePhase.TurnReady)
+            {
+                augmentRuntime.PrepareTurn(state, state.CurrentPlayerIndex, random, false);
+                ResetDiceForCurrentPlayer();
+            }
+            state.Revision++;
+            return true;
         }
 
         private void ResetGameState(bool startImmediately)
@@ -687,6 +774,13 @@ namespace Tessera.Games.Yacht
             LastCommandResult = Execute(YachtCommandType.AdvanceTurn, CurrentPlayerIndex);
             return LastCommandResult.Accepted;
         }
+        /// <summary>디버그 패널이 다음 굴림의 눈을 지정한다. null이면 예약을 푼다.</summary>
+        public void DebugSetForcedRollValues(int[] values) => authority.SetForcedRollValues(values);
+
+        /// <summary>디버그 패널이 드래프트 없이 증강을 부여한다.</summary>
+        public bool DebugGrantAugment(int playerIndex, string augmentId, out string error)
+            => authority.DebugGrantAugment(playerIndex, augmentId, out _, out error);
+
         public bool IsCategoryFilled(int playerIndex, ScoreCategory category) => authority.IsCategoryFilled(playerIndex, category);
         public IReadOnlyPlayerScoreData GetPlayer(int playerIndex)
         {

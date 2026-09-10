@@ -77,7 +77,7 @@ namespace Tessera.Games.AugmentedYacht
 
         private readonly YachtSceneAssembler.SceneRefs sceneRefs = new();
         private YachtSceneAssembler.HudRefs hud;
-        private YachtSceneAssembler.DebugButtons debugButtons;
+        private YachtDebugPanel debugPanel;
 
         private const float TableWidth = 15.6f;
         private const float LeftSectionWidth = TableWidth * 0.25f;
@@ -147,17 +147,17 @@ namespace Tessera.Games.AugmentedYacht
                 YachtSceneAssembler.BuildWorld(sceneRefs, transform, CenterSectionX);
                 ConfigureLighting();
                 EnsureCameraRig();
-                debugButtons = YachtSceneAssembler.BuildPresentation(sceneRefs, transform, cameraRig, CreateHudActions());
+                YachtSceneAssembler.BuildPresentation(sceneRefs, transform, cameraRig);
                 EnsureCameraRig();
                 cameraRig.CreateRenderTarget();
-                debugButtons = YachtSceneAssembler.BindPresentationActions(CreateHudActions());
+                YachtSceneAssembler.HideLegacyDebugButtons();
                 EnsureRunicPresenter();
                 RefreshScoreSheetStructure();
             }
             else
             {
                 YachtSceneAssembler.EnsureEventSystem();
-                debugButtons = YachtSceneAssembler.BindPresentationActions(CreateHudActions());
+                YachtSceneAssembler.HideLegacyDebugButtons();
                 EnsureRunicPresenter();
                 EnsureCameraRig();
                 cameraRig.CreateRenderTarget();
@@ -278,6 +278,7 @@ namespace Tessera.Games.AugmentedYacht
             EnsureTurnFlow();
             turnFlow.BindHud(sceneRefs.StatusText, hud?.TimerText, hud?.StartOverlay, hud?.ResultOverlay, hud?.ResultText);
             turnFlow.Initialize();
+            EnsureDebugPanel();
         }
 
         private YachtSceneAssembler.HudActions CreateHudActions()
@@ -298,7 +299,11 @@ namespace Tessera.Games.AugmentedYacht
                 KeyLightPresetName = () => KeyLightPresetName,
                 PixelEdgeEnabled = () => cameraRig != null && cameraRig.EdgeFilterEnabled,
                 QuantizeModeName = () => cameraRig != null ? cameraRig.QuantizeModeName : "Off",
-                RenderStyleName = () => cameraRig != null ? cameraRig.RenderStyleName : "Baseline"
+                RenderStyleName = () => cameraRig != null ? cameraRig.RenderStyleName : "Baseline",
+                RuneProgressText = () => $"{(runicSlateMatrix != null ? runicSlateMatrix.OuterRuneProgress : 0)}/12",
+                RuneStoneText = () => runicSlateMatrix != null
+                    ? $"{runicSlateMatrix.ExtraTurnCount}/{runicSlateMatrix.MaxExtraTurns}"
+                    : "0/4"
             };
         }
 
@@ -436,7 +441,6 @@ namespace Tessera.Games.AugmentedYacht
             if (lightingRig != null) return;
 
             lightingRig = GetComponent<YachtLightingRig>() ?? gameObject.AddComponent<YachtLightingRig>();
-            lightingRig.PresetChanged += OnKeyLightPresetChanged;
         }
 
         /// <summary>오디오 서비스를 붙인다(M10-T4).</summary>
@@ -452,11 +456,6 @@ namespace Tessera.Games.AugmentedYacht
         private void OnAudioClipsReady(AudioSource source, AudioClip[] rollClips, AudioClip[] impactClips)
         {
             if (bakedDiceController != null) bakedDiceController.SetAudioSource(source, rollClips, impactClips);
-        }
-
-        private void OnKeyLightPresetChanged(string presetName)
-        {
-            YachtSceneAssembler.SetKeyLightLabel(debugButtons, presetName);
         }
 
         /// <summary>버튼 라벨용 현재 조명 프리셋 이름.</summary>
@@ -594,7 +593,6 @@ namespace Tessera.Games.AugmentedYacht
         {
             EnsureCameraRig();
             cameraRig.ToggleEdgeFilter();
-            YachtSceneAssembler.SetPixelEdgeLabel(debugButtons, cameraRig.EdgeFilterEnabled);
         }
 
         /// <summary>색 양자화 모드를 끔 → 단계 → 팔레트 순으로 돌린다(Q).</summary>
@@ -602,7 +600,6 @@ namespace Tessera.Games.AugmentedYacht
         {
             EnsureCameraRig();
             cameraRig.CycleQuantizeMode();
-            YachtSceneAssembler.SetQuantizeLabel(debugButtons, cameraRig.QuantizeModeName);
         }
 
         /// <summary>
@@ -628,8 +625,6 @@ namespace Tessera.Games.AugmentedYacht
             // 주사위는 풀이, Crisp UI는 별도 카메라가 담당하므로 두 레이어는 제외한다.
             int excluded = TesseraLayers.Mask(TesseraLayers.Dice) | TesseraLayers.Mask(TesseraLayers.CrispUI);
             celStyleSwitcher.Apply(sceneRefs.LayoutRoot, style, excluded);
-
-            YachtSceneAssembler.SetRenderStyleLabel(debugButtons, cameraRig.RenderStyleName);
         }
 
         /// <summary>
@@ -706,7 +701,18 @@ namespace Tessera.Games.AugmentedYacht
                 runicPresenter = GetComponent<YachtRunicPresenter>() ?? gameObject.AddComponent<YachtRunicPresenter>();
             }
 
-            runicPresenter.Bind(runicSlateMatrix, parchmentScoreSheet, debugButtons);
+            runicPresenter.Bind(runicSlateMatrix, parchmentScoreSheet);
+        }
+
+        /// <summary>디버그 컨트롤 패널을 붙이고 동작을 건다. 옛 가로 배치 버튼을 대신한다.</summary>
+        private void EnsureDebugPanel()
+        {
+            if (debugPanel == null)
+            {
+                debugPanel = GetComponent<YachtDebugPanel>() ?? gameObject.AddComponent<YachtDebugPanel>();
+            }
+
+            debugPanel.Bind(this, CreateHudActions());
         }
 
         private void OnDestroy()

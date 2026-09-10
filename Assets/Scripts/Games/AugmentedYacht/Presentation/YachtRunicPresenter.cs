@@ -7,36 +7,31 @@ namespace Tessera.Games.AugmentedYacht
     /// <summary>
     /// 룬 슬레이트 창구(M10-T8).
     ///
-    /// 추가 턴 적립·소모와 증강에 의한 점수 덮어쓰기, 그리고 룬 디버그 버튼을 한곳에서 다룬다.
-    /// 프롭 참조가 비면 씬에서 한 번 찾아 붙이고, 상태가 바뀌면 버튼 라벨을 따라 갱신한다.
+    /// 추가 턴 적립·소모와 증강에 의한 점수 덮어쓰기, 그리고 룬 디버그 조작을 한곳에서 다룬다.
+    /// 프롭 참조가 비면 씬에서 한 번 찾아 붙인다. 현재 진행도는 <see cref="YachtDebugPanel"/>이 직접 읽는다.
     /// </summary>
     public sealed class YachtRunicPresenter : MonoBehaviour
     {
         private RunicSlateMatrix runicSlateMatrix;
         private ParchmentScoreSheet scoreSheet;
-        private YachtSceneAssembler.DebugButtons debugButtons;
 
-        public void Bind(RunicSlateMatrix matrix, ParchmentScoreSheet sheet, YachtSceneAssembler.DebugButtons buttons)
+        public void Bind(RunicSlateMatrix matrix, ParchmentScoreSheet sheet)
         {
             runicSlateMatrix = matrix;
             scoreSheet = sheet;
-            debugButtons = buttons;
             ResolveMatrix();
-            RefreshDebugLabels();
         }
 
         public void AdvanceDebugRuneLighting()
         {
             ResolveMatrix();
             runicSlateMatrix?.AdvanceDebugRuneLighting();
-            RefreshDebugLabels();
         }
 
         public void CycleDebugRuneStones()
         {
             ResolveMatrix();
             runicSlateMatrix?.CycleDebugRuneStoneCount();
-            RefreshDebugLabels();
         }
 
         public void GrantExtraTurns(int amount)
@@ -51,23 +46,9 @@ namespace Tessera.Games.AugmentedYacht
             return runicSlateMatrix != null && runicSlateMatrix.ConsumeExtraTurn();
         }
 
-        public void RefreshDebugLabels()
-        {
-            YachtSceneAssembler.UpdateRuneDebugLabels(debugButtons, runicSlateMatrix);
-        }
-
         private void ResolveMatrix()
         {
             if (runicSlateMatrix == null) runicSlateMatrix = FindFirstObjectByType<RunicSlateMatrix>();
-            if (runicSlateMatrix == null) return;
-
-            runicSlateMatrix.StateChanged -= RefreshDebugLabels;
-            runicSlateMatrix.StateChanged += RefreshDebugLabels;
-        }
-
-        private void OnDestroy()
-        {
-            if (runicSlateMatrix != null) runicSlateMatrix.StateChanged -= RefreshDebugLabels;
         }
     }
 }

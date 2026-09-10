@@ -377,6 +377,12 @@ namespace Tessera.Games.AugmentedYacht
         }
 
         /// <summary>
+        /// 지금 턴을 끝내고 다음 턴으로 넘긴다. 시간 초과와 같은 경로라
+        /// 남은 족보 중 최고점이 자동으로 기입된다. 디버그 패널이 부른다.
+        /// </summary>
+        public void SkipTurn() => OnTurnTimerExpired();
+
+        /// <summary>
         /// 점수를 확정하고 턴을 넘긴다. 점수표 클릭과 같은 경로이며,
         /// 클릭을 흉내 낼 수 없는 검증 도구가 직접 부른다.
         /// </summary>

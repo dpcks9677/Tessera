@@ -57,18 +57,16 @@ namespace Tessera.Games.AugmentedYacht
             public Func<bool> PixelEdgeEnabled;
             public Func<string> QuantizeModeName;
             public Func<string> RenderStyleName;
+            public Func<string> RuneProgressText;
+            public Func<string> RuneStoneText;
         }
 
-        /// <summary>디버그 버튼 참조. 라벨을 갱신하려면 들고 있어야 한다.</summary>
-        public sealed class DebugButtons
+        /// <summary>씬에 구워졌거나 옛 코드가 만들던 가로 배치 디버그 버튼. 이제는 패널이 대신한다.</summary>
+        private static readonly string[] LegacyDebugButtonNames =
         {
-            public Button KeyLightToggle;
-            public Button RuneFx;
-            public Button RuneStone;
-            public Button PixelEdgeToggle;
-            public Button QuantizeToggle;
-            public Button RenderStyleToggle;
-        }
+            "Debug", "KeyLightToggle", "RuneFxDebug", "RuneStoneDebug",
+            "PixelEdgeToggle", "QuantizeToggle", "RenderStyleToggle"
+        };
 
         private const float CameraPitchAngle = 75.0f;
 
@@ -164,7 +162,7 @@ namespace Tessera.Games.AugmentedYacht
         }
 
         /// <summary>씬이 비어 있을 때의 프레젠테이션 캔버스와 업스케일 경로를 세운다.</summary>
-        public static DebugButtons BuildPresentation(SceneRefs refs, Transform owner, YachtCameraRig cameraRig, HudActions actions)
+        public static void BuildPresentation(SceneRefs refs, Transform owner, YachtCameraRig cameraRig)
         {
             EnsureEventSystem();
             DestroySceneObjectsNamed("Pixel Presentation", "Display 1 Camera");
@@ -198,131 +196,22 @@ namespace Tessera.Games.AugmentedYacht
             cameraRig.EnsureUpscaleMaterial();
             imageObject.SetActive(true);
 
-            YachtHudFactory.CreateButton(canvasObject.transform, "Debug", ResolutionLabel(actions), new Vector2(18f, -18f),
-                new Vector2(130f, 38f), new Vector2(0f, 1f), () => actions.ToggleResolution());
-
-            var buttons = new DebugButtons
-            {
-                RuneFx = YachtHudFactory.CreateButton(canvasObject.transform, "RuneFxDebug", "Runes: 0/12", new Vector2(333f, -18f),
-                    new Vector2(140f, 38f), new Vector2(0f, 1f), () => actions.AdvanceRuneLighting()),
-                RuneStone = YachtHudFactory.CreateButton(canvasObject.transform, "RuneStoneDebug", "Stones: 0/4", new Vector2(483f, -18f),
-                    new Vector2(150f, 38f), new Vector2(0f, 1f), () => actions.CycleRuneStones()),
-                KeyLightToggle = YachtHudFactory.CreateButton(canvasObject.transform, "KeyLightToggle", $"Light: {actions.KeyLightPresetName()}",
-                    new Vector2(158f, -18f), new Vector2(165f, 38f), new Vector2(0f, 1f), () => actions.ToggleKeyLight()),
-                PixelEdgeToggle = YachtHudFactory.CreateButton(canvasObject.transform, "PixelEdgeToggle", PixelEdgeLabel(actions),
-                    new Vector2(643f, -18f), new Vector2(135f, 38f), new Vector2(0f, 1f), () => actions.TogglePixelEdge()),
-                QuantizeToggle = YachtHudFactory.CreateButton(canvasObject.transform, "QuantizeToggle", QuantizeLabel(actions),
-                    new Vector2(788f, -18f), new Vector2(155f, 38f), new Vector2(0f, 1f), () => actions.CycleQuantize()),
-                RenderStyleToggle = YachtHudFactory.CreateButton(canvasObject.transform, "RenderStyleToggle", RenderStyleLabel(actions),
-                    new Vector2(953f, -18f), new Vector2(175f, 38f), new Vector2(0f, 1f), () => actions.ToggleRenderStyle())
-            };
-
             refs.StatusText = YachtHudFactory.CreateText(canvasObject.transform, "Status", "", new Vector2(0f, -20f),
                 new Vector2(600f, 30f), new Vector2(0.5f, 1f), 15, TextAnchor.MiddleCenter);
             Canvas.ForceUpdateCanvases();
-            return buttons;
         }
 
-        /// <summary>씬에 이미 있는 디버그 버튼을 찾아 동작을 다시 건다. 없으면 만든다.</summary>
-        public static DebugButtons BindPresentationActions(HudActions actions)
+        /// <summary>
+        /// 옛 가로 배치 디버그 버튼을 화면에서 치운다. 같은 동작을 <see cref="YachtDebugPanel"/>이 이어받았다.
+        /// 씬에 구워진 오브젝트는 지우지 않고 끄기만 한다.
+        /// </summary>
+        public static void HideLegacyDebugButtons()
         {
-            var buttons = new DebugButtons
+            for (int i = 0; i < LegacyDebugButtonNames.Length; i++)
             {
-                KeyLightToggle = GameObject.Find("KeyLightToggle")?.GetComponent<Button>(),
-                RuneFx = GameObject.Find("RuneFxDebug")?.GetComponent<Button>(),
-                RuneStone = GameObject.Find("RuneStoneDebug")?.GetComponent<Button>(),
-                PixelEdgeToggle = GameObject.Find("PixelEdgeToggle")?.GetComponent<Button>(),
-                QuantizeToggle = GameObject.Find("QuantizeToggle")?.GetComponent<Button>(),
-                RenderStyleToggle = GameObject.Find("RenderStyleToggle")?.GetComponent<Button>()
-            };
-
-            Button resolutionButton = GameObject.Find("Debug")?.GetComponent<Button>();
-            if (resolutionButton != null)
-            {
-                resolutionButton.onClick.RemoveAllListeners();
-                resolutionButton.onClick.AddListener(() => actions.ToggleResolution());
-
-                // 씬에 구워진 문구는 옛 프리셋 값이다. 프리셋에서 파생한 문구로 덮어쓴다.
-                Text resolutionLabel = resolutionButton.GetComponentInChildren<Text>();
-                if (resolutionLabel != null) resolutionLabel.text = ResolutionLabel(actions);
+                GameObject button = GameObject.Find(LegacyDebugButtonNames[i]);
+                if (button != null) button.SetActive(false);
             }
-
-            GameObject canvasObject = GameObject.Find("Pixel Presentation");
-            if (canvasObject != null)
-            {
-                if (buttons.KeyLightToggle == null)
-                {
-                    buttons.KeyLightToggle = YachtHudFactory.CreateButton(canvasObject.transform, "KeyLightToggle",
-                        $"Light: {actions.KeyLightPresetName()}", new Vector2(158f, -18f), new Vector2(165f, 38f), new Vector2(0f, 1f),
-                        () => actions.ToggleKeyLight());
-                }
-                if (buttons.RuneFx == null)
-                {
-                    buttons.RuneFx = YachtHudFactory.CreateButton(canvasObject.transform, "RuneFxDebug", "Runes: 0/12",
-                        new Vector2(333f, -18f), new Vector2(140f, 38f), new Vector2(0f, 1f), () => actions.AdvanceRuneLighting());
-                }
-                if (buttons.RuneStone == null)
-                {
-                    buttons.RuneStone = YachtHudFactory.CreateButton(canvasObject.transform, "RuneStoneDebug", "Stones: 0/4",
-                        new Vector2(483f, -18f), new Vector2(150f, 38f), new Vector2(0f, 1f), () => actions.CycleRuneStones());
-                }
-                if (buttons.PixelEdgeToggle == null)
-                {
-                    buttons.PixelEdgeToggle = YachtHudFactory.CreateButton(canvasObject.transform, "PixelEdgeToggle",
-                        PixelEdgeLabel(actions), new Vector2(643f, -18f), new Vector2(135f, 38f), new Vector2(0f, 1f),
-                        () => actions.TogglePixelEdge());
-                }
-                if (buttons.QuantizeToggle == null)
-                {
-                    buttons.QuantizeToggle = YachtHudFactory.CreateButton(canvasObject.transform, "QuantizeToggle",
-                        QuantizeLabel(actions), new Vector2(788f, -18f), new Vector2(155f, 38f), new Vector2(0f, 1f),
-                        () => actions.CycleQuantize());
-                }
-                if (buttons.RenderStyleToggle == null)
-                {
-                    buttons.RenderStyleToggle = YachtHudFactory.CreateButton(canvasObject.transform, "RenderStyleToggle",
-                        RenderStyleLabel(actions), new Vector2(953f, -18f), new Vector2(175f, 38f), new Vector2(0f, 1f),
-                        () => actions.ToggleRenderStyle());
-                }
-            }
-
-            if (buttons.KeyLightToggle != null)
-            {
-                buttons.KeyLightToggle.onClick.RemoveAllListeners();
-                buttons.KeyLightToggle.onClick.AddListener(() => actions.ToggleKeyLight());
-                Text label = buttons.KeyLightToggle.GetComponentInChildren<Text>();
-                if (label != null) label.text = $"Light: {actions.KeyLightPresetName()}";
-            }
-            if (buttons.RuneFx != null)
-            {
-                buttons.RuneFx.onClick.RemoveAllListeners();
-                buttons.RuneFx.onClick.AddListener(() => actions.AdvanceRuneLighting());
-            }
-            if (buttons.RuneStone != null)
-            {
-                buttons.RuneStone.onClick.RemoveAllListeners();
-                buttons.RuneStone.onClick.AddListener(() => actions.CycleRuneStones());
-            }
-            if (buttons.PixelEdgeToggle != null)
-            {
-                buttons.PixelEdgeToggle.onClick.RemoveAllListeners();
-                buttons.PixelEdgeToggle.onClick.AddListener(() => actions.TogglePixelEdge());
-                SetPixelEdgeLabel(buttons, actions.PixelEdgeEnabled != null && actions.PixelEdgeEnabled());
-            }
-            if (buttons.QuantizeToggle != null)
-            {
-                buttons.QuantizeToggle.onClick.RemoveAllListeners();
-                buttons.QuantizeToggle.onClick.AddListener(() => actions.CycleQuantize());
-                SetQuantizeLabel(buttons, actions.QuantizeModeName != null ? actions.QuantizeModeName() : "Off");
-            }
-            if (buttons.RenderStyleToggle != null)
-            {
-                buttons.RenderStyleToggle.onClick.RemoveAllListeners();
-                buttons.RenderStyleToggle.onClick.AddListener(() => actions.ToggleRenderStyle());
-                SetRenderStyleLabel(buttons, actions.RenderStyleName != null ? actions.RenderStyleName() : "Baseline");
-            }
-
-            return buttons;
         }
 
         /// <summary>타이머 문구와 시작·결과 오버레이를 다시 만든다. 이 셋은 프리팹으로 굽지 않는다.</summary>
@@ -358,74 +247,6 @@ namespace Tessera.Games.AugmentedYacht
                 new Vector2(240f, 64f), new Vector2(0.5f, 0.5f), () => actions.RestartGame());
             hud.ResultOverlay.SetActive(false);
             return hud;
-        }
-
-        /// <summary>디버그 버튼 라벨을 룬 상태에 맞춘다.</summary>
-        public static void UpdateRuneDebugLabels(DebugButtons buttons, RunicSlateMatrix runicSlateMatrix)
-        {
-            if (buttons == null) return;
-
-            int runeProgress = runicSlateMatrix != null ? runicSlateMatrix.OuterRuneProgress : 0;
-            int stoneCount = runicSlateMatrix != null ? runicSlateMatrix.ExtraTurnCount : 0;
-            int stoneCapacity = runicSlateMatrix != null ? runicSlateMatrix.MaxExtraTurns : 4;
-
-            Text runeLabel = buttons.RuneFx != null ? buttons.RuneFx.GetComponentInChildren<Text>() : null;
-            if (runeLabel != null) runeLabel.text = $"Runes: {runeProgress}/12";
-
-            Text stoneLabel = buttons.RuneStone != null ? buttons.RuneStone.GetComponentInChildren<Text>() : null;
-            if (stoneLabel != null) stoneLabel.text = $"Stones: {stoneCount}/{stoneCapacity}";
-        }
-
-        public static void SetKeyLightLabel(DebugButtons buttons, string presetName)
-        {
-            Text label = buttons?.KeyLightToggle != null ? buttons.KeyLightToggle.GetComponentInChildren<Text>() : null;
-            if (label != null) label.text = $"Light: {presetName}";
-        }
-
-        /// <summary>픽셀 엣지 필터가 켜져 있는지 버튼 문구로 알린다. 기존 필터와 A/B로 비교할 때 쓴다.</summary>
-        public static void SetPixelEdgeLabel(DebugButtons buttons, bool enabled)
-        {
-            Text label = buttons?.PixelEdgeToggle != null ? buttons.PixelEdgeToggle.GetComponentInChildren<Text>() : null;
-            if (label != null) label.text = PixelEdgeLabel(enabled);
-        }
-
-        private static string PixelEdgeLabel(HudActions actions)
-        {
-            return PixelEdgeLabel(actions?.PixelEdgeEnabled != null && actions.PixelEdgeEnabled());
-        }
-
-        private static string PixelEdgeLabel(bool enabled)
-        {
-            return enabled ? "Edge: ON" : "Edge: OFF";
-        }
-
-        /// <summary>색 양자화 모드를 버튼 문구로 알린다. 세 모드를 눈으로 비교할 때 쓴다.</summary>
-        public static void SetQuantizeLabel(DebugButtons buttons, string modeName)
-        {
-            Text label = buttons?.QuantizeToggle != null ? buttons.QuantizeToggle.GetComponentInChildren<Text>() : null;
-            if (label != null) label.text = $"Quant: {modeName}";
-        }
-
-        private static string ResolutionLabel(HudActions actions)
-        {
-            return actions?.ResolutionPresetLabel != null ? actions.ResolutionPresetLabel() : "Resolution";
-        }
-
-        private static string QuantizeLabel(HudActions actions)
-        {
-            return $"Quant: {(actions?.QuantizeModeName != null ? actions.QuantizeModeName() : "Off")}";
-        }
-
-        /// <summary>연출 방식을 버튼 문구로 알린다. Baseline과 Cel을 눈으로 비교할 때 쓴다(M10.8).</summary>
-        public static void SetRenderStyleLabel(DebugButtons buttons, string styleName)
-        {
-            Text label = buttons?.RenderStyleToggle != null ? buttons.RenderStyleToggle.GetComponentInChildren<Text>() : null;
-            if (label != null) label.text = $"Style: {styleName}";
-        }
-
-        private static string RenderStyleLabel(HudActions actions)
-        {
-            return $"Style: {(actions?.RenderStyleName != null ? actions.RenderStyleName() : "Baseline")}";
         }
 
         public static void EnsureEventSystem()
