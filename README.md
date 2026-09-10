@@ -48,6 +48,10 @@ Assets/Scripts/
 └── Network/            # 온라인 멀티플레이어 통신 계층 (Tessera.Network)
 ```
 
+> 📖 **핵심 아키텍처 & 기술 문서**:
+> - [신입 개발자를 위한 프로젝트 구조 및 아키텍처 온보딩 가이드](docs/guides/architecture_overview.md)
+> - [증강(Augments) 시스템 상세 기술 명세 및 55종 구현 현황서](docs/guides/augments_specification_and_status.md)
+
 ---
 
 ## 🗺️ 개발 로드맵 (Roadmap)
