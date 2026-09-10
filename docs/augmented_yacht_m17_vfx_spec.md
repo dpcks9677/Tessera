@@ -495,6 +495,11 @@
 | 2026-09-08 | 48 `bounty-hunter` 경계 확정 | 발동 연출은 T9, 상시 표기는 T10 | 점수표 위 타깃 지정/달성 시점의 트리거 연출만 T9에서 처리하고, 점수표에 상시 유지되는 슬롯 테두리 및 아이콘·수치 UI는 `M17-T10`으로 분리 확정 (사용자 확정) |
 | 2026-09-08 | 46 `table-flip` 솟구침 방식 | 전용 프리셋 재베이킹 | 기존 table-flip 베이킹 프리셋이 존재하므로 실시간 물리 전환 대신 해당 프리셋을 더 크고 드라마틱하게 재베이킹하여 안정성과 연출력을 확보 (사용자 확정) |
 | 2026-09-08 | 56 `dice-alchemy` 표시 지연 확정 | 연기 피크 시점(약 0.25초/15프레임) 보류 | 연기 파티클이 화면을 완전히 가리는 피크 시점까지 주사위 회전 갱신을 보류하고, 가려진 순간 눈 값을 스냅 갱신한 뒤 연기가 페이드아웃되도록 확정 (사용자 확정) |
+| 2026-09-09 | 56 `dice-alchemy` 작업 ID | `M17-T9`의 하위 `M17-T9-1`로 두고 별도 계획 문서를 만들지 않음 | 45개 전체를 다루는 `M17-T9`의 첫 구현분이라 같은 문서 안에 두는 편이 사양과 구현이 갈라지지 않는다. 구현 계획은 이 문서 §9다 (사용자 확정) |
+| 2026-09-09 | 연기 스프라이트 제작 방식 | 런타임 절차 텍스처가 아니라 PNG 에셋 신규 제작 | §3.5 신규 에셋 목록의 기재를 그대로 따른다. 팔레트 계단을 정확히 지키기 위해 `Assets/Editor`의 일회성 베이커로 굽고 결과 PNG를 커밋한다 (사용자 확정) |
+| 2026-09-09 | 56 구현 범위 | `dice-alchemy` 전용 최소 구현. `I6` 공용 픽셀 파티클 프리셋은 만들지 않음 | 사용처가 하나뿐인 시점의 추상화를 금지하는 `CLAUDE.md` §2를 따른다. 44 `couple-dice`·36 `nozdormu`를 실제로 붙일 때 공통분을 추출한다 (사용자 확정) |
+| 2026-09-09 | 56 후보 점수 갱신 시점 | 주사위 눈과 같은 시점(연기 피크)까지 지연 | 현재는 증강 사용 즉시 새 후보 점수가 표시돼(`YachtTurnFlowPresenter.cs:527`) 주사위가 아직 옛 눈인데 점수표가 결과를 먼저 알린다. 연출이 새어 나가므로 눈 스냅과 같은 프레임으로 맞춘다 (사용자 확정) |
+| 2026-09-09 | 56 연기 컴포넌트 소유 | `AugmentedYachtController`가 아니라 `YachtDiceRoundPresenter`가 지연 생성 | §9.5 초안은 컨트롤러가 주사위 루트 옆에 런타임 생성한다고 적었으나, 실제 구현 시점에 `YachtTurnFlowPresenter.BindProps`가 이미 인자 11개였고 연기는 주사위 비주얼 소관이라 컨트롤러를 경유할 이유가 없었다. `AugmentedYachtController.cs`는 이 결정으로 변경되지 않는다 |
 
 ---
 
@@ -506,3 +511,125 @@
 - [x] **46 `table-flip` 주사위 솟구침 (해결)** — 기존 table-flip 베이킹 프리셋이 이미 존재하므로 물리 전환을 쓰지 않고, 주사위가 더 크고 드라마틱하게 공중으로 솟구치도록 해당 프리셋을 재베이킹하기로 확정(사용자 확정).
 - [x] **56 `dice-alchemy` 표시 지연 허용 범위 (해결)** — 연기 파티클 피크 시점인 0.2~0.3초(약 15프레임) 동안 주사위 회전 갱신을 보류하고, 주사위가 연기에 가려진 순간 눈 값을 스냅 갱신한 뒤 연기가 걷히도록 구현 확정(사용자 확정).
 - [ ] 나머지 34개는 언제 채울지 — 계열 일괄 규칙(§6.1)으로 덮을지, 개별로 받을지
+
+---
+
+## 9. `M17-T9-1` — 56 `dice-alchemy` 연기 가림 구현 계획
+
+작성일: 2026-09-09 · 상태: `DOING`(`M17-T9-1-1`~`M17-T9-1-4` 완료, `M17-T9-1-5` 화면 확인 남음) · §3.2 56번 행과 §3.4 `I5`를 구현으로 옮기는 계획이다.
+
+### 9.1 목적
+
+증강 56 `dice-alchemy`는 킵하지 않은 주사위의 눈을 전부 1씩 낮춘다. 지금은 이 증강에 연출이 하나도 없다. `LocalGameAuthority.UseAugmentAction`이 `RollPresentation`을 만들지 않으므로 화면은 `YachtTurnFlowPresenter.cs:513`의 "굴림 없음" 분기로 들어가고, 거기서 하는 일은 `dice.SyncFromAuthority` 하나다. 이 메서드는 값 배열만 복사하고 주사위 `Visual`의 면 회전은 건드리지 않으므로, 주사위 눈은 다음 `AnimateLayout`이 돌 때까지 바뀌지 않거나 아무 예고 없이 툭 바뀐다. 그 사이 점수표 후보 점수만 즉시 새 값으로 갱신돼, 플레이어는 주사위보다 점수표에서 결과를 먼저 읽는다.
+
+목표는 §3.2에 사용자가 적은 그대로다 — 행동 버튼을 누르면 킵하지 않은 주사위 위로 연기가 동시에 터져 주사위를 완전히 가리고, 가려진 사이에 눈이 바뀌며, 연기가 걷히면 새 눈이 드러난다.
+
+### 9.2 범위 밖
+
+- `I6` 공용 픽셀 파티클 프리셋. 44 `couple-dice`·36 `nozdormu`를 붙일 때 공통분을 추출한다.
+- 눈이 바뀐 뒤의 값 오름차순 재정렬. 제자리에서 값만 바뀌고, 정렬은 다음 킵 토글의 `AnimateLayout`이 회복한다.
+- 사운드. `M17-T13`(`DEFERRED`) 소속이다.
+
+### 9.3 현재 코드에서 확인한 사실
+
+착수 시점에 다시 유효한지 확인한다.
+
+- **값 변경 지점**: `Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Enhance/DiceAlchemy.cs:68`. `RerollsDice => false`, `RequiredPhase => ScoreSelection`. 로직은 그대로 두고 표시만 늦춘다.
+- **발동 경로**: `AugmentedYachtController.cs:346`의 `augmentTray.ActionRequested` → `YachtTurnFlowPresenter.cs:503 UseAugmentAction` → `gameSession.TryUseAugmentAction`. 이벤트는 `LocalGameAuthority.cs:241`에서 `AugmentActionUsed`로 나온다.
+- **눈 표시를 실제로 바꾸는 코드**: `BakedDiceController.cs:206 ApplyTargetValues`. `private static`이고 `Play` 안에서만 불린다. `landingFrame`이 `null`이면 각 주사위의 현재 `localRotation`을 기준 회전으로 쓰는 분기가 이미 있으므로(`:219-221`), 굴림 없는 제자리 갱신에 그대로 재사용할 수 있다. 새 회전 수학은 필요 없다.
+- **기존 이벤트 → VFX 경로**: `AugmentVfxPlanner.Plan`(순수 클래스, `Assets/Editor/AugmentVfxPlannerTests.cs`로 검증 중) → `YachtTurnFlowPresenter.cs:717 PlayPendingStickerStamps`가 `State.Revision`으로 중복 재생을 막는다. `AugmentActionUsed`는 planner의 `switch`(`AugmentVfxPlanner.cs:58-72`)에 아직 없다.
+- **파티클 선례**: `Tabletop/RollOrb.cs:971 CreateMagicParticles`가 `AddComponent<ParticleSystem>()` 후 모듈을 코드로 설정하고 `Emit(20)`으로 터뜨린다. 프로젝트에 오브젝트 풀도 공용 이펙트 재생 유틸도 없다.
+- **주의 — 8면체 숫자**: `DiceVisualPool.cs:179 PromoteOctaDigitsToCrispUi`가 8면체 면 숫자를 `TesseraLayers.CrispUI`로 올린다. Crisp 카메라는 월드 위에 합성되므로 월드 레이어의 연기는 이 숫자를 가리지 못한다.
+- **주의 — `DiceVisualPool`은 풀이 아니다**. `CreateVisualDie`가 매번 새로 만들고 `DiscardVisuals`가 `Destroy`한다. 파티클을 주사위 자식으로 붙이면 안 된다.
+- **주의 — 알파 페이드**: 픽셀 필터를 통과하는 알파 페이드는 디더링으로 깨진다. §3.2 44번 행이 지정한 4~5스텝 계단식을 여기서도 쓴다.
+- 트윈 라이브러리가 없다. 전부 `IEnumerator` + `Mathf.SmoothStep`/`Lerp`다.
+
+### 9.4 연출 설계
+
+사양 표기로 `P5` / `DICE(킵 안 된 전부)` / 다색 / `M` / `단발`.
+
+| 시각 | 일어나는 일 |
+|---|---|
+| `0.00s` | 킵 안 된 주사위 각각의 월드 위치에서 연기 버스트 동시 발사. 후보 점수는 `ClearCandidateScores`로 비워진 상태 |
+| `0.00~0.18s` | 연기가 부풀며 주사위를 덮음 |
+| `0.15s` | 8면체 숫자(`CrispUI` 레이어) 렌더러 끔 |
+| `0.25s` | **스냅** — 새 눈 값을 `Visual` 면 회전에 적용, 후보 점수 표시, 상태 텍스트 갱신 |
+| `0.28s` | 8면체 숫자 렌더러 다시 켬 |
+| `0.25~0.60s` | 연기가 4~5스텝 계단식으로 옅어지며 걷힘 |
+| `0.60s` | 종료 |
+
+"알록달록"은 스프라이트가 아니라 파티클 색으로 낸다. 스프라이트는 회색조 한 장이고, `ParticleSystem.main.startColor`를 랜덤 색 목록으로 두어 입자마다 다른 색을 뽑는다. 팔레트는 [`docs/art_style_guide.md`](art_style_guide.md) 표에서 가져온 4색이다 — `#e5a93c`(러너 골드) · `#882d22`(크림슨) · `#364b6e`(쿨 인디고) · `#ff9e3b`(웜 앰버).
+
+완료 조건 `C1`이 "결과가 연출로 드러남"이므로 가려지지 않으면 연출이 성립하지 않는다. 알파 블렌드(가산 아님)로 불투명하게 쌓고, 주사위 1개당 입자 8개·최대 5개 주사위로 상한 40개를 둔다. 크기는 `DiceBoardMetrics.DieSize` 기준 2.5배에서 3.5배까지 커진다.
+
+입력은 막지 않는다(`M` 등급). 후보 점수가 비어 있는 동안은 `UpdateSlotState`가 칸을 `interactable = false`로 두므로 연출 중 잘못된 확정이 애초에 불가능하다.
+
+### 9.5 기술 설계
+
+**표시 갱신 지연 큐 (`I5`).** 굴림 없이 눈만 스냅 갱신하는 경로를 만든다.
+
+- `Assets/Scripts/Dice/BakedDiceController.cs` — 기존 `ApplyTargetValues`를 감싸는 공개 진입점 `ApplyValuesInPlace(IReadOnlyList<Transform> dice, IReadOnlyList<int> targetValues)`를 추가하고 `ApplyTargetValues(dice, null, targetValues, null, false)`로 넘긴다. 본문은 손대지 않는다.
+- `.../Presentation/YachtDiceRoundPresenter.cs` — `SyncFromAuthority`와 별개로 `ApplyValuesToVisuals()`를 추가해 `activeDice`의 `Transform`과 `diceValues`를 위 진입점에 넘긴다. `PlayRoll`의 `BuildPresetSlotOrder` 재배열은 프리셋 클립 슬롯 정렬용이므로 여기서는 쓰지 않는다.
+
+**이벤트 → 연출 요청.** 프레젠터에서 `augmentId`로 `switch`하지 않고 §3.4의 테이블 주도 원칙대로 `AugmentVfxPlanner`를 확장한다.
+
+- `AugmentVfxCue`에 `DiceSmokeSwap`을 추가한다.
+- `Plan`의 `switch`에 `case YachtGameEventType.AugmentActionUsed:`를 추가하고 `AugmentId == YachtAugmentRuntime.DiceAlchemyId`일 때만 요청을 낸다. 다른 수동 행동(`table-flip`·`equivalent-exchange`·`gambit`)은 요청을 내지 않는다.
+- 대상 주사위는 요청에 싣지 않는다. 프레젠터가 `gameSession.State.Dice`의 `IsKept`로 판정한다.
+
+**연기 컴포넌트.** 신규 `.../Presentation/DiceSmokePuffVfx.cs`(`MonoBehaviour`).
+
+- `Awake`에서 `ParticleSystem` 하나를 절차 구성한다. 모듈 설정과 셰이더 폴백 체인은 `RollOrb.CreateMagicParticles`(`:971-1042`)를 따르되 머티리얼은 알파 블렌드이고 텍스처는 아래 PNG를 `Resources.Load`로 읽는다.
+- `simulationSpace = World`, `playOnAwake = false`, `emission.enabled = false`(수동 `Emit`만 씀), `maxParticles = 40`.
+- 공개 메서드는 `Burst(IReadOnlyList<Vector3> worldPositions)` 하나다. 위치마다 `ParticleSystem.EmitParams`로 8개씩 쏜다. 시스템은 하나만 두고 위치만 바꾼다. 주사위 자식이 아니므로 주사위 재생성에 영향받지 않는다.
+- 레이어는 주사위와 같은 월드 레이어로 둔다. 그래야 연기가 픽셀 필터를 함께 통과한다.
+- 8면체 숫자 가림은 같은 컴포넌트의 `SetCrispDigitsVisible(bool)`이 맡는다. 대상 주사위 하위에서 `TesseraLayers.CrispUI` 레이어인 `Renderer`만 골라 `enabled`를 토글한다.
+- 씬 배치는 `YachtDiceRoundPresenter`가 필요 시점에 지연 생성한다. `YachtTurnFlowPresenter.BindProps`가 이미 인자 11개이고 연기는 주사위 비주얼 소관이라 `AugmentedYachtController`를 경유하지 않는다. 인스펙터 배선을 새로 만들지 않는다.
+
+**연기 스프라이트 PNG.** 산출물은 `Assets/Resources/Vfx/DiceSmokePuff.png`다. 32×32 회색조, 가장자리 알파가 4스텝 계단(255 / 192 / 128 / 64 / 0)으로 떨어지는 둥근 퍼프다. 색은 파티클 `startColor`가 입힌다. 손으로 그리지 않고 `Assets/Editor/DiceSmokeSpriteBaker.cs`(`DicePresetBakeRig.cs` 선례)로 한 번 구워 결과 PNG를 커밋한다. 임포트 설정은 `Sprite (2D and UI)` · `Filter Mode = Point` · `Compression = None` · `Max Size = 32`다.
+
+**프레젠터 배선.** `YachtTurnFlowPresenter.cs:513-534`의 "굴림 없음" 분기 안에서 끝난다. 해당 명령의 VFX 요청에 `DiceSmokeSwap`이 있으면 즉시 반영 대신 §9.4 타임라인 코루틴을 띄우고, 없으면 지금 동작 그대로다. `ClearCandidateScores`와 `dice.SetVisible(true)`는 `t=0`에 그대로 두고, `SyncFromAuthority`·`ApplyValuesToVisuals`·`ShowCandidateScores`·`RefreshAugmentPresentation`·`UpdateStatusText`를 `t=0.25`로 옮긴다. `RefreshRollBudgetState`는 종료 시점에 부른다. 중복 실행 방지는 기존 `lastVfxRevision` 리비전 가드를 그대로 쓴다. 주사위 개수가 바뀐 경우의 `ResetDiceForTurn` 경로는 손대지 않는다(`dice-alchemy`는 개수를 바꾸지 않는다).
+
+### 9.6 변경·추가 파일
+
+| 파일 | 변경 |
+|---|---|
+| `Assets/Scripts/Dice/BakedDiceController.cs` | `ApplyValuesInPlace` 공개 진입점 |
+| `.../Presentation/YachtDiceRoundPresenter.cs` | `ApplyValuesToVisuals` |
+| `.../Presentation/AugmentVfxPlanner.cs` | `DiceSmokeSwap` 큐 + `AugmentActionUsed` 케이스 |
+| `.../Presentation/DiceSmokePuffVfx.cs` | 신규 |
+| `.../Presentation/YachtTurnFlowPresenter.cs` | 굴림 없음 분기를 지연 코루틴으로 |
+| `Assets/Editor/DiceSmokeSpriteBaker.cs` | 신규 (일회성 PNG 생성) |
+| `Assets/Resources/Vfx/DiceSmokePuff.png` | 신규 에셋 |
+| `Assets/Editor/AugmentVfxPlannerTests.cs` | 케이스 추가 |
+
+### 9.7 작업 분해
+
+| 하위 ID | 내용 | 검증 방법 |
+|---|---|---|
+| `M17-T9-1-1` | `DiceSmokeSpriteBaker` + `DiceSmokePuff.png` 생성·임포트 설정 | 32×32 Point 필터 스프라이트로 임포트됨 |
+| `M17-T9-1-2` | `ApplyValuesInPlace` + `ApplyValuesToVisuals` (`I5`) | 컴파일. 굴림 후 값을 바꿔 호출하면 면이 바뀜 |
+| `M17-T9-1-3` | `AugmentVfxPlanner` 확장 | `AugmentVfxPlannerTests` 통과. `dice-alchemy`만 요청이 나옴 |
+| `M17-T9-1-4` | `DiceSmokePuffVfx` + 컨트롤러 주입 | Play 모드에서 연기가 주사위 위치에 터짐 |
+| `M17-T9-1-5` | 프레젠터 지연 시퀀스 배선 | Play 모드: 피크 전에는 옛 눈·빈 후보, 걷힌 뒤 새 눈·새 후보 |
+| `M17-T9-1-6` | 문서 갱신 | §3.2 56행·§3.4 `I5` 완료 표기, `work_plan` 상태표·세션 로그 |
+
+### 9.8 위험 요소와 대응
+
+| 위험 | 대응 |
+|---|---|
+| 연기가 주사위를 다 못 가려 눈이 바뀌는 순간이 보임 | 입자를 늘리기보다 스냅 시점을 늦추는 쪽이 안전하다. 0.25초는 §7 확정값이므로 그 안에서 입자 크기(2.5배 → 3.5배)를 조절한다 |
+| 8면체 숫자가 연기 위에 뜸 | `SetCrispDigitsVisible`로 잠깐 끈다. 끄는 구간이 연기 피크 안에 완전히 들어가야 깜빡임으로 보이지 않는다 |
+| 알파 페이드가 픽셀 필터에서 디더링으로 깨짐 | 스프라이트 알파를 4스텝 계단으로 굽고 `ColorOverLifetime`도 연속 곡선 대신 계단 키로 둔다 |
+| 값 오름차순 정렬이 어긋난 채 남음 | 의도된 동작이다(§9.2). 다음 킵 토글의 `AnimateLayout`이 정렬을 회복한다 |
+| 연출 중 턴 타이머가 흐름 | 굴림 경로와 달리 `turnDelay.Pause()`를 부르지 않는다. 0.6초는 `M` 등급 예산 안이다 |
+| 검증 시 `dice-alchemy`를 손에 넣기 어려움 | 드래프트 운에 맡기면 확인이 오래 걸린다. 검증용 증강 강제 부여 경로가 있는지 먼저 확인하고, 없으면 사용자에게 확인한 뒤 임시 경로를 둔다 |
+
+### 9.9 완료 조건
+
+1. 행동 버튼을 누르면 킵하지 않은 주사위 전부 위로 연기가 동시에 터진다.
+2. 연기가 가장 짙은 순간에 주사위가 보이지 않고, 그 사이에 눈이 바뀐다. 눈이 바뀌는 장면이 노출되지 않는다.
+3. 점수표 후보 점수가 주사위보다 먼저 새 값을 보여 주지 않는다.
+4. 연출 총 길이가 0.6초 이내이고 입력이 막히지 않는다.
+5. `AugmentVfxPlannerTests` EditMode 통과, 컴파일 경고 없음.
+6. §3.2 56행·§3.4 `I5`와 `work_plan` `M17` 표·세션 로그가 갱신됨.

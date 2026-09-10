@@ -227,7 +227,7 @@ namespace Tessera.EditorTools
         /// 읽기 불가 상태로 만들어 두어(InkwellAndQuill 등) 직접 인코딩이 실패한다.
         /// RenderTexture로 Blit한 뒤 읽어오면 읽기 가능 여부와 압축 포맷에 상관없이 동작한다.
         /// </summary>
-        private static bool TryWritePng(Texture2D texture, string assetPath)
+        internal static bool TryWritePng(Texture2D texture, string assetPath)
         {
             RenderTexture temporary = RenderTexture.GetTemporary(
                 texture.width, texture.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
@@ -262,7 +262,7 @@ namespace Tessera.EditorTools
             }
         }
 
-        private static void ConfigureTextureImporter(string assetPath)
+        internal static void ConfigureTextureImporter(string assetPath)
         {
             if (AssetImporter.GetAtPath(assetPath) is not TextureImporter importer) return;
 
@@ -276,6 +276,17 @@ namespace Tessera.EditorTools
             importer.mipmapEnabled = true;
             importer.sRGBTexture = !isNormalMap;
             importer.textureCompression = TextureImporterCompression.CompressedHQ;
+
+            // 알파 클립 텍스처(깃털 깃가지 틈)는 밉맵이 알파를 평균 내면 컷오프를 전부 통과해
+            // 구멍이 닫힌다. 커버리지 보존은 각 밉의 알파를 재스케일해 컷오프 통과 비율을 밉 0과 맞춘다.
+            // 알파가 전부 1인 다른 프롭 텍스처에는 무연산이라 전역으로 안전하다.
+            // 이 값은 머티리얼 _Cutoff(InkwellAndQuill.FeatherCutoff)와 반드시 같아야 한다.
+            if (!isNormalMap)
+            {
+                importer.mipMapsPreserveCoverage = true;
+                importer.alphaTestReferenceValue = 0.5f;
+            }
+
             importer.SaveAndReimport();
         }
 

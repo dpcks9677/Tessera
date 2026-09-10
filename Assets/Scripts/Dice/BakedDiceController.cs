@@ -203,6 +203,18 @@ namespace Tessera.Dice
             }
         }
 
+        /// <summary>
+        /// 굴림 없이 각 주사위의 현재 자세를 기준으로 눈 표시만 갱신한다(`dice-alchemy` 등).
+        ///
+        /// <see cref="ApplyTargetValues"/>는 착지 프레임이 없으면 주사위의 현재 localRotation을
+        /// 기준 회전으로 쓴다. 그 분기를 그대로 재사용하므로 별도 회전 계산이 없다.
+        /// </summary>
+        public static void ApplyValuesInPlace(IReadOnlyList<Transform> dice, IReadOnlyList<int> targetValues)
+        {
+            if (dice == null || targetValues == null) return;
+            ApplyTargetValues(dice, null, targetValues, null, false);
+        }
+
         private static void ApplyTargetValues(
             IReadOnlyList<Transform> dice,
             IReadOnlyList<bool> preservedDice,

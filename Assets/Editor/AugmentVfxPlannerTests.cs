@@ -113,6 +113,43 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
+        public void 다이스알케미를_발동하면_연기가림_요청이_생긴다()
+        {
+            List<AugmentVfxRequest> requests = Plan(
+                State(),
+                Event(YachtGameEventType.AugmentActionUsed, 0, augmentId: YachtAugmentRuntime.DiceAlchemyId));
+
+            Assert.That(requests.Count, Is.EqualTo(1));
+            Assert.That(requests[0].Cue, Is.EqualTo(AugmentVfxCue.DiceSmokeSwap));
+            Assert.That(requests[0].PlayerIndex, Is.Zero);
+        }
+
+        [Test]
+        public void 다른_수동행동을_발동하면_요청이_생기지_않는다()
+        {
+            List<AugmentVfxRequest> requests = Plan(
+                State(),
+                Event(YachtGameEventType.AugmentActionUsed, 0, augmentId: "table-flip"));
+
+            Assert.That(requests, Is.Empty);
+        }
+
+        [Test]
+        public void 다이스알케미_발동이_다른_이벤트와_섞여도_순서대로_옮긴다()
+        {
+            List<AugmentVfxRequest> requests = Plan(
+                State(LuckySevens),
+                Event(YachtGameEventType.DiceRolled, 0),
+                Event(YachtGameEventType.ScoreCommitted, 0, category: ScoreCategory.Aces),
+                Event(YachtGameEventType.AugmentActionUsed, 0, augmentId: YachtAugmentRuntime.DiceAlchemyId),
+                Event(YachtGameEventType.TurnAdvanced, 0));
+
+            Assert.That(requests.Count, Is.EqualTo(2));
+            Assert.That(requests[0].Cue, Is.EqualTo(AugmentVfxCue.StickerStamp));
+            Assert.That(requests[1].Cue, Is.EqualTo(AugmentVfxCue.DiceSmokeSwap));
+        }
+
+        [Test]
         public void 잘못된_입력에도_예외_없이_무시한다()
         {
             YachtGameState state = State(LuckySevens);
