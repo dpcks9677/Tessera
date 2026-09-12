@@ -57,7 +57,7 @@ namespace Tessera.Games.AugmentedYacht
         public event Action<int> DieHoverChanged;
         public event Action<int> DieClicked;
 
-        /// <summary>굴림 오브젝트(코스믹 큐브 또는 수정구)를 가리키는 중인지.</summary>
+        /// <summary>굴림 오브젝트(코스믹 큐브)를 가리키는 중인지.</summary>
         public event Action<bool> RollTriggerHoverChanged;
         public event Action RollTriggerClicked;
 

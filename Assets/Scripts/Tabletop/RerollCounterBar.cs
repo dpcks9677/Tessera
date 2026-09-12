@@ -6,18 +6,11 @@ using UnityEngine.Rendering;
 namespace Tessera.Tabletop
 {
     /// <summary>
-    /// 수정구(RollOrb)의 스톤 베이스와 결합/연장되는 100도 순수 스톤 부채꼴 3D 리롤 카운터 플랫폼
+    /// 코스믹 큐브(<see cref="RollCosmicCube"/>)의 스톤 베이스와 결합/연장되는 100도 순수 스톤 부채꼴 3D 리롤 카운터 플랫폼
     /// - 3시 방향(+X)을 대칭 중심축으로 하는 100도 중심각(-50도 ~ +50도) 순수 스톤 2단 플레이트
-    /// - RollOrb와 완벽히 동일한 높이(Y=0~0.060m, Y=0.060~0.118m) 및 스톤 머티리얼로 일체화
+    /// - 코스믹 큐브와 완벽히 동일한 높이(Y=0~0.060m, Y=0.060~0.118m) 및 스톤 머티리얼로 일체화
     /// - 상단판 내부에 여유 있는 스톤 여백(R = 1.460m, 각도 -28도, 0도, +28도)을 두고 3D 입체 패싯 보석 안착
-    /// - 수정구 내부 오로라 리본 색상(맑은 아쿠아 사파이어)과 100% 톤 매칭 및 0.4초 부드러운 페이드 아웃
-    /// </summary>
-    /// <summary>
-    /// 수정구(RollOrb)의 스톤 베이스와 결합/연장되는 100도 순수 스톤 부채꼴 3D 리롤 카운터 플랫폼
-    /// - 3시 방향(+X)을 대칭 중심축으로 하는 100도 중심각(-50도 ~ +50도) 순수 스톤 2단 플레이트
-    /// - RollOrb와 완벽히 동일한 높이(Y=0~0.060m, Y=0.060~0.118m) 및 스톤 머티리얼로 일체화
-    /// - 상단판 내부에 여유 있는 스톤 여백(R = 1.460m, 각도 -28도, 0도, +28도)을 두고 3D 입체 패싯 보석 안착
-    /// - 수정구 내부 오로라 리본 색상(맑은 아쿠아 사파이어)과 100% 톤 매칭 및 0.4초 부드러운 페이드 아웃
+    /// - 보석 색(맑은 아쿠아 사파이어)은 코스믹 큐브 이전에 있던 수정구의 오로라 리본에서 가져왔고, 0.4초 부드러운 페이드 아웃
     /// </summary>
     [ExecuteAlways]
     public sealed class RerollCounterBar : MonoBehaviour
@@ -39,7 +32,7 @@ namespace Tessera.Tabletop
         // 보석은 Unlit 평면색이라 이 값이 곧 최종 픽셀 색이다. 카메라가 HDR을 끄고 씬에 블룸 볼륨도
         // 없으므로 점등/소등은 오직 LDR 명도 차로만 읽힌다. 본체 휘도비를 약 21:1로 벌려 둔다.
         // 알파는 반드시 1이다. _Surface 0인 Unlit 블렌드는 One/Zero라 알파를 버린다.
-        private readonly Color activeBodyColor = new(0.28f, 0.72f, 0.90f, 1f);       // 수정구 오로라 리본 톤
+        private readonly Color activeBodyColor = new(0.28f, 0.72f, 0.90f, 1f);       // 폐기된 수정구의 오로라 리본 톤
         private readonly Color inactiveBodyColor = new(0.012f, 0.028f, 0.055f, 1f);  // 소등 딥 미드나잇
         private readonly Color activeRidgeColor = new(0.62f, 0.95f, 1.00f, 1f);      // 패싯 능선 하이라이트
         private readonly Color inactiveRidgeColor = new(0.030f, 0.055f, 0.090f, 1f); // 소등 딥 림
@@ -230,7 +223,7 @@ namespace Tessera.Tabletop
             Shader unlitShader = Shader.Find("Universal Render Pipeline/Unlit") ?? litShader;
 
             // 1. 스톤 베이스와 골드 트림 머티리얼. 예전에는 씬의 수정구에서 머티리얼을 빌려오고
-            //    없을 때만 새로 만들었으나, 수정구가 성운 큐브로 대체되어 이 경로만 남았다.
+            //    없을 때만 새로 만들었으나, 수정구가 코스믹 큐브로 대체되어 이 경로만 남았다.
             //    머티리얼 이름은 베이커가 에셋 파일명을 만드는 근거이므로 바꾸지 않는다.
             Material lowerStoneMat = CreateMat(unlitShader, "Orb_StoneRimMat", new Color(0.34f, 0.38f, 0.42f), 0.04f, 0.28f);
             Material upperStoneMat = CreateMat(unlitShader, "Orb_StoneBaseMat", new Color(0.52f, 0.56f, 0.60f), 0.05f, 0.32f);
@@ -245,17 +238,17 @@ namespace Tessera.Tabletop
             baseGemMat = CreateUnlitMat(unlitShader, "Counter_HexGemBaseMat", activeBodyColor);
             baseRidgeMat = CreateUnlitMat(unlitShader, "Counter_GemRidgeBaseMat", activeRidgeColor);
 
-            // 3. 100도 부채꼴 스톤 베이스 지오메트리 생성 (RollOrb 외벽에서 바깥으로 확장되는 Sector Ring 구조 - Z-fighting 완전 차단)
+            // 3. 100도 부채꼴 스톤 베이스 지오메트리 생성 (코스믹 큐브 외벽에서 바깥으로 확장되는 Sector Ring 구조 - Z-fighting 완전 차단)
             const float StartAngle = -50f;
             const float EndAngle = 50f;
             const int Segments = 24;
 
-            // RollOrb LowerBase 외경 지름 2.55f (반지름 1.275f) -> RollOrb 내부로 0.03m 크롭 오버랩(1.245f)하여 1.785f까지 확장, 높이 0.080m
+            // 코스믹 큐브 LowerBase 외경 지름 2.55f (반지름 1.275f) -> 큐브 베이스 내부로 0.03m 크롭 오버랩(1.245f)하여 1.785f까지 확장, 높이 0.080m
             const float LowerInnerRadius = 1.245f;
             const float LowerOuterRadius = 1.785f;
             const float LowerHeight = 0.080f;
 
-            // RollOrb UpperBase 외경 지름 2.25f (반지름 1.125f) -> RollOrb 내부로 0.03m 크롭 오버랩(1.095f)하여 1.680f까지 확장, 높이 0.055m (Y: 0.080 ~ 0.135m)
+            // 코스믹 큐브 UpperBase 외경 지름 2.25f (반지름 1.125f) -> 큐브 베이스 내부로 0.03m 크롭 오버랩(1.095f)하여 1.680f까지 확장, 높이 0.055m (Y: 0.080 ~ 0.135m)
             const float UpperInnerRadius = 1.095f;
             const float UpperOuterRadius = 1.680f;
             const float UpperHeight = 0.055f;
@@ -275,12 +268,12 @@ namespace Tessera.Tabletop
             GameObject upperPlate = new("UpperBase_Stone_Sector");
             SetupMeshPart(upperPlate, platformRoot.transform, new Vector3(0f, LowerHeight + UpperBaseOffset, 0f), upperMesh, upperStoneMat);
 
-            // 3-3. RollOrb의 Base_GoldRing과 연결되는 상단 외곽 100도 부채꼴 골드 트림 림 (Gold Trim Ribbon)
+            // 3-3. 코스믹 큐브의 Base_GoldRing과 연결되는 상단 외곽 100도 부채꼴 골드 트림 림 (Gold Trim Ribbon)
             Mesh goldRibbonMesh = CreateSectorRingPrismMesh(UpperOuterRadius - 0.075f, UpperOuterRadius, 0.015f, StartAngle, EndAngle, Segments);
             GameObject goldRibbon = new("UpperBase_Gold_Ribbon");
             SetupMeshPart(goldRibbon, platformRoot.transform, new Vector3(0f, LowerHeight + UpperHeight + UpperBaseOffset, 0f), goldRibbonMesh, goldTrimMat);
 
-            // 3-4. RollOrb의 Base_Stud와 일치하는 부채꼴 외곽 골드 스터드 4개
+            // 3-4. 코스믹 큐브의 Base_Stud와 일치하는 부채꼴 외곽 골드 스터드 4개
             float[] studAngles = new float[] { -42f, -14f, 14f, 42f };
             float studRadius = UpperOuterRadius - 0.038f;
             float studY = LowerHeight + UpperHeight + UpperBaseOffset + 0.015f;
@@ -310,7 +303,7 @@ namespace Tessera.Tabletop
                 gemRoot.transform.localPosition = gemPos;
                 gemRoot.transform.localRotation = Quaternion.Euler(0f, -angleDeg, 0f);
 
-                // 4-0. RollOrb의 상단 받침대와 일체화된 앤틱 골드 베젤 소켓 받침대 (Gem Socket Pedestal)
+                // 4-0. 코스믹 큐브의 상단 받침대와 일체화된 앤틱 골드 베젤 소켓 받침대 (Gem Socket Pedestal)
                 // (1) 하단 다크 브라스 베이스 링 (지름 0.36m, R=0.18m -> 내경 1.185m, 외경 1.545m로 골드 리본 및 원형 베이스와 여유 확보)
                 GameObject socketBase = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
                 socketBase.name = "Gem_Socket_Base";
@@ -394,7 +387,7 @@ namespace Tessera.Tabletop
         }
 
         /// <summary>
-        /// RollOrb 외벽(InnerRadius)에서 시작하여 바깥(OuterRadius)으로 확장되는 솔리드 부채꼴 링 프리즘 메쉬 생성
+        /// 코스믹 큐브 외벽(InnerRadius)에서 시작하여 바깥(OuterRadius)으로 확장되는 솔리드 부채꼴 링 프리즘 메쉬 생성
         /// - 상단 링 면, 하단 링 면, 외벽, 내벽, 시작/끝 절단면을 모두 포함하여 Z-fighting 없이 완벽 밀착
         /// </summary>
         private static Mesh CreateSectorRingPrismMesh(float innerRadius, float outerRadius, float height, float startAngleDeg, float endAngleDeg, int segments)
@@ -481,7 +474,7 @@ namespace Tessera.Tabletop
                 triangles.Add(idx); triangles.Add(idx + 2); triangles.Add(idx + 3);
             }
 
-            // 4. 내벽 (Inner Wall은 RollOrb 내부에 묻히므로 불필요한 면 렌더링 및 Z-fighting 방지를 위해 크롭 생략)
+            // 4. 내벽 (Inner Wall은 코스믹 큐브 베이스 내부에 묻히므로 불필요한 면 렌더링 및 Z-fighting 방지를 위해 크롭 생략)
 
             // 5. 시작 절단면 (Start Cut Wall)
             Vector3 startNormal = new(-Mathf.Sin(startRad), 0f, Mathf.Cos(startRad));
