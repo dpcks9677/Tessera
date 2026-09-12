@@ -44,21 +44,27 @@ Assets/Scripts/
 ├── Tabletop/           # 테이블탑 소품 (잉크통/깃펜, 문진 등) (Tessera.Tabletop)
 ├── Rendering/          # URP 픽셀 프레젠테이션 & 셰이더 제어 (Tessera.Rendering)
 ├── Games/
-│   └── AugmentedYacht/ # 증강 요트 다이스 전용 게임 루프 & 족보 (Tessera.Games.AugmentedYacht)
-└── Network/            # 온라인 멀티플레이어 통신 계층 (Tessera.Network)
+│   ├── Yacht/          # 요트 다이스 권위·명령·코어 룰 (Tessera.Games.Yacht)
+│   └── AugmentedYacht/ # 증강 요트 다이스 전용 게임 루프 & 족보
+└── Network/            # 온라인 멀티플레이어 통신 계층 (아직 빈 폴더)
 ```
 
+> 괄호 안은 어셈블리가 아니라 C# 네임스페이스입니다. 이 프로젝트에는 `.asmdef`가 없어 모든 스크립트가
+> `Assembly-CSharp` 하나로 컴파일됩니다.
+
 > 📖 **핵심 아키텍처 & 기술 문서**:
-> - [신입 개발자를 위한 프로젝트 구조 및 아키텍처 온보딩 가이드](docs/guides/architecture_overview.md)
-> - [증강(Augments) 시스템 상세 기술 명세 및 55종 구현 현황서](docs/guides/augments_specification_and_status.md)
+> - [신입 개발자를 위한 프로젝트 구조 및 아키텍처 온보딩 가이드](docs/reference/architecture_overview.md)
+> - [증강(Augments) 시스템 상세 기술 명세 및 구현 현황서](docs/reference/augments_specification_and_status.md) (구현 45종 · 보류 4종 · 삭제 6종)
+> - [문서 전체 색인](docs/README.md)
 
 ---
 
 ## 🗺️ 개발 로드맵 (Roadmap)
 
-- [ ] **Phase 1: 증강 요트 다이스 시스템 마이그레이션**
-  - 웹 버전([augmented-dice](https://github.com/dpcks9677/augmented-dice)) 게임의 룰과 시스템 이식
-  - 3 슬롯 증강(Augment) 카드 및 턴/핫시트(Local 2P) 플레이 루프 구현
+- [x] **Phase 1: 증강 요트 다이스 시스템 마이그레이션** (거의 완료)
+  - [x] 웹 버전([augmented-dice](https://github.com/dpcks9677/augmented-dice)) 게임의 룰과 시스템 이식 — 증강 45종 구현 완료
+  - [x] 3 슬롯 증강(Augment) 카드 및 턴/핫시트(Local 2P) 플레이 루프 구현
+  - [ ] 로컬 핫시트 완성 (`M17` 진행 중: 교대 가림 화면, 증강 발동 VFX, 상태 표시)
 - [ ] **Phase 2: 게임 로비 및 인프라 구축**
   - 도전과제, 게임 설정, 도감, 플레이 통계 시스템 구축
 - [ ] **Phase 3: 온라인 플레이 시스템 구축 (EOS 기반)**
@@ -78,8 +84,8 @@ Assets/Scripts/
 ### 설치 및 실행
 1. 저장소를 클론합니다 (Git LFS 활성화 필수):
    ```bash
-   git clone https://github.com/dpcks9677/Teserra.git
-   cd Teserra
+   git clone https://github.com/dpcks9677/Tessera.git
+   cd Tessera
    git lfs pull
    ```
 2. **Unity Hub**에서 프로젝트 폴더를 열고 `6000.3.21f1` 버전으로 프로젝트를 로드합니다.

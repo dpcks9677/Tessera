@@ -1,0 +1,643 @@
+# M17-T9 증강 발동 VFX 사양서 (기입 양식)
+
+> **문서 종류**: 작업 지시서 (AI 대상)
+> **코드 대조 기준**: 2026-09-13 · 커밋 `8cc0273`
+> 이 문서는 위 시점의 코드에서 확인된 것만 기술합니다. 계획 항목은 상태 표기로 구분합니다.
+> 작성 원칙은 [`docs/README.md`](../README.md)를 보십시오.
+>
+> `M17-T9` 증강 발동 VFX 사양서입니다. 일부 절은 사용자가 값을 채워 넣는 양식입니다.
+
+> 이 문서는 `M17-T9` "증강 발동 VFX와 전환 연출"의 **입력 사양**이다. 구현 전에 사용자가 §3~§6의 빈칸을 채운다.
+> 상위 시각 규칙은 [`docs/agent/m7_graphics_spec.md`](m7_graphics_spec.md) 부록 A(에셋 인벤토리)와 [`docs/reference/art_style_guide.md`](../reference/art_style_guide.md)를 따른다.
+> 작업 정의와 완료 조건은 [`docs/agent/work_plan.md`](work_plan.md) §M17에 있다.
+
+| 항목 | 값 |
+|---|---|
+| 작업 ID | `M17-T9` (구 `M7-T6`, `D-038`로 이동) |
+| 완료 조건 `C1` | **증강 효과 적용** — 발동한 증강이 무엇이고, 누구·무엇에 적용됐고, 결과가 어떻게 됐는지가 화면 연출로 드러남 |
+| 완료 조건 `C2` | **텍스트 분량** — 설명 텍스트가 연출을 대신하지 않음. 텍스트는 보조 수단이며 과도하지 않음 |
+| 대상 범위 | 활성 증강 45개. 삭제 6개·미구현 4개는 런타임 VFX 없음 |
+| 기입 상태 | §3 부분 기입 11/45 (2026-09-08). §2·§4·§6 미기입 |
+
+> **`C1`과 `C2`는 독립이다.** 텍스트를 줄였다고 `C1`이 충족되지 않고, `C1`을 위해 텍스트를 늘려도 안 된다. 두 기준을 따로 판정한다.
+> `M17-T9`의 원래 표기는 "발동 주체·대상·효과 결과가 과도한 텍스트 없이 전달됨" 한 줄이라 두 기준이 붙어 있었다. 이 문서는 둘을 나눈 기준을 쓴다(§7 참조).
+
+---
+
+## 1. 기입 전 확인 사항
+
+- **빈 셀은 "미정"이다.** 채우지 않은 행은 구현 대상에서 빠진다.
+- §3은 **사용자가 문장으로 설명 → Claude가 구현 사양으로 변환**하는 2단 구조다. 사용자는 `연출 설명` 열만 채운다.
+- **전용 이펙트 신규 제작이 기본이 아니다.** §2 프리셋 조합 + 색·앵커 차이로 표현하고, 그래도 안 되는 것만 `전용`으로 표기한다. 설명이 프리셋으로 안 되는 요구면 구현 사양에 비용·대안을 함께 적는다.
+- 코드 사실(발동 훅, 기존 프로필)은 이미 채워져 있다. 수정이 필요하면 셀 값을 고치고 §7에 사유를 남긴다.
+
+### 1.1 용어
+
+| 용어 | 뜻 |
+|---|---|
+| **프리셋** | §2의 공통 VFX 단위. `P1`~`P7`로 표기 |
+| **앵커** | 이펙트가 시작·부착되는 화면상 위치 |
+| **세기** | 연출 길이와 화면 점유 등급 |
+| **결과 표현** | 발동 후 성공/실패/누적 등 결과 분기의 시각 처리 |
+| **발동 훅** | 실제 로직이 호출되는 코드 시점 (`Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/IAugmentHandler.cs`) |
+
+> §1.2~§1.4는 **Claude가 §3의 `구현 사양` 열을 채울 때 쓰는 표기**다. 사용자는 이 어휘를 몰라도 되며, `연출 설명` 열은 평범한 문장으로 쓴다.
+
+### 1.2 앵커 어휘 (택 1, 복수는 `>`로 순서 표기)
+
+| 코드 | 위치 |
+|---|---|
+| `CARD` | 트레이의 해당 증강 카드 |
+| `DICE` | 관련 주사위. 특정 주사위면 `DICE(대상)` |
+| `CELL` | 점수표의 대상 족보 칸 |
+| `SHEET` | 점수표 전체 / 총점 영역 |
+| `TABLE` | 테이블 중앙 |
+| `TIMER` | 모래시계·턴 타이머 |
+| `NAME` | 현재 플레이어 명패 |
+| `OPP` | 상대 플레이어 명패 |
+
+예: `CARD > CELL` = 카드에서 점수 칸으로 이어지는 연출.
+
+### 1.3 세기 어휘 (택 1)
+
+| 코드 | 길이 | 허용 범위 |
+|---|---|---|
+| `S` | ~0.3s | 미세. 부착 위치에서만. 입력 차단 없음 |
+| `M` | ~0.6s | 보통. 연결선·인장 허용. 입력 차단 없음 |
+| `L` | ~1.0s | 강조. 화면 흔들림·암전 허용. 입력 일시 차단 |
+| `C` | 지속 | 조건이 유지되는 동안 계속 재생. §6.2 턴 연출 예산에서 제외 |
+
+### 1.4 결과 표현 어휘 (복수 가능, `/`로 구분)
+
+`단발` · `성공` · `실패` · `누적` · `대기` · `소모` · `변환` · `없음`
+
+---
+
+## 2. 공통 프리셋
+
+부록 A의 7종을 그대로 잇는다. **표현 상세와 색 규칙은 사용자가 채운다.**
+
+| ID | 프리셋 | 공통 표현 (기존) | 파티클·셰이더 구성 | 기본 색 | 기본 세기 | 비고 |
+|---|---|---|---|---|---|---|
+| `P1` | 등장·획득 | 양피지 펼침, 골드 룬 테두리 점등 | | | | |
+| `P2` | 점수 스티커 | Categories 열 대상 행에 우표 스티커 부착 (§3.1.1) | 거터에 오버레이 `Image` 1장. 파티클 없음. 텍스처 절차 생성 | 베이스 `#882d22` / 테두리 `#e5a93c` | 부착 `M` / 반응 `S` / 유지 `C` | 부록 A 고유 아이콘 마스크 재사용. 신규 스프라이트 없음 |
+| `P3` | 진행·누적 | 카드 둘레 룬 노드와 수치 채움 | | | | |
+| `P4` | 성공·실패 | 앰버 확산 / 인디고 소거 | | | | |
+| `P5` | 주사위 변환 | 기존 주사위에서 타입 색상 룬이 감김 | | | | |
+| `P6` | 수동 행동 | 사용 가능 맥동, 대상 연결선, 소모 인장 | | | | |
+| `P7` | 카드 교체 | 룬 상자 개봉 후 새 카드가 겹쳐 내려옴 | | | | |
+| `P8` | (추가 시 기입) | | | | | |
+
+---
+
+## 3. 증강별 기입표
+
+| 열 | 채우는 주체 | 내용 |
+|---|---|---|
+| `#` `증강` `발동 훅` `기존 프로필` | 프리필 | 코드·부록 A에서 뽑은 사실. 손댈 필요 없음 |
+| `연출 설명` | **사용자** | 무엇이 어떻게 보이면 좋겠는지 **평범한 문장**으로 적는다. 용어·코드 표기 불필요 |
+| `구현 사양` | Claude | 설명을 읽고 `프리셋 / 앵커 / 강조색 / 세기 / 결과 표현 / 비고`로 옮긴 뒤 구현 가능 여부와 방식을 적는다 |
+
+### 연출 설명 작성 요령
+
+한 칸에 한 줄로 쓴다. 줄을 나누고 싶으면 `<br>`을 넣는다. 아래 세 가지가 들어가면 구현 사양으로 옮기기 쉽다.
+
+1. **어디서** 보이는가 (카드 / 주사위 / 점수표 칸 / 테이블 / 타이머 …)
+2. **무엇이** 일어나는가 (색, 움직임, 소재감)
+3. **얼마나 크게** — 눈에 살짝 스치는 정도인지, 손을 멈추고 볼 정도인지
+
+성공·실패처럼 결과가 갈리면 둘 다 적는다. 아직 모르겠으면 `?`만 적어도 된다 — 빈칸(미정)과 구분된다.
+
+### 예시 (그대로 두고 아래 표를 채운다)
+
+| # | 증강 | 발동 훅 | 기존 프로필 | 연출 설명 (사용자 기입) | 구현 사양 (Claude 기입) |
+|---:|---|---|---|---|---|
+| 예 | `lucky-sevens` / 럭키 세븐 | `BeforeScorePreview` | 점수 인장 | 조건이 맞으면 트레이의 카드가 잠깐 금색으로 밝아지고, 그 빛이 점수표의 Aces 칸으로 흘러가서 카드 문양이 도장처럼 찍힌다. 크게 방해하지 않을 정도로 짧게. | `P2` / `CARD > CELL` / `#e5a93c` / `M` / `단발`. 카드→칸 연결선은 기존 `P6`의 연결선 리소스 재사용. 인장은 아이콘 마스크를 그대로 낙인 텍스처로 씀. 구현 가능 |
+
+### 3.1 변형 (족보 교체) — 18개
+
+발동 훅은 전부 `BeforeScorePreview`다. 화면상 결과가 **점수 칸의 숫자 변화**뿐이라 대상 칸 지시가 핵심이다.
+
+| # | 증강 | 발동 훅 | 기존 프로필 | 연출 설명 (사용자 기입) | 구현 사양 (Claude 기입) |
+|---:|---|---|---|---|---|
+| 1 | `lucky-sevens` / 럭키 세븐 | `BeforeScorePreview` | 점수 인장 |  |  |
+| 2 | `perfect-squares` / 퍼펙트 스퀘어 | `BeforeScorePreview` | 점수 인장 |  |  |
+| 9 | `gambler` / 갬블러 | `BeforeScorePreview` | 점수 인장 |  |  |
+| 10 | `three-of-a-kind` / 쓰리 오브 어 카인드 | `BeforeScorePreview` | 점수 인장 |  |  |
+| 12 | `tiny-house` / 타이니 하우스 | `BeforeScorePreview` | 점수 인장 |  |  |
+| 13 | `two-pair` / 투 페어 | `BeforeScorePreview` | 점수 인장 |  |  |
+| 14 | `head-and-tail` / 머리와 몸통 | `BeforeScorePreview` | 점수 인장 |  |  |
+| 15 | `evens` / 에번스 | `BeforeScorePreview` | 점수 인장 |  |  |
+| 16 | `odds` / 오즈 | `BeforeScorePreview` | 점수 인장 |  |  |
+| 17 | `double-large-straight` / 더블 라지 스트레이트 | `BeforeScorePreview` + `OnAugmentSelected` | 점수 인장·보너스 기준 |  |  |
+| 18 | `prime-collection` / 프라임 컬렉션 | `BeforeScorePreview` | 점수 인장 |  |  |
+| 19 | `duplex-house` / 땅콩주택 | `BeforeScorePreview` | 점수 인장 |  |  |
+| 20 | `mountain` / 마운틴 | `BeforeScorePreview` | 점수 인장 |  |  |
+| 21 | `high-dice` / 하이 다이스 | `BeforeScorePreview` | 점수 인장 |  |  |
+| 22 | `2nd-choice` / 두 번째 초이스 | `BeforeScorePreview` | 점수 인장 |  |  |
+| 23 | `fibonacci-numbers` / 피보나치 넘버즈 | `BeforeScorePreview` | 점수 인장 |  |  |
+| 24 | `reverse-choice` / 리버스 초이스 | `BeforeScorePreview` | 점수 인장 |  |  |
+| 26 | `blackjack-21` / 블랙잭 21 | `BeforeScorePreview` | 점수 인장 |  |  |
+
+> 18개가 같은 훅·같은 프로필이다. 개별 기입 전에 §6.1의 계열 일괄 규칙을 먼저 정하면 대부분 상속으로 끝난다.
+
+#### 3.1.1 변형 계열 범용 설계 — 우표 스티커
+
+§6.1 기입("Categories 열에 스티커를 부착. 버건디 베이스 + 내부 금색 테두리 + 우표처럼 오돌토돌한 테두리. 증강별 색상코드로 베이스·테두리만 교체")을 설계로 편 것이다.
+
+##### 전제: 변형 증강에는 쓸 만한 트리거 점이 없다
+
+현재 `ModificationAugment`는 이벤트를 내지 않는다. `ModifyScores`가 `Scores[Target] = CalculateScore(facts)` 한 줄이고 `Emit` 호출이 없으며(`.../Augments/Modification/ModificationAugment.cs:30`), `AugmentScoreContext`가 이벤트 수집기를 `null`로 받아 호출할 수도 없다(`.../Augments/Core/AugmentContexts.cs:168`).
+
+**다만 이건 고치려면 고칠 수 있는 문제다.** `Emit`을 넣고 컨텍스트에 수집기를 넘기면 이벤트는 나온다. 진짜 문제는 그렇게 만든 이벤트가 쓸모없다는 것이다.
+
+`ModifyScores`는 점수를 계산할 때마다 돈다. 그 계산(`UpdateCandidates`)은 **굴림 직후와 킵을 토글할 때마다** 호출되므로(`Assets/Scripts/Games/Yacht/LocalGameAuthority.cs:170`·`237`) 한 턴에 수십 번이다. 게다가 조건 성립 여부를 보지 않고 조건이 안 맞으면 `0`을 그대로 쓴다. 즉 "실행됐다"와 "뭔가 일어났다"가 분리돼 있지 않다. 여기에 `Emit`을 넣으면 킵을 하나 눌렀다 뗄 때마다 `AugmentTriggered`가 나오는데, 그 안에 "이번엔 진짜 뭔가 일어났다"는 정보가 없다.
+
+비교하면 분명하다. 퀘스트 11개는 `AfterScoreCommit`에서 `Emit`하고, 점수 확정은 한 턴에 정확히 한 번 일어나며 그때 진행도가 실제로 바뀐다. 이산적인 사건이라 이벤트가 맞는다. 변형은 굴림·킵 상태에 딸린 연속 함수에 가깝다.
+
+**결론(사용자 확정, 2026-09-08): 변형 증강은 `AugmentTriggered`를 갖지 않는다.** 트리거 점이 없으니 억지로 만들지 않고, **증강 획득 자체를 "뭔가 일어났다"로 본다.** 그래서 **붙어 있는 스티커**가 맞는 은유다 — 붙는 순간이 사건이고, 그 뒤로는 그냥 붙어 있는 것이다.
+
+##### 붙을 자리: 아이콘 섹터와 이름 열 (`D-040`으로 갱신, 2026-09-08)
+
+점수표는 여섯 열이다 — `[P1 아이콘][P1 Categories][P1 점수][P2 점수][P2 Categories][P2 아이콘]`. 아이콘 섹터와 점수 열은 폭이 고정이고, 두 Categories 열이 예산 하나를 나눠 가진다. 현재 턴인 쪽이 예산을 전부 가져가므로 반대쪽은 폭 0으로 접힌다.
+
+스티커 천은 그 플레이어의 **`[아이콘 섹터 + Categories]` 전체**를 덮는다. 증강 아이콘은 아이콘 섹터에, 증강 이름은 Categories 열에 얹으므로, 열이 접히면 이름은 사라지고 **아이콘 섹터 폭만큼 축소된 천**이 남는다. 원래 족보 아이콘과 이름은 천이 덮은 동안 감춘다(`SetCategoryRowVisible`).
+
+보너스 행과 합계 행에는 스티커가 붙지 않는다. 두 행 모두 각자 Categories 열에 진행도(`Bonus (n/63)`)와 `TOTAL` 라벨을 두고 점수 열에 값을 둔다.
+
+머리글도 같은 규칙이다. `P1`·`P2`는 각자 **점수 열** 안에, `CATEGORIES`는 각자 **이름 열** 안에 둔다. 머리글을 열 밖(오버레이 직속)에 두고 그룹 전체를 덮게 하면 열이 접힐 때 제 칸을 잃고 옆으로 밀려난다.
+
+##### 접힘·펴짐 전환
+
+턴이 넘어가면 두 이름 열이 자리를 맞바꾼다. **0.35초, ease-out cubic**(`1 - (1-t)³`)이며 스티커 부착 연출과 같은 결이다. 열 폭만 줄이면 접히는 마지막 순간까지 글자가 뭉개진 채 남으므로, 이름 열은 `RectMask2D`로 잘라내고 자기 폭 비율이 `0.35`에서 `0.90` 사이일 때 알파가 오간다. 그래서 접히는 쪽은 폭이 줄기 전에 먼저 사라지고, 펴지는 쪽은 폭이 거의 다 열린 뒤 나타난다.
+
+천 조각은 캔버스 밖 월드 오브젝트라 열을 따라오지 않으므로 전환 매 프레임 가로 위치·크기를 다시 잡는다. 부착·낙인 코루틴도 시작 시점의 제자리를 붙잡지 않고 매 프레임 다시 읽는다. 붙잡으면 전환 도중에 시작한 연출이 어긋난 자리에서 끝난다.
+
+##### 표시 대상 (`D-040`으로 갱신, 2026-09-08)
+
+**양쪽 것을 동시에 표시한다.** 플레이어마다 Categories 열이 하나씩 있으므로 누구 것인지 헷갈리지 않고, 두 사람이 같은 칸을 교체해도 충돌하지 않는다. `AugmentStickerCatalog.CollectFor`는 여전히 한 사람 단위로 모으고, 턴 흐름이 두 번 부른다.
+
+접힌 쪽은 이름이 안 보이므로 상대가 **무엇을** 교체했는지는 증강 아이콘으로 읽는다. 어느 칸인지는 그 행 위치로 읽는다. 더 자세한 상대 정보는 `M17-T3`(보유 증강 표시)이 맡는다.
+
+##### 스티커 구성
+
+| 층 | 내용 | 증강별로 바뀌는가 |
+|---|---|---|
+| 외곽 | 각진 사각형. 톱니 없음 | 아니오 |
+| 그림자 | 오른쪽·아래 1px, `#5c4733` 불투명 | 아니오 |
+| 베이스 | 버건디 단색 `#882d22` | **예** — 색상코드 1개 |
+| 내부 테두리 | 금색 `#e5a93c` 1px 인셋 | **예** — 베이스에서 파생 |
+| 문양 | 증강 고유 아이콘 마스크 | **예** — 부록 A 49종 재사용 |
+| 표기 | 영문 축약 표기(`mark`) | **예** — 증강마다 1개 |
+
+##### 실루엣과 그림자 (사용자 확정, 2026-09-08)
+
+우표 톱니를 걷어내고 **각진 사각형 러너**로 바꿨다. 대신 **오른쪽·아래 1px 그림자**로 종이 위에 얹힌 느낌을 낸다. 재질이 알파 컷아웃(`_ALPHATEST_ON`, cutoff 0.5)이라 반투명 그림자를 쓸 수 없으므로 불투명 한 겹(`#5c4733`)으로 찍는다. 그림자는 증강 색과 무관하게 늘 같다 — 그림자는 천이 아니라 종이 쪽에서 나오는 것이다.
+
+방향에 함정이 하나 있다. 천은 큐브의 윗면이고 그 면은 텍스처 `u`가 종이 −X(화면 왼쪽) 쪽으로 늘어난다. 그래서 화면 오른쪽에 그림자를 보이려면 **텍스처에서는 왼쪽으로** 밀어야 한다.
+
+##### 금테 위치를 고정하는 굽는 크기 (사용자 확정, 2026-09-08)
+
+금테 한 줄이 행마다 다른 자리에 나타나던 원인은 **굽는 해상도**였다. 천 텍스처를 캔버스 해상도(월드 1단위당 100)로 구웠는데, 픽셀 필터의 굵은 프리셋이 1920 폭을 480으로 줄인다(4배 축소). 텍스처가 화면 발자국보다 4배 촘촘해서 점 샘플링이 16텍셀 중 하나를 골랐고, 행마다 서브픽셀 위치가 달라 같은 1px 금테가 행마다 다른 자리에 걸렸다.
+
+그래서 **한 텍셀이 화면 한 픽셀**이 되도록 `CanvasUnitsPerWorldUnit / 4` 밀도로 굽는다(`ParchmentScoreSheet.StickerPixelsPerUnit`). 다 펴진 천 한 장이 약 59×15 텍셀이다. 굵은 쪽 프리셋에 맞췄으므로 가는 프리셋(640×360)에서는 확대만 일어나 금테가 사라지지 않는다.
+
+크기는 칸이 아니라 **천 전체**(오버행 포함)로 잰다. 텍스처는 칸이 아니라 천 면에 입혀지므로 칸 크기로 구우면 늘어난다.
+
+남은 한계. 접힌 쪽은 천이 가로로 약 4배 눌리므로 세로 금테 두 줄이 몸통 가장자리에 붙어 사라진다. 그 쪽은 증강 아이콘만 보이는 조각이라 그대로 둔다.
+
+##### 표기는 영문 축약어 (사용자 확정, 2026-09-08)
+
+스티커 글자는 증강 이름(`DisplayName`, 한글)이 아니라 **영문 축약 표기**를 쓴다. 원본은 `augmented-dice` 프로젝트 `src/augments.json`의 `mark` 태그이며, `AugmentStickerCatalog.Marks`로 옮겼다(활성 변형 증강 18종 전부 존재).
+
+예외 하나. `head-and-tail`의 원본 `mark`는 `Head & Run`인데 이는 길이 때문에 쓴 대체어이고 실제 이름은 `Head & Tail`이다(사용자 확정, 2026-09-08). 여기 이름 열은 그 길이가 들어가므로 제 이름을 쓴다.
+
+한글 이름을 쓰지 않는 이유는 두 가지다. "더블 라지 스트레이트"는 이름 열 폭에 들어가지 않고, 스티커는 그 칸이 무슨 족보로 바뀌었는지 알리는 표기라서 같은 칸에 놓이는 다른 족보 이름(`S. Straight`·`4 of a Kind`)과 언어·축약 방식이 같아야 한 줄로 읽힌다.
+
+| 대상 칸 | 축약 표기 |
+|---|---|
+| Aces | `L. Sevens` · `P. Squares` |
+| Choice | `Gambler` |
+| 4 of a Kind | `3 of a Kind` |
+| Full House | `Tiny House` · `Two Pair` · `Head & Tail` |
+| S. Straight | `Evens` · `Odds` · `L. Straight` |
+| L. Straight | `P. Collection` · `D. House` · `Mountain` · `High Dice` |
+| Yacht | `2nd Choice` · `Fib. Numbers` · `R. Choice` · `Blackjack` |
+
+원본 `mark`가 없는 증강은 `DisplayName`으로 물러난다. 그러면 그 칸만 한글로 나오므로 EditMode 테스트가 18종 전부 ASCII인지 고정한다(`AugmentStickerCatalogTests`).
+
+증강 하나당 정하는 것은 **색상코드 1개와 축약 표기 1개**다. 실루엣·그림자·인셋 규칙은 공통이라 텍스처를 절차 생성하면 18개 스프라이트를 따로 그릴 필요가 없다. `M17-T16`의 판자별 나뭇결 절차 생성과 같은 방식을 쓴다.
+
+##### 2단계
+
+| 단계 | 언제 | 무엇이 | 세기 | 소속 |
+|---|---|---|---|---|
+| `S0` 부착 | 증강 획득(`AugmentSelected`) | 스티커가 대상 행 거터에 한 번 눌러 붙고 이후 상시 유지 | 부착 `M`, 유지 `C` | 부착 애니메이션은 `M17-T9`, 상시 유지 판단은 `M17-T10` |
+| `S2` 낙인 | `ScoreCommitted`의 카테고리가 그 칸일 때 | 스티커가 눌리며 점수 칸 쪽으로 금색 잔광 1회 | `M` | `M17-T9` |
+
+두 단계 모두 **이미 발행되는 이벤트**만 쓴다. `AugmentSelected`는 `TrySelectAugment`가, `ScoreCommitted`는 권위가 낸다. 로직 변경이 필요 없다.
+
+> **`S1`(굴림마다 스티커가 반응) 은 폐기했다.** 초안에는 있었으나, 굴림·킵마다 반복되는 연속적인 반응이라 "트리거 점이 없다"는 성격을 정면으로 거스른다. 완료 조건 `C2`(연출이 과도하지 않음)에도 불리하다. `S1`만을 위해 필요했던 `YachtScoreCandidate.EnhancementSource` 스탬프도 함께 되돌렸다(2026-09-08). 나중에 굴림 단위 반응을 다시 원하면 후보 스탬프 10줄을 되살리면 된다 — 근거는 아래 "폐기한 `S1`의 판정 기준"에 남겨 둔다.
+
+##### 예외 2건
+
+| # | 증강 | 예외 |
+|---:|---|---|
+| 24 | `reverse-choice` | `30 - 합계`라 **잘 굴릴수록 점수가 낮아진다**(`.../Modification/ReverseChoice.cs:16`). d6 5개의 최대 합이 30이라 기본 주사위로는 하한이 `0`이고, 눈 7이 있어야(세븐스 다이스) 실제로 음수가 된다 — 측정 확인: `7,7,6,6,6` → `-2`. 베이스 색상코드를 인디고(`#364b6e`)로 지정해 역방향임을 드러낸다. 규칙 변경 없이 색상코드만 바꾸면 되므로 예외 처리 코드가 필요 없다 |
+| 17 | `double-large-straight` | 칸 교체 외에 상단 보너스 기준을 60으로 낮춘다. 상단 보너스 행(`Bonus_Progress_Text`, 같은 파일 `471`)에도 스티커를 하나 더 붙인다. **한 증강이 스티커 2장을 갖는 유일한 경우**라 자료 구조가 `id → 칸 1개`가 아니라 `id → 칸 목록`이어야 한다 |
+
+##### (폐기) `S1`의 판정 기준
+
+굴림 단위 반응을 다시 도입할 때를 위한 기록이다. 현재 설계에는 쓰이지 않는다.
+
+"조건이 성립했는가"를 후보 점수 `0`으로 판정하면 안 된다 — `reverse-choice`는 음수, `gambler`는 조건 불충족 시 0이라 둘을 같은 규칙으로 못 읽는다. **후보 점수가 바닐라 규칙 점수와 다른가**로 판정한다.
+
+그런데 화면에서 바닐라 점수를 다시 계산하면 규칙 로직이 화면 계층에 복제된다(`docs/reference/architecture_decisions.md` ADR-001의 소유권 원칙 위반). 대신 권위가 후보에 표시를 남긴다.
+
+| 변경 | 위치 | 내용 |
+|---|---|---|
+| 필드 1개 추가 (미구현) | `YachtScoreCandidate` (`Assets/Scripts/Games/Yacht/YachtGameCore.cs`) | `public string ModifiedByAugmentId;` — **아직 코드에 없다.** 현재 필드는 `Category`·`Score`·`BaseScore`·`DiceBonusScore`·`IsEnhanced`·`EnhancementSource` 6개다 |
+| 스탬프 | `YachtAugmentRuntime.CreateScoreCandidates` (`.../Logic/YachtAugmentRuntime.cs:730`) | 보유한 `ModificationAugment`를 훑어 `Target`이 일치하는 후보에 `Id`를 찍는다. 점수 계산은 건드리지 않는다 |
+
+기존 `IsEnhanced`·`EnhancementSource`는 `IScoreEnhancementModifier`(추진력·더블 다운) 전용이라 재사용하지 않는다. 그쪽은 배율 강화고 이쪽은 규칙 교체라 뜻이 다르다.
+
+##### 구현 순서
+
+**로직 변경은 필요 없다.** `S0`·`S2`가 쓰는 이벤트가 이미 다 나오고, 어느 칸이 교체됐는지는 `OwnedIds` + `definition.Target`으로 화면이 바로 알 수 있다.
+
+| 순서 | 작업 | 상태 | 산출물·검증 |
+|---:|---|---|---|
+| 1 | 스티커 텍스처 절차 생성기 | **완료 (2026-09-08)** | `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentStickerTexture.cs`. 24px 기준 변마다 톱니 6개, 금테 링 68px, 안쪽은 문양 자리로 비움. EditMode 8건(`AugmentStickerTextureTests.cs`) |
+| 2 | 증강별 색상코드 테이블 | **완료 (2026-09-08)** | `AugmentStickerCatalog.cs`. 기본 버건디 + 예외만 등록하는 구조. 활성 변형 18개 전부 색상코드와 대상 칸이 해석됨 |
+| 3 | 이벤트 → 재생 요청 변환기 (I1) | **완료 (2026-09-08)** | `AugmentVfxPlanner.cs`. 순수 클래스. `AugmentSelected`·`AugmentReplaced` → `S0`, `ScoreCommitted` → `S2`. EditMode 10건(`AugmentVfxPlannerTests.cs`) |
+| 4 | 스티커 슬롯과 표시 대상 | **완료 (2026-09-08, `D-040`으로 갱신)** | `ParchmentScoreSheet`에 플레이어별 슬롯 14개씩(`SetSticker`·`ClearSticker`·`StickerSlot`이 모두 `playerIndex`를 받음). 천이 `[아이콘 섹터 + Categories]`를 덮고 열이 접히면 아이콘 폭만 남음. `AugmentStickerCatalog.CollectFor`를 두 사람 몫으로 두 번 부름. EditMode 8건(`AugmentStickerCatalogTests.cs`) + 열 경계 14건(`ScoreSheetColumnLayoutTests.cs`) |
+| 5 | `S0`·`S2` 재생과 턴 교대 동기화 | 대기 | 화면 확인 |
+
+1~3번은 Unity 없이 검증했다. 화면이 필요한 건 4·5번뿐이다.
+
+##### 생성된 스티커 (24×24, 기본 버건디)
+
+```
+*..**..**..**..**..**..*     . 투명
+.**##**##**##**##**##**.     # 베이스 (#882d22, 증강별 색상코드)
+.*####################*.     * 가장자리 림 (베이스의 62%)
+*##OOOOOOOOOOOOOOOOOO##*     O 내부 금테 (#e5a93c, 계열 공통)
+*##O################O##*
+.*#O################O#*.
+  … 가운데는 증강 문양 자리 …
+.*#O################O#*.
+*##OOOOOOOOOOOOOOOOOO##*
+.*####################*.
+.**##**##**##**##**##**.
+*..**..**..**..**..**..*
+```
+
+##### 대상 족보 분포 (측정)
+
+변형 18개가 노리는 칸은 7종뿐이라 겹침이 잦다. `M17-T17`의 제시 중복 배제가 필요했던 이유이기도 하다.
+
+| 칸 | 수 | 증강 |
+|---|---:|---|
+| `Aces` | 2 | `lucky-sevens`, `perfect-squares` |
+| `Choice` | 1 | `gambler` |
+| `FourOfAKind` | 1 | `three-of-a-kind` |
+| `FullHouse` | 3 | `tiny-house`, `two-pair`, `head-and-tail` |
+| `SmallStraight` | 3 | `evens`, `odds`, `double-large-straight` |
+| `LargeStraight` | 4 | `prime-collection`, `duplex-house`, `mountain`, `high-dice` |
+| `Yacht` | 4 | `2nd-choice`, `fibonacci-numbers`, `reverse-choice`, `blackjack-21` |
+
+### 3.2 강화 (주사위·수동 행동·상시 효과) — 16개
+
+| # | 증강 | 발동 훅 | 기존 프로필 | 연출 설명 (사용자 기입) | 구현 사양 (Claude 기입) |
+|---:|---|---|---|---|---|
+| 25 | `yacht-bank` / 요트 뱅크 | `OnAugmentSelected` `OnTurnStarted` `ScoringDiceFilter` `AfterScoreCommit` | 누적·자동 기입 | 첫 번째 주사위 킵 칸이 금색으로 빛남. (골드 파티클 및 네온 글로우) / 첫 번째 칸에 주사위가 들어가있다면 주사위가 금색으로 변하면서 서서히 투명해지는 연출 적용  | `P3`+`P5` / `DICE(킵 0번 칸)` / `#e5a93c` / `M` / `누적`. 대상은 **가장 왼쪽 킵 칸 하나로 고정**이다(사용자 확정). 킵 칸은 오브젝트가 아니라 좌표이므로(`DiceBoardMetrics.GetKeepPosition(0)`, `Assets/Scripts/Core/DiceBoardMetrics.cs:145`) 슬롯 하이라이트 쿼드(I3)를 그 좌표에 고정 배치한다. 칸에 주사위가 들어오면 `DiceVisualPool.ApplyDieType`로 `DieType.Golden` 머티리얼 교체 후 알파 감소. **주의**: 알파 페이드가 픽셀 필터를 통과하면 디더링으로 깨지므로 4~5스텝 계단식으로 처리. 파티클은 `RollCosmicCube`의 `ParticleSystem` 구성 재사용. 신규 에셋 없음. 슬롯 0(KeepSlotIndex == 0) 위치 주사위 기준 정합화 확정(§7·§8 참조) |
+| 37 | `weighted-dice` / 묵직한 주사위 | `DiceLayoutProvider` | 주사위 변환·발동 |  |  |
+| 38 | `momentum` / 추진력 | `OnAugmentSelected` `ScoreEnhancementModifier` `AfterScoreCommit` | 대기·발동·소모 | 조건 발동 시 증강 카드 테두리가 금색으로 빛남. 주사위 트레이도 테두리가 금색으로 빛남 | `P3` / `CARD + DICE` / `#e5a93c` / `S` / `대기·발동·소모`. 카드 테두리는 기존 `AugmentCardView.CardOutline`(uGUI `Outline`)의 `effectColor`·`effectDistance`를 보간하면 끝(`Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs:56`). 주사위 트레이는 **테두리 오브젝트가 없어** 트레이 외곽 쿼드 1개 신규 필요. 신규 에셋 없음 |
+| 39 | `golden-die` / 황금 주사위 | `DiceLayoutProvider` | 주사위 변환·점수 보너스 |  |  |
+| 41 | `8-sided` / 8면 주사위 | `DiceLayoutProvider` | 주사위 변환·충돌 |  |  |
+| 43 | `promotion-die` / 프로모션 주사위 | `OnAugmentSelected` `OnTurnStarted` `DiceLayoutProvider` `AfterScoreCommit` | 변환·성장·소모 |  |  |
+| 44 | `couple-dice` / 커플 주사위 | `DiceLayoutProvider` | 변환·일치 보너스 | 두 눈의 값이 일치하면 x회전을 약간 줘서 서로를 향해 기울여지는 효과 + 하트 파티클 | `P5` / `DICE(커플 2개)` / 로즈 / `M` / `단발`. 주사위 자세는 `DiceVisualPool.AnimateLayout` 코루틴이 잡으므로 정지 후 트랜스폼 보간으로 기울임 가능. **주의**: 눈 판정이 상단 면 기준이라 판정 확정 뒤에만 적용하고 이미 확정된 값 스냅샷을 쓴다. 하트 파티클용 픽셀 스프라이트 1종(16px) 신규 필요 |
+| 45 | `sevens-dice` / 세븐스 다이스 | `DiceLayoutProvider` | 변환·눈 7 강조 |  |  |
+| 46 | `table-flip` / 판 뒤집기 | `ManualActionAugment` | 사용 가능·재굴림·소모 | 발동 시 카메라 흔들기 및 주사위 트레이 흔들고 약간 삐뚤어지게 배치. 삐뚤어진 트레이는 리롤하거나 턴이 넘어가면 자연스럽게 원래 위치로 돌아가야 함. 주사위는 위로 솟구쳐야 함 (전용 프리셋 베이킹 있긴 한데 조금 더 드라마틱한 연출 필요) | `P6` / `TABLE > DICE` / — / `L` / `소모`. **카메라 흔들기는 그대로 쓰면 안 됨** — 월드 카메라가 내부 저해상도 RT에 렌더된 뒤 업스케일되므로(`YachtCameraRig`) 카메라를 흔들면 화면 전체 픽셀이 지글거린다. 대신 RT를 그리는 `RawImage`(`YachtCameraRig.GameImage`)를 **내부 해상도 정수 픽셀 단위(1~3px)** 로 오프셋한다. 트레이 기울기는 목표 회전값을 상태로 들고 `DiceRolled`·`TurnAdvanced`에서 0으로 복귀. 주사위 솟구침은 기존 table-flip 베이킹 프리셋이 있으나 액션이 약해 더 드라마틱한 솟구침 액션으로 재베이킹하여 적용(물리 전환 배제, 사용자 확정). 신규 인프라 2건(화면 셰이크 유틸, 트레이 기울기 상태) |
+| 47 | `equivalent-exchange` / 등가교환 | `ManualActionAugment` | 사용 가능·대가·소모 | 등가교환 발동 가능할 시, 코스믹 큐브가 보라색 톤으로 페이드 되듯 변경되며 일렁거리는 효과 추가. 등가교환을 발동하면 약한 카메라 흔들림 재생 | `P6` / `TABLE(코스믹 큐브)` / 보라 / 대기 `S` · 발동 `M` / `대기·소모`. `RollCosmicCube`에 이미 `SetHovered`·`SetInteractable`·halo 색 필드가 있어(`Assets/Scripts/Tabletop/RollCosmicCube.cs:287`) `SetAugmentTint(Color, bool pulse)` 한 개만 추가하면 된다. 일렁임은 기존 halo 파라미터 진동으로 처리. 카메라 흔들림은 46번의 셰이크 유틸 공유(진폭 1px). 신규 에셋 없음 |
+| 49 | `duel` / 결투 | `OnAugmentSelected` (+ 내부 `AugmentTriggered` 발행) | 대결·승리·무승부·패배 | 턴 시작할 때 나팔 사운드 재생 (사운드 추가해야 함.) 주사위 트레이 바닥에는 두 칼이 교차하는 svg 그래픽을 버건디 매트 위에 그림. 승리 시 증강 카드 우상단에 훈장 그래픽 추가, 패배 시 스크롤 테두리가 찢어진 그래픽으로 변경하고 약간 창백한 톤으로 변경. 무승부 시에는 약간 창백한 톤만 적용 | `P4` / `TABLE + CARD` / 버건디·골드 / `M` / `성공/실패/무승부`. **사운드는 `M17-T13`(`DEFERRED`) 범위** — T9에서는 재생 훅만 남기고 클립은 넣지 않는다(`YachtAudioService`는 `AudioSource` 1개에 roll·impact 클립 배열뿐이라 슬롯 확장 필요). 트레이 바닥 두 칼 그래픽은 매트 위 데칼 쿼드. **SVG는 Unity에서 직접 못 쓴다** → 부록 A 아이콘 파이프라인 3~5단계로 픽셀 스프라이트 변환. 창백 톤은 `AugmentCardView.SetState`의 색 상수에 한 줄 추가. 신규 에셋 3종(교차검 데칼, 훈장, 찢긴 테두리) |
+| 51 | `random-box` / 랜덤 박스 | `OnAugmentSelected` | 상자 개봉·카드 교체 | 증강 카드에 상자 svg 이미지를 올림 (텍스트에 방해가 되지 않게 레이어 위치 조정 필요) | `P7` / `CARD` / — / `M` / `변환`. **원래 `구현 사양` 칸에 적혀 있던 것을 `연출 설명`으로 옮김.** 카드 아이콘 슬롯(`AugmentCardView.Icon`)과 별개로 `ContentRoot` 아래 Image 1개를 추가하고 `nameText`·`descriptionText`보다 낮은 `siblingIndex`에 두면 텍스트를 가리지 않는다. 상자 스프라이트 1종(닫힘·열림 2프레임) 신규 필요 |
+| 53 | `gambit` / 갬빗 | `ManualActionAugment` `DiceCountModifier` `AfterScoreCommit` | 선언·감소·증가·소모 | 발동 시 증강 카드 테두리가 금색으로 빛남 | `P6` / `CARD` / `#e5a93c` / `S` / `선언·소모`. 38번과 같은 `CardOutline` 메커니즘 재사용. 신규 에셋·인프라 없음. 가장 먼저 구현할 수 있는 항목 |
+| 54 | `double-down` / 더블 다운 | `ManualActionAugment` `ScoreEnhancementModifier` `AfterScoreCommit` | 사용 가능·배율·소모 |  |  |
+| 55 | `piggy-bank` / 저금통 | `AfterScoreCommit` | 저축·임계치·지급 |  |  |
+| 56 | `dice-alchemy` / 주사위 연금술 | `ManualActionAugment` | 사용 가능·눈 감소·소모 | 주사위 위로 알록달록한 연기가 펑하고 동시에 터지며 주사위를 가림. 가려졌을 때 주사위 눈 변경 | `P5` / `DICE(킵 안 된 전부)` / 다색 / `M` / `단발`. **표시 지연이 핵심** — 로직은 즉시 눈을 바꾸므로 값→면 회전 갱신을 연기 피크 시점인 약 0.25초(15프레임) 동안 보류하는 큐를 둔다. 연기가 최대로 차올랐을 때 눈 값을 스냅 교체하고 연기가 서서히 걷히도록 처리(사용자 확정, §7·§8 참조). 연기 파티클 스프라이트 신규(팔레트 4~5색 제한). 신규 인프라 1건(주사위 표시 갱신 지연) |
+
+> `DiceLayoutProvider` 6종(37·39·41·43·44·45)의 주사위 외형은 `M17-T8`에서 완료됐다. 여기서 정할 것은 **"평범한 주사위 → 특수 주사위" 변환 순간**의 연출뿐이다.
+> 수동 행동 5종(46·47·53·54·56)은 `M17-T12` 수동 증강 행동 피드백과 화면을 공유한다. 중복 연출을 피하도록 §6.3에서 경계를 정한다.
+
+### 3.3 퀘스트 — 11개
+
+| # | 증강 | 발동 훅 | 기존 프로필 | 연출 설명 (사용자 기입) | 구현 사양 (Claude 기입) |
+|---:|---|---|---|---|---|
+| 27 | `fast-straight` / 재빠른 스트레이트 | `AfterScoreCommit` | 진행·성공·실패 |  |  |
+| 28 | `no-time-to-waste` / 낭비할 시간 없다 | `OnAugmentSelected` `AfterScoreCommit` | 진행·성공·실패 |  |  |
+| 29 | `step-by-step` / 차근차근 | `OnAugmentSelected` `AfterScoreCommit` | 진행·성공·실패·보너스 기준 |  |  |
+| 31 | `holdout` / 알박기 | `AfterScoreCommit` | 진행·성공·실패 |  |  |
+| 32 | `cautious-straight` / 신중한 스트레이트 | `AfterScoreCommit` | 진행·성공·실패 |  |  |
+| 33 | `every-little` / 티끌 모아 태산 | `AfterScoreCommit` | 누적·성공 |  |  |
+| 34 | `copycat` / 카피캣 | `AfterScoreCommit` | 진행·성공·실패 |  |  |
+| 35 | `doubling` / 더블링 | `AfterScoreCommit` | 진행·성공 |  |  |
+| 36 | `nozdormu` / 노즈도르무 | `OnAugmentSelected` `TurnDurationModifier` `AfterScoreCommit` | 제한 시간·성공·실패 | 화면 전체에 모래바람 이펙트 적용 | `P4`+신규 / 풀스크린 / 모래색 / `C`(지속) / `제한 시간·성공·실패`. 풀스크린 오버레이는 `CrispUI` 레이어에 깔면 픽셀 크기가 본편과 안 맞으므로 **월드·프레젠테이션 카메라 쪽 풀스크린 쿼드**로 넣어 픽셀 필터를 함께 통과시킨다. 제한 시간 내내 유지되는 지속형이라 §6.2의 "한 턴 총 연출 시간" 예산 대상이 아니다 → §1.3에 `C` 등급 추가함. 신규 에셋 1종(모래 노이즈 텍스처) |
+| 48 | `bounty-hunter` / 현상금 사냥꾼 | `OnAugmentSelected` `OnTurnStarted` `AfterScoreCommit` | 타깃·진행·성공·감점 | 타겟 족보의 categories 부분의 테두리가 빛남 | `P3` / `CELL(타깃 족보)` / 앰버 / `C`(지속) / `대기·성공·감점`. `ParchmentScoreSheet`가 `p1ScoreSlots`·`p2ScoreSlots`에 카테고리별 `Image`를 들고 있어(`Assets/Scripts/Games/AugmentedYacht/Presentation/ParchmentScoreSheet.cs:526`) 해당 인덱스에 Outline을 켜면 된다. **경계 확정**: 타깃 지정 순간 번쩍임 및 달성/실패 시 폭발 연출은 T9, 점수표 위 상시 테두리/아이콘/수치 표기는 M17-T10 담당으로 분리(§6.3·§7 참조). 신규 에셋 없음 |
+| 52 | `prophet` / 예지자 | `OnAugmentSelected` `OnTurnStarted` `AfterScoreCommit` | 예언 제시·일치·완료 |  |  |
+
+> 11개 전부 `AfterScoreCommit`에서 진행도가 갱신되고 `AugmentContext.Emit`으로 `AugmentTriggered` 이벤트를 발행한다. 진행도 게이지 자체는 `M17-T11`(진행형 증강 상태 표시) 범위이며, 여기서는 **갱신되는 순간의 연출**만 정한다.
+
+### 3.4 기입분에서 도출된 공통 선행 인프라
+
+기입된 11개를 구현하려면 아래가 먼저 있어야 한다. 개별 증강보다 이쪽이 선행이다.
+
+| # | 인프라 | 현재 상태 | 필요 이유 | 쓰는 증강 |
+|---:|---|---|---|---|
+| I1 | **이벤트 → VFX 디스패처** | **없음.** 프레젠테이션 계층에서 `YachtGameEventType`을 소비하는 코드가 하나도 없고, `YachtTurnFlowPresenter:249`가 마지막 메시지 문자열만 꺼내 쓴다 | 모든 발동 연출의 진입점 | 전부 |
+| I2 | 화면 셰이크 유틸 | 없음 | 카메라를 직접 흔들면 저해상도 RT 업스케일 경로에서 화면 전체가 지글거림. `GameImage` 정수 픽셀 오프셋 방식이 필요 | 46 · 47 |
+| I3 | 킵 슬롯 하이라이트 쿼드 | 없음. 킵 칸은 좌표(`DiceBoardMetrics.GetKeepPosition`)일 뿐 오브젝트가 아님 | 슬롯에 무언가를 붙이려면 실체가 필요 | 25 |
+| I4 | 주사위 트레이 외곽 테두리 | 없음 | 트레이 테두리 발광 | 38 |
+| I5 | 주사위 표시 갱신 지연 큐 | 없음. 로직이 눈을 즉시 바꿈 | 연기로 가린 뒤 눈이 바뀌어야 함 | 56 |
+| I6 | 픽셀 파티클 프리셋 | `RollCosmicCube`에만 `ParticleSystem` 존재 | 골드·하트·연기·모래를 같은 규격으로 뽑기 | 25 · 44 · 56 · 36 |
+| I7 | 카드 오버레이 스프라이트 슬롯 | `AugmentCardView.Icon` 하나뿐 | 훈장·찢김·상자를 아이콘과 별개로 겹쳐야 함 | 49 · 51 |
+
+**바로 되는 것**: 53(카드 테두리) · 48(점수 칸 테두리) · 47(코스믹 큐브 틴트)은 기존 컴포넌트에 값만 넣으면 된다. I1만 있으면 바로 붙는다.
+
+#### I1. 이벤트 → VFX 디스패처 상세
+
+**지금 구조.** 권위(`LocalGameAuthority`)는 명령을 처리할 때마다 `YachtGameEvent[]`를 만들어 `YachtGameCommandResult.Events`에 담아 돌려준다(`Assets/Scripts/Games/Yacht/LocalGameAuthority.cs:526`). 증강도 `AugmentContext.Emit`·`AddBonus`로 이 배열에 `AugmentTriggered`를 넣는다(`.../Augments/Core/AugmentContexts.cs:57`). 즉 **"무엇이 발동했는가"는 이미 구조화된 데이터로 나오고 있다.**
+
+문제는 받는 쪽이다. 화면에서 이 배열을 읽는 코드는 `YachtTurnFlowPresenter.GetAugmentEventMessage` 하나뿐이고, 하는 일은 배열을 뒤에서부터 훑어 **비어 있지 않은 `Message` 문자열 한 개**를 꺼내는 것이다(`.../Presentation/YachtTurnFlowPresenter.cs:247-252`). 나머지 필드(`Type`·`AugmentId`·`PlayerIndex`·`Category`·`Score`·`DieId`)는 전부 버려진다. 그래서 지금 화면에 증강 발동이 드러나는 유일한 경로가 HUD 텍스트 한 줄이다 — `M17-T9` 완료 조건이 "과도한 텍스트 없이"인데 **현재는 텍스트가 유일한 수단**이다.
+
+**넣을 자리.** `YachtGameSession.LastCommandResult`가 단일 관문이다(`LocalGameAuthority.cs:597`). 모든 `Try*`/`Execute` 경로가 여기에 결과를 쓰므로, 이 setter 한 곳에서 이벤트를 흘려보내면 명령 종류마다 배선할 필요가 없다.
+
+| 항목 | 안 |
+|---|---|
+| 신규 파일 | `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtAugmentVfxPresenter.cs` |
+| 입력 | `YachtGameCommandResult.Events` 전체 배열 (마지막 메시지가 아니라) |
+| 배선 | `YachtGameSession`에 `event Action<YachtGameEvent[]> EventsPublished` 추가 → `LastCommandResult` 설정 지점에서 1회 발행 |
+| 매핑 | `AugmentId` → §3의 행 → 프리셋·앵커·색·세기 |
+| 출력 | 프리셋 재생 요청을 큐에 적재 |
+
+**핵심 설계 3가지.**
+
+1. **큐가 필요하다.** 한 명령이 이벤트를 여러 개 낸다. 점수 확정 한 번에 `ScoreCommitted` + 퀘스트 여러 개의 `AugmentTriggered` + `TurnAdvanced`가 한 배열에 같이 온다(`LocalGameAuthority.cs:358-385`). 동시에 다 터뜨리면 화면이 뭉갠다 → 순차 재생 큐 + §6.2의 동시 재생 상한이 함께 필요하다. 정렬은 `IAugmentHandler.Order`를 그대로 쓸 수 있다.
+2. **테이블 주도로 만든다.** `switch (augmentId)`로 45갈래를 치면 §3 표와 코드가 갈라진다. §3의 `구현 사양` 열을 그대로 `ScriptableObject` 또는 정적 테이블(`id → 프리셋·앵커·색·세기`)로 옮기고, 디스패처는 테이블을 조회만 하게 한다. 미기입 증강은 테이블에 없으니 자동으로 "연출 없음"이 되고, 이게 §1의 "빈 셀 = 미정" 규칙과 그대로 맞는다.
+3. **지속형(`C`)은 이벤트가 아니라 상태로 건다.** 36 `nozdormu`·48 `bounty-hunter`는 발동 순간이 아니라 조건이 유지되는 동안 켜져 있어야 한다. 25 `yacht-bank`의 칸 하이라이트도 증강을 가진 3턴 내내 켜져 있어야 하므로 같은 부류다(칸 위치는 고정이라 재계산은 필요 없고, 칸에 주사위가 들어왔는지만 본다). 이 셋은 이벤트 큐가 아니라 **매 상태 갱신 시 `State`를 보고 on/off를 맞추는 별도 경로**로 처리한다.
+
+**검증 방법.** 디스패처는 `MonoBehaviour` 없이 순수 클래스로 두면 EditMode 테스트로 "이벤트 배열 → 재생 요청 목록" 매핑을 검사할 수 있다. 기존 `Assets/Editor/AugmentCardViewTests.cs` 패턴을 따른다.
+
+### 3.5 신규 에셋 목록 (기입분 기준)
+
+| 에셋 | 규격 | 쓰는 증강 |
+|---|---|---|
+| 하트 파티클 스프라이트 | 16px, 팔레트 2~3색 | 44 |
+| 연기 파티클 스프라이트 | 팔레트 4~5색 | 56 |
+| 모래 노이즈 텍스처 | 풀스크린 타일 | 36 |
+| 교차검 데칼 | 트레이 매트 위, 픽셀 변환 필요 | 49 |
+| 훈장 / 찢긴 테두리 오버레이 | 카드 규격 | 49 |
+| 상자 스프라이트 | 닫힘·열림 2프레임 | 51 |
+
+> 49번의 "svg 그래픽", 51번의 "상자 svg"는 **Unity에서 SVG를 직접 못 쓴다**. 부록 A 아이콘 제작 파이프라인 3~5단계(래스터화 → 팔레트 제한 → 수동 보정)를 그대로 태워 픽셀 스프라이트로 만든다.
+
+---
+
+## 4. 전환 연출 기입표
+
+`M17-T9`는 발동 VFX 외에 "전환 연출"을 포함한다. 발동 이펙트가 아니라 **화면 상태가 바뀌는 순간**이다.
+
+| 전환 | 발생 시점 | 프리셋 | 앵커 | 세기 | 표현 | 비고 |
+|---|---|---|---|---|---|---|
+| 증강 카드 등장 | 드래프트 오픈 (`DraftStarted`) | `P1` | | | | |
+| 증강 획득 | `AugmentSelected` | `P1` | | | | |
+| 증강 교체 | `AugmentReplaced` (`random-box`) | `P7` | | | | |
+| 주사위 변환 | 특수 주사위 배정 | `P5` | | | | |
+| 수동 행동 사용 가능 진입 | 조건 충족 | `P6` | | | | |
+| 수동 행동 소모 | `AugmentActionUsed` | `P6` | | | | |
+| 점수 확정 | `ScoreCommitted` | | | | | |
+| 턴 교대 | `TurnAdvanced` | | | | | |
+| 시간 초과 처리 | `TimeoutResolved` | | | | | |
+| 게임 종료 | `GameEnded` | | | | | |
+
+---
+
+## 5. 발동 이벤트 대응 (참고, 프리필)
+
+`YachtGameEventType`(`Assets/Scripts/Games/Yacht/YachtGameCore.cs`)에서 VFX 트리거로 쓸 수 있는 이벤트다. 새 이벤트가 필요하면 여기에 행을 추가하고 §7에 사유를 남긴다.
+
+| 이벤트 | 발행 위치 | VFX 용도 |
+|---|---|---|
+| `AugmentSelected` | 드래프트 선택 | 획득 연출 |
+| `AugmentReplaced` | `random-box` | 카드 교체 연출 |
+| `AugmentTriggered` | `AugmentContext.Emit` / `AddBonus` | 발동 연출 본체. `AugmentId`·`PlayerIndex`·`Score`·`Message` 포함 |
+| `AugmentActionUsed` | 수동 행동 확정 | 소모 연출 |
+| `DiceRolled` | 굴림 완료 | 주사위 관련 발동의 기준 시점 |
+| `ScoreCommitted` | 점수 확정 | 점수 인장 시작 시점 |
+| `TurnAdvanced` | 턴 종료 | 전환 연출 |
+
+---
+
+## 6. 공통 규칙 (기입 필요)
+
+### 6.1 계열 일괄 규칙
+
+계열 단위로 기본값을 정하면 §3 표 대부분을 상속으로 비워 둘 수 있다. 여기를 먼저 채운다.
+
+| 계열 | 기본 프리셋 | 기본 앵커 | 기본 세기 | 기본 강조색 | 예외를 두는 증강 |
+|---|---|---|---|---|---|
+| 변형 (족보 교체) | Categories 열에 스티커를 부착하는 연출 (기본적으로 버건디 색상 베이스에 내부 금색 테두리, 우표처럼 오돌토돌한 테두리 지님. 증강별로 색상코드를 지정하면 베이스 색상과 테두리만 변경하면 됨)| `CELL(그 플레이어의 아이콘 섹터 + Categories 열 대상 행)`. `S2`만 점수 칸 쪽으로 잔광 | 부착 `M` / 반응 `S` / 유지 `C` | 베이스 `#882d22` + 테두리 `#e5a93c` | 24 `reverse-choice` 베이스 인디고 `#364b6e` · 17 `double-large-straight` 스티커 2장(상단 보너스 행 추가) |
+| 강화 — 특수 주사위 | 주사위 프리셋 변경 | | | | |
+| 강화 — 수동 행동 | 증강 카드 좌하단에 플랫한 버튼 배치, 호버링 시 은은하게 빛남, 클릭시 증강 별 연출 및 효과 적용| | | | |
+| 강화 — 상시/누적 | | | | | |
+| 퀘스트 | 설명 아래에 구분선 배치, 퀘스트 진행도를 텍스트로 표기 (이전 웹 게임 프로젝트 참조)| | | | |
+
+### 6.2 타이밍 예산
+
+| 항목 | 값 | 비고 |
+|---|---|---|
+| 한 턴에 허용할 총 연출 시간 | | |
+| 동시 발동 시 최대 동시 재생 수 | | 초과분: 큐 / 병합 / 생략 중 택 1 |
+| 동시 발동 정렬 기준 | | `IAugmentHandler.Order` 사용 여부 |
+| 연출 스킵·가속 입력 | | 클릭 시 즉시 종료 허용 여부 |
+| 상대 턴(핫시트 가림 중) 처리 | | `M17-T1` 가림 화면과의 관계 |
+
+### 6.3 인접 작업과의 경계
+
+| 항목 | `M17-T9` 범위 | 다른 작업 범위 |
+|---|---|---|
+| 진행형 증강 게이지 | 수치 갱신 순간의 펄스·스파크 연출 | 게이지 상시 UI 구조 및 텍스트 렌더링 (`M17-T11`) |
+| 점수표 증강 표기 | 타깃 지정/달성/교체 순간의 펄스·버스트 연출 | 점수표 위 상시 테두리, 증강 아이콘 및 배율/수치 표기 (`M17-T10`) |
+| 수동 행동 버튼 상태 | 버튼 클릭 시 발동 월드 VFX 및 카메라 셰이크 | 버튼 배치, 호버링, 활성/비활성 상호작용 UI (`M17-T12`) |
+| 보유 증강 목록 표시 | | `M17-T3` |
+| 사운드 | 없음 | `M17-T13` (`DEFERRED`) |
+
+### 6.4 아트 제약
+
+| 항목 | 값 |
+|---|---|
+| 픽셀 필터 통과 여부 | |
+| `CrispUI` 레이어 사용 대상 | |
+| 팔레트 제한 | |
+| 파티클 수 상한 | |
+| 숫자·텍스트 팝업 허용 범위 | 완료 조건이 "과도한 텍스트 없이"임 |
+
+---
+
+## 7. 결정과 변경 기록
+
+| 날짜 | 항목 | 결정 | 사유 |
+|---|---|---|---|
+| 2026-09-08 | 세기 어휘 | `C`(지속) 등급 추가 | 36 `nozdormu`·48 `bounty-hunter`가 조건 유지 동안 계속 재생되는 지속형이라 `S`/`M`/`L`로 표현 불가. §6.2 턴 연출 예산 대상에서도 빠져야 함 |
+| 2026-09-08 | 51 `random-box` | 사용자가 `구현 사양` 칸에 적은 내용을 `연출 설명` 칸으로 옮김 | 열 오기입. 내용은 그대로 유지 |
+| 2026-09-08 | 49 `duel` 나팔 사운드 | T9에서는 재생 훅만 남기고 클립은 넣지 않음 | 사운드는 `M17-T13`이고 `DEFERRED`. §6.3 경계 규칙과 일치 |
+| 2026-09-08 | 25 `yacht-bank` 강조 대상 | **가장 왼쪽 킵 칸 하나로 고정**(슬롯 0). 칸 위치는 안 바뀌고, 칸에 주사위가 들어왔는지만 본다 | 사용자 확정 |
+| 2026-09-08 | 변형 스티커 표시 대상 | 현재 플레이어 것만 표시. 턴 교대 시 전체 교체 | Categories 열이 P1·P2 공용이라 둘을 겹쳐 붙이면 소유자를 구분할 수 없음. 핫시트에서는 화면 앞의 사람이 곧 현재 플레이어라 혼동이 없음. 사용자 확정 |
+| 2026-09-08 | 스티커가 붙는 자리 (`D-040`으로 갱신) | 그 플레이어의 `[아이콘 섹터 + Categories]` 전체를 천이 덮음. 열이 접히면 아이콘 섹터 폭만 남음 | 점수표를 6열로 나누면서 Categories 열이 플레이어별로 갈라졌음. 아이콘 섹터는 접히지 않으므로 상대 스티커가 상시로 읽힘 |
+| 2026-09-08 | 변형 증강의 발동 이벤트 | 변형 증강은 `AugmentTriggered`를 갖지 않는다(현 상태 유지). **증강 획득 자체를 "뭔가 일어났다"로 본다.** 연출은 `S0` 부착 + `S2` 낙인 2단계 | 트리거 점이 없는데 이벤트를 만들면 킵 토글마다 발행되는 무의미한 신호가 된다. 획득은 이산적이고 플레이어가 선택한 사건이라 기준으로 삼기에 맞다. 사용자 확정 |
+| 2026-09-08 | `S1`(굴림 단위 반응) 폐기 | `S1`과 그것만을 위한 `YachtScoreCandidate.EnhancementSource` 스탬프를 되돌림 | 굴림·킵마다 반복되는 연속 반응이라 "트리거 점이 없다"는 성격을 거스르고 완료 조건 `C2`에도 불리. 스탬프는 소비자가 사라져 미사용 코드가 됨 |
+| 2026-09-08 | 변형 계열 범용 연출 | Categories 열 거터에 붙는 우표 스티커 3단계(`S0` 부착 · `S1` 반응 · `S2` 낙인). 증강별로 정하는 것은 색상코드 1개 | 변형 증강은 발동 이벤트를 내지 않고 "발동 순간"도 없어 터뜨리는 연출이 성립하지 않음. 족보 행이 이미 44px 거터를 비워 두고 있어 레이아웃 변경도 불필요 |
+| 2026-09-08 | `M17-T9` 완료 조건 | "발동 주체·대상·효과 결과가 과도한 텍스트 없이 전달됨" 한 줄을 `C1`(증강 효과 적용)·`C2`(텍스트 분량) 둘로 분리 | 두 기준이 붙어 있으면 "텍스트를 줄였으니 됐다" 또는 "연출을 넣었으니 텍스트는 그대로" 어느 쪽으로도 빠져나갈 수 있음. 사용자 지적 |
+| 2026-09-08 | 25 `yacht-bank` 슬롯 0 규칙 확정 | 로직을 '슬롯 0 기준'으로 정합화 | 증강 컨셉 자체가 주사위가 아닌 '첫 번째 킵 슬롯(슬롯 0)'에 들어간 주사위를 저장하는 메커니즘임(사용자 확정). 슬롯 0 고정 하이라이트 VFX를 유지하고, 로직(`YachtBank.cs`)도 `lowestSlot` 탐색 대신 `KeepSlotIndex == 0` 주사위를 읽도록 수정 확정 |
+| 2026-09-08 | 48 `bounty-hunter` 경계 확정 | 발동 연출은 T9, 상시 표기는 T10 | 점수표 위 타깃 지정/달성 시점의 트리거 연출만 T9에서 처리하고, 점수표에 상시 유지되는 슬롯 테두리 및 아이콘·수치 UI는 `M17-T10`으로 분리 확정 (사용자 확정) |
+| 2026-09-08 | 46 `table-flip` 솟구침 방식 | 전용 프리셋 재베이킹 | 기존 table-flip 베이킹 프리셋이 존재하므로 실시간 물리 전환 대신 해당 프리셋을 더 크고 드라마틱하게 재베이킹하여 안정성과 연출력을 확보 (사용자 확정) |
+| 2026-09-08 | 56 `dice-alchemy` 표시 지연 확정 | 연기 피크 시점(약 0.25초/15프레임) 보류 | 연기 파티클이 화면을 완전히 가리는 피크 시점까지 주사위 회전 갱신을 보류하고, 가려진 순간 눈 값을 스냅 갱신한 뒤 연기가 페이드아웃되도록 확정 (사용자 확정) |
+| 2026-09-09 | 56 `dice-alchemy` 작업 ID | `M17-T9`의 하위 `M17-T9-1`로 두고 별도 계획 문서를 만들지 않음 | 45개 전체를 다루는 `M17-T9`의 첫 구현분이라 같은 문서 안에 두는 편이 사양과 구현이 갈라지지 않는다. 구현 계획은 이 문서 §9다 (사용자 확정) |
+| 2026-09-09 | 연기 스프라이트 제작 방식 | 런타임 절차 텍스처가 아니라 PNG 에셋 신규 제작 | §3.5 신규 에셋 목록의 기재를 그대로 따른다. 팔레트 계단을 정확히 지키기 위해 `Assets/Editor`의 일회성 베이커로 굽고 결과 PNG를 커밋한다 (사용자 확정) |
+| 2026-09-09 | 56 구현 범위 | `dice-alchemy` 전용 최소 구현. `I6` 공용 픽셀 파티클 프리셋은 만들지 않음 | 사용처가 하나뿐인 시점의 추상화를 금지하는 `CLAUDE.md` §2를 따른다. 44 `couple-dice`·36 `nozdormu`를 실제로 붙일 때 공통분을 추출한다 (사용자 확정) |
+| 2026-09-09 | 56 후보 점수 갱신 시점 | 주사위 눈과 같은 시점(연기 피크)까지 지연 | 현재는 증강 사용 즉시 새 후보 점수가 표시돼(`YachtTurnFlowPresenter.cs:527`) 주사위가 아직 옛 눈인데 점수표가 결과를 먼저 알린다. 연출이 새어 나가므로 눈 스냅과 같은 프레임으로 맞춘다 (사용자 확정) |
+| 2026-09-09 | 56 연기 컴포넌트 소유 | `AugmentedYachtController`가 아니라 `YachtDiceRoundPresenter`가 지연 생성 | §9.5 초안은 컨트롤러가 주사위 루트 옆에 런타임 생성한다고 적었으나, 실제 구현 시점에 `YachtTurnFlowPresenter.BindProps`가 이미 인자 11개였고 연기는 주사위 비주얼 소관이라 컨트롤러를 경유할 이유가 없었다. `AugmentedYachtController.cs`는 이 결정으로 변경되지 않는다 |
+
+---
+
+## 8. 미결 질문
+
+- [x] **25 `yacht-bank` 슬롯 0 불일치 (해결)** — 컨셉 확정: 주사위 자체가 아닌 **"킵 존 첫 번째 슬롯(슬롯 0)"에 들어간 주사위를 저장하는 방식**(사용자 확정). 하이라이트는 슬롯 0 고정이며, 로직(`YachtBank.cs`) 역시 `lowestSlot` 탐색 대신 `KeepSlotIndex == 0` 주사위 눈을 읽어 뱅크에 추가하고 점수에서 제외하도록 정합화하기로 결정.
+- [x] **48 `bounty-hunter` 타깃 테두리의 소속 (해결)** — 경계 확정: 타깃 지정/달성 시점의 트리거 연출(번쩍임, 폭발 등)은 `M17-T9`에서 처리하고, 점수표 카테고리 칸 위에 상시 유지되는 테두리 및 아이콘·수치 UI는 `M17-T10` 담당으로 분리(사용자 확정).
+- [x] **변형 스티커의 플레이어 구분 (해결)** — 점수표를 6열로 나누고 플레이어마다 Categories 열을 하나씩 준다(`D-040`, 사용자 확정 2026-09-08). 현재 턴인 쪽 이름 열만 펴지고 반대쪽은 0으로 접히며, 아이콘 섹터는 접히지 않아 상대의 스티커가 상시로 보인다. 먼저 확정했던 "(a) 현재 플레이어 것만 표시"를 대체한다
+- [x] **46 `table-flip` 주사위 솟구침 (해결)** — 기존 table-flip 베이킹 프리셋이 이미 존재하므로 물리 전환을 쓰지 않고, 주사위가 더 크고 드라마틱하게 공중으로 솟구치도록 해당 프리셋을 재베이킹하기로 확정(사용자 확정).
+- [x] **56 `dice-alchemy` 표시 지연 허용 범위 (해결)** — 연기 파티클 피크 시점인 0.2~0.3초(약 15프레임) 동안 주사위 회전 갱신을 보류하고, 주사위가 연기에 가려진 순간 눈 값을 스냅 갱신한 뒤 연기가 걷히도록 구현 확정(사용자 확정).
+- [ ] 나머지 34개는 언제 채울지 — 계열 일괄 규칙(§6.1)으로 덮을지, 개별로 받을지
+
+---
+
+## 9. `M17-T9-1` — 56 `dice-alchemy` 연기 가림 구현 계획
+
+작성일: 2026-09-09 · 상태: `DOING`(`M17-T9-1-1`~`M17-T9-1-4` 완료, `M17-T9-1-5` 화면 확인 남음) · §3.2 56번 행과 §3.4 `I5`를 구현으로 옮기는 계획이다.
+
+### 9.1 목적
+
+증강 56 `dice-alchemy`는 킵하지 않은 주사위의 눈을 전부 1씩 낮춘다. 지금은 이 증강에 연출이 하나도 없다. `LocalGameAuthority.UseAugmentAction`이 `RollPresentation`을 만들지 않으므로 화면은 `YachtTurnFlowPresenter.cs:513`의 "굴림 없음" 분기로 들어가고, 거기서 하는 일은 `dice.SyncFromAuthority` 하나다. 이 메서드는 값 배열만 복사하고 주사위 `Visual`의 면 회전은 건드리지 않으므로, 주사위 눈은 다음 `AnimateLayout`이 돌 때까지 바뀌지 않거나 아무 예고 없이 툭 바뀐다. 그 사이 점수표 후보 점수만 즉시 새 값으로 갱신돼, 플레이어는 주사위보다 점수표에서 결과를 먼저 읽는다.
+
+목표는 §3.2에 사용자가 적은 그대로다 — 행동 버튼을 누르면 킵하지 않은 주사위 위로 연기가 동시에 터져 주사위를 완전히 가리고, 가려진 사이에 눈이 바뀌며, 연기가 걷히면 새 눈이 드러난다.
+
+### 9.2 범위 밖
+
+- `I6` 공용 픽셀 파티클 프리셋. 44 `couple-dice`·36 `nozdormu`를 붙일 때 공통분을 추출한다.
+- 눈이 바뀐 뒤의 값 오름차순 재정렬. 제자리에서 값만 바뀌고, 정렬은 다음 킵 토글의 `AnimateLayout`이 회복한다.
+- 사운드. `M17-T13`(`DEFERRED`) 소속이다.
+
+### 9.3 현재 코드에서 확인한 사실
+
+착수 시점에 다시 유효한지 확인한다.
+
+- **값 변경 지점**: `Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Enhance/DiceAlchemy.cs:68`. `RerollsDice => false`, `RequiredPhase => ScoreSelection`. 로직은 그대로 두고 표시만 늦춘다.
+- **발동 경로**: `AugmentedYachtController.cs:346`의 `augmentTray.ActionRequested` → `YachtTurnFlowPresenter.cs:503 UseAugmentAction` → `gameSession.TryUseAugmentAction`. 이벤트는 `LocalGameAuthority.cs:241`에서 `AugmentActionUsed`로 나온다.
+- **눈 표시를 실제로 바꾸는 코드**: `BakedDiceController.cs:206 ApplyTargetValues`. `private static`이고 `Play` 안에서만 불린다. `landingFrame`이 `null`이면 각 주사위의 현재 `localRotation`을 기준 회전으로 쓰는 분기가 이미 있으므로(`:219-221`), 굴림 없는 제자리 갱신에 그대로 재사용할 수 있다. 새 회전 수학은 필요 없다.
+- **기존 이벤트 → VFX 경로**: `AugmentVfxPlanner.Plan`(순수 클래스, `Assets/Editor/AugmentVfxPlannerTests.cs`로 검증 중) → `YachtTurnFlowPresenter.cs:717 PlayPendingStickerStamps`가 `State.Revision`으로 중복 재생을 막는다. `AugmentActionUsed`는 planner의 `switch`(`AugmentVfxPlanner.cs:58-72`)에 아직 없다.
+- **파티클 선례**: 현재 프로젝트에 남은 `ParticleSystem` 사용처는 `Tabletop/RollCosmicCube.cs` 하나다. 이쪽은 파티클을 코드로 만들지 않고 **프리팹에 이미 들어 있는 것을 `GetComponentsInChildren<ParticleSystem>(true)`로 수집해(`:209`) `Emit(8)`로 터뜨린다(`:364`)**. 프로젝트에 오브젝트 풀도 공용 이펙트 재생 유틸도 없다.
+  > 이 문서가 앞서 참고 구현으로 지목했던 `RollOrb.cs:971 CreateMagicParticles`(코드로 `AddComponent<ParticleSystem>()` 후 모듈 설정)는 **더 이상 존재하지 않는다.** `RollOrb`는 커밋 `53fc78e`로 삭제됐다. 절차적 구성 방식을 쓰려면 선례 없이 새로 작성해야 한다.
+- **주의 — 8면체 숫자**: `DiceVisualPool.cs:179 PromoteOctaDigitsToCrispUi`가 8면체 면 숫자를 `TesseraLayers.CrispUI`로 올린다. Crisp 카메라는 월드 위에 합성되므로 월드 레이어의 연기는 이 숫자를 가리지 못한다.
+- **주의 — `DiceVisualPool`은 풀이 아니다**. `CreateVisualDie`가 매번 새로 만들고 `DiscardVisuals`가 `Destroy`한다. 파티클을 주사위 자식으로 붙이면 안 된다.
+- **주의 — 알파 페이드**: 픽셀 필터를 통과하는 알파 페이드는 디더링으로 깨진다. §3.2 44번 행이 지정한 4~5스텝 계단식을 여기서도 쓴다.
+- 트윈 라이브러리가 없다. 전부 `IEnumerator` + `Mathf.SmoothStep`/`Lerp`다.
+
+### 9.4 연출 설계
+
+사양 표기로 `P5` / `DICE(킵 안 된 전부)` / 다색 / `M` / `단발`.
+
+| 시각 | 일어나는 일 |
+|---|---|
+| `0.00s` | 킵 안 된 주사위 각각의 월드 위치에서 연기 버스트 동시 발사. 후보 점수는 `ClearCandidateScores`로 비워진 상태 |
+| `0.00~0.18s` | 연기가 부풀며 주사위를 덮음 |
+| `0.15s` | 8면체 숫자(`CrispUI` 레이어) 렌더러 끔 |
+| `0.25s` | **스냅** — 새 눈 값을 `Visual` 면 회전에 적용, 후보 점수 표시, 상태 텍스트 갱신 |
+| `0.28s` | 8면체 숫자 렌더러 다시 켬 |
+| `0.25~0.60s` | 연기가 4~5스텝 계단식으로 옅어지며 걷힘 |
+| `0.60s` | 종료 |
+
+"알록달록"은 스프라이트가 아니라 파티클 색으로 낸다. 스프라이트는 회색조 한 장이고, `ParticleSystem.main.startColor`를 랜덤 색 목록으로 두어 입자마다 다른 색을 뽑는다. 팔레트는 [`docs/reference/art_style_guide.md`](../reference/art_style_guide.md) 표에서 가져온 4색이다 — `#e5a93c`(러너 골드) · `#882d22`(크림슨) · `#364b6e`(쿨 인디고) · `#ff9e3b`(웜 앰버).
+
+완료 조건 `C1`이 "결과가 연출로 드러남"이므로 가려지지 않으면 연출이 성립하지 않는다. 알파 블렌드(가산 아님)로 불투명하게 쌓고, 주사위 1개당 입자 8개·최대 5개 주사위로 상한 40개를 둔다. 크기는 `DiceBoardMetrics.DieSize` 기준 2.5배에서 3.5배까지 커진다.
+
+입력은 막지 않는다(`M` 등급). 후보 점수가 비어 있는 동안은 `UpdateSlotState`가 칸을 `interactable = false`로 두므로 연출 중 잘못된 확정이 애초에 불가능하다.
+
+### 9.5 기술 설계
+
+**표시 갱신 지연 큐 (`I5`).** 굴림 없이 눈만 스냅 갱신하는 경로를 만든다.
+
+- `Assets/Scripts/Dice/BakedDiceController.cs` — 기존 `ApplyTargetValues`를 감싸는 공개 진입점 `ApplyValuesInPlace(IReadOnlyList<Transform> dice, IReadOnlyList<int> targetValues)`를 추가하고 `ApplyTargetValues(dice, null, targetValues, null, false)`로 넘긴다. 본문은 손대지 않는다.
+- `.../Presentation/YachtDiceRoundPresenter.cs` — `SyncFromAuthority`와 별개로 `ApplyValuesToVisuals()`를 추가해 `activeDice`의 `Transform`과 `diceValues`를 위 진입점에 넘긴다. `PlayRoll`의 `BuildPresetSlotOrder` 재배열은 프리셋 클립 슬롯 정렬용이므로 여기서는 쓰지 않는다.
+
+**이벤트 → 연출 요청.** 프레젠터에서 `augmentId`로 `switch`하지 않고 §3.4의 테이블 주도 원칙대로 `AugmentVfxPlanner`를 확장한다.
+
+- `AugmentVfxCue`에 `DiceSmokeSwap`을 추가한다.
+- `Plan`의 `switch`에 `case YachtGameEventType.AugmentActionUsed:`를 추가하고 `AugmentId == YachtAugmentRuntime.DiceAlchemyId`일 때만 요청을 낸다. 다른 수동 행동(`table-flip`·`equivalent-exchange`·`gambit`)은 요청을 내지 않는다.
+- 대상 주사위는 요청에 싣지 않는다. 프레젠터가 `gameSession.State.Dice`의 `IsKept`로 판정한다.
+
+**연기 컴포넌트.** 신규 `.../Presentation/DiceSmokePuffVfx.cs`(`MonoBehaviour`).
+
+- `Awake`에서 `ParticleSystem` 하나를 절차 구성한다. 참고할 선례가 프로젝트에 없으므로(위 「파티클 선례」 참조) 모듈 설정과 셰이더 폴백 체인을 새로 작성한다. 머티리얼은 알파 블렌드이고 텍스처는 아래 PNG를 `Resources.Load`로 읽는다.
+- `simulationSpace = World`, `playOnAwake = false`, `emission.enabled = false`(수동 `Emit`만 씀), `maxParticles = 40`.
+- 공개 메서드는 `Burst(IReadOnlyList<Vector3> worldPositions)` 하나다. 위치마다 `ParticleSystem.EmitParams`로 8개씩 쏜다. 시스템은 하나만 두고 위치만 바꾼다. 주사위 자식이 아니므로 주사위 재생성에 영향받지 않는다.
+- 레이어는 주사위와 같은 월드 레이어로 둔다. 그래야 연기가 픽셀 필터를 함께 통과한다.
+- 8면체 숫자 가림은 같은 컴포넌트에 **새로 만들** `SetCrispDigitsVisible(bool)`이 맡는다 (현재 코드에 없는 메서드다). 대상 주사위 하위에서 `TesseraLayers.CrispUI` 레이어인 `Renderer`만 골라 `enabled`를 토글한다.
+- 씬 배치는 `YachtDiceRoundPresenter`가 필요 시점에 지연 생성한다. `YachtTurnFlowPresenter.BindProps`가 이미 인자 11개이고 연기는 주사위 비주얼 소관이라 `AugmentedYachtController`를 경유하지 않는다. 인스펙터 배선을 새로 만들지 않는다.
+
+**연기 스프라이트 PNG.** 산출물은 `Assets/Resources/Vfx/DiceSmokePuff.png`다. 32×32 회색조, 가장자리 알파가 4스텝 계단(255 / 192 / 128 / 64 / 0)으로 떨어지는 둥근 퍼프다. 색은 파티클 `startColor`가 입힌다. 손으로 그리지 않고 `Assets/Editor/DiceSmokeSpriteBaker.cs`(`DicePresetBakeRig.cs` 선례)로 한 번 구워 결과 PNG를 커밋한다. 임포트 설정은 `Sprite (2D and UI)` · `Filter Mode = Point` · `Compression = None` · `Max Size = 32`다.
+
+**프레젠터 배선.** `YachtTurnFlowPresenter.cs:513-534`의 "굴림 없음" 분기 안에서 끝난다. 해당 명령의 VFX 요청에 `DiceSmokeSwap`이 있으면 즉시 반영 대신 §9.4 타임라인 코루틴을 띄우고, 없으면 지금 동작 그대로다. `ClearCandidateScores`와 `dice.SetVisible(true)`는 `t=0`에 그대로 두고, `SyncFromAuthority`·`ApplyValuesToVisuals`·`ShowCandidateScores`·`RefreshAugmentPresentation`·`UpdateStatusText`를 `t=0.25`로 옮긴다. `RefreshRollBudgetState`는 종료 시점에 부른다. 중복 실행 방지는 기존 `lastVfxRevision` 리비전 가드를 그대로 쓴다. 주사위 개수가 바뀐 경우의 `ResetDiceForTurn` 경로는 손대지 않는다(`dice-alchemy`는 개수를 바꾸지 않는다).
+
+### 9.6 변경·추가 파일
+
+| 파일 | 변경 |
+|---|---|
+| `Assets/Scripts/Dice/BakedDiceController.cs` | `ApplyValuesInPlace` 공개 진입점 |
+| `.../Presentation/YachtDiceRoundPresenter.cs` | `ApplyValuesToVisuals` |
+| `.../Presentation/AugmentVfxPlanner.cs` | `DiceSmokeSwap` 큐 + `AugmentActionUsed` 케이스 |
+| `.../Presentation/DiceSmokePuffVfx.cs` | 신규 |
+| `.../Presentation/YachtTurnFlowPresenter.cs` | 굴림 없음 분기를 지연 코루틴으로 |
+| `Assets/Editor/DiceSmokeSpriteBaker.cs` | 신규 (일회성 PNG 생성) |
+| `Assets/Resources/Vfx/DiceSmokePuff.png` | 신규 에셋 |
+| `Assets/Editor/AugmentVfxPlannerTests.cs` | 케이스 추가 |
+
+### 9.7 작업 분해
+
+| 하위 ID | 내용 | 검증 방법 |
+|---|---|---|
+| `M17-T9-1-1` | `DiceSmokeSpriteBaker` + `DiceSmokePuff.png` 생성·임포트 설정 | 32×32 Point 필터 스프라이트로 임포트됨 |
+| `M17-T9-1-2` | `ApplyValuesInPlace` + `ApplyValuesToVisuals` (`I5`) | 컴파일. 굴림 후 값을 바꿔 호출하면 면이 바뀜 |
+| `M17-T9-1-3` | `AugmentVfxPlanner` 확장 | `AugmentVfxPlannerTests` 통과. `dice-alchemy`만 요청이 나옴 |
+| `M17-T9-1-4` | `DiceSmokePuffVfx` + 컨트롤러 주입 | Play 모드에서 연기가 주사위 위치에 터짐 |
+| `M17-T9-1-5` | 프레젠터 지연 시퀀스 배선 | Play 모드: 피크 전에는 옛 눈·빈 후보, 걷힌 뒤 새 눈·새 후보 |
+| `M17-T9-1-6` | 문서 갱신 | §3.2 56행·§3.4 `I5` 완료 표기, `work_plan` 상태표·세션 로그 |
+
+### 9.8 위험 요소와 대응
+
+| 위험 | 대응 |
+|---|---|
+| 연기가 주사위를 다 못 가려 눈이 바뀌는 순간이 보임 | 입자를 늘리기보다 스냅 시점을 늦추는 쪽이 안전하다. 0.25초는 §7 확정값이므로 그 안에서 입자 크기(2.5배 → 3.5배)를 조절한다 |
+| 8면체 숫자가 연기 위에 뜸 | `SetCrispDigitsVisible`로 잠깐 끈다. 끄는 구간이 연기 피크 안에 완전히 들어가야 깜빡임으로 보이지 않는다 |
+| 알파 페이드가 픽셀 필터에서 디더링으로 깨짐 | 스프라이트 알파를 4스텝 계단으로 굽고 `ColorOverLifetime`도 연속 곡선 대신 계단 키로 둔다 |
+| 값 오름차순 정렬이 어긋난 채 남음 | 의도된 동작이다(§9.2). 다음 킵 토글의 `AnimateLayout`이 정렬을 회복한다 |
+| 연출 중 턴 타이머가 흐름 | 굴림 경로와 달리 `turnDelay.Pause()`를 부르지 않는다. 0.6초는 `M` 등급 예산 안이다 |
+| 검증 시 `dice-alchemy`를 손에 넣기 어려움 | 드래프트 운에 맡기면 확인이 오래 걸린다. 검증용 증강 강제 부여 경로가 있는지 먼저 확인하고, 없으면 사용자에게 확인한 뒤 임시 경로를 둔다 |
+
+### 9.9 완료 조건
+
+1. 행동 버튼을 누르면 킵하지 않은 주사위 전부 위로 연기가 동시에 터진다.
+2. 연기가 가장 짙은 순간에 주사위가 보이지 않고, 그 사이에 눈이 바뀐다. 눈이 바뀌는 장면이 노출되지 않는다.
+3. 점수표 후보 점수가 주사위보다 먼저 새 값을 보여 주지 않는다.
+4. 연출 총 길이가 0.6초 이내이고 입력이 막히지 않는다.
+5. `AugmentVfxPlannerTests` EditMode 통과, 컴파일 경고 없음.
+6. §3.2 56행·§3.4 `I5`와 `work_plan` `M17` 표·세션 로그가 갱신됨.

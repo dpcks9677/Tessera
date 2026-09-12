@@ -38,7 +38,7 @@ effort: high
 
 ### 렌즈 A — SOLID 준수
 
-`docs/solid_refactoring_work_plan.md` 가 목표 구조를 정의합니다. 증강 시스템은 `IAugmentHandler` 와 발동 시점 인터페이스(`IOnAugmentSelected`, `IOnTurnStarted`, `IAfterScoreCommit`, `IOnTurnEnded`, `IBeforeScorePreview`, `IDiceCountModifier`, `IDiceLayoutProvider`, `IScoringDiceFilter`, `IScoreEnhancementModifier`, `ITurnDurationModifier`, `IManualActionAugment`)로 확장하게 돼 있습니다.
+`docs/agent/solid_refactoring_work_plan.md` 가 목표 구조를 정의합니다. 증강 시스템은 `IAugmentHandler` 와 발동 시점 인터페이스(`IOnAugmentSelected`, `IOnTurnStarted`, `IAfterScoreCommit`, `IOnTurnEnded`, `IBeforeScorePreview`, `IDiceCountModifier`, `IDiceLayoutProvider`, `IScoringDiceFilter`, `IScoreEnhancementModifier`, `ITurnDurationModifier`, `IManualActionAugment`)로 확장하게 돼 있습니다.
 
 찾을 것: 증강 ID를 하드코딩한 `if`/`switch` 사다리, 신규 증강 추가 시 핸들러 밖 파일까지 고쳐야 하는 구조, 핸들러가 아닌 곳에 흩어진 증강별 분기, 단일 클래스가 규칙·표현·상태를 함께 들고 있는 지점.
 
@@ -46,7 +46,7 @@ effort: high
 
 ### 렌즈 B — 아트 규칙
 
-`AGENTS.md` §2와 `docs/art_style_guide.md` 가 기준입니다. 코드나 머티리얼에 박힌 색·강도 값이 아래를 벗어나는지 봅니다.
+`AGENTS.md` §2와 `docs/reference/art_style_guide.md` 가 기준입니다. 코드나 머티리얼에 박힌 색·강도 값이 아래를 벗어나는지 봅니다.
 
 - 키 라이트: 벽난로 골든 앰버 `#ff9e3b`, 2800~3000K, 강도 1.4~1.6
 - 림/필 라이트: 쿨 인디고 `#364b6e`, 강도 0.35~0.5
@@ -70,7 +70,7 @@ effort: high
 
 **이 프로젝트에는 `.asmdef` 가 하나도 없습니다.** 모든 런타임 코드가 `Assembly-CSharp` 로 들어가므로 컴파일러가 경계를 강제하지 못합니다. 역방향 의존이 있어도 빌드는 통과합니다. 그래서 이 렌즈는 사람이 봐야만 잡힙니다.
 
-찾을 것: 공통 시스템이 게임별 모듈을 참조하는 역방향 의존, `Tessera.Core` 가 `Tessera.Rendering` 이나 Unity 표현 계층에 묶이는 지점, 게임 규칙 로직이 `Presentation` 아래에 들어간 곳. 상태 소유권은 `docs/yacht_state_ownership.md` 와 `docs/architecture_decisions.md` 의 ADR을 근거로 삼습니다.
+찾을 것: 공통 시스템이 게임별 모듈을 참조하는 역방향 의존, `Tessera.Core` 가 `Tessera.Rendering` 이나 Unity 표현 계층에 묶이는 지점, 게임 규칙 로직이 `Presentation` 아래에 들어간 곳. 상태 소유권은 `docs/reference/architecture_decisions.md` 의 ADR을 근거로 삼습니다.
 
 ### 렌즈 E — 테스트 공백
 

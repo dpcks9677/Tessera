@@ -161,3 +161,7 @@ yarn-error.log*
 # 패키지가 manifest.json 에 버전 고정돼 있으므로 사본을 추적하면 진실의 원천이 둘이 되고,
 # 설치할 때마다 내용 변경 없는 줄바꿈 diff 가 177개씩 생긴다.
 /.claude/skills/unity-skills/
+
+# docs PDF (docs/reference/build_pdf.py 가 언제든 재생성한다)
+# md 한 줄만 고쳐도 1MB 짜리 바이너리 blob 이 통째로 새로 쌓이므로 산출물은 추적하지 않는다.
+docs/**/*.pdf

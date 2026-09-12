@@ -6,24 +6,50 @@
 
 ## 1. 기본 작업 원칙
 - **언어**: 모든 답변, 주석, 문서는 한국어로 작성합니다.
-- **식별자는 영문**: 클래스·메서드·필드·지역 변수는 물론 **테스트 메서드명까지 영문으로만 짓습니다.** 한글 식별자는 쓰지 않습니다. 주변 파일이 한글 이름을 쓰더라도 따라가지 않습니다. 한국어 맥락은 주석과 문서에 남깁니다. 근거는 [`docs/coding_conventions.md`](docs/coding_conventions.md) §3을 보십시오.
+- **식별자는 영문**: 클래스·메서드·필드·지역 변수는 물론 **테스트 메서드명까지 영문으로만 짓습니다.** 한글 식별자는 쓰지 않습니다. 주변 파일이 한글 이름을 쓰더라도 따라가지 않습니다. 한국어 맥락은 주석과 문서에 남깁니다. 근거는 [`docs/reference/coding_conventions.md`](docs/reference/coding_conventions.md) §3을 보십시오.
 - **간결성 (Simplicity First)**: 불필요한 과도한 추상화나 불필요한 PBR 연산 대신, 명확하고 간결한 코드를 작성합니다.
 - **정밀 수정 (Surgical Changes)**: 요청받은 영역만 정확히 수정하며, 연관 없는 코드를 임의로 리팩터링하지 않습니다.
 - **모듈 아키텍처 준수**:
   - 프로젝트명: `Tessera` / 루트 네임스페이스: `Tessera`
   - 메인 씬: `Assets/Scenes/Augmented Dice.unity`
   - 공통 시스템: `Tessera.Core`, `Tessera.Dice`, `Tessera.Tabletop`, `Tessera.Rendering`
-  - 게임별 독립 모듈: `Tessera.Games.AugmentedYacht` (증강 요트 다이스), 향후 추가될 싱글 게임 모듈 등
-  - 네트워크/멀티플레이어: `Tessera.Network`
-- **코딩 규약**: C# 코드는 [`docs/coding_conventions.md`](docs/coding_conventions.md)와 리포지토리 루트의 `.editorconfig`를 따릅니다. Microsoft C#/.NET 규약 기준이며 Unity 직렬화 관련 예외가 명시돼 있습니다. 규약은 신규 파일과 실제 수정하는 파일에만 적용하고, 기존 파일을 일괄 재포맷하지 않습니다.
-- **구조적 결정**: 상태 소유권·계층 경계 등 구조 판단은 [`docs/architecture_decisions.md`](docs/architecture_decisions.md)의 ADR을 먼저 확인합니다. 짧은 결정은 [`docs/augmented_yacht_work_plan.md`](docs/augmented_yacht_work_plan.md) §11에 있습니다.
+  - 게임별 독립 모듈: `Tessera.Games.Yacht` (요트 규칙과 증강 로직), `Tessera.Games.AugmentedYacht` (증강 요트 프레젠테이션)
+  - 네트워크/멀티플레이어: `Assets/Scripts/Network/`는 아직 빈 폴더입니다
+  - 위 이름들은 어셈블리가 아니라 **C# 네임스페이스**입니다. 프로젝트에 `.asmdef`가 없어 모든 스크립트가 `Assembly-CSharp` 하나로 컴파일되므로, 모듈 경계는 컴파일러가 아니라 규약으로 지킵니다
+- **코딩 규약**: C# 코드는 [`docs/reference/coding_conventions.md`](docs/reference/coding_conventions.md)와 리포지토리 루트의 `.editorconfig`를 따릅니다. Microsoft C#/.NET 규약 기준이며 Unity 직렬화 관련 예외가 명시돼 있습니다. 규약은 신규 파일과 실제 수정하는 파일에만 적용하고, 기존 파일을 일괄 재포맷하지 않습니다.
+- **구조적 결정**: 상태 소유권·계층 경계 등 구조 판단은 [`docs/reference/architecture_decisions.md`](docs/reference/architecture_decisions.md)의 ADR을 먼저 확인합니다. 짧은 결정은 [`docs/agent/decisions.md`](docs/agent/decisions.md)에 있습니다.
 
 ---
 
-## 2. 아트 & 디자인 스타일 가이드라인 (Art Direction)
+## 2. 문서 작성
+
+문서를 쓰거나 고칠 때는 **실제로 존재하는 것만 기술합니다.** 이 규칙이 명문화된 이유가 있습니다. 과거
+문서에 존재하지 않는 타입, 없는 메서드, 실제와 하나도 겹치지 않는 씬 오브젝트 이름, 전부 틀린 에디터
+메뉴 경로가 현재형으로 적혀 있었습니다. 그런 문서는 사람을 잘못 이끄는 데 그치지 않습니다. 다음
+세션의 에이전트가 그것을 사실로 읽고 존재하지 않는 API를 호출하는 코드를 씁니다.
+
+1. **실재를 확인한 뒤에 적습니다.** 클래스명, 메서드 시그니처, 파일 경로, 에셋 경로, 메뉴 경로, 수치는
+   코드에서 직접 확인한 것만 씁니다. 기억이나 추론으로 채우지 않습니다. 확인하지 못한 것은 그럴듯하게
+   적는 대신 `미확인`으로 남기고 그 사실을 보고합니다.
+2. **계획과 구현을 구분합니다.** 아직 없는 것을 현재형으로 서술하지 않습니다. 계획 항목에는 상태
+   표기(`TODO` / `DOING` / `DONE` / `DEFERRED` / `DROPPED` / `VOID`)를 붙이고, 계획서의 "신규 파일"은
+   그 파일이 아직 없다는 뜻임을 문장으로 드러냅니다.
+3. **무효가 된 항목은 지우지 않고 표기합니다.** 전제가 사라진 계획 항목은 `VOID`와 사유·날짜를
+   남깁니다. 왜 없어졌는지 추적할 수 있어야 합니다.
+4. **시점 기록은 고치지 않습니다.** 감사 보고서, 코드 리뷰, 세션 로그는 작성 당시의 사실입니다. 본문을
+   현재 코드에 맞춰 고치는 대신 헤더의 기준 시점 표기로 구분합니다.
+
+문서에 코드를 실을 때는 블록 첫 줄에 `// 경로:줄범위` 형태로 출처를 답니다.
+
+문서 구조와 헤더 표준 양식은 [`docs/README.md`](docs/README.md)에 있습니다. 어느 문서를 읽어야 할지도
+그 색인이 안내합니다.
+
+---
+
+## 3. 아트 & 디자인 스타일 가이드라인 (Art Direction)
 
 본 프로젝트는 **스타일라이즈드 중세 판타지 서재/여관(Cozy Fantasy Hearth & Tabletop)** 룩앤필을 지향합니다.
-상세한 아트 스펙은 [`docs/art_style_guide.md`](docs/art_style_guide.md)를 참조하십시오.
+상세한 아트 스펙은 [`docs/reference/art_style_guide.md`](docs/reference/art_style_guide.md)를 참조하십시오.
 
 ### 핵심 비주얼 규칙 요약:
 1. **분위기 & 라이팅 (Atmosphere & Lighting)**:

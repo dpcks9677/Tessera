@@ -25,8 +25,8 @@ effort: high
 
 ID 접두사로 계획서를 고릅니다.
 
-- `SOLID-Tnn` → `docs/solid_refactoring_work_plan.md`
-- `Mnn-Tnn` → `docs/augmented_yacht_work_plan.md` §7
+- `SOLID-Tnn` → `docs/agent/solid_refactoring_work_plan.md`
+- `Mnn-Tnn` → `docs/agent/work_plan.md` §7 (완료 마일스톤은 `docs/agent/milestones/completed.md`)
 
 `Grep` 으로 ID를 찾아 해당 행과 상세 섹션만 읽습니다. 계획서 전체를 읽지 마십시오. 하위 계획서(예: `quill_hover_writing_animation_plan.md`)가 걸려 있으면 그것도 확인합니다.
 

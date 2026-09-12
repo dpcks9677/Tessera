@@ -16,15 +16,18 @@ effort: high
 
 ## 대상 문서
 
-- `docs/augmented_yacht_work_plan.md` — 마스터. §2 진행 포인터, §7 마일스톤별 작업표(`Mnn-Tnn`), §11 결정(`D-nnn`), §12 미결정(`Q-00n`), §13 세션 로그(역순).
-- `docs/solid_refactoring_work_plan.md` — §2 진행 포인터와 작업 상태 요약표(`SOLID-Tnn`).
+- `docs/agent/work_plan.md` — 마스터. §2 진행 포인터, §6 마일스톤 요약, §7 진행 중·미착수 마일스톤 작업표(`Mnn-Tnn`).
+- `docs/agent/decisions.md` — 결정(`D-nnn`)과 미결정(`Q-00n`). 원래 마스터의 §11·§12였습니다.
+- `docs/agent/session_log.md` — 세션 로그(역순). 원래 마스터의 §13이었습니다.
+- `docs/agent/milestones/completed.md` — 완료된 `M0`~`M16`의 작업표와 실행 기록.
+- `docs/agent/solid_refactoring_work_plan.md` — §2 진행 포인터와 작업 상태 요약표(`SOLID-Tnn`).
 - 하위 계획서 — `quill_hover_writing_animation_plan.md`, `pixel_edge_filter_plan.md`, `cel_shading_pixel_plan.md` 등. 각각 제목에 작업 ID가 있고 상단 메타 줄에 상태가 있습니다.
 
 ## 1. 기준선 잡기
 
 먼저 마지막으로 기록된 지점을 찾습니다.
 
-- `docs/augmented_yacht_work_plan.md` §13 세션 로그의 **최상단 항목 날짜**. 역순이므로 이게 마지막 기록입니다.
+- `docs/agent/session_log.md`의 **최상단 항목 날짜**. 역순이므로 이게 마지막 기록입니다.
 - 각 계획서 §2 진행 포인터의 **마지막 갱신일**.
 
 그다음 실제 진행을 봅니다.
