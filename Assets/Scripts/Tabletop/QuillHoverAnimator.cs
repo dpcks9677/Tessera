@@ -27,13 +27,32 @@ namespace Tessera.Tabletop
         private const float DockLift = 0.5f;
 
         private const float LiftSeconds = 0.12f;
-        private const float DescendSeconds = 0.12f;
+
+        /// <summary>
+        /// 복귀 전체에 걸리는 시간이다.
+        ///
+        /// 예전에는 "공중으로 모으기"와 "내려꽂기"를 따로 돌렸는데, 앞 구간이 SmoothDamp라
+        /// 정해진 시간 안에 목표에 닿지 못했고 뒤 구간이 목표점에서 새로 시작하는 바람에 그
+        /// 경계에서 위치가 튀었다. 지금은 잉크통 위 지점을 제어점으로 삼는 곡선 하나로 잇는다.
+        /// </summary>
+        private const float ReturnSeconds = 0.38f;
+
+        /// <summary>
+        /// 복귀 시간 중 회전을 끝내는 지점의 비율이다.
+        ///
+        /// 회전에 위치와 같은 곡선을 쓰면 <see cref="Mathf.SmoothStep"/>의 끝 기울기가 0이라
+        /// 다 내려앉은 뒤에도 자세가 조금 남아, 마지막에 한 번 더 도는 것처럼 보인다. 자세를
+        /// 먼저 세우고 남은 구간은 내려꽂기만 남기면 실제로 펜을 통에 꽂는 동작과도 맞는다.
+        /// </summary>
+        private const float ReturnRotationSettleRatio = 0.7f;
 
         /// <summary>호버가 사라진 뒤 복귀를 미루는 시간. 인접한 칸 사이를 지날 때의 깜빡임을 막는다.</summary>
         private const float ReturnGraceSeconds = 0.18f;
 
         private const float TravelSmoothTime = 0.13f;
-        private const float TurnDegreesPerSecond = 720f;
+
+        /// <summary>회전이 목표에 수렴하는 시간이다. 등속 회전은 시작과 끝이 딱딱하게 끊긴다.</summary>
+        private const float TurnSmoothTime = 0.16f;
 
         /// <summary>닙이 이만큼 안에 들어오면 도착으로 본다.</summary>
         private const float ArriveDistance = 0.05f;
@@ -45,6 +64,23 @@ namespace Tessera.Tabletop
 
         /// <summary>도착하자마자 떨면 튀어 보인다. 진폭을 이 시간에 걸쳐 올린다.</summary>
         private const float JitterRampSeconds = 0.2f;
+
+        /// <summary>픽셀 격자 스냅에 쓰는 카메라와 가상 해상도. 컨트롤러가 매 프레임 넘긴다.</summary>
+        private Camera pixelCamera;
+        private Vector2Int pixelResolution;
+
+        /// <summary>
+        /// 스냅 전의 연속 위치다. 화면에 놓는 자리는 격자에 맞추지만, 다음 프레임의 보간은
+        /// 이 값에서 이어 간다. 스냅된 값을 되먹이면 한 칸 안에서 앞뒤로 진동한다.
+        /// </summary>
+        private Vector3 logicalPosition;
+
+        /// <summary>회전 감속에 쓰는 각속도. <see cref="SmoothRotate"/>가 관리한다.</summary>
+        private float turnVelocity;
+
+        /// <summary>복귀를 시작한 자리와 그때의 자세. 복귀 곡선의 출발점이다.</summary>
+        private Vector3 returnStartPosition;
+        private Quaternion returnStartRotation;
 
         /// <summary>
         /// 종이에 닿아 있는 동안의 깃펜 크기다. 1이면 잉크통에 꽂혔을 때와 같은 크기다.
@@ -106,6 +142,17 @@ namespace Tessera.Tabletop
         }
 
         /// <summary>포인터가 칸을 벗어났다. 유예가 지나면 잉크통으로 돌아간다.</summary>
+        /// <summary>
+        /// 화면 픽셀 격자를 알려 준다. 깃펜이 연속 좌표로 움직이면 업스케일 셰이더가 뽑는 셀
+        /// 중심 샘플이 실루엣 경계를 스쳤다 말았다 하며 자글거린다. 놓는 자리를 같은 격자에
+        /// 맞추면 그 떨림이 사라지고 이동이 칸 단위로 끊긴다.
+        /// </summary>
+        public void SetPixelGrid(Camera camera, Vector2Int resolution)
+        {
+            pixelCamera = camera;
+            pixelResolution = resolution;
+        }
+
         public void ClearWritingTarget()
         {
             if (!hasTarget) return;
@@ -195,13 +242,17 @@ namespace Tessera.Tabletop
             }
 
             float t = Mathf.Clamp01(stateElapsed / LiftSeconds);
-            quillRoot.SetPositionAndRotation(
-                Vector3.Lerp(DockedWorldPosition, LiftedWorldPosition, t), DockedWorldRotation);
+            // 가속만 준다. SmoothStep으로 끝을 눕히면 속도가 0으로 떨어졌다가 다음 구간에서
+            // 다시 붙어 한 번 멈칫한다.
+            SetRootPose(
+                Vector3.Lerp(DockedWorldPosition, LiftedWorldPosition, t * t),
+                DockedWorldRotation);
 
             if (t < 1f) return;
             state = QuillState.Traveling;
             stateElapsed = 0f;
-            followVelocity = Vector3.zero;
+            // 상승 마지막 속도를 그대로 넘겨 이어 달리게 한다. t*t의 t=1 기울기가 2다.
+            followVelocity = (LiftedWorldPosition - DockedWorldPosition) * (2f / LiftSeconds);
         }
 
         private void TickTraveling(float dt)
@@ -213,7 +264,7 @@ namespace Tessera.Tabletop
             FollowTo(goal, goalRotation, dt);
 
             // 목표가 도중에 바뀌어도 SmoothDamp가 이어서 따라간다. 잉크통을 거치지 않는다.
-            if (Vector3.Distance(quillRoot.position, goal) > ArriveDistance) return;
+            if (Vector3.Distance(logicalPosition, goal) > ArriveDistance) return;
             state = QuillState.Writing;
             stateElapsed = 0f;
             writingElapsed = 0f;
@@ -240,18 +291,23 @@ namespace Tessera.Tabletop
             FollowTo(goal, goalRotation, dt);
         }
 
+        /// <summary>
+        /// 복귀는 곡선 하나로 잇는다. 출발점과 잉크통을 직선으로 내려오면 펜이 점수표를 쓸고
+        /// 지나가므로, 잉크통 위 지점을 제어점으로 두어 한 번 떠올랐다가 내려앉게 한다.
+        /// </summary>
         private void TickReturning(float dt)
         {
-            if (stateElapsed < LiftSeconds)
-            {
-                // 1단계: 잉크통 위 공중으로 모인다. 자세도 여기서 꽂힘 자세로 돌려 둔다.
-                FollowTo(LiftedWorldPosition, DockedWorldRotation, dt);
-                return;
-            }
+            float t = Mathf.Clamp01(stateElapsed / ReturnSeconds);
+            float eased = Mathf.SmoothStep(0f, 1f, t);
 
-            float t = Mathf.Clamp01((stateElapsed - LiftSeconds) / DescendSeconds);
-            quillRoot.SetPositionAndRotation(
-                Vector3.Lerp(LiftedWorldPosition, DockedWorldPosition, t), DockedWorldRotation);
+            float inverse = 1f - eased;
+            Vector3 position =
+                (inverse * inverse * returnStartPosition)
+                + (2f * inverse * eased * LiftedWorldPosition)
+                + (eased * eased * DockedWorldPosition);
+
+            float rotationT = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / ReturnRotationSettleRatio));
+            SetRootPose(position, Quaternion.Slerp(returnStartRotation, DockedWorldRotation, rotationT));
 
             if (t < 1f) return;
             ApplyDockedPose();
@@ -264,13 +320,63 @@ namespace Tessera.Tabletop
             state = QuillState.Returning;
             stateElapsed = 0f;
             followVelocity = Vector3.zero;
+            turnVelocity = 0f;
+            returnStartPosition = logicalPosition;
+            returnStartRotation = quillRoot.rotation;
         }
 
         private void FollowTo(Vector3 goal, Quaternion goalRotation, float dt)
         {
-            quillRoot.SetPositionAndRotation(
-                Vector3.SmoothDamp(quillRoot.position, goal, ref followVelocity, TravelSmoothTime, Mathf.Infinity, dt),
-                Quaternion.RotateTowards(quillRoot.rotation, goalRotation, TurnDegreesPerSecond * dt));
+            SetRootPose(
+                Vector3.SmoothDamp(logicalPosition, goal, ref followVelocity, TravelSmoothTime, Mathf.Infinity, dt),
+                SmoothRotate(quillRoot.rotation, goalRotation, dt));
+        }
+
+        /// <summary>
+        /// 남은 각도를 <see cref="Mathf.SmoothDamp"/>로 줄여 회전에 가속과 감속을 준다.
+        ///
+        /// <c>Quaternion.RotateTowards</c>는 각속도가 일정해 돌기 시작하는 순간과 멈추는 순간이
+        /// 모두 각지게 끊긴다. 남은 각도를 하나의 스칼라로 보고 감쇠시키면 축이 무엇이든 같은
+        /// 곡선을 그리며 눕는다.
+        /// </summary>
+        private Quaternion SmoothRotate(Quaternion current, Quaternion goal, float dt)
+        {
+            float angle = Quaternion.Angle(current, goal);
+            if (angle < 0.01f)
+            {
+                turnVelocity = 0f;
+                return goal;
+            }
+
+            float remaining = Mathf.SmoothDamp(angle, 0f, ref turnVelocity, TurnSmoothTime, Mathf.Infinity, dt);
+            return Quaternion.Slerp(goal, current, Mathf.Clamp01(remaining / angle));
+        }
+
+        /// <summary>
+        /// 연속 위치를 기억하고, 멈춰 있을 때만 화면에 놓는 자리를 픽셀 격자에 맞춘다.
+        ///
+        /// 격자 스냅은 제자리에서 떨 때의 자글거림을 잡으려고 넣은 것이다. 옮겨 가는 중에도
+        /// 걸어 두면 이동 자체가 칸 단위로 끊겨 보인다. 빠르게 지나갈 때는 자글거림이 눈에
+        /// 띄지 않으므로, 닙을 대고 멈춘 동안에만 건다.
+        /// </summary>
+        private void SetRootPose(Vector3 position, Quaternion rotation)
+        {
+            logicalPosition = position;
+            Vector3 placed = state == QuillState.Writing ? SnapToPixelGrid(position) : position;
+            quillRoot.SetPositionAndRotation(placed, rotation);
+        }
+
+        private Vector3 SnapToPixelGrid(Vector3 world)
+        {
+            if (pixelCamera == null || pixelResolution.x < 1 || pixelResolution.y < 1) return world;
+
+            Vector3 viewport = pixelCamera.WorldToViewportPoint(world);
+            // 카메라 뒤로 넘어간 지점은 뷰포트 좌표가 뒤집혀 스냅이 엉뚱한 자리를 만든다.
+            if (viewport.z <= 0f) return world;
+
+            viewport.x = (Mathf.Floor(viewport.x * pixelResolution.x) + 0.5f) / pixelResolution.x;
+            viewport.y = (Mathf.Floor(viewport.y * pixelResolution.y) + 0.5f) / pixelResolution.y;
+            return pixelCamera.ViewportToWorldPoint(viewport);
         }
 
         /// <summary>
@@ -286,11 +392,13 @@ namespace Tessera.Tabletop
         private void ApplyDockedPose()
         {
             quillRoot.localPosition = dockedLocalPosition;
+            logicalPosition = quillRoot.position;
             quillRoot.localRotation = dockedLocalRotation;
             quillRoot.localScale = dockedLocalScale;
             scaleFactor = 1f;
             scaleVelocity = 0f;
             followVelocity = Vector3.zero;
+            turnVelocity = 0f;
         }
 
         private Vector3 DockedWorldPosition => transform.TransformPoint(dockedLocalPosition);

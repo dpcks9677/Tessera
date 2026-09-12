@@ -1,6 +1,16 @@
 # 깃펜 깃털 흰색 전환과 갈라짐 연출 계획서 (`M17-T19`)
 
-작성일: 2026-09-09 · 개정: 2026-09-09 · 상태: `DOING` (`M17-T19-0`~`M17-T19-5` 완료 · `M17-T19-6` 에셋 갱신과 화면 확인 남음) · 요약은 [`docs/augmented_yacht_work_plan.md`](augmented_yacht_work_plan.md) §7 `M17` 표에 있다.
+작성일: 2026-09-09 · 개정: 2026-09-12 · 상태: `DROPPED` · 요약은 [`docs/augmented_yacht_work_plan.md`](augmented_yacht_work_plan.md) §7 `M17` 표에 있다.
+
+> **폐기됨 (2026-09-12).** 깃펜을 절차적으로 만드는 방식 자체를 그만두고 외부 로우폴리 모델
+> `Assets/Art/Reference/quill_pen_low.fbx` 로 교체했다. 이 문서가 정한 슬릿 주기, 깃가지 격자,
+> 픽셀 예산, 메시 노치 상수는 모두 `InkwellAndQuill` 의 절차적 생성 코드를 전제로 한 것이라
+> 함께 무효가 된다. 그 코드와 `QuillFeatherAppearanceTests`, `QuillFeatherAssetRefresh` 도
+> 같은 변경에서 삭제했다.
+>
+> 폐기 이유는 결과물이 나빠서가 아니라 비용 때문이다. 화면이 480x270 가상 격자로 필터링되는
+> 탓에 여기서 맞춘 디테일이 대부분 화면에 남지 않았고, 그런데도 상수를 바꿔 굽고 눈으로
+> 확인하는 왕복이 계속 필요했다. 아래 내용은 당시 판단 근거로만 남긴다.
 
 ---
 

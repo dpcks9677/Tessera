@@ -214,6 +214,9 @@ namespace Tessera.Games.AugmentedYacht
             FeedQuillHoverTarget();
         }
 
+        /// <summary>닙을 칸 한가운데에서 오른쪽으로 미는 거리다. 칸 가로 폭에 대한 비율이다.</summary>
+        private const float QuillNibRightBias = 0.22f;
+
         /// <summary>
         /// 호버 중인 칸의 월드 좌표를 깃펜에 넘긴다(<c>M17-T18</c>). 매 프레임 다시 읽는 이유는
         /// 점수표가 이름 열을 접고 펴는 동안 칸 좌표와 폭이 계속 움직이기 때문이다.
@@ -223,13 +226,26 @@ namespace Tessera.Games.AugmentedYacht
         {
             if (quillHoverAnimator == null) return;
 
+            // 깃펜이 놓이는 자리를 화면 픽셀 격자에 맞추게 한다. 해상도는 F1/F2로 바뀌므로
+            // 매 프레임 넘긴다.
+            if (cameraRig != null)
+            {
+                quillHoverAnimator.SetPixelGrid(cameraRig.WorldCamera, cameraRig.InternalResolution);
+            }
+
             if (quillHoverPlayerIndex < 0
                 || parchmentScoreSheet == null
-                || !parchmentScoreSheet.TryGetSlotAnchor(quillHoverPlayerIndex, quillHoverCategory, out Vector3 worldPoint, out _))
+                || !parchmentScoreSheet.TryGetSlotAnchor(
+                    quillHoverPlayerIndex, quillHoverCategory,
+                    out Vector3 worldPoint, out float cellWidth, out Vector3 cellRight))
             {
                 quillHoverAnimator.ClearWritingTarget();
                 return;
             }
+
+            // 닙을 칸 한가운데에서 오른쪽으로 조금 밀어 둔다. 정확히 가운데에 대면 깃펜이 그 칸의
+            // 점수 숫자를 덮어 무엇을 쓰려는지 보이지 않는다.
+            worldPoint += cellRight * (cellWidth * QuillNibRightBias);
 
             quillHoverAnimator.SetWritingTarget(worldPoint, parchmentScoreSheet.transform.up);
         }

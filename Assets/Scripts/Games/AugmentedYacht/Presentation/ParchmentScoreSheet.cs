@@ -302,10 +302,11 @@ namespace Tessera.Games.AugmentedYacht
         /// 칸 중앙의 월드 좌표와 칸의 월드 폭이다. 칸이 아직 만들어지지 않았거나 레이아웃이 잡히기
         /// 전이면 false다. 열이 접히고 펴지는 동안 폭이 매 프레임 바뀌므로 캐시하지 않는다.
         /// </summary>
-        public bool TryGetSlotAnchor(int playerIndex, ScoreCategory category, out Vector3 worldPoint, out float cellWidth)
+        public bool TryGetSlotAnchor(int playerIndex, ScoreCategory category, out Vector3 worldPoint, out float cellWidth, out Vector3 worldRight)
         {
             worldPoint = default;
             cellWidth = 0f;
+            worldRight = Vector3.right;
 
             if (playerIndex < 0 || playerIndex > 1) return false;
             int categoryIndex = (int)category;
@@ -319,7 +320,10 @@ namespace Tessera.Games.AugmentedYacht
             cellWidth = rect.rect.width * rect.lossyScale.x;
             if (cellWidth <= 0f) return false;
 
-            worldPoint = rect.position;
+            // pivot 자리가 아니라 칸의 한가운데를 준다. pivot은 칸을 만든 방식에 따라 달라질 수
+            // 있고, 깃펜 닙이 닿아야 하는 곳은 언제나 칸 한가운데다.
+            worldPoint = rect.TransformPoint(rect.rect.center);
+            worldRight = rect.TransformDirection(Vector3.right).normalized;
             return true;
         }
 

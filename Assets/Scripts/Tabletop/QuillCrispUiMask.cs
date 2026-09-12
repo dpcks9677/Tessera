@@ -52,6 +52,8 @@ namespace Tessera.Tabletop
                 if (source.transform.Find(MaskName) != null) continue;
                 AddMaskPart(source, material);
             }
+
+            CopyAlphaCutout(quillRoot, material);
         }
 
         /// <summary>
@@ -72,6 +74,27 @@ namespace Tessera.Tabletop
             renderer.sharedMaterial = material;
             renderer.shadowCastingMode = ShadowCastingMode.Off;
             renderer.receiveShadows = false;
+        }
+
+        /// <summary>
+        /// 깃펜 파츠의 알파 컷아웃 설정을 판에 옮긴다. 깃털은 실루엣을 알베도 알파로 만들기
+        /// 때문에, 판이 같은 알파로 잘리지 않으면 뚫린 자리에서도 깊이를 남겨 화면에 보이지
+        /// 않는 영역까지 족보 글자를 지운다.
+        ///
+        /// 깃펜 파츠가 머티리얼 하나를 공유하므로 먼저 찾은 것 하나만 본다.
+        /// </summary>
+        private static void CopyAlphaCutout(Transform quillRoot, Material material)
+        {
+            foreach (MeshRenderer renderer in quillRoot.GetComponentsInChildren<MeshRenderer>())
+            {
+                Material source = renderer.sharedMaterial;
+                if (source == null || source == material) continue;
+                if (!source.HasProperty("_BaseMap")) continue;
+
+                material.SetTexture("_BaseMap", source.GetTexture("_BaseMap"));
+                material.SetFloat("_Cutoff", source.HasProperty("_Cutoff") ? source.GetFloat("_Cutoff") : 0.5f);
+                return;
+            }
         }
 
         private static Material EnsureMaskMaterial()

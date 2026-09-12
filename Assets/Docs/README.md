@@ -3,6 +3,7 @@
 - Unity: 6000.3.21f1, URP 17.3.0
 - Scene: `Assets/Scenes/Augmented Dice.unity`
 - Source model: `Assets/Art/Reference/normal_dice.fbx`
+- Source model: `Assets/Art/Reference/quill_pen_low.fbx` — third-party low-poly quill pen ("free-quill-pen-lowpoly"). Attribution and licence terms still need to be recorded here; the downloaded package shipped no licence file. Its albedo is `quill_pen_albedo.png`, a 256x256 composite of the original base colour and opacity maps.
 - Playmat: `Assets/Art/Reference/playmat.png`
 - Visual reference: `Assets/Art/Reference/dice_pixel_reference.png`
 - Target: Windows desktop, 1920x1080, 60 FPS provisional

@@ -1,4 +1,3 @@
-﻿using System;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -6,81 +5,70 @@ namespace Tessera.Tabletop
 {
     /// <summary>
     /// 중세 여관/서재 테이블탑 우측 하단을 장식하는 3D 고광택 블랙 세라믹 잉크통과 깃펜 오브젝트
+    ///
+    /// 잉크통은 프리미티브 원통 5개로 코드에서 만들고, 깃펜은 외부 로우폴리 모델
+    /// <c>Assets/Art/Reference/quill_pen_low.fbx</c>를 인스턴스화해 쓴다. 깃펜을 절차적으로
+    /// 만들던 시절에는 깃털 실루엣과 깃가지 틈을 코드 상수로 맞춰야 했는데, 화면이 480x270
+    /// 가상 격자로 필터링되는 탓에 그 디테일이 대부분 남지 않아 투자 대비 효과가 없었다.
     /// </summary>
     [ExecuteAlways]
     public sealed class InkwellAndQuill : MonoBehaviour
     {
         private const int DecorationLayer = 11;
 
-        // 깃펜 로컬 좌표계: +Y가 닙 끝(y=0)에서 깃털 팁(y≈3.97) 방향.
-        private const float NibLength = 0.59f;
-
-        // --- 닙 형상. 금속판 한 장을 만 것이라 마는 반지름은 어디서나 같다(BuildNibMesh 참고). ---
-
-        /// <summary>판을 마는 반지름. 원통 구간의 굵기이자 어깨에서의 반폭이다. 칼라 밴드(0.0525) 안에 들어간다.</summary>
-        private const float NibRollRadius = 0.050f;
+        private const string QuillRootName = "Quill Pen Root";
+        private const string QuillModelName = "Quill_Model";
+        private const string QuillModelPath = "Assets/Art/Reference/quill_pen_low.fbx";
+        private const string QuillMaterialPath = "Assets/Art/Reference/QuillPen.mat";
 
         /// <summary>
-        /// 폭이 가장 넓어지는 어깨의 위치. 닙 길이에 대한 비율이다.
+        /// 모델을 <see cref="QuillRootName"/> 로컬 좌표계에 맞추는 배율.
         ///
-        /// 닙 전체 길이(0.59)와 최대 폭(원통 지름 0.10)은 프리팹에 이미 구워진 칼라와 맞물려 있어
-        /// 건드릴 수 없다. 그래서 오각형이 읽히도록 조절할 수 있는 것은 어깨 위치뿐이다. 어깨를
-        /// 앞으로 당길수록 원통이 길어지고 판은 짧고 넓어진다. 0.38이면 판이 세로:가로 2:1이 되어
-        /// 실물 닙 비율에 가장 가깝다.
+        /// <see cref="QuillHoverAnimator"/>는 이 루트의 원점을 닙 끝으로, +Y를 깃털 방향으로 보고
+        /// 필기 자세를 만든다. 임포트된 모델의 전장은 11.634이고, 이 배율에서 깃펜의 루트 로컬
+        /// 길이가 3.97이 된다(= 3.97 / 11.634). 절차적 깃펜이 쓰던 길이와 같은 값이며, 씬의
+        /// 잉크통에 걸린 2.5배까지 곱하면 월드 전장 9.93이 된다.
+        ///
+        /// 이 전장은 <see cref="QuillHoverAnimator"/>가 필기 자세 크기를 정할 때 기준으로 삼는
+        /// 값이라 임의로 키우면 안 된다. 점수표 가로 폭이 7.80이므로 깃펜은 이미 그보다 길고,
+        /// 더 키우면 필기 중에 점수표를 덮는 면적이 그만큼 늘어난다.
+        ///
+        /// 이 값은 FBX 임포터의 <c>Use File Scale</c>이 꺼져 있다는 전제 위에 있다. 파일
+        /// 스케일을 켜면 Unity가 0.01을 적용해 깃펜이 화면에서 점 하나로 줄어든다. 파일
+        /// 헤더의 <c>UnitScaleFactor</c>는 1이라 이 축소는 헤더만 보고는 예측되지 않으니,
+        /// 모델을 다시 임포트할 일이 있으면 임포터 설정을 직접 확인한다.
         /// </summary>
-        private const float NibShoulderRatio = 0.38f;
-
-        /// <summary>여기서부터 밑동까지는 한 바퀴 감긴 원통이다.</summary>
-        private const float NibCylinderRatio = 0.50f;
-
-        /// <summary>어깨에서 끝으로 좁아지는 곡선의 지수. 1이면 곧은 변, 클수록 끝이 뾰족해진다.</summary>
-        private const float NibTaperExponent = 1.10f;
-
-        private const float NibThickness = 0.0040f;
-        private const float NibTipThickness = 0.0010f;
+        private const float QuillModelScale = 0.3412f;
 
         /// <summary>
-        /// 판의 넓은 면이 펜 축을 중심으로 어느 쪽을 보는지. 실물 펜도 닙이 몸통에 정해진 각도로
-        /// 박혀 있고, 그래서 쥐면 넓은 면이 위를 본다.
+        /// 모델 로컬 닙 끝을 루트 원점으로 옮기는 오프셋. 위 배율을 곱한 값이다.
         ///
-        /// 이 값은 필기 자세에서 넓은 면이 카메라를 향하도록 맞췄다. 필기 자세는 잉크통 꽂힘 자세에
-        /// 세로축 회전을 더한 것이고(<c>QuillHoverAnimator</c>) 카메라는 피치 75도로 내려다본다.
-        /// 두 조건을 넣고 풀면 -59도에서 가장 정면이 되므로 -60도로 둔다. 이 각을 벗어날수록 날이
-        /// 옆으로 서서 화면에서는 그냥 가느다란 침처럼 보인다.
+        /// 이 값은 <b>임포트된 메시</b>를 기준으로 잡아야 한다. Unity는 FBX를 읽으면서 메시마다
+        /// 원점을 자기 바운드 중심으로 옮기고 그 이동량을 노드 Transform에 넣는다. 그래서 FBX
+        /// 파일의 정점 좌표와 Unity 노드 위치를 섞어 계산하면 값이 어긋난다. 실제로 그렇게
+        /// 계산해 닙이 월드에서 1.4만큼 밀린 적이 있다.
+        ///
+        /// 모델은 메시 셋(깃판·깃대·닙 장식)으로 나뉘고, 가장 아래는 깃대 메시의 정점
+        /// (0.117, -5.817, -0.230)이다. 깃대가 펜촉부터 깃털 끝까지 관통하므로 위아래 끝이 모두
+        /// 이 메시에 있다. 값을 다시 잡을 일이 있으면 각 노드의 localPosition과 MeshRenderer의
+        /// localBounds를 읽어 확인한다.
         /// </summary>
-        private const float NibRollOffsetDegrees = -60f;
-        private const float CollarBandY = 0.60f;
-        private const float RachisStartY = 0.71f;
-        private const float RachisLength = 3.26f;
-        private const float BladeStartY = 0.75f;
-        private const float BladeLength = 3.22f;
-        private const float SpineCurveX = 0.035f;
-        private const float SpineCurveZ = 0.012f;
+        private static readonly Vector3 QuillModelOffset = new(-0.040f, 1.985f, 0.079f);
 
-        // ── 깃가지 갈라짐 격자 ─────────────────────────────────────────────
-        // 알베도 알파 슬릿·결 음영·노멀맵·메시 노치가 같은 격자를 쓴다.
-        // 상수 근거는 docs/quill_feather_appearance_plan.md의 픽셀 예산 절에 있다.
-        // SlitCycles × BarbSlant 가 정수이고 SlitCycles 가 BarbCount 의 배수라는 두 조건이
-        // 슬릿과 메시 노치 정렬의 전부다. 셋 중 하나라도 바꾸면 두 조건을 다시 확인해야 한다.
-        private const int BarbCount = 6;               // 실루엣 노치 수. slices 96 = 6 × 16 전제를 유지한다
-        private const int SlitCycles = 12;             // 텍스처 슬릿 수 = 2 × BarbCount
-        private const float BarbSlant = 1f / 6f;       // 깃가지가 깃대에서 33.8도 벌어진다
-        private const float SlitDuty = 0.40f;          // 완전 개방 시 슬릿이 한 주기에서 차지하는 비율
-        private const float RachisHold = 0.22f;        // 이 안쪽은 항상 붙어 있다 (깃대 + 깃가지 뿌리)
-        private const float VaneOpen = 0.92f;          // 여기부터 완전 개방
-        private const float SlitRootStart = 0.06f;
-        private const float SlitRootFull = 0.16f;
-        private const float SlitTipStart = 0.72f;
-        private const float SlitTipEnd = 0.88f;        // 팁은 막아 실루엣이 부서지지 않게 한다
-        private const float FeatherCutoff = 0.5f;      // 머티리얼 _Cutoff. TabletopPrefabBaker 의 alphaTestReferenceValue 와 같아야 한다
-        private const float MaxNotchDepth = 0.40f;
-        private const float NotchSharpness = 1.8f;
+        /// <summary>
+        /// 꽂힘 자세의 위치다. 닙 끝이 이 자리에 온다.
+        ///
+        /// 잉크 표면은 0.78에 있으므로 이 값은 그보다 0.08 아래, 즉 닙이 잉크에 잠긴 높이다.
+        /// 표면과 같은 높이로 두면 펜이 잉크통에 꽂혔다기보다 입구에 얹힌 것처럼 보인다.
+        /// x와 z가 0인 것은 잉크통 원통들이 모두 로컬 원점을 축으로 서 있기 때문이다.
+        /// </summary>
+        private static readonly Vector3 QuillRootLocalPosition = new(0f, 0.70f, 0f);
 
-        // 오프화이트 아이보리 깃털. 음영은 웜 그레이~베이지로만 얕게 준다.
-        private static readonly Color VaneIvory = new(0.95f, 0.94f, 0.91f);
-        private static readonly Color VaneShadowBeige = new(0.86f, 0.83f, 0.76f);
-        private static readonly Color BarbGrooveGray = new(0.78f, 0.75f, 0.70f);
-        private static readonly Color RachisHighlight = new(0.99f, 0.98f, 0.96f);
+        /// <summary>꽂힘 자세의 기울기. 사선 틸트 Pitch 40도, Yaw -65도, Roll 20도.</summary>
+        private static readonly Vector3 QuillRootLocalEuler = new(40f, -65f, 20f);
+
+        [SerializeField] private GameObject quillModel;
+        [SerializeField] private Material quillMaterial;
 
         private void Awake()
         {
@@ -117,25 +105,71 @@ namespace Tessera.Tabletop
             if (transform.childCount == 0 || IsGeometryMissing())
             {
                 BuildGeometry();
+                return;
+            }
+
+            RealignQuillModel();
+        }
+
+        /// <summary>
+        /// 이미 있는 깃펜 모델의 배치와 머티리얼을 상수에 맞춘다.
+        ///
+        /// 씬은 깃펜을 프리팹 인스턴스가 아니라 자기 오브젝트로 들고 있어서, 씬 파일에 예전
+        /// 값이 저장돼 있으면 로드할 때마다 그 값이 되살아난다. 배치를 상수에서 한 번 더
+        /// 강제하면 씬 파일이 무엇을 들고 있든 실행 시점의 자세가 코드와 같아진다. 닙 끝이
+        /// 루트 원점에 오지 않으면 필기 자세에서 펜이 가리키는 칸이 어긋나므로 중요하다.
+        /// </summary>
+        private void RealignQuillModel()
+        {
+            Transform quillRoot = transform.Find(QuillRootName);
+            Transform model = quillRoot != null ? quillRoot.Find(QuillModelName) : null;
+            if (model == null) return;
+
+            // 꽂힘 자세도 상수에서 다시 맞춘다. QuillHoverAnimator가 이 자세를 기준으로 삼으므로
+            // 씬에 옛 값이 남아 있으면 복귀할 때마다 그 자리로 돌아간다.
+            Quaternion rootRotation = Quaternion.Euler(QuillRootLocalEuler);
+            if (quillRoot.localPosition != QuillRootLocalPosition) quillRoot.localPosition = QuillRootLocalPosition;
+            if (quillRoot.localRotation != rootRotation) quillRoot.localRotation = rootRotation;
+
+            ResolveQuillAssets();
+
+            Vector3 scale = Vector3.one * QuillModelScale;
+            if (model.localPosition != QuillModelOffset) model.localPosition = QuillModelOffset;
+            if (model.localRotation != Quaternion.identity) model.localRotation = Quaternion.identity;
+            if (model.localScale != scale) model.localScale = scale;
+
+            if (quillMaterial == null) return;
+            foreach (MeshRenderer renderer in model.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (renderer.sharedMaterial == quillMaterial) continue;
+                if (Application.isPlaying) renderer.material = quillMaterial;
+                else renderer.sharedMaterial = quillMaterial;
             }
         }
 
+        /// <summary>
+        /// 깃펜이 모델 인스턴스로 서 있는지 본다.
+        ///
+        /// <see cref="QuillModelName"/> 노드를 이름으로 확인하는 이유는, 씬 파일에 예전 절차적
+        /// 깃펜(닙·칼라·깃대·깃판)이 저장돼 있을 수 있기 때문이다. 메시가 있는지만 보면 그것도
+        /// 통과해 버려 옛 깃펜이 그대로 남는다. 모델 안쪽 계층은 임포트 설정에 따라 이름이
+        /// 달라지므로 그 아래로는 이름을 보지 않는다.
+        /// </summary>
         private bool IsGeometryMissing()
         {
-            Transform quillRoot = transform.Find("Quill Pen Root");
+            Transform quillRoot = transform.Find(QuillRootName);
             if (quillRoot == null) return true;
-            Transform nib = quillRoot.Find("Quill_Nib");
-            Transform shaft = quillRoot.Find("Quill_Curved_Shaft");
-            Transform blade = quillRoot.Find("Quill_Feather_Blade");
-            if (nib == null || shaft == null || blade == null) return true;
-            if (IsMeshMissing(nib) || IsMeshMissing(shaft) || IsMeshMissing(blade)) return true;
-            return false;
-        }
+            if (quillRoot.childCount != 1) return true;
 
-        private static bool IsMeshMissing(Transform target)
-        {
-            MeshFilter filter = target.GetComponent<MeshFilter>();
-            return filter == null || filter.sharedMesh == null || filter.sharedMesh.vertexCount == 0;
+            Transform model = quillRoot.Find(QuillModelName);
+            if (model == null) return true;
+
+            foreach (MeshFilter filter in model.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (filter.sharedMesh != null && filter.sharedMesh.vertexCount > 0) return false;
+            }
+
+            return true;
         }
 
         public static InkwellAndQuill Create(Transform parent, Vector3 worldPosition, Quaternion? rotation = null, Vector3? scale = null)
@@ -172,48 +206,11 @@ namespace Tessera.Tabletop
 
             Shader litShader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
 
-            // 1. 머티리얼 구성
-            // 검은색 잉크통 머티리얼 (고광택 블랙 세라믹)
+            // 1. 잉크통 머티리얼 구성 (고광택 블랙 세라믹)
             Material blackCeramicBodyMat = CreateMaterial("Black Ceramic Body Material", litShader, new Color(0.08f, 0.08f, 0.09f), 0.25f, 0.90f);
             Material blackCeramicRimMat = CreateMaterial("Black Ceramic Rim Material", litShader, new Color(0.05f, 0.05f, 0.06f), 0.35f, 0.92f);
             Material liquidInkMat = CreateMaterial("Liquid Ink Material", litShader, new Color(0.02f, 0.02f, 0.02f), 0.10f, 0.96f);
             Material goldTrimMat = CreateMaterial("Antique Gold Trim Material", litShader, new Color(0.78f, 0.58f, 0.22f), 0.82f, 0.68f);
-
-            // 백랍/은 금속 (깃펜 닙 & 삼엽 장식 칼라)
-            Material pewterSilverMat = CreateMaterial("Pewter Silver Material", litShader, new Color(0.72f, 0.74f, 0.78f), 0.90f, 0.75f);
-
-            // 깃털 펜 머티리얼 (깃대 뼈대 & 스타일라이즈드 깃털 텍스처)
-            Material quillShaftMat = CreateMaterial("Quill Shaft Material", litShader, new Color(0.93f, 0.89f, 0.80f), 0.04f, 0.45f);
-            Material quillFeatherMat = CreateMaterial("Quill Feather Material", litShader, Color.white, 0.01f, 0.16f);
-
-            // 핸드페인티드 스타일의 깃털 알베도 & 노멀 텍스처 생성
-            Texture2D featherTexture = GenerateStylizedFeatherTexture();
-            Texture2D featherNormal = GenerateFeatherNormalMap();
-
-            quillFeatherMat.mainTexture = featherTexture;
-            if (quillFeatherMat.HasProperty("_BaseMap"))
-            {
-                quillFeatherMat.SetTexture("_BaseMap", featherTexture);
-            }
-            if (quillFeatherMat.HasProperty("_BumpMap"))
-            {
-                quillFeatherMat.SetTexture("_BumpMap", featherNormal);
-                quillFeatherMat.EnableKeyword("_NORMALMAP");
-                quillFeatherMat.SetFloat("_BumpScale", 1.0f);
-            }
-
-            // 깃가지 사이 틈은 알베도 알파로 뚫는다.
-            // _ALPHATEST_ON 키워드만으로는 부족하다. URP 머티리얼 검증기가 _AlphaClip 프로퍼티를 읽어
-            // 키워드와 렌더 큐, RenderType 태그를 재유도하므로 프로퍼티를 세팅하지 않으면
-            // 에셋으로 구울 때 키워드가 도로 꺼진다. 두 개를 반드시 같이 쓴다.
-            quillFeatherMat.SetFloat("_Cutoff", FeatherCutoff);
-            quillFeatherMat.EnableKeyword("_ALPHATEST_ON");
-            if (quillFeatherMat.HasProperty("_AlphaClip"))
-            {
-                quillFeatherMat.SetFloat("_AlphaClip", 1f);
-                quillFeatherMat.SetOverrideTag("RenderType", "TransparentCutout");
-                quillFeatherMat.renderQueue = (int)RenderQueue.AlphaTest;
-            }
 
             // 2. 원통형 블랙 잉크통 (Cylindrical Black Inkwell)
             GameObject inkwellGroup = new("Inkwell Body");
@@ -246,552 +243,74 @@ namespace Tessera.Tabletop
             SetupPart(inkSurface, inkwellGroup.transform, new Vector3(0f, 0.78f, 0f), Vector3.zero, new Vector3(0.56f, 0.01f, 0.56f), liquidInkMat);
 
             // 3. 2시 방향으로 우아하게 기울어진 깃펜 (Feather Quill Pen)
-            GameObject quillRoot = new("Quill Pen Root");
+            // 이 루트의 자세가 곧 QuillHoverAnimator의 도킹 자세다.
+            GameObject quillRoot = new(QuillRootName);
             quillRoot.layer = DecorationLayer;
             quillRoot.transform.SetParent(transform, false);
-            quillRoot.transform.localPosition = new Vector3(0f, 0.78f, 0f);
+            quillRoot.transform.localPosition = QuillRootLocalPosition;
+            quillRoot.transform.localRotation = Quaternion.Euler(QuillRootLocalEuler);
 
-            // 사선 틸트: Pitch 40°, Yaw -65°, Roll 20°
-            quillRoot.transform.localRotation = Quaternion.Euler(40f, -65f, 20f);
+            AttachQuillModel(quillRoot.transform);
+        }
 
-            // 3-1. 펜촉 (길고 가느다란 원뿔형 은 닙, 펜 전체 길이의 약 40%)
-            GameObject nibObj = new("Quill_Nib");
-            MeshFilter nibMf = nibObj.AddComponent<MeshFilter>();
-            nibMf.sharedMesh = BuildNibMesh();
-            nibObj.AddComponent<MeshRenderer>();
-            SetupPart(nibObj, quillRoot.transform, Vector3.zero, Vector3.zero, Vector3.one, pewterSilverMat);
+        private void AttachQuillModel(Transform quillRoot)
+        {
+            ResolveQuillAssets();
 
-            // 3-2. 펜대-깃털 연결 장식 칼라 (밴드 + 비드 + 삼엽 장식)
-            GameObject collarBand = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            collarBand.name = "Quill_Collar_Band";
-            SetupPart(collarBand, quillRoot.transform, new Vector3(0f, CollarBandY, 0f), Vector3.zero, new Vector3(0.105f, 0.055f, 0.105f), pewterSilverMat);
+            if (quillModel == null)
+            {
+                Debug.LogWarning($"[InkwellAndQuill] 깃펜 모델을 찾지 못해 잉크통만 만들었습니다. 경로={QuillModelPath}");
+                return;
+            }
 
-            GameObject collarBead = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            collarBead.name = "Quill_Collar_Bead";
-            SetupPart(collarBead, quillRoot.transform, new Vector3(0f, 0.68f, 0f), Vector3.zero, new Vector3(0.13f, 0.10f, 0.13f), pewterSilverMat);
+            GameObject model = Instantiate(quillModel, quillRoot, false);
+            model.name = QuillModelName;
+            model.transform.localPosition = QuillModelOffset;
+            model.transform.localRotation = Quaternion.identity;
+            model.transform.localScale = Vector3.one * QuillModelScale;
 
-            GameObject leafLeft = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            leafLeft.name = "Quill_Collar_Leaf_L";
-            SetupPart(leafLeft, quillRoot.transform, new Vector3(-0.075f, 0.75f, 0f), Vector3.zero, new Vector3(0.055f, 0.055f, 0.055f), pewterSilverMat);
+            foreach (Transform part in model.GetComponentsInChildren<Transform>(true))
+            {
+                part.gameObject.layer = DecorationLayer;
+            }
 
-            GameObject leafRight = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            leafRight.name = "Quill_Collar_Leaf_R";
-            SetupPart(leafRight, quillRoot.transform, new Vector3(0.075f, 0.75f, 0f), Vector3.zero, new Vector3(0.055f, 0.055f, 0.055f), pewterSilverMat);
+            foreach (Collider collider in model.GetComponentsInChildren<Collider>(true))
+            {
+                if (Application.isPlaying) Destroy(collider);
+                else DestroyImmediate(collider);
+            }
 
-            GameObject leafCenter = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            leafCenter.name = "Quill_Collar_Leaf_C";
-            SetupPart(leafCenter, quillRoot.transform, new Vector3(0f, 0.81f, 0f), Vector3.zero, new Vector3(0.055f, 0.055f, 0.055f), pewterSilverMat);
+            foreach (MeshRenderer renderer in model.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (quillMaterial != null)
+                {
+                    if (Application.isPlaying) renderer.material = quillMaterial;
+                    else renderer.sharedMaterial = quillMaterial;
+                }
 
-            // 3-3. 프로시저럴 곡선 깃대 (Tapered Curved Spine / Rachis)
-            GameObject shaftObj = new("Quill_Curved_Shaft");
-            MeshFilter shaftMf = shaftObj.AddComponent<MeshFilter>();
-            shaftMf.sharedMesh = BuildCurvedShaftMesh();
-            MeshRenderer shaftMr = shaftObj.AddComponent<MeshRenderer>();
-            shaftMr.sharedMaterial = quillShaftMat;
-            SetupPart(shaftObj, quillRoot.transform, Vector3.zero, Vector3.zero, Vector3.one, quillShaftMat);
-
-            // 3-4. 프로시저럴 정교한 3D 깃판 (Procedural Stylized Feather Blade)
-            GameObject featherObj = new("Quill_Feather_Blade");
-            MeshFilter featherMf = featherObj.AddComponent<MeshFilter>();
-            featherMf.sharedMesh = BuildProceduralFeatherMesh();
-            MeshRenderer featherMr = featherObj.AddComponent<MeshRenderer>();
-            featherMr.sharedMaterial = quillFeatherMat;
-            SetupPart(featherObj, quillRoot.transform, Vector3.zero, Vector3.zero, Vector3.one, quillFeatherMat);
+                renderer.shadowCastingMode = ShadowCastingMode.TwoSided;
+                renderer.receiveShadows = true;
+            }
         }
 
         /// <summary>
-        /// 깃대(Rachis)와 깃판이 공유하는 스파인 오프셋. 두 메쉬가 같은 곡선을 따라야 깃판이 깃대에서 떨어지지 않는다.
-        /// 칼라 아래(닙 구간)는 t가 0으로 클램프되어 오프셋이 없다.
+        /// 직렬화 참조가 비어 있으면 에디터에서 경로로 채운다. 빌드에는 프리팹에 구워진 참조가
+        /// 실려 있으므로 이 폴백이 필요 없다. 주사위 모델을 다루는
+        /// <c>AugmentedYachtController.Awake</c>와 같은 방식이다.
         /// </summary>
-        private static Vector3 SpineOffset(float y)
+        private void ResolveQuillAssets()
         {
-            float t = Mathf.Clamp01(Mathf.InverseLerp(RachisStartY, RachisStartY + RachisLength, y));
-            return new Vector3(
-                Mathf.Pow(t, 1.35f) * SpineCurveX,
-                0f,
-                Mathf.Sin(t * Mathf.PI * 0.85f) * SpineCurveZ);
-        }
-
-        /// <summary>
-        /// 만년필 닙. 아래쪽 끝(y=0)이 펜촉이다.
-        ///
-        /// 실물 닙은 금속판 한 장을 둥글게 만 것이라, 굽은 반지름은 어디서나 같고 판을 자른 모양만
-        /// 다르다. 그래서 여기서도 마는 반지름 하나를 고정하고 <b>판의 폭</b>과 <b>감는 각</b>만
-        /// 위치에 따라 바꾼다. 그 둘이 함께 움직이면 실루엣이 저절로 원통+오각형이 된다.
-        ///
-        ///   - 뒤쪽 <see cref="NibCylinderRatio"/> 구간: 감는 각이 한 바퀴에 가까워 <b>원통</b>이다.
-        ///     펜 몸통에 끼워지는 부분이라 굵기가 일정하다.
-        ///   - <see cref="NibShoulderRatio"/> 지점: 감는 각이 반 바퀴라 폭이 가장 넓다. 이것이 어깨다.
-        ///   - 어깨에서 끝까지: 폭이 줄며 두 변이 한 점으로 모인다.
-        ///
-        /// 위에서 본 윤곽은 밑변 하나, 원통이 만드는 나란한 두 변, 끝으로 모이는 두 변, 합해서
-        /// 오각형이다. 어깨 모서리는 폭 곡선의 기울기를 0으로 만들어 살짝 둥글린다.
-        ///
-        /// 슬릿·숨구멍·각인 같은 세부는 넣지 않는다. 픽셀 필터를 지나면 남지 않는다.
-        /// </summary>
-        private static Mesh BuildNibMesh()
-        {
-            const int lengthSegments = 24;
-
-            // 단면 호를 몇 점으로 그릴지. 앞뒤 두 겹이 한 고리를 이루므로 고리 정점은 이것의 두 배다.
-            const int arcPoints = 10;
-            const int ringVertices = arcPoints * 2;
-
-            // 한 바퀴를 다 감으면 호의 양 끝이 겹쳐 넓이 0인 삼각형이 생긴다. 살짝 덜 감아 실틈을
-            // 남긴다. 실물도 판을 말아 붙이지 않으므로 아래쪽에 같은 틈이 있다.
-            const float maxWrap = Mathf.PI * 0.96f;
-
-            const float shoulderY = NibLength * NibShoulderRatio;
-            const float cylinderY = NibLength * NibCylinderRatio;
-
-            Mesh mesh = new() { name = "Procedural_Quill_Nib" };
-
-            Vector3[] vertices = new Vector3[(lengthSegments + 1) * ringVertices];
-            Vector2[] uvs = new Vector2[vertices.Length];
-
-            for (int s = 0; s <= lengthSegments; s++)
+#if UNITY_EDITOR
+            if (quillModel == null)
             {
-                float t = (float)s / lengthSegments;
-                float y = t * NibLength;
-
-                Vector3 spine = SpineOffset(y);
-                Vector3 center = new(spine.x, y, spine.z);
-
-                // 판의 반폭. 끝에서 0, 어깨에서 마는 반지름과 같아진다. 어깨에서 기울기가 0이라
-                // 모서리가 각지지 않고 둥글게 모인다.
-                float taper = Mathf.Clamp01(y / shoulderY);
-                float halfWidth = NibRollRadius * (1f - Mathf.Pow(1f - taper, NibTaperExponent));
-
-                // 감는 각. 어깨까지는 폭이 정하고, 어깨부터 원통 구간까지 한 바퀴로 닫힌다.
-                float openWrap = Mathf.Asin(Mathf.Clamp01(halfWidth / NibRollRadius));
-                float closing = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(shoulderY, cylinderY, y));
-                float wrap = Mathf.Lerp(openWrap, maxWrap, closing);
-
-                float halfThickness = Mathf.Lerp(NibTipThickness, NibThickness, taper) * 0.5f;
-
-                for (int a = 0; a < arcPoints; a++)
-                {
-                    float along = (float)a / (arcPoints - 1);
-                    float angle = (NibRollOffsetDegrees * Mathf.Deg2Rad) + Mathf.Lerp(-wrap, wrap, along);
-                    Vector3 direction = new(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
-
-                    // 고리는 바깥 면을 -각에서 +각으로 돈 뒤 안쪽 면을 되짚어 닫는다.
-                    int outer = (s * ringVertices) + a;
-                    int inner = (s * ringVertices) + (ringVertices - 1 - a);
-
-                    vertices[outer] = center + (direction * (NibRollRadius + halfThickness));
-                    vertices[inner] = center + (direction * (NibRollRadius - halfThickness));
-                    uvs[outer] = new Vector2(along * 0.5f, t);
-                    uvs[inner] = new Vector2(1f - (along * 0.5f), t);
-                }
+                quillModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(QuillModelPath);
             }
 
-            // 끝 고리는 한 점으로 모은다. 폭도 감는 각도 0이라 이미 거의 모여 있지만, 완전히 붙여야
-            // 닙 끝이 뭉툭하게 보이지 않는다. 닙 끝은 애니메이터가 종이에 대는 기준점이기도 하다.
-            Vector3 tip = SpineOffset(0f);
-            for (int a = 0; a < ringVertices; a++) vertices[a] = new Vector3(tip.x, 0f, tip.z);
-
-            int[] triangles = new int[lengthSegments * ringVertices * 6];
-            int triIdx = 0;
-
-            for (int s = 0; s < lengthSegments; s++)
+            if (quillMaterial == null)
             {
-                for (int r = 0; r < ringVertices; r++)
-                {
-                    int nextR = (r + 1) % ringVertices;
-
-                    int i0 = (s * ringVertices) + r;
-                    int i1 = ((s + 1) * ringVertices) + r;
-                    int i2 = ((s + 1) * ringVertices) + nextR;
-                    int i3 = (s * ringVertices) + nextR;
-
-                    triangles[triIdx++] = i0;
-                    triangles[triIdx++] = i1;
-                    triangles[triIdx++] = i2;
-
-                    triangles[triIdx++] = i0;
-                    triangles[triIdx++] = i2;
-                    triangles[triIdx++] = i3;
-                }
+                quillMaterial = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(QuillMaterialPath);
             }
-
-            mesh.vertices = vertices;
-            mesh.uv = uvs;
-            mesh.triangles = triangles;
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
-            return mesh;
-        }
-
-        /// <summary>
-        /// 깃털 중심을 따라 완만하게 위로 뻗어나가며 가늘어지는 곡선형 깃대(Rachis) 3D 메쉬 생성
-        /// </summary>
-        private static Mesh BuildCurvedShaftMesh()
-        {
-            return BuildTaperedTubeMesh("Procedural_Quill_Shaft", RachisStartY, RachisLength, 0.030f, 0.004f, 1f, 28);
-        }
-
-        /// <summary>
-        /// 스파인을 따라 굵기가 변하는 개방형 튜브 메쉬. 닙과 깃대가 공유한다.
-        /// radiusGamma가 1보다 크면 시작 굵기를 더 오래 유지한다.
-        /// </summary>
-        private static Mesh BuildTaperedTubeMesh(
-            string meshName, float startY, float totalLength,
-            float baseRadius, float tipRadius, float radiusGamma, int segments)
-        {
-            Mesh mesh = new() { name = meshName };
-
-            const int radialSegments = 8;
-
-            int vertCount = (segments + 1) * radialSegments;
-            Vector3[] vertices = new Vector3[vertCount];
-            Vector3[] normals = new Vector3[vertCount];
-            Vector2[] uvs = new Vector2[vertCount];
-
-            for (int s = 0; s <= segments; s++)
-            {
-                float t = (float)s / segments;
-                float y = startY + t * totalLength;
-
-                Vector3 spine = SpineOffset(y);
-                Vector3 center = new(spine.x, y, spine.z);
-
-                float radius = Mathf.Lerp(baseRadius, tipRadius, Mathf.Pow(t, radiusGamma));
-
-                for (int r = 0; r < radialSegments; r++)
-                {
-                    float angle = ((float)r / radialSegments) * Mathf.PI * 2f;
-                    float cos = Mathf.Cos(angle);
-                    float sin = Mathf.Sin(angle);
-
-                    Vector3 normal = new(cos, 0f, sin);
-                    Vector3 pos = center + new Vector3(cos * radius, 0f, sin * radius);
-
-                    int idx = s * radialSegments + r;
-                    vertices[idx] = pos;
-                    normals[idx] = normal;
-                    uvs[idx] = new Vector2((float)r / radialSegments, t);
-                }
-            }
-
-            int triCount = segments * radialSegments * 6;
-            int[] triangles = new int[triCount];
-            int triIdx = 0;
-
-            for (int s = 0; s < segments; s++)
-            {
-                for (int r = 0; r < radialSegments; r++)
-                {
-                    int nextR = (r + 1) % radialSegments;
-
-                    int i0 = s * radialSegments + r;
-                    int i1 = (s + 1) * radialSegments + r;
-                    int i2 = (s + 1) * radialSegments + nextR;
-                    int i3 = s * radialSegments + nextR;
-
-                    triangles[triIdx++] = i0;
-                    triangles[triIdx++] = i1;
-                    triangles[triIdx++] = i2;
-
-                    triangles[triIdx++] = i0;
-                    triangles[triIdx++] = i2;
-                    triangles[triIdx++] = i3;
-                }
-            }
-
-            mesh.vertices = vertices;
-            mesh.normals = normals;
-            mesh.uv = uvs;
-            mesh.triangles = triangles;
-            mesh.RecalculateBounds();
-            return mesh;
-        }
-
-        /// <summary>
-        /// 넓은 깃면 컬럼의 폭 배수. 1이면 온전하고 작을수록 깊게 파인다.
-        /// MaxNotchDepth 0.40 은 원칙적 상한이다. 컬럼 최외곽에서 좌측 반폭이
-        /// baseWidth × 1.20 × 0.60 = baseWidth × 0.72 로 우측 반폭과 정확히 같아진다.
-        /// 더 깊이 가면 노치 바닥에서 좌우 비대칭이 뒤집혀 Primary Feather 실루엣이 깨진다.
-        /// </summary>
-        /// <param name="t">깃판 하단 0 에서 팁 1 까지의 정규화 높이</param>
-        /// <param name="colFactor">-1(좌 외곽) ~ 0(중심) ~ 1(우 외곽)</param>
-        public static float FeatherNotchScale(float t, float colFactor)
-        {
-            if (colFactor >= 0f) return 1f; // 좁은 깃면에는 노치를 넣지 않는다
-
-            float k = Mathf.Repeat(t * BarbCount, 1f);
-            float notchFade = 1f - Mathf.InverseLerp(0.55f, 0.95f, t); // 팁 근처는 갈라짐 없음
-            float notchDepth = MaxNotchDepth * Mathf.Pow(k, NotchSharpness) * notchFade;
-            return 1f - notchDepth * -colFactor;
-        }
-
-        /// <summary>
-        /// 실제 조류 깃털(Primary Feather)의 우아한 비대칭 타원형 실루엣과 부드러운 아치 곡면을 가진 3D 깃판 메쉬 생성
-        /// </summary>
-        private static Mesh BuildProceduralFeatherMesh()
-        {
-            Mesh mesh = new() { name = "Procedural_Quill_Feather_Blade" };
-
-            const int slices = 96;          // 높이 방향 세그먼트 (깃가지 6개 × 16슬라이스로 노치 경계 정렬)
-            const int cols = 7;             // 횡단면 정점 수 (더 둥글고 부드러운 날개 곡면)
-            const float startY = BladeStartY;
-            const float totalLength = BladeLength;
-
-            int vertCount = (slices + 1) * cols;
-            Vector3[] vertices = new Vector3[vertCount];
-            Vector2[] uvs = new Vector2[vertCount];
-
-            for (int s = 0; s <= slices; s++)
-            {
-                float t = (float)s / slices; // 0.0 (하단) ~ 1.0 (최상단 팁)
-                float y = startY + t * totalLength;
-
-                Vector3 spine = SpineOffset(y);
-                Vector3 center = new(spine.x, y, spine.z);
-
-                // 1. 좁고 길쭉한 깃털 실루엣
-                // - 하단 기저부(0.0~0.12): 부드러운 확장
-                // - 최대 폭(0.30f)은 30% 높이
-                // - 상단(0.30~1.0): 긴 코사인 수렴으로 날카로운 팁 마감
-                float baseWidth;
-                if (t < 0.12f)
-                {
-                    float u = t / 0.12f;
-                    baseWidth = Mathf.Sin(u * Mathf.PI * 0.5f) * 0.20f;
-                }
-                else if (t < 0.30f)
-                {
-                    float u = (t - 0.12f) / 0.18f;
-                    baseWidth = Mathf.Lerp(0.20f, 0.30f, Mathf.Sin(u * Mathf.PI * 0.5f));
-                }
-                else
-                {
-                    float u = (t - 0.30f) / 0.70f;
-                    // 부동소수 오차로 cos가 미세 음수가 되면 Pow가 NaN을 낸다. 반드시 클램프한다.
-                    float taper = Mathf.Max(0f, Mathf.Cos(u * Mathf.PI * 0.5f));
-                    baseWidth = Mathf.Pow(taper, 0.9f) * 0.30f;
-                }
-
-                // 2. 강한 비대칭 폭 (좌측: 바깥 날개 1.20, 우측: 안쪽 날개 0.72)
-                float leftWidth = baseWidth * 1.20f;
-                float rightWidth = baseWidth * 0.72f;
-
-                // 3. 횡단면 7개 정점 계산 (중심 깃대에서 외곽으로 완만하게 둥글어지는 파라볼릭 아치)
-                for (int c = 0; c < cols; c++)
-                {
-                    float colFactor = (c - 3) / 3.0f; // -1.0(좌외곽) ~ 0(중심) ~ 1.0(우외곽)
-                    float spanX = colFactor < 0f
-                        ? colFactor * leftWidth * FeatherNotchScale(t, colFactor)
-                        : colFactor * rightWidth;
-
-                    // 깃대 중심에서 외곽으로 갈수록 뒤쪽(-Z)으로 완만하게 굽어지는 부드러운 돔 곡면
-                    float camberZ = -Mathf.Pow(Mathf.Abs(colFactor), 1.6f) * 0.038f;
-
-                    Vector3 pos = center + new Vector3(spanX, 0f, camberZ);
-
-                    int idx = s * cols + c;
-                    vertices[idx] = pos;
-
-                    // UV 매핑: U는 0(좌) ~ 1(우), V는 0(하) ~ 1(상)
-                    float uCoord = (float)c / (cols - 1);
-                    uvs[idx] = new Vector2(uCoord, t);
-                }
-            }
-
-            // 앞면 인덱스로 노멀을 먼저 계산한다.
-            int quadCount = slices * (cols - 1);
-            int[] frontTriangles = new int[quadCount * 6];
-            int triIdx = 0;
-
-            for (int s = 0; s < slices; s++)
-            {
-                for (int c = 0; c < cols - 1; c++)
-                {
-                    int i0 = s * cols + c;
-                    int i1 = (s + 1) * cols + c;
-                    int i2 = (s + 1) * cols + (c + 1);
-                    int i3 = s * cols + (c + 1);
-
-                    frontTriangles[triIdx++] = i0;
-                    frontTriangles[triIdx++] = i1;
-                    frontTriangles[triIdx++] = i2;
-
-                    frontTriangles[triIdx++] = i0;
-                    frontTriangles[triIdx++] = i2;
-                    frontTriangles[triIdx++] = i3;
-                }
-            }
-
-            mesh.vertices = vertices;
-            mesh.uv = uvs;
-            mesh.triangles = frontTriangles;
-            mesh.RecalculateNormals();
-            Vector3[] frontNormals = mesh.normals;
-
-            // 양면 렌더링: 뒷면은 정점을 복제해 반대 노멀을 준다.
-            // 정점을 공유하면 RecalculateNormals가 앞뒤 노멀을 평균 내 음영이 무너진다.
-            Vector3[] doubledVertices = new Vector3[vertCount * 2];
-            Vector3[] doubledNormals = new Vector3[vertCount * 2];
-            Vector2[] doubledUvs = new Vector2[vertCount * 2];
-            for (int i = 0; i < vertCount; i++)
-            {
-                doubledVertices[i] = vertices[i];
-                doubledVertices[i + vertCount] = vertices[i];
-                doubledNormals[i] = frontNormals[i];
-                doubledNormals[i + vertCount] = -frontNormals[i];
-                doubledUvs[i] = uvs[i];
-                doubledUvs[i + vertCount] = uvs[i];
-            }
-
-            int[] triangles = new int[frontTriangles.Length * 2];
-            Array.Copy(frontTriangles, triangles, frontTriangles.Length);
-            for (int i = 0; i < frontTriangles.Length; i += 3)
-            {
-                int target = frontTriangles.Length + i;
-                triangles[target] = frontTriangles[i] + vertCount;
-                triangles[target + 1] = frontTriangles[i + 2] + vertCount;
-                triangles[target + 2] = frontTriangles[i + 1] + vertCount;
-            }
-
-            mesh.Clear();
-            mesh.vertices = doubledVertices;
-            mesh.normals = doubledNormals;
-            mesh.uv = doubledUvs;
-            mesh.triangles = triangles;
-            mesh.RecalculateBounds();
-            return mesh;
-        }
-
-        /// <summary>
-        /// 깃가지 사이 틈의 알파. 1이면 깃면, 0이면 뚫린 틈이다.
-        /// 깃대 쪽(RachisHold 안쪽)과 뿌리, 팁은 붙어 있고 외곽으로 갈수록 벌어진다.
-        /// 알파 클립용이라 이진값을 준다. 반값은 밉맵 커버리지 보존 계산을 흐린다.
-        /// u 에 대해 대칭이라 임포터가 랩 모드를 Repeat 으로 바꿔도 좌우 이음매가 생기지 않는다.
-        /// </summary>
-        public static float FeatherSlitAlpha(float u, float v)
-        {
-            float dist = Mathf.Abs(u - 0.5f) * 2f;
-
-            float openness = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(RachisHold, VaneOpen, dist));
-            float rootFade = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(SlitRootStart, SlitRootFull, v));
-            float tipFade = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(SlitTipStart, SlitTipEnd, v));
-            float amount = openness * rootFade * tipFade;
-
-            float phase = Mathf.Repeat((v - dist * BarbSlant) * SlitCycles, 1f);
-            float toCenter = Mathf.Min(phase, 1f - phase) * 2f; // 0 = 슬릿 중심, 1 = 깃가지 중심
-
-            return toCenter < SlitDuty * amount ? 0f : 1f;
-        }
-
-        /// <summary>깃털 알베도 색. 알파는 FeatherSlitAlpha 가 따로 정한다.</summary>
-        public static Color FeatherAlbedo(float u, float v)
-        {
-            float distFromCenter = Mathf.Abs(u - 0.5f) * 2.0f; // 0.0 (중심) ~ 1.0 (외곽)
-            bool isNarrowVane = u > 0.5f;
-
-            // 1. 깃대에서 바깥쪽으로 뻗어나가는 사선 결(Barb) 좌표
-            float barbLine = v - distFromCenter * BarbSlant;
-
-            // 굵은 수채화 붓결 (다중 주파수 합성)
-            float barbNoise1 = Mathf.Sin(barbLine * SlitCycles * Mathf.PI * 2f);
-            float barbNoise2 = Mathf.Sin(barbLine * SlitCycles * 2 * Mathf.PI * 2f);
-            float barbPattern = (barbNoise1 * 0.6f + barbNoise2 * 0.4f) * 0.18f;
-
-            // 2. 비대칭 그라데이션.
-            //    넓은 깃면(u < 0.5)은 아이보리 -> 베이지, 좁은 깃면(u > 0.5)은 아이보리 -> 그레이로 얕게 어두워진다.
-            float blendDist = Mathf.Clamp01(Mathf.Pow(distFromCenter, 1.15f) + barbPattern);
-            Color col = isNarrowVane
-                ? Color.Lerp(VaneIvory, BarbGrooveGray, blendDist)
-                : Color.Lerp(VaneIvory, VaneShadowBeige, blendDist);
-
-            // 3. 중심 깃대(Spine) 하이라이트
-            if (distFromCenter < 0.08f)
-            {
-                float spineBlend = 1.0f - (distFromCenter / 0.08f);
-                col = Color.Lerp(col, RachisHighlight, spineBlend * 0.60f);
-            }
-
-            return col;
-        }
-
-        /// <summary>
-        /// 40° 사선 깃털 결(Fine Barbs)과 오프화이트 아이보리 그라데이션이 적용된 512x1024 깃털 텍스처 생성
-        /// </summary>
-        private static Texture2D GenerateStylizedFeatherTexture()
-        {
-            const int width = 512;
-            const int height = 1024;
-            Texture2D tex = new(width, height, TextureFormat.RGBA32, false)
-            {
-                name = "Stylized_Quill_Feather_Albedo",
-                wrapMode = TextureWrapMode.Clamp,
-                filterMode = FilterMode.Bilinear
-            };
-
-            Color[] pixels = new Color[width * height];
-
-            for (int y = 0; y < height; y++)
-            {
-                float v = (float)y / height; // 0 (하단) ~ 1 (상단)
-
-                for (int x = 0; x < width; x++)
-                {
-                    float u = (float)x / width; // 0 (넓은 깃면 외곽) ~ 0.5 (깃대) ~ 1 (좁은 깃면 외곽)
-
-                    Color col = FeatherAlbedo(u, v);
-                    col.a = FeatherSlitAlpha(u, v);
-                    pixels[y * width + x] = col;
-                }
-            }
-
-            tex.SetPixels(pixels);
-            tex.Apply(false, true);
-            return tex;
-        }
-
-        /// <summary>
-        /// 깃털 결(Barb)을 입체적으로 살려주는 512x1024 프로시저럴 노멀맵 생성
-        /// </summary>
-        private static Texture2D GenerateFeatherNormalMap()
-        {
-            const int width = 512;
-            const int height = 1024;
-            Texture2D tex = new(width, height, TextureFormat.RGBA32, false)
-            {
-                name = "Stylized_Quill_Feather_Normal",
-                wrapMode = TextureWrapMode.Clamp,
-                filterMode = FilterMode.Bilinear
-            };
-
-            Color[] pixels = new Color[width * height];
-
-            for (int y = 0; y < height; y++)
-            {
-                float v = (float)y / height;
-
-                for (int x = 0; x < width; x++)
-                {
-                    float u = (float)x / width;
-                    float distFromCenter = Mathf.Abs(u - 0.5f) * 2.0f;
-                    float sign = u >= 0.5f ? 1f : -1f;
-
-                    // 사선 방향의 결 노멀 벡터 계산
-                    float barbLine = v - distFromCenter * BarbSlant;
-                    float barbSlope = Mathf.Cos(barbLine * SlitCycles * Mathf.PI * 2f);
-
-                    float nx = -sign * 0.25f + barbSlope * 0.22f;
-                    float ny = barbSlope * 0.18f;
-                    float nz = 1.0f;
-
-                    Vector3 norm = new Vector3(nx, ny, nz).normalized;
-                    // [-1, 1] -> [0, 1]
-                    pixels[y * width + x] = new Color(norm.x * 0.5f + 0.5f, norm.y * 0.5f + 0.5f, norm.z * 0.5f + 0.5f, 1.0f);
-                }
-            }
-
-            tex.SetPixels(pixels);
-            tex.Apply(false, true);
-            return tex;
+#endif
         }
 
         private static void SetupPart(GameObject obj, Transform parent, Vector3 localPos, Vector3 localRot, Vector3 localScale, Material mat)
