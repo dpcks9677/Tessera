@@ -21,6 +21,22 @@ namespace Tessera.Games.Yacht
             return result;
         }
 
+        /// <summary>
+        /// 보유자를 가리지 않고 판에 존재하는 모든 증강에서 고릅니다. 결투처럼 양쪽 플레이어의
+        /// 결과를 함께 보고 판정하는 시점에서는 처리 주체와 보유자가 다르므로 이쪽을 씁니다.
+        /// </summary>
+        public static List<T> CollectAll<T>(YachtGameState state) where T : class
+        {
+            var result = new List<T>();
+            if (state?.AugmentPlayers == null) return result;
+
+            for (int i = 0; i < state.AugmentPlayers.Length; i++)
+                Append(state.AugmentPlayers[i]?.OwnedIds, result);
+            Append(state.GlobalAugmentIds, result);
+            if (result.Count > 1) result.Sort(CompareHandlers);
+            return result;
+        }
+
         private static void Append<T>(IReadOnlyList<string> augmentIds, List<T> result) where T : class
         {
             for (int i = 0; i < (augmentIds?.Count ?? 0); i++)

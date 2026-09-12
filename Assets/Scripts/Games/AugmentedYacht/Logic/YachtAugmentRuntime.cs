@@ -709,9 +709,31 @@ namespace Tessera.Games.Yacht
                 commitHandlers[i].AfterScoreCommit(commitContext);
             }
 
-            Duel.RecordAndResolve(state, playerIndex, finalScore, events);
+            // 라운드 점수 기록은 증강 보유와 무관한 코어 상태다. 결투를 라운드 도중에 획득하는
+            // 경로(드래프트 라운드의 턴 전환)가 있어 보유 여부로 게이팅하면 먼저 기입한 쪽의
+            // 점수가 비어 판정이 불가능해진다. 그래서 기록은 항상 하고 판정만 훅에 맡긴다.
+            RecordRoundScore(state, playerIndex, finalScore);
+
+            List<IOnTurnEnded> turnEndHandlers = YachtAugmentDispatcher.CollectAll<IOnTurnEnded>(state);
+            for (int i = 0; i < turnEndHandlers.Count; i++)
+            {
+                commitContext.BindAugment(((IAugmentHandler)turnEndHandlers[i]).Id);
+                turnEndHandlers[i].OnTurnEnded(commitContext);
+            }
+
             state.AugmentPlayers[playerIndex].TurnsTaken++;
             return events.ToArray();
+        }
+
+        /// <summary>이번 라운드에 각 플레이어가 확정한 점수를 기록합니다. 라운드가 넘어가면 초기화합니다.</summary>
+        private static void RecordRoundScore(YachtGameState state, int playerIndex, int finalScore)
+        {
+            if (state.RoundScoresRound != state.CurrentRound)
+            {
+                state.RoundScoresRound = state.CurrentRound;
+                state.RoundScores = new[] { int.MinValue, int.MinValue };
+            }
+            state.RoundScores[playerIndex] = finalScore;
         }
 
         public void PrepareTurn(YachtGameState state, int playerIndex, IRandomSource random, bool growPromotion)

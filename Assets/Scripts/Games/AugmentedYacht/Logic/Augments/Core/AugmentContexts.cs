@@ -73,6 +73,25 @@ namespace Tessera.Games.Yacht
             Emit(message, points);
         }
 
+        /// <summary>
+        /// 지정한 플레이어에게 증강 보너스 점수를 더하고 그 플레이어 명의로 이벤트를 발행합니다.
+        /// 결투처럼 처리 주체가 아닌 플레이어에게 보상이 가는 증강이 씁니다.
+        /// </summary>
+        public void AddBonusTo(int targetPlayerIndex, int points, string message)
+        {
+            PlayerScoreData target = Game.Players[targetPlayerIndex];
+            target.augmentBonusScore += points;
+            target.RecalculateTotal();
+            events?.Add(new YachtGameEvent
+            {
+                Type = YachtGameEventType.AugmentTriggered,
+                PlayerIndex = targetPlayerIndex,
+                AugmentId = AugmentId,
+                Score = points,
+                Message = message
+            });
+        }
+
         internal void BindAugment(string augmentId) => AugmentId = augmentId;
     }
 

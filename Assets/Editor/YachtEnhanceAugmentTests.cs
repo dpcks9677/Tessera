@@ -267,6 +267,27 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
+        public void Duel_ResolvesWhenAcquiredAfterOpponentAlreadyCommittedInSameRound()
+        {
+            // 드래프트는 라운드 1·6·9의 턴 전환에서 열리므로, 상대가 이미 기입한 뒤에
+            // 결투를 얻는 경로가 존재한다. 라운드 점수 기록이 증강 보유와 무관하게
+            // 항상 수행되어야 이 경우에도 판정이 성립한다.
+            var random = new SequenceRandom(0);
+            state.CurrentRound = 1;
+
+            // P0가 결투 없이 20점 기입
+            runtime.AfterScoreCommit(state, 0, 1, ScoreCategory.Choice, 20, 20, state.Dice, random);
+
+            // 같은 라운드 도중에 P1이 결투 획득
+            AcquireAugment(YachtAugmentRuntime.DuelId, 1);
+            int bonusBefore = state.Players[1].augmentBonusScore;
+
+            // P1이 25점 기입 -> P1 승리 (+10점)
+            runtime.AfterScoreCommit(state, 1, 1, ScoreCategory.FourOfAKind, 25, 25, state.Dice, random);
+            Assert.That(state.Players[1].augmentBonusScore - bonusBefore, Is.EqualTo(10));
+        }
+
+        [Test]
         public void PiggyBank_EarnsThreeCoinsPerRemainingRollAndTwelvePointsPerTwelveCoins()
         {
             var random = new SequenceRandom(0);
