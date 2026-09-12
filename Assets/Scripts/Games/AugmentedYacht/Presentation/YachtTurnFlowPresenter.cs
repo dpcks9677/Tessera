@@ -460,7 +460,7 @@ namespace Tessera.Games.AugmentedYacht
                 return;
             }
 
-            bool canRoll = gameSession.CanRoll && Phase.IsInteractive() && !dice.AllKept;
+            bool canRoll = gameSession.CanRoll && Phase.IsInteractive() && !dice.AllKept && smokeRoutine == null;
             SetRollInteraction(canRoll);
 
             if (gameSession.Phase == YachtGamePhase.ScoreSelection && Phase != PresentationPhase.TurnTransition)
@@ -482,6 +482,7 @@ namespace Tessera.Games.AugmentedYacht
         public bool CanInitiateRoll()
         {
             if (gameSession == null || !gameSession.CanRoll || !Phase.IsInteractive()) return false;
+            if (smokeRoutine != null) return false;
             return !dice.AllKept;
         }
 
@@ -525,6 +526,7 @@ namespace Tessera.Games.AugmentedYacht
         public void UseAugmentAction(string augmentId)
         {
             if (gameSession == null || !Phase.IsInteractive()) return;
+            if (smokeRoutine != null) return;
             if (!gameSession.TryUseAugmentAction(augmentId, out pendingRollResult))
             {
                 UpdateStatusText(pendingRollResult?.ErrorMessage);
@@ -548,6 +550,7 @@ namespace Tessera.Games.AugmentedYacht
                 // AugmentVfxPlanner가 테이블 주도로 한다(사양서 §3.4).
                 if (diceCountUnchanged && HasDiceSmokeSwap(pendingRollResult))
                 {
+                    SetRollInteraction(false);
                     smokeRoutine = StartCoroutine(RunDiceSmokeSwapSequence(GetAugmentEventMessage(pendingRollResult)));
                     return;
                 }
@@ -647,13 +650,14 @@ namespace Tessera.Games.AugmentedYacht
 
             yield return new WaitForSeconds(SmokeTotalSeconds - SmokeDigitsShowSeconds);
             smokeRoutine = null;
-            RefreshRollBudgetState();
+            SetRollInteraction(CanInitiateRoll());
         }
 
         public bool SetDieKept(int index, bool kept)
         {
             if (gameSession == null || !gameSession.CanKeepDice) return false;
             if (Phase != PresentationPhase.Settled) return false;
+            if (smokeRoutine != null) return false;
             if (index < 0 || index >= dice.DiceCount || !dice.HasVisual(index)) return false;
             if (dice.IsKept(index) == kept) return true;
 

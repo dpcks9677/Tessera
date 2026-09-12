@@ -42,7 +42,7 @@ namespace Tessera.Editor.Tests
         #region 주사위 6종
 
         [Test]
-        public void 묵직한주사위_슬롯1개를_Heavy로_배정하고_4에서6_눈금만_나온다()
+        public void HeavyDice_AssignsOneSlotToHeavyAndRollsOnlyFourToSix()
         {
             state.AugmentPlayers[0].OwnedIds = new[] { YachtAugmentRuntime.WeightedDiceId };
             runtime.ConfigureDice(state, 0, state.Dice);
@@ -59,7 +59,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 황금주사위_슬롯1개를_Golden으로_배정하고_1에서3일때_2점보너스를준다()
+        public void GoldenDice_AssignsOneSlotToGoldenAndGivesTwoPointBonusOnOneToThree()
         {
             state.AugmentPlayers[0].OwnedIds = new[] { YachtAugmentRuntime.GoldenDieId };
             runtime.ConfigureDice(state, 0, state.Dice);
@@ -76,7 +76,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 팔면주사위_슬롯2개를_Octahedron으로_배정하고_판뒤집기와_충돌한다()
+        public void OctahedronDice_AssignsTwoSlotsAndConflictsWithTableFlip()
         {
             state.AugmentPlayers[0].OwnedIds = new[] { YachtAugmentRuntime.OctahedronId };
             runtime.ConfigureDice(state, 0, state.Dice);
@@ -90,7 +90,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 팔면주사위_굴림값은_팔면체_눈금_안에서만_나온다()
+        public void OctahedronDice_RollValuesStayWithinOctahedronRange()
         {
             state.AugmentPlayers[0].OwnedIds = new[] { YachtAugmentRuntime.OctahedronId };
             runtime.ConfigureDice(state, 0, state.Dice);
@@ -106,7 +106,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 커플주사위_슬롯2개를_Couple로_배정하고_눈이같으면_3점보너스를준다()
+        public void CoupleDice_AssignsTwoSlotsAndGivesThreePointBonusOnMatch()
         {
             state.AugmentPlayers[0].OwnedIds = new[] { YachtAugmentRuntime.CoupleDiceId };
             runtime.ConfigureDice(state, 0, state.Dice);
@@ -123,7 +123,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 세븐스다이스_슬롯2개를_Sevens로_배정하고_2에서7_눈금이_나온다()
+        public void SevensDice_AssignsTwoSlotsAndRollsTwoToSeven()
         {
             state.AugmentPlayers[0].OwnedIds = new[] { YachtAugmentRuntime.SevensDiceId };
             runtime.ConfigureDice(state, 0, state.Dice);
@@ -140,7 +140,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 프로모션주사위_1부터_6까지_성장하고_6달성후_비활성화된다()
+        public void PromotionDice_GrowsOneToSixThenDeactivates()
         {
             var random = new SequenceRandom(0);
             AcquireAugment(YachtAugmentRuntime.PromotionDieId);
@@ -169,7 +169,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 프로모션주사위_굴림값은_난수와_무관하게_승급레벨을_그대로_돌려준다()
+        public void PromotionDice_RollValueReturnsPromotionLevelRegardlessOfRandom()
         {
             var random = new SequenceRandom(0);
             AcquireAugment(YachtAugmentRuntime.PromotionDieId);
@@ -194,7 +194,7 @@ namespace Tessera.Editor.Tests
         #region 상시/특수 5종
 
         [Test]
-        public void 요트뱅크_가장_왼쪽_킵주사위를_3턴간_제외하고_다음턴에_지급한다()
+        public void YachtBank_HoldsLeftmostKeptDieForThreeTurnsThenReturnsIt()
         {
             var random = new SequenceRandom(0);
             AcquireAugment(YachtAugmentRuntime.YachtBankId);
@@ -226,7 +226,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 추진력_0점기입시_장전되고_다음득점시_1_5배_부스트를_적용한다()
+        public void Momentum_ChargesOnZeroScoreAndBoostsNextScoreByOnePointFive()
         {
             var random = new SequenceRandom(0);
             AcquireAugment(YachtAugmentRuntime.MomentumId);
@@ -251,7 +251,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 결투_라운드_점수가_상대보다_높으면_10점_비기면_5점을_받는다()
+        public void Duel_GivesTenPointsWhenRoundScoreBeatsOpponentAndFiveOnTie()
         {
             var random = new SequenceRandom(0);
             state.CurrentRound = 3;
@@ -267,7 +267,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 저금통_남은굴림수당_3원을_모아_12원마다_12점_보너스를_받는다()
+        public void PiggyBank_EarnsThreeCoinsPerRemainingRollAndTwelvePointsPerTwelveCoins()
         {
             var random = new SequenceRandom(0);
             AcquireAugment(YachtAugmentRuntime.PiggyBankId);
@@ -285,7 +285,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 랜덤박스_상단기준을_58로_낮춘다()
+        public void RandomBox_LowersUpperBonusThresholdToFiftyEight()
         {
             var random = new SequenceRandom(0);
             AcquireAugment(YachtAugmentRuntime.RandomBoxId);

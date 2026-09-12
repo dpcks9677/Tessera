@@ -25,7 +25,7 @@ namespace Tessera.Editor.Tests
         };
 
         [Test]
-        public void 팔면몸체는_반지름과_베벨_규격_안에_있다()
+        public void OctahedronBodyStaysWithinRadiusAndBevelSpec()
         {
             Mesh body = LoadOctahedronBody();
 
@@ -43,7 +43,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 팔면몸체는_여덟_방향에_평평한_면을_가진다()
+        public void OctahedronBodyHasFlatFaceInEightDirections()
         {
             Mesh body = LoadOctahedronBody();
             Vector3[] vertices = body.vertices;
@@ -63,7 +63,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 팔면몸체의_면은_바깥을_향한다()
+        public void OctahedronBodyFacesPointOutward()
         {
             Mesh body = LoadOctahedronBody();
             Vector3[] vertices = body.vertices;
@@ -87,7 +87,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 팔면프리팹은_면마다_값에_맞는_숫자를_하나씩_새긴다()
+        public void OctahedronPrefabEngravesOneMatchingDigitPerFace()
         {
             GameObject prefab = LoadPrefab("Die_Octahedron");
             int[] faceValues = DiceFaceValues.Get(DieType.Octahedron);
@@ -107,7 +107,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 팔면프리팹의_눈은_해당_면_위에_놓인다()
+        public void OctahedronPrefabPipsSitOnTheirOwnFace()
         {
             GameObject prefab = LoadPrefab("Die_Octahedron");
 
@@ -128,7 +128,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 세븐스프리팹의_면값은_2부터7까지다()
+        public void SevensPrefabFaceValuesRunTwoToSeven()
         {
             GameObject prefab = LoadPrefab("Die_Sevens");
             int[] expected = DiceFaceValues.Get(DieType.Sevens);
@@ -142,7 +142,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 세븐스프리팹의_눈은_각_면_평면_위에_고르게_놓인다()
+        public void SevensPrefabPipsSpreadEvenlyOnEachFacePlane()
         {
             GameObject prefab = LoadPrefab("Die_Sevens");
             var faceSums = new Dictionary<int, Vector3>();

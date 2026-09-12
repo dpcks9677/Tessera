@@ -8,7 +8,7 @@ namespace Tessera.Editor.Tests
     public sealed class YachtGameRulesTests
     {
         [Test]
-        public void Calculate_기본족보를_웹규칙과_동일하게_계산한다()
+        public void Calculate_MatchesWebRulesForBaseCategories()
         {
             var yacht = YachtScoreCalculator.Calculate(new[] { 6, 6, 6, 6, 6 });
             Assert.That(yacht[ScoreCategory.Sixes], Is.EqualTo(30));
@@ -27,7 +27,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void PlayerScoreData_상단합계63점부터_35점보너스를_적용한다()
+        public void PlayerScoreData_AppliesThirtyFivePointBonusFromUpperSum63()
         {
             var data = new PlayerScoreData { upperScores = new[] { 3, 6, 9, 12, 15, 18 } };
             data.RecalculateTotal();
@@ -38,7 +38,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void Options_일반턴_제한시간은_60초다()
+        public void Options_NormalTurnTimeLimitIsSixtySeconds()
         {
             var options = new YachtGameOptions();
 
@@ -47,7 +47,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void Authority_고정난수에서_주사위값과_프리셋을_하나의_결과로_확정한다()
+        public void Authority_FixesDiceValuesAndPresetIntoSingleResultWithSeededRandom()
         {
             var authority = CreateAuthority(new SequenceRandomSource(0, 1, 2, 3, 4, 7, 1));
             Execute(authority, YachtCommandType.StartGame, "start");
@@ -65,7 +65,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void Authority_킵한_주사위는_재굴림에서도_값을_보존한다()
+        public void Authority_KeptDicePreserveValuesAcrossRerolls()
         {
             var authority = CreateAuthority(new SequenceRandomSource(0, 1, 2, 3, 4, 0, 0, 5, 5, 5, 5, 0, 0));
             Execute(authority, YachtCommandType.StartGame, "start");
@@ -81,7 +81,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void Authority_중복명령과_오래된Revision을_거부한다()
+        public void Authority_RejectsDuplicateCommandAndStaleRevision()
         {
             var authority = CreateAuthority(new SequenceRandomSource(0));
             YachtGameCommandResult start = Execute(authority, YachtCommandType.StartGame, "same");
@@ -107,7 +107,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void Session_점수확정후_P1_P2_라운드를_순서대로_전환한다()
+        public void Session_AdvancesP1P2AndRoundInOrderAfterScoreCommit()
         {
             YachtGameSession session = CreateSession();
             Assert.That(session.TryRoll(out _), Is.True);
@@ -126,7 +126,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void Session_24개_개인턴후_종료하고_재시작할수있다()
+        public void Session_EndsAfterTwentyFourPlayerTurnsAndCanRestart()
         {
             YachtGameSession session = CreateSession();
             YachtTurnResult result = default;
@@ -147,7 +147,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void Mode_증강규칙은_기본규칙을_합성하고_현재기본결과는_같다()
+        public void Mode_AugmentRuleSetComposesBaseRulesWithIdenticalBaseResults()
         {
             IYachtRuleSet normal = YachtRuleSetFactory.Create(YachtGameMode.Normal);
             IYachtRuleSet augmented = YachtRuleSetFactory.Create(YachtGameMode.Augmented);
@@ -162,7 +162,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void AugmentRuntime_대표증강의_정적정의와_플레이어상태를_분리한다()
+        public void AugmentRuntime_SeparatesStaticDefinitionFromPlayerState()
         {
             var runtime = new YachtAugmentRuntime();
             IReadOnlyList<YachtAugmentDefinition> definitions = runtime.GetDefinitions();
@@ -181,7 +181,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void AugmentDraft_두플레이어가_하나씩_선택하면_첫턴을_시작한다()
+        public void AugmentDraft_StartsFirstTurnOnceBothPlayersPickOne()
         {
             LocalGameAuthority authority = CreateAugmentedAuthority(new SequenceRandomSource(4, 3, 2, 1));
             Execute(authority, YachtCommandType.StartGame, "start");
@@ -222,7 +222,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void LuckySevens_합계7을_에이스15점으로_교체한다()
+        public void LuckySevens_ReplacesSumSevenWithFifteenPointAces()
         {
             LocalGameAuthority authority = CreateAugmentedAuthority(new SequenceRandomSource(1));
             Execute(authority, YachtCommandType.StartGame, "start");
@@ -247,7 +247,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void LuckySevens_중간획득시_보유자에이스만_초기화하고_추가턴을_준다()
+        public void LuckySevens_MidGameAcquisitionResetsOnlyOwnerAcesAndGrantsExtraTurn()
         {
             var runtime = new YachtAugmentRuntime();
             var state = new YachtGameState
@@ -294,7 +294,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void Authority_표준12라운드후_예약된_추가턴을_소비하고_종료한다()
+        public void Authority_ConsumesReservedExtraTurnsAfterTwelveRoundsThenEnds()
         {
             LocalGameAuthority authority = CreateAugmentedAuthority(new SequenceRandomSource(0));
             Execute(authority, YachtCommandType.StartGame, "start");
@@ -331,7 +331,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void EightSided_두주사위와_혼합프리셋을_권위결과에_포함한다()
+        public void EightSided_IncludesTwoDiceAndMixedPresetInAuthorityResult()
         {
             LocalGameAuthority authority = CreateAugmentedAuthority(new SequenceRandomSource(0));
             Execute(authority, YachtCommandType.StartGame, "start");
@@ -348,7 +348,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void TableFlip_굴림횟수를_소모하지않고_NoTime퀘스트도_유지한다()
+        public void TableFlip_ConsumesNoRollAndKeepsNoTimeQuest()
         {
             LocalGameAuthority authority = CreateAugmentedAuthority(new SequenceRandomSource(0, 1, 2, 3, 4));
             Execute(authority, YachtCommandType.StartGame, "start");
@@ -383,7 +383,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void NoTimeToWaste_세턴성공시_15점을_지급하고_리롤시_실패한다()
+        public void NoTimeToWaste_GivesFifteenPointsOnThreeTurnsAndFailsOnReroll()
         {
             var runtime = new YachtAugmentRuntime();
             var state = new YachtGameState
@@ -410,7 +410,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void StepByStep_순서완료후_상단합계58점에서_55점보너스를_확정한다()
+        public void StepByStep_ConfirmsFiftyFivePointBonusAtUpperSum58AfterSequence()
         {
             var runtime = new YachtAugmentRuntime();
             var state = new YachtGameState
@@ -437,7 +437,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void StepByStep_순서완료시_상단합계가58미만이면_보너스를_유보한다()
+        public void StepByStep_WithholdsBonusWhenUpperSumBelowFiftyEight()
         {
             var runtime = new YachtAugmentRuntime();
             var state = new YachtGameState
@@ -467,7 +467,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void StepByStep_순서를_어기면_실패하고_보상하지_않는다()
+        public void StepByStep_FailsWithoutRewardWhenOrderIsBroken()
         {
             var runtime = new YachtAugmentRuntime();
             var state = new YachtGameState
@@ -487,7 +487,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void RandomBox_퀘스트와_충돌후보를_제외해_결정적으로_교체한다()
+        public void RandomBox_ReplacesDeterministicallyExcludingQuestAndConflicts()
         {
             var runtime = new YachtAugmentRuntime();
             var state = new YachtGameState
@@ -530,7 +530,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void RandomBox_상대결과를_중복으로보지않고_같은증강을_각자획득할수있다()
+        public void RandomBox_LetsBothPlayersGainSameAugmentWithoutTreatingItAsDuplicate()
         {
             var runtime = new YachtAugmentRuntime();
             var state = new YachtGameState
@@ -562,7 +562,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void M6_점수교체형18종의_핵심경계를_계산한다()
+        public void M6_ComputesCoreBoundariesForEighteenScoreReplacements()
         {
             Assert.That(AugmentScore(YachtAugmentRuntime.LuckySevensId, ScoreCategory.Aces, 1, 1, 1, 2, 2), Is.EqualTo(15));
             Assert.That(AugmentScore(YachtAugmentRuntime.PerfectSquaresId, ScoreCategory.Aces, 1, 1, 1, 3, 3), Is.EqualTo(12));
@@ -588,7 +588,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void M6_기본점수에_강화배율을_적용한뒤_주사위보너스를_더하고_스크래치는0이다()
+        public void M6_AppliesEnhanceMultiplierThenDiceBonusAndScratchStaysZero()
         {
             var runtime = new YachtAugmentRuntime();
             YachtGameState state = CreateRuntimeState(runtime);
@@ -611,7 +611,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void M6_음수점수를_기입상태와_분리해_저장하고_총점에서_차감한다()
+        public void M6_StoresNegativeScoreApartFromFilledStateAndSubtractsFromTotal()
         {
             LocalGameAuthority authority = CreateAugmentedAuthority(new SequenceRandomSource(0));
             Execute(authority, YachtCommandType.StartGame, "start");
@@ -636,7 +636,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void M6_요트뱅크는_가장왼쪽킵을_제외해3턴저축하고_다음턴에_지급한다()
+        public void M6_YachtBankSavesLeftmostKeptForThreeTurnsThenPaysNextTurn()
         {
             var runtime = new YachtAugmentRuntime();
             YachtGameState state = CreateRuntimeState(runtime);
@@ -661,7 +661,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void M6_프로모션주사위는_획득턴을_건너뛰고_추가턴포함_성장후6에서_소모된다()
+        public void M6_PromotionDiceSkipsAcquireTurnGrowsWithExtraTurnsAndIsSpentAtSix()
         {
             var runtime = new YachtAugmentRuntime();
             YachtGameState state = CreateRuntimeState(runtime);
@@ -682,7 +682,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void M6_갬빗_등가교환_더블다운_연금술의_수동제약을_권위에서_검증한다()
+        public void M6_AuthorityValidatesManualConstraintsOfGambitExchangeDoubleDownAlchemy()
         {
             LocalGameAuthority authority = CreateAugmentedAuthority(new SequenceRandomSource(2, 3, 4, 5, 0));
             Execute(authority, YachtCommandType.StartGame, "start");
@@ -724,7 +724,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void M6_퀘스트와_라운드형보상은_기본점수와_개인진행으로_처리한다()
+        public void M6_QuestAndRoundRewardsUseBaseScoreAndPerPlayerProgress()
         {
             var runtime = new YachtAugmentRuntime();
             YachtGameState state = CreateRuntimeState(runtime);
@@ -756,7 +756,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void M6_삭제및미구현증강은_드래프트정의에서_제외한다()
+        public void M6_RemovedAndUnimplementedAugmentsAreExcludedFromDraftDefinitions()
         {
             var runtime = new YachtAugmentRuntime();
             string[] excluded =

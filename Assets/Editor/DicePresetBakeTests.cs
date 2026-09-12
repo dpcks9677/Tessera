@@ -12,7 +12,7 @@ using UnityEngine;
 public class DicePresetBakeTests
 {
     [Test]
-    public void 인코딩한_좌표는_재생_변환을_거쳐_원래_자세로_돌아온다()
+    public void EncodedCoordinatesRoundTripBackToOriginalPose()
     {
         Vector3[] worldPositions =
         {
@@ -41,14 +41,14 @@ public class DicePresetBakeTests
     }
 
     [Test]
-    public void 바닥에_놓인_주사위는_저장_좌표에서_프리셋_바닥_높이가_된다()
+    public void DieOnFloorReachesPresetFloorHeightInStoredCoordinates()
     {
         Vector3 stored = DicePresetWriter.EncodePosition(new Vector3(1f, DiceBoardMetrics.FloorRestY, -2f));
         Assert.That(stored.y, Is.EqualTo(DiceBoardMetrics.PresetFloorY).Within(1e-4f));
     }
 
     [Test]
-    public void 미러_재생은_X만_뒤집는다()
+    public void MirroredPlaybackFlipsOnlyX()
     {
         WebPresetDie stored = new(
             DicePresetWriter.EncodePosition(new Vector3(2.0f, 0.9f, -1.1f)),
@@ -63,7 +63,7 @@ public class DicePresetBakeTests
     }
 
     [Test]
-    public void 기울어진_주사위는_면이_위를_향하지_않는다고_본다()
+    public void TiltedDieIsTreatedAsHavingNoUpwardFace()
     {
         Assert.IsTrue(DicePresetScoring.IsFaceUp(Quaternion.identity, false));
         Assert.IsTrue(DicePresetScoring.IsFaceUp(Quaternion.Euler(0f, 37f, 90f), false));
@@ -75,7 +75,7 @@ public class DicePresetBakeTests
     }
 
     [Test]
-    public void 층화_선별은_판정_시간_구간마다_최고_점수를_하나씩_고른다()
+    public void StratifiedSelectionPicksTopScorePerSettleTimeBucket()
     {
         List<DicePresetCandidate> pool = new();
         for (int bin = 0; bin < DicePresetScoring.ClipsPerFile; bin++)

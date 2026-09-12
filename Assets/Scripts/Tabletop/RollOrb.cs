@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -36,7 +35,6 @@ namespace Tessera.Tabletop
         public int CurrentZodiacIndex => currentZodiacIndex;
         public string CurrentZodiacName => ZodiacConstellationData.GetDefinition(currentZodiacIndex).nameKr;
         public string CurrentZodiacNameEn => ZodiacConstellationData.GetDefinition(currentZodiacIndex).nameEn;
-        public event Action OnClicked;
 
         private Material orbMaterial;
         private Material ambientHaloMaterial;
@@ -224,8 +222,6 @@ namespace Tessera.Tabletop
 
         public void TriggerClickFeedback()
         {
-            OnClicked?.Invoke();
-
             if (!gameObject.activeInHierarchy) return;
             if (clickFeedbackRoutine != null)
             {

@@ -120,6 +120,9 @@ namespace Tessera.Dice
         private void AppendError(string message)
         {
             LastError = string.IsNullOrEmpty(LastError) ? message : $"{LastError}\n{message}";
+            // LastError만 쌓아 두면 카탈로그가 비어도 화면에는 굴림 연출이 빠진 것으로만 보이고
+            // 콘솔에 아무 흔적이 남지 않는다. 실패한 자리에서 바로 알린다.
+            Debug.LogWarning($"[DicePresetCatalog] {message}");
         }
     }
 

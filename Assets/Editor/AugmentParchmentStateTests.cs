@@ -5,7 +5,7 @@ using Tessera.Games.Yacht;
 public sealed class AugmentParchmentStateTests
 {
     [Test]
-    public void Draft_세옵션에중복없는프리셋을배정하고_선택값을보유상태로옮긴다()
+    public void Draft_AssignsUniquePresetsAndCarriesChoiceToOwnedState()
     {
         YachtGameState state = CreateDraftState();
         var runtime = new YachtAugmentRuntime();
@@ -31,7 +31,7 @@ public sealed class AugmentParchmentStateTests
     }
 
     [Test]
-    public void RandomBox_결과카드가_기존양피지프리셋을상속한다()
+    public void RandomBox_ResultCardInheritsExistingParchmentPreset()
     {
         YachtGameState state = CreateDraftState();
         var runtime = new YachtAugmentRuntime();
@@ -55,7 +55,7 @@ public sealed class AugmentParchmentStateTests
     [TestCase(5, 0)]
     [TestCase(4, 3)]
     [TestCase(3, 3)]
-    public void CardPreset_유효하지않은값은_첫프리셋으로폴백한다(int value, int expected)
+    public void CardPreset_InvalidValueFallsBackToFirstPreset(int value, int expected)
     {
         Assert.That(YachtAugmentRuntime.NormalizeCardPreset(value), Is.EqualTo(expected));
     }

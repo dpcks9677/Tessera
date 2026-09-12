@@ -13,7 +13,7 @@ namespace Tessera.Editor.Tests
     public sealed class YachtDraftOrderTests
     {
         [Test]
-        public void 드래프트_제시에_같은_족보를_교체하는_변형증강이_둘_이상_나오지_않는다()
+        public void DraftOfferNeverContainsTwoModificationAugmentsForSameCategory()
         {
             // 셔플 결과가 달라지도록 시드를 바꿔 가며 반복 확인한다.
             for (int seed = 0; seed < 50; seed++)
@@ -35,7 +35,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 첫_증강_드래프트는_무작위로_선공을_정한다()
+        public void FirstAugmentDraftPicksFirstMoverAtRandom()
         {
             BeginDraft(round: 1, p1Total: 0, p2Total: 0, random: new SequenceRandom(0), out YachtGameState first);
             BeginDraft(round: 1, p1Total: 0, p2Total: 0, random: new SequenceRandom(1), out YachtGameState second);
@@ -45,7 +45,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 두번째_드래프트부터는_총점이_낮은_쪽이_먼저_고른다()
+        public void FromSecondDraftLowerTotalScorePicksFirst()
         {
             BeginDraft(round: 6, p1Total: 40, p2Total: 12, random: new SequenceRandom(0), out YachtGameState state);
 
@@ -53,7 +53,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 세번째_드래프트도_총점이_낮은_쪽이_먼저_고른다()
+        public void ThirdDraftAlsoLetsLowerTotalScorePickFirst()
         {
             BeginDraft(round: 9, p1Total: 15, p2Total: 90, random: new SequenceRandom(0), out YachtGameState state);
 
@@ -61,7 +61,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 선공이_고른_뒤에는_남은_플레이어에게_차례가_넘어간다()
+        public void AfterFirstMoverPicksTurnPassesToRemainingPlayer()
         {
             YachtAugmentRuntime runtime = BeginDraft(
                 round: 6, p1Total: 40, p2Total: 12, random: new SequenceRandom(0), out YachtGameState state);

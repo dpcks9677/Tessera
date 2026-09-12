@@ -26,7 +26,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 셀_셰이더는_필요한_프로퍼티를_모두_가진다()
+        public void CelShaderHasAllRequiredProperties()
         {
             Shader shader = Shader.Find(CelMaterialFactory.ShaderName);
             Assert.That(shader, Is.Not.Null, $"{CelMaterialFactory.ShaderName} 셰이더를 찾지 못했습니다.");
@@ -48,7 +48,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 셀_램프는_아트_가이드_명도_램프와_같다()
+        public void CelRampMatchesArtGuideValueRamp()
         {
             // 재료 단계 밴드와 포스트 팔레트가 같은 값을 써야 두 경로를 겹쳐도 색이 어긋나지 않는다.
             Vector4 ramp = TesseraPixelPalette.RampVector;
@@ -60,7 +60,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void Baseline_몸체_재질은_기존_URP_Lit을_유지한다()
+        public void Baseline_BodyMaterialKeepsUrpLit()
         {
             Material baseline = DicePaletteCatalog.GetBodyMaterial(DieType.Normal, RenderStyle.Baseline);
 
@@ -70,7 +70,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void Cel_몸체_재질은_셀_셰이더와_노멀_스냅을_쓴다()
+        public void Cel_BodyMaterialUsesCelShaderAndNormalSnap()
         {
             Material cel = DicePaletteCatalog.GetBodyMaterial(DieType.Normal, RenderStyle.Cel);
 
@@ -83,7 +83,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 금속_주사위는_밴드를_하나_더_받는다()
+        public void MetalDieGetsOneExtraBand()
         {
             Material diffuse = DicePaletteCatalog.GetBodyMaterial(DieType.Normal, RenderStyle.Cel);
             Material metallic = DicePaletteCatalog.GetBodyMaterial(DieType.Metal, RenderStyle.Cel);
@@ -94,7 +94,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 눈_재질은_두_모드가_공용이다()
+        public void PipMaterialIsSharedByBothModes()
         {
             // 눈은 M10.6에서 이미 Unlit 평면색이라 셀 전환의 대상이 아니다.
             Material pip = DicePaletteCatalog.GetPipMaterial(DieType.Normal);
@@ -104,7 +104,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void PC_렌더러는_Forward로_동작한다()
+        public void PcRendererRunsInForward()
         {
             // 셀 셰이더는 커스텀 라이팅이라 GBuffer를 채우지 않는다. Deferred면 엣지 피처가 읽는
             // 노멀이 비어 주사위에서 노멀 엣지가 사라진다.

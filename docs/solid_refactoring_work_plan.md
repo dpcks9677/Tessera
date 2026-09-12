@@ -239,12 +239,12 @@ classDiagram
   실제로 확인해 보니 각 카테고리 베이스(`EnhanceAugment`, `QuestAugment`, `ModificationAugment`)가 이미 `CreateDefinition()`에서 하위 클래스의 `Description` 프로퍼티 값을 채우고 있어, 실사용 설명 텍스트는 착수 이전부터 이미 핸들러 쪽 값이었다. 절차 1·2(핸들러 없는 증강 보완)는 이미 충족돼 있었고, 실제로 필요했던 것은 절차 3·4(삭제와 단순화)뿐이었다.
 - **Unity 직렬화 영향도**: 없음.
 - **검증 방법**:
-  - `YachtGameRulesTests.cs`, `AugmentRuntime_대표증강의_정적정의와_플레이어상태를_분리한다()` 실행, 드래프트 카드 툴팁 설명이 정상 출력되는지 검증.
-  실제로 확인해 보니 계획서가 인용한 `AugmentMigrationTests`는 존재하지 않았다. 45개 증강 무결성 검증은 `Assets/Editor/YachtGameRulesTests.cs`의 `AugmentRuntime_대표증강의_정적정의와_플레이어상태를_분리한다()`가 담당하며, 정의 45개·첫 항목이 `LuckySevensId`(카탈로그 순서 의존)·`StepByStep`의 `PhaseOneOnly`·`LuckySevens`의 `DisplayName`을 단정한다. 설명 텍스트 내용 자체는 검사하지 않는다.
+  - `YachtGameRulesTests.cs`, `AugmentRuntime_SeparatesStaticDefinitionFromPlayerState()` 실행, 드래프트 카드 툴팁 설명이 정상 출력되는지 검증.
+  실제로 확인해 보니 계획서가 인용한 `AugmentMigrationTests`는 존재하지 않았다. 45개 증강 무결성 검증은 `Assets/Editor/YachtGameRulesTests.cs`의 `AugmentRuntime_SeparatesStaticDefinitionFromPlayerState()`가 담당하며, 정의 45개·첫 항목이 `LuckySevensId`(카탈로그 순서 의존)·`StepByStep`의 `PhaseOneOnly`·`LuckySevens`의 `DisplayName`을 단정한다. 설명 텍스트 내용 자체는 검사하지 않는다.
 - **실제 수행한 변경** (`YachtAugmentRuntime.cs` 단일 파일, 순증감 +2 -105줄):
   레거시 `Definitions` 정적 배열, `Describe(string id)` switch 메서드, `Definitions` 생성 전용 private static 헬퍼 4개(`Quest`, `Dice`, `Action`, `Enhance`)를 삭제했다. 넷 다 `private static`이라 외부 호출이 구조적으로 불가능했고 파일 내 호출처도 삭제 대상뿐이었다. `BuildAllDefinitions()`에서는 레거시 순회를 제거하고 `YachtAugmentCatalog.All` 순회만 남겼으며, 카탈로그 등록 순서와 `GetDefinitions()`/`Lookup`의 `Clone()` 호출은 그대로 보존했다. 45개 증강 ID 상수는 모든 핸들러가 참조하므로 유지했고, 이 때문에 핸들러들의 `YachtAugmentRuntime` 의존은 T02 이후에도 남는다. 레거시 `Describe()` 텍스트 중 일부는 핸들러 값과 내용이 달랐다(예: `WeightedDice`). 실사용은 핸들러 값이었으므로 stale 텍스트가 사라지는 것이 올바른 방향이었다.
-- **검증 결과**: 컴파일 통과, 새 경고 없음. EditMode 전체 884개 중 통과 874, 실패 5, 스킵 5. 핵심 회귀 테스트 `AugmentRuntime_대표증강의_정적정의와_플레이어상태를_분리한다()` 통과. 실패 중 `UnitySkills.Tests.Core` 2건은 저장소 무관 상시 실패로 제외. 나머지 3건(`FontFallbackTests` 2건, `YachtGameRulesTests.LuckySevens_중간획득시_보유자에이스만_초기화하고_추가턴을_준다` 1건)은 이번 변경과 무관함을 확인했다.
-- **후속 과제**: `LuckySevens_중간획득시_보유자에이스만_초기화하고_추가턴을_준다` 실패는 T01·T02 변경을 `git stash`로 되돌린 베이스라인에서도 동일하게 재현되어 T02 범위 밖의 기존 결함으로 확인됐다. `DetermineFirstDraftPlayer`는 총점이 낮은 쪽을 선공으로 정하는데, 해당 테스트는 `TrySelectAugment`에 `playerIndex=0`을 하드코딩해 드래프트 선공 가드에 걸리는 것으로 분석됨(`YachtGameRulesTests.cs:270`). 별도 태스크로 분리해 수정 필요.
+- **검증 결과**: 컴파일 통과, 새 경고 없음. EditMode 전체 884개 중 통과 874, 실패 5, 스킵 5. 핵심 회귀 테스트 `AugmentRuntime_SeparatesStaticDefinitionFromPlayerState()` 통과. 실패 중 `UnitySkills.Tests.Core` 2건은 저장소 무관 상시 실패로 제외. 나머지 3건(`FontFallbackTests` 2건, `YachtGameRulesTests.LuckySevens_MidGameAcquisitionResetsOnlyOwnerAcesAndGrantsExtraTurn` 1건)은 이번 변경과 무관함을 확인했다.
+- **후속 과제**: `LuckySevens_MidGameAcquisitionResetsOnlyOwnerAcesAndGrantsExtraTurn` 실패는 T01·T02 변경을 `git stash`로 되돌린 베이스라인에서도 동일하게 재현되어 T02 범위 밖의 기존 결함으로 확인됐다. `DetermineFirstDraftPlayer`는 총점이 낮은 쪽을 선공으로 정하는데, 해당 테스트는 `TrySelectAugment`에 `playerIndex=0`을 하드코딩해 드래프트 선공 가드에 걸리는 것으로 분석됨(`YachtGameRulesTests.cs:270`). 별도 태스크로 분리해 수정 필요.
   **(2026-09-09 해결)** `git log`·`git blame`으로 시간 순서를 확인한 결과, 이 테스트는 `18500e95`(2026-08-25)에 작성됐고 드래프트 선공 규칙은 그보다 2주 뒤인 `ecc0f896`(2026-09-08)에 신설됐다. 선공 규칙은 `docs/augmented_yacht_work_plan.md`의 결정 기록 `D-039`에 "앞선 쪽이 계속 먼저 골라 격차가 누적되므로 뒤처진 쪽에 우선권을 준다"는 근거까지 명시된 의도된 사양이므로 프로덕션 로직이 옳고 테스트가 낡은 쪽이었다. 규칙을 도입한 커밋 메시지에도 "Unity Test Runner 미실행"이라고 적혀 있어 그 시점부터 회귀가 방치된 것으로 보인다.
   수정은 테스트 한 건에 한정했다. 두 플레이어의 에이스 칸 점수를 뒤집어(플레이어 0을 4에서 2로, 플레이어 1을 2에서 4로) 총점이 낮은 플레이어 0이 선공이 되게 하고, `TryBeginDraft` 직후 `state.Draft.PlayerIndex`가 0인지 단정하는 줄을 추가해 선공 전제를 명시화했다. 이 단정은 `YachtDraftOrderTests`의 기존 관용구를 따른 것으로, 향후 선공 규칙이 다시 바뀌면 엉뚱한 위치가 아니라 이 줄에서 먼저 드러난다. 상대 칸 유지를 보는 단정의 기대값만 4로 맞췄고 보유자 에이스 초기화·추가 턴·3배 배율 단정은 원본 그대로 두었다. EditMode 전체 886개 재실행 결과 이 테스트가 통과하고 `YachtDraftOrderTests` 5건도 전부 통과해, 프로젝트 관련 미해결 실패는 폰트 에셋 문제 2건만 남았다.
 
@@ -316,7 +316,7 @@ classDiagram
   - `YachtAugmentRuntime.cs` (`CreateScoreCandidates` 내부): 호출부에 `state`, `playerIndex` 인자 추가.
   - `Assets/Editor/YachtEnhanceAugmentTests.cs`: 호출 4곳의 인자만 새 시그니처에 맞춤. 기대 점수 값(2, 0, 3, 0)과 테스트 구조는 그대로 유지해 리팩토링 전후 동작 동일성을 검증했다.
 - **설계 근거**: 이 저장소에는 `Collect<T>`로 여러 구현체 결과를 합산하는 선례가 이미 있었다. `YachtAugmentRuntime.CreateScoreCandidates` 안의 `IScoreEnhancementModifier` 수집 코드와 `IBeforeScorePreview` 수집 코드다. 새 패턴을 만들지 않고 그 형태(컨텍스트 생성 → `Collect<T>` → for 순회 → `BindAugment` → 개별 호출)를 그대로 따랐다. `YachtAugmentDispatcher.Collect<T>`는 `Order` 우선, 동률이면 카탈로그 등록 순으로 정렬해 반환하므로 합산 순서가 결정적이다.
-- **검증 결과**: 컴파일 통과, 새 경고 없음. EditMode 전체 884개 실행. 핵심 회귀 3건 모두 통과: `황금주사위_슬롯1개를_Golden으로_배정하고_1에서3일때_2점보너스를준다()`, `커플주사위_슬롯2개를_Couple로_배정하고_눈이같으면_3점보너스를준다()`, `M6_기본점수에_강화배율을_적용한뒤_주사위보너스를_더하고_스크래치는0이다()`. Tessera 관련 실패는 `SOLID-T02` 시점에 확인된 기존 3건 그대로이며 새로 생긴 회귀는 없다.
+- **검증 결과**: 컴파일 통과, 새 경고 없음. EditMode 전체 884개 실행. 핵심 회귀 3건 모두 통과: `GoldenDice_AssignsOneSlotToGoldenAndGivesTwoPointBonusOnOneToThree()`, `CoupleDice_AssignsTwoSlotsAndGivesThreePointBonusOnMatch()`, `M6_AppliesEnhanceMultiplierThenDiceBonusAndScratchStaysZero()`. Tessera 관련 실패는 `SOLID-T02` 시점에 확인된 기존 3건 그대로이며 새로 생긴 회귀는 없다.
 - **후속 과제**: `GoldenDie`와 `CoupleDice` 클래스의 기존 XML 주석이 실제 점수와 달랐다. 주석은 각각 "6으로 득점 시 +3점", "같으면 +5점"이라 적혀 있었으나 실제 로직과 테스트는 눈 1~3일 때 +2점, 커플 일치 시 +3점이다. 사용자 확인 결과 **코드 쪽 점수(+2점, +3점)가 의도한 사양**으로 확정되어, 두 클래스의 XML 주석과 게임 내 표시용 `Description` 문자열을 실제 로직에 맞게 정정했다. `Description` 텍스트를 단정하는 테스트는 없어 회귀 영향 없음.
 
 ---
@@ -601,6 +601,6 @@ Phase 1(증강 시스템 OCP/SRP 해소)의 `SOLID-T01`~`SOLID-T04` 네 태스�
 - [ ] **단위 테스트 통과**:
   - `YachtGameRulesTests.cs` (점수 규칙 및 기본 로직)
   - `YachtEnhanceAugmentTests.cs`, `YachtQuestAugmentTests.cs`, `YachtManualActionAugmentTests.cs` (증강 효과)
-  - `AugmentRuntime_대표증강의_정적정의와_플레이어상태를_분리한다()` (`YachtGameRulesTests.cs` 내, 45개 활성 증강 무결성). 계획 수립 당시 기재했던 `AugmentMigrationTests.cs`는 저장소에 존재하지 않아 정정함(`SOLID-T02`에서 확인).
+  - `AugmentRuntime_SeparatesStaticDefinitionFromPlayerState()` (`YachtGameRulesTests.cs` 내, 45개 활성 증강 무결성). 계획 수립 당시 기재했던 `AugmentMigrationTests.cs`는 저장소에 존재하지 않아 정정함(`SOLID-T02`에서 확인).
 - [ ] **한국어 규약**: 추가된 주석이나 문서가 한국어로 작성되었는가?
 - [ ] **진행 포인터 갱신**: 본 계획서의 `2. 현재 진행 포인터` 및 작업 상태 요약표가 최신 상태로 갱신되었는가?

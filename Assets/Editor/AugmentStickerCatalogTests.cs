@@ -15,7 +15,7 @@ namespace Tessera.Editor.Tests
     public sealed class AugmentStickerCatalogTests
     {
         [Test]
-        public void 활성_변형증강_18개가_모두_색상코드와_대상칸을_가진다()
+        public void AllEighteenActiveModificationAugmentsHaveColorAndTargetCategory()
         {
             var runtime = new YachtAugmentRuntime();
             var modification = new List<YachtAugmentDefinition>();
@@ -34,7 +34,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 활성_변형증강_18개가_모두_영문_축약표기를_가진다()
+        public void AllEighteenActiveModificationAugmentsHaveAbbreviation()
         {
             var runtime = new YachtAugmentRuntime();
             const string fallback = "<축약어 없음>";
@@ -56,14 +56,14 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 축약어가_없는_증강은_증강_이름을_그대로_쓴다()
+        public void AugmentWithoutAbbreviationUsesItsOwnName()
         {
             Assert.That(AugmentStickerCatalog.MarkLabel("존재하지-않는-증강", "폴백"), Is.EqualTo("폴백"));
             Assert.That(AugmentStickerCatalog.MarkLabel(null, "폴백"), Is.EqualTo("폴백"));
         }
 
         [Test]
-        public void 변형이_아닌_계열은_스티커를_붙이지_않는다()
+        public void NonModificationKindDoesNotAttachSticker()
         {
             var runtime = new YachtAugmentRuntime();
 
@@ -75,7 +75,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 색상코드를_지정하지_않은_증강은_기본_버건디를_쓴다()
+        public void AugmentWithoutColorCodeUsesDefaultBurgundy()
         {
             Assert.That(AugmentStickerCatalog.BaseColor("lucky-sevens"),
                 Is.EqualTo(AugmentStickerCatalog.DefaultBase));
@@ -84,14 +84,14 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 리버스초이스는_역방향이라_다른_색을_쓴다()
+        public void ReverseChoiceUsesDistinctColorBecauseItIsInverted()
         {
             Assert.That(AugmentStickerCatalog.BaseColor(YachtAugmentRuntime.ReverseChoiceId),
                 Is.Not.EqualTo(AugmentStickerCatalog.DefaultBase));
         }
 
         [Test]
-        public void 현재_플레이어의_변형증강만_수집한다()
+        public void CollectsOnlyCurrentPlayerModificationAugments()
         {
             YachtGameState state = State(new[] { "lucky-sevens", "golden-die" }, new[] { "mountain" });
 
@@ -105,7 +105,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 스티커는_대상_족보_칸에만_한_장_붙는다()
+        public void StickerAttachesOnceToTargetCategoryOnly()
         {
             YachtGameState state = State(new[] { YachtAugmentRuntime.DoubleLargeStraightId }, null);
 
@@ -118,7 +118,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 결과_목록은_비우고_채운다()
+        public void ResultListIsClearedThenFilled()
         {
             YachtGameState state = State(new[] { "lucky-sevens", "mountain" }, new[] { "evens" });
             var reused = new List<AugmentStickerPlacement>();
@@ -131,7 +131,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 잘못된_입력에도_예외_없이_빈_결과를_준다()
+        public void InvalidInputYieldsEmptyResultWithoutException()
         {
             YachtGameState state = State(new[] { "lucky-sevens" }, null);
             var placements = new List<AugmentStickerPlacement>();

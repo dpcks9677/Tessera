@@ -54,7 +54,7 @@ public sealed class RollCosmicCubeAugmentStateTests
     }
 
     [Test]
-    public void 다섯_코스믹_셰이더는_증강_상태_프로퍼티를_가진다()
+    public void FiveCosmicShadersHaveAugmentStateProperties()
     {
         foreach (string shaderName in ShaderNames)
         {
@@ -76,7 +76,7 @@ public sealed class RollCosmicCubeAugmentStateTests
     }
 
     [Test]
-    public void 증강_상태_유니폼은_UnityPerMaterial_CBUFFER에_있다()
+    public void AugmentStateUniformsLiveInUnityPerMaterialCbuffer()
     {
         // HasProperty는 CBUFFER 선언이 빠져도 통과한다. 그 누락은 다섯 셰이더를 조용히
         // SRP Batcher 비호환으로 만들고 아무 오류도 내지 않으므로 텍스트로 직접 확인한다.
@@ -100,7 +100,7 @@ public sealed class RollCosmicCubeAugmentStateTests
     }
 
     [Test]
-    public void 구운_머티리얼은_증강_상태_기본값을_쓴다()
+    public void BakedMaterialsUseAugmentStateDefaults()
     {
         // 셰이더에 프로퍼티를 더해도 .mat을 고칠 필요가 없다는 근거다.
         // 소진 값이 실수로 구워지는 사고도 여기서 걸린다.
@@ -115,7 +115,7 @@ public sealed class RollCosmicCubeAugmentStateTests
     }
 
     [Test]
-    public void 굴림예산_상태는_보간_목표만_바꾼다()
+    public void RollBudgetStateChangesOnlyLerpTarget()
     {
         RollCosmicCube cube = BuildCube();
 
@@ -133,7 +133,7 @@ public sealed class RollCosmicCubeAugmentStateTests
     }
 
     [Test]
-    public void 상호작용_토글은_굴림예산_상태를_건드리지_않는다()
+    public void InteractionToggleDoesNotTouchRollBudgetState()
     {
         // isInteractable은 굴림 애니메이션과 턴 전환마다 껐다 켜진다. 두 신호가 섞이면
         // 매 굴림마다 큐브가 회색으로 깜빡인다.
@@ -147,7 +147,7 @@ public sealed class RollCosmicCubeAugmentStateTests
     }
 
     [Test]
-    public void 받침대와_기둥은_증강_상태_셰이더를_쓰지_않는다()
+    public void BaseAndPillarDoNotUseAugmentStateShader()
     {
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Tabletop/3D Roll Cosmic Cube.prefab");
         Assert.That(prefab, Is.Not.Null);

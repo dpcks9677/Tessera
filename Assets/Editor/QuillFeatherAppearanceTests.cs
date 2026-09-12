@@ -15,7 +15,7 @@ namespace Tessera.Editor.Tests
     public sealed class QuillFeatherAppearanceTests
     {
         [Test]
-        public void 깃대_부근은_뚫리지_않는다()
+        public void AreaNearRachisIsNotPierced()
         {
             for (float u = 0.40f; u <= 0.60f; u += 0.02f)
             {
@@ -29,7 +29,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 뿌리와_팁은_막혀_있다()
+        public void RootAndTipStaySealed()
         {
             for (float u = 0f; u <= 1f; u += 0.1f)
             {
@@ -41,7 +41,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 외곽은_실제로_갈라진다()
+        public void OuterEdgeActuallySplits()
         {
             bool sawOpen = false;
             bool sawClosed = false;
@@ -57,7 +57,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 좌우_대칭이라_Repeat_랩_이음매가_없다()
+        public void HorizontalSymmetryLeavesNoRepeatWrapSeam()
         {
             for (float u = 0f; u <= 0.5f; u += 0.03f)
             {
@@ -72,7 +72,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 슬릿_수가_픽셀_예산_안에_있다()
+        public void SlitCountStaysWithinPixelBudget()
         {
             int transitions = 0;
             float previous = InkwellAndQuill.FeatherSlitAlpha(0.02f, 0.16f);
@@ -87,7 +87,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 슬릿이_메시_노치와_정렬된다()
+        public void SlitsAlignWithMeshNotches()
         {
             for (int n = 1; n <= 4; n++)
             {
@@ -97,7 +97,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 팔레트에_갈색이_없다()
+        public void PaletteContainsNoBrown()
         {
             const float tolerance = 1e-4f;
             for (float u = 0f; u <= 1f; u += 0.1f)
@@ -117,7 +117,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 노치가_깊어졌지만_비대칭을_뒤집지_않는다()
+        public void DeeperNotchesDoNotInvertAsymmetry()
         {
             float min = float.MaxValue;
             for (float t = 0f; t <= 1f; t += 1f / 96f)
@@ -137,7 +137,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 결정성()
+        public void IsDeterministic()
         {
             const float u = 0.37f;
             const float v = 0.61f;

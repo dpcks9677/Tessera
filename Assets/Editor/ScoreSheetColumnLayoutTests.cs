@@ -25,7 +25,7 @@ namespace Tessera.Editor.Tests
         [TestCase(0f)]
         [TestCase(0.5f)]
         [TestCase(1f)]
-        public void 경계는_왼쪽부터_오른쪽으로_역행하지_않는다(float expandT)
+        public void BoundariesNeverMoveBackwardLeftToRight(float expandT)
         {
             float[] bounds = Bounds(expandT);
             for (int i = 1; i < bounds.Length; i++)
@@ -38,14 +38,14 @@ namespace Tessera.Editor.Tests
         [TestCase(0.25f)]
         [TestCase(0.5f)]
         [TestCase(1f)]
-        public void 표_전체_폭은_펴짐_계수와_무관하게_같다(float expandT)
+        public void TotalTableWidthIsConstantRegardlessOfExpansion(float expandT)
         {
             float[] bounds = Bounds(expandT);
             Assert.AreEqual(Bounds(0f)[6] - Bounds(0f)[0], bounds[6] - bounds[0], Tolerance);
         }
 
         [Test]
-        public void P1_턴이면_P2_이름열이_0으로_접힌다()
+        public void P1TurnCollapsesP2NameColumnToZero()
         {
             float[] bounds = Bounds(0f);
             Assert.AreEqual(0f, bounds[5] - bounds[4], Tolerance, "P2 이름 열이 남아 있습니다.");
@@ -53,7 +53,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void P2_턴이면_P1_이름열이_0으로_접힌다()
+        public void P2TurnCollapsesP1NameColumnToZero()
         {
             float[] bounds = Bounds(1f);
             Assert.AreEqual(0f, bounds[2] - bounds[1], Tolerance, "P1 이름 열이 남아 있습니다.");
@@ -61,7 +61,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 아이콘_섹터와_점수_열은_펴짐_계수에_흔들리지_않는다()
+        public void IconSectorAndScoreColumnsIgnoreExpansionFactor()
         {
             float[] open = Bounds(0f);
             float[] mid = Bounds(0.5f);
@@ -78,7 +78,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 이름열_예산은_두_사람이_나눠_쓴다()
+        public void NameColumnBudgetIsSharedByBothPlayers()
         {
             float budget = Bounds(0f)[2] - Bounds(0f)[1];
             foreach (float t in new[] { 0f, 0.3f, 0.5f, 0.8f, 1f })
@@ -91,7 +91,7 @@ namespace Tessera.Editor.Tests
 
         [TestCase(-3f)]
         [TestCase(4f)]
-        public void 범위_밖_계수는_양_끝으로_잘린다(float expandT)
+        public void OutOfRangeFactorIsClampedToBothEnds(float expandT)
         {
             float[] clamped = Bounds(expandT);
             float[] expected = Bounds(expandT < 0f ? 0f : 1f);
@@ -99,7 +99,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 길이가_모자란_배열은_건드리지_않는다()
+        public void ArrayShorterThanExpectedIsLeftUntouched()
         {
             var tooShort = new float[3];
             ParchmentScoreSheet.ResolveColumnBounds(0.5f, tooShort);

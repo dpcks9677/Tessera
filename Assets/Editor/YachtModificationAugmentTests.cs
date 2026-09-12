@@ -13,7 +13,7 @@ namespace Tessera.Editor.Tests
     public sealed class YachtModificationAugmentTests
     {
         [Test]
-        public void 럭키세븐_합이_7의_경계값일_때만_15점이다()
+        public void LuckySevens_GivesFifteenPointsOnlyAtSumSevenBoundary()
         {
             Assert.That(Score(YachtAugmentRuntime.LuckySevensId, ScoreCategory.Aces, 1, 1, 1, 2, 2), Is.EqualTo(15));
             Assert.That(Score(YachtAugmentRuntime.LuckySevensId, ScoreCategory.Aces, 2, 3, 4, 4, 4), Is.EqualTo(15));
@@ -22,13 +22,13 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 럭키세븐_눈금_1이_없어도_대상칸을_교체한다()
+        public void LuckySevens_ReplacesTargetCategoryEvenWithoutAnyOne()
         {
             Assert.That(Score(YachtAugmentRuntime.LuckySevensId, ScoreCategory.Aces, 2, 3, 4, 4, 4), Is.EqualTo(15));
         }
 
         [Test]
-        public void 퍼펙트스퀘어_합이_제곱수일_때만_12점이다()
+        public void PerfectSquare_GivesTwelvePointsOnlyWhenSumIsPerfectSquare()
         {
             Assert.That(Score(YachtAugmentRuntime.PerfectSquaresId, ScoreCategory.Aces, 1, 1, 1, 3, 3), Is.EqualTo(12));
             Assert.That(Score(YachtAugmentRuntime.PerfectSquaresId, ScoreCategory.Aces, 2, 2, 4, 4, 4), Is.EqualTo(12));
@@ -37,14 +37,14 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 갬블러_합_24부터_합계에_7을_더한다()
+        public void Gambler_AddsSevenToSumFromTwentyFour()
         {
             Assert.That(Score(YachtAugmentRuntime.GamblerId, ScoreCategory.Choice, 4, 4, 4, 6, 6), Is.EqualTo(31));
             Assert.That(Score(YachtAugmentRuntime.GamblerId, ScoreCategory.Choice, 3, 4, 4, 6, 6), Is.Zero);
         }
 
         [Test]
-        public void 쓰리오브어카인드_같은눈_3개미만이면_0점이다()
+        public void ThreeOfAKind_ScoresZeroBelowThreeMatchingDice()
         {
             Assert.That(Score(YachtAugmentRuntime.ThreeOfAKindId, ScoreCategory.FourOfAKind, 2, 2, 2, 4, 5), Is.EqualTo(15));
             Assert.That(Score(YachtAugmentRuntime.ThreeOfAKindId, ScoreCategory.FourOfAKind, 2, 2, 2, 2, 5), Is.EqualTo(13));
@@ -52,21 +52,21 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 타이니하우스_5이상_눈이_섞이면_0점이다()
+        public void TinyHouse_ScoresZeroWhenAnyDieIsFiveOrMore()
         {
             Assert.That(Score(YachtAugmentRuntime.TinyHouseId, ScoreCategory.FullHouse, 1, 1, 2, 2, 2), Is.EqualTo(28));
             Assert.That(Score(YachtAugmentRuntime.TinyHouseId, ScoreCategory.FullHouse, 1, 1, 5, 5, 5), Is.Zero);
         }
 
         [Test]
-        public void 타이니하우스_1에서4까지의_같은눈_5개도_풀하우스로_인정한다()
+        public void TinyHouse_AcceptsFiveMatchingDiceOneToFourAsFullHouse()
         {
             // 공통 계산에서 풀하우스는 야추를 포함하므로 4가 다섯 개여도 28점이 된다.
             Assert.That(Score(YachtAugmentRuntime.TinyHouseId, ScoreCategory.FullHouse, 4, 4, 4, 4, 4), Is.EqualTo(28));
         }
 
         [Test]
-        public void 투페어_서로다른_쌍이_둘_미만이면_0점이다()
+        public void TwoPair_ScoresZeroBelowTwoDistinctPairs()
         {
             Assert.That(Score(YachtAugmentRuntime.TwoPairId, ScoreCategory.FullHouse, 4, 4, 4, 4, 1), Is.EqualTo(15));
             Assert.That(Score(YachtAugmentRuntime.TwoPairId, ScoreCategory.FullHouse, 2, 2, 2, 3, 3), Is.EqualTo(15));
@@ -74,35 +74,35 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 머리와몸통_쌍을_뺀_연속_3개가_없으면_0점이다()
+        public void HeadAndBody_ScoresZeroWithoutThreeConsecutiveAfterRemovingPair()
         {
             Assert.That(Score(YachtAugmentRuntime.HeadAndTailId, ScoreCategory.FullHouse, 1, 1, 2, 3, 4), Is.EqualTo(21));
             Assert.That(Score(YachtAugmentRuntime.HeadAndTailId, ScoreCategory.FullHouse, 1, 1, 2, 2, 5), Is.Zero);
         }
 
         [Test]
-        public void 에번스_홀수가_하나라도_있으면_0점이다()
+        public void Evens_ScoresZeroIfAnyOddDieExists()
         {
             Assert.That(Score(YachtAugmentRuntime.EvensId, ScoreCategory.SmallStraight, 2, 2, 4, 4, 6), Is.EqualTo(20));
             Assert.That(Score(YachtAugmentRuntime.EvensId, ScoreCategory.SmallStraight, 2, 2, 4, 4, 5), Is.Zero);
         }
 
         [Test]
-        public void 오즈_짝수가_하나라도_있으면_0점이다()
+        public void Odds_ScoresZeroIfAnyEvenDieExists()
         {
             Assert.That(Score(YachtAugmentRuntime.OddsId, ScoreCategory.SmallStraight, 1, 3, 5, 7, 7), Is.EqualTo(20));
             Assert.That(Score(YachtAugmentRuntime.OddsId, ScoreCategory.SmallStraight, 1, 2, 3, 5, 7), Is.Zero);
         }
 
         [Test]
-        public void 더블라지스트레이트_스몰스트레이트만으로는_0점이다()
+        public void DoubleLargeStraight_ScoresZeroForSmallStraightAlone()
         {
             Assert.That(Score(YachtAugmentRuntime.DoubleLargeStraightId, ScoreCategory.SmallStraight, 1, 2, 3, 4, 5), Is.EqualTo(30));
             Assert.That(Score(YachtAugmentRuntime.DoubleLargeStraightId, ScoreCategory.SmallStraight, 1, 2, 3, 4, 4), Is.Zero);
         }
 
         [Test]
-        public void 프라임컬렉션_2와3과5가_모두_있어야_35점이다()
+        public void PrimeCollection_NeedsTwoThreeAndFiveForThirtyFivePoints()
         {
             Assert.That(Score(YachtAugmentRuntime.PrimeCollectionId, ScoreCategory.LargeStraight, 2, 3, 5, 7, 7), Is.EqualTo(35));
             Assert.That(Score(YachtAugmentRuntime.PrimeCollectionId, ScoreCategory.LargeStraight, 2, 2, 3, 3, 7), Is.Zero);
@@ -110,21 +110,21 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 땅콩주택_두_눈이_이웃하지_않으면_0점이다()
+        public void PeanutHouse_ScoresZeroWhenTwoValuesAreNotAdjacent()
         {
             Assert.That(Score(YachtAugmentRuntime.DuplexHouseId, ScoreCategory.LargeStraight, 2, 2, 3, 3, 3), Is.EqualTo(35));
             Assert.That(Score(YachtAugmentRuntime.DuplexHouseId, ScoreCategory.LargeStraight, 2, 2, 2, 4, 4), Is.Zero);
         }
 
         [Test]
-        public void 마운틴_정확히_2에서6까지여야_40점이다()
+        public void Mountain_NeedsExactlyTwoThroughSixForFortyPoints()
         {
             Assert.That(Score(YachtAugmentRuntime.MountainId, ScoreCategory.LargeStraight, 2, 3, 4, 5, 6), Is.EqualTo(40));
             Assert.That(Score(YachtAugmentRuntime.MountainId, ScoreCategory.LargeStraight, 1, 2, 3, 4, 5), Is.Zero);
         }
 
         [Test]
-        public void 하이다이스_합_26미만이면_0점이다()
+        public void HighDice_ScoresZeroBelowSumTwentySix()
         {
             Assert.That(Score(YachtAugmentRuntime.HighDiceId, ScoreCategory.LargeStraight, 4, 5, 5, 6, 6), Is.EqualTo(35));
             Assert.That(Score(YachtAugmentRuntime.HighDiceId, ScoreCategory.LargeStraight, 4, 4, 5, 6, 6), Is.Zero);
@@ -132,21 +132,21 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 두번째초이스_합의_절반을_내림한다()
+        public void SecondChoice_FloorsHalfOfSum()
         {
             Assert.That(Score(YachtAugmentRuntime.SecondChoiceId, ScoreCategory.Yacht, 1, 2, 3, 4, 5), Is.EqualTo(7));
             Assert.That(Score(YachtAugmentRuntime.SecondChoiceId, ScoreCategory.Yacht, 1, 2, 3, 4, 6), Is.EqualTo(8));
         }
 
         [Test]
-        public void 피보나치_구성이_정확히_일치해야_25점이다()
+        public void Fibonacci_NeedsExactCompositionForTwentyFivePoints()
         {
             Assert.That(Score(YachtAugmentRuntime.FibonacciId, ScoreCategory.Yacht, 1, 1, 2, 3, 5), Is.EqualTo(25));
             Assert.That(Score(YachtAugmentRuntime.FibonacciId, ScoreCategory.Yacht, 1, 2, 3, 5, 5), Is.Zero);
         }
 
         [Test]
-        public void 리버스초이스_합이_30을_넘으면_음수가_된다()
+        public void ReverseChoice_TurnsNegativeWhenSumExceedsThirty()
         {
             Assert.That(Score(YachtAugmentRuntime.ReverseChoiceId, ScoreCategory.Yacht, 7, 7, 7, 7, 7), Is.EqualTo(-5));
             Assert.That(Score(YachtAugmentRuntime.ReverseChoiceId, ScoreCategory.Yacht, 6, 6, 6, 6, 6), Is.Zero);
@@ -154,7 +154,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 블랙잭21_합이_정확히_21이어야_21점이다()
+        public void Blackjack21_NeedsSumExactlyTwentyOneForTwentyOnePoints()
         {
             Assert.That(Score(YachtAugmentRuntime.BlackjackId, ScoreCategory.Yacht, 3, 4, 4, 5, 5), Is.EqualTo(21));
             Assert.That(Score(YachtAugmentRuntime.BlackjackId, ScoreCategory.Yacht, 3, 4, 4, 5, 6), Is.Zero);
@@ -162,7 +162,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 변형증강은_대상칸_외의_족보를_바꾸지_않는다()
+        public void ModificationAugmentDoesNotChangeCategoriesOtherThanTarget()
         {
             Dictionary<ScoreCategory, int> withAugment = ScoresWith(YachtAugmentRuntime.LuckySevensId, 1, 1, 1, 2, 2);
             Dictionary<ScoreCategory, int> withoutAugment = ScoresWith(null, 1, 1, 1, 2, 2);
@@ -177,7 +177,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 변형증강을_보유하지_않으면_기본_족보를_계산한다()
+        public void WithoutModificationAugmentBaseCategoryIsComputed()
         {
             Dictionary<ScoreCategory, int> scores = ScoresWith(null, 1, 1, 1, 2, 2);
 
@@ -188,7 +188,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 더블라지스트레이트_획득시_보유자의_상단보너스_기준을_60으로_낮춘다()
+        public void DoubleLargeStraight_LowersOwnerUpperBonusThresholdToSixty()
         {
             var runtime = new YachtAugmentRuntime();
             YachtGameState state = CreateDraftState(runtime);

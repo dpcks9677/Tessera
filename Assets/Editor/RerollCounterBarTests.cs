@@ -28,7 +28,7 @@ public sealed class RerollCounterBarTests
     }
 
     [Test]
-    public void 구운_보석_머티리얼은_URP_Unlit이다()
+    public void BakedGemMaterialIsUrpUnlit()
     {
         Material gem = AssetDatabase.LoadAssetAtPath<Material>(GemMatPath);
         Material ridge = AssetDatabase.LoadAssetAtPath<Material>(RidgeMatPath);
@@ -41,7 +41,7 @@ public sealed class RerollCounterBarTests
     }
 
     [Test]
-    public void 구운_프리팹의_보석은_두_구운_머티리얼만_참조한다()
+    public void BakedPrefabGemsReferenceOnlyTwoBakedMaterials()
     {
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
         Material gemMat = AssetDatabase.LoadAssetAtPath<Material>(GemMatPath);
@@ -78,7 +78,7 @@ public sealed class RerollCounterBarTests
     }
 
     [Test]
-    public void BuildGeometry_보석과_리지에_라이트를_만들지_않는다()
+    public void BuildGeometry_CreatesNoLightOnGemsAndRidges()
     {
         RerollCounterBar bar = BuildFreshBar();
 
@@ -87,7 +87,7 @@ public sealed class RerollCounterBarTests
     }
 
     [Test]
-    public void BuildGeometry_보석_머티리얼_이름을_유지한다()
+    public void BuildGeometry_KeepsGemMaterialNames()
     {
         RerollCounterBar bar = BuildFreshBar();
         Transform platform = bar.transform.Find("Sector_100_Stone_Platform");
@@ -101,7 +101,7 @@ public sealed class RerollCounterBarTests
     }
 
     [Test]
-    public void 지오메트리를_다시_물어와도_현재_리롤수에서_페이드를_시작한다()
+    public void RebuildingGeometryStartsFadeFromCurrentRerollCount()
     {
         RerollCounterBar bar = BuildFreshBar();
         bar.SetRollsRemaining(1);

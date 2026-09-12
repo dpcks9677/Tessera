@@ -1188,7 +1188,7 @@ npm run validate:augments
 - 완료 내용: 연기 파티클이 킵하지 않은 주사위를 가리는 0.25초 동안 주사위 눈 표시와 점수표 후보 점수 갱신을 보류하고, 가려진 순간 스냅 교체한 뒤 연기가 걷히도록 구현. 로직은 그대로 두고 표시만 미룸. 하위 작업 `M17-T9-1-1`(연기 스프라이트)·`M17-T9-1-2`(표시 갱신 지연 큐 `I5`)·`M17-T9-1-3`(`AugmentVfxPlanner` 확장)·`M17-T9-1-4`(연기 컴포넌트)까지 완료. `M17-T9-1-5`(Play 모드 화면 확인)는 남음
 - 확인한 사실: 계획서 §9.5는 `AugmentedYachtController`가 연기 컴포넌트를 만들어 주입한다고 적었으나, 실제로는 `YachtDiceRoundPresenter`가 직접 지연 생성하도록 구현했다. `YachtTurnFlowPresenter.BindProps`가 이미 인자 11개이고 연기는 주사위 비주얼 소관이라 컨트롤러를 경유할 이유가 없었다. `AugmentedYachtController.cs`는 이번 작업으로 변경되지 않았다
 - 변경 파일: `Assets/Scripts/Dice/BakedDiceController.cs`, `Assets/Scripts/Games/AugmentedYacht/Presentation/DiceSmokePuffVfx.cs`(신규), `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtDiceRoundPresenter.cs`, `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentVfxPlanner.cs`, `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtTurnFlowPresenter.cs`, `Assets/Editor/DiceSmokeSpriteBaker.cs`(신규), `Assets/Resources/Vfx/DiceSmokePuff.png`(신규 에셋), `Assets/Editor/AugmentVfxPlannerTests.cs`
-- 실행한 검증: Unity 컴파일 통과, 신규 경고 없음. `AugmentVfxPlannerTests` 격리 실행 13/13 통과(기존 10 + 신규 3). 전체 EditMode 887개 중 Tessera 실패 3건(`FontFallbackTests` 2건, `YachtGameRulesTests.LuckySevens_중간획득시_보유자에이스만_초기화하고_추가턴을_준다` 1건) — 셋 다 이번 변경과 무관한 선행 실패로 손대지 않음. `DiceSmokePuff.png` 픽셀 검사에서 유니크 알파 `{0,64,128,192,255}` 5종만 확인, 안티에일리어싱 중간값 0건, 알파>0 픽셀 RGB 전부 (255,255,255)
+- 실행한 검증: Unity 컴파일 통과, 신규 경고 없음. `AugmentVfxPlannerTests` 격리 실행 13/13 통과(기존 10 + 신규 3). 전체 EditMode 887개 중 Tessera 실패 3건(`FontFallbackTests` 2건, `YachtGameRulesTests.LuckySevens_MidGameAcquisitionResetsOnlyOwnerAcesAndGrantsExtraTurn` 1건) — 셋 다 이번 변경과 무관한 선행 실패로 손대지 않음. `DiceSmokePuff.png` 픽셀 검사에서 유니크 알파 `{0,64,128,192,255}` 5종만 확인, 안티에일리어싱 중간값 0건, 알파>0 픽셀 RGB 전부 (255,255,255)
 - 남은 문제/차단 요소: `M17-T9-1-5` Play 모드 화면 확인 미실시. `M17-T18-5`·`M17-T19-6` 화면 확인도 아직 열려 있어 세 화면 확인이 동시에 대기 중. §2 「한 번에 하나만 `DOING`」 규칙과 달리 `M17-T18`·`M17-T19`·`M17-T9-1` 셋 다 `DOING`으로 남아 있다. 임의로 상태를 바꾸지 않고 그대로 둠
 - 다음 작업: `M17-T9-1-5` Play 모드 화면 확인. 이후 `M17-T19-6`·`M17-T18-5`와 합쳐 진행
 
@@ -1553,7 +1553,7 @@ npm run validate:augments
 - 완료 내용: 이전 프로젝트 `augmented-dice`의 `src/svgIcons.js`에서 활성 증강 45개 아이콘을 추출해 앤틱 잉크(`#3B2A1D`) 64×64 투명 PNG로 렌더링하고 Sprite/Point 임포트 설정 `.meta`와 함께 배치함. 고유 아이콘 사용 시 `icon.color` 틴트를 해제하고 아이콘 받침판을 제거함
 - 변경 파일: `Assets/Resources/AugmentIcons/` (PNG 45 + `.meta` 45 + 폴더 `.meta`), `Assets/Scripts/Games/AugmentedYacht/AugmentCardView.cs`
 - 실행한 검증: 45개 컨택트 시트 육안 확인, 카드 컨텍스트(받침판 56px·아이콘 46px·Point 필터)에서 잉크/틴트 3안 비교, 알파 경계 상자 검사로 빈 아이콘·과소 렌더 확인
-- 검증 결과: 45개 모두 정상 렌더되고 두 톤 구조가 유지됨. 기존 테스트 `CommonCard_임시픽셀아이콘은_64픽셀Point필터를사용한다`의 조건(64×64, Point)을 새 아이콘도 만족함
+- 검증 결과: 45개 모두 정상 렌더되고 두 톤 구조가 유지됨. 기존 테스트 `CommonCard_FallbackPixelIconUses64pxPointFilter`의 조건(64×64, Point)을 새 아이콘도 만족함
 - 새 결정/가정: `D-022`, `D-023`. 원본의 도달 불가능한 중복 분기 2개(`lucky-sevens`, `every-little`)는 실제 게임에 표시되던 앞쪽 분기를 채택함
 - 남은 문제/차단 요소: Unity 에디터에서의 임포트·표시 확인은 사용자 확인 대기
 - 다음 작업: `M7.5-R0` 작업 계획서 갱신

@@ -13,7 +13,7 @@ namespace Tessera.Editor.Tests
     public sealed class PixelReadabilityMetricsTests
     {
         [Test]
-        public void 계단화된_그림은_밴드가_몇_개로_잡힌다()
+        public void PosterizedImageResolvesToFewBands()
         {
             Color32[] banded = { Gray(60), Gray(60), Gray(140), Gray(140), Gray(230) };
 
@@ -21,7 +21,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 연속_그라데이션은_밴드가_많이_잡힌다()
+        public void ContinuousGradientResolvesToManyBands()
         {
             Color32[] gradient = new Color32[256];
             for (int index = 0; index < gradient.Length; index++) gradient[index] = Gray((byte)index);
@@ -33,7 +33,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 한_색으로_채운_그림은_최대_영역이_전체다()
+        public void SingleColorImageHasFullSizeLargestRegion()
         {
             Color32[] flat = new Color32[16];
             for (int index = 0; index < flat.Length; index++) flat[index] = Gray(120);
@@ -42,7 +42,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 체커보드는_최대_영역이_한_칸이다()
+        public void CheckerboardLargestRegionIsOneCell()
         {
             // 디더 무늬가 여기 해당한다. 색 수는 둘뿐이어도 평면이 없으므로 픽셀아트로 읽히지 않는다.
             Color32[] checker = new Color32[16];
@@ -59,7 +59,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 반쪽만_바뀐_프레임은_변화율이_절반이다()
+        public void HalfChangedFrameYieldsHalfChangeRatio()
         {
             Color32[] previous = new Color32[10];
             Color32[] current = new Color32[10];
@@ -73,7 +73,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 크기가_다른_프레임은_0을_준다()
+        public void MismatchedFrameSizesYieldZero()
         {
             Color32[] previous = new Color32[4];
             Color32[] current = new Color32[8];

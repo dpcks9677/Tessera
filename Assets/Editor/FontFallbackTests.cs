@@ -8,14 +8,14 @@ namespace Tessera.Editor.Tests
     public sealed class FontFallbackTests
     {
         [Test]
-        public void Mulmaru_폰트_에셋이_프로젝트에_존재한다()
+        public void MulmaruFontAssetExistsInProject()
         {
             Font mulmaru = AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/Mulmaru.ttf");
             Assert.That(mulmaru, Is.Not.Null, "Assets/Fonts/Mulmaru.ttf 에셋이 로드되지 않았습니다.");
         }
 
         [Test]
-        public void Alagard_폰트의_폴백에_Mulmaru가_등록되어_있다()
+        public void AlagardFontFallbackContainsMulmaru()
         {
             Font mulmaru = AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/Mulmaru.ttf");
             Assert.That(mulmaru, Is.Not.Null);
@@ -41,7 +41,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void M6x11_폰트의_폴백에_Mulmaru가_등록되어_있다()
+        public void M6x11FontFallbackContainsMulmaru()
         {
             Font mulmaru = AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/Mulmaru.ttf");
             Assert.That(mulmaru, Is.Not.Null);

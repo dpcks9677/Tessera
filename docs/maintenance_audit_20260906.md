@@ -404,7 +404,7 @@ docs/maintenance_audit_20260906.md                                           이
 
 `ResetGameState`에서 `acceptedCommandIds.Clear()`를 호출한다. `StartGame` 처리 중에 비우고
 그 명령의 ID는 `Execute`가 나중에 넣으므로, 같은 ID를 두 번 보내면 여전히 `DuplicateCommand`로 거부된다
-(`Authority_중복명령과_오래된Revision을_거부한다`가 이 순서를 고정한다).
+(`Authority_RejectsDuplicateCommandAndStaleRevision`가 이 순서를 고정한다).
 revision은 계속 증가하므로 옛 명령이 다시 들어와도 `RevisionMismatch`에서 걸린다.
 
 ### 10.3 GUARD-1. 메시 소유권 규칙을 에디터와 빌드에서 같게 했다

@@ -51,7 +51,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 시간이없어_3턴_연속_1회굴림으로_기입하면_15점을_받고_재굴림시_실패한다()
+        public void NoTimeToWaste_GivesFifteenPointsForThreeSingleRollTurnsAndFailsOnReroll()
         {
             var random = new SequenceRandom(0);
             AcquireAugment(YachtAugmentRuntime.NoTimeToWasteId);
@@ -72,7 +72,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 현상금사냥꾼_목표3개_달성시_스크래치_감점을_반영하여_보상한다()
+        public void BountyHunter_RewardsThreeTargetsWithScratchPenaltyApplied()
         {
             var random = new SequenceRandom(0);
             AcquireAugment(YachtAugmentRuntime.BountyHunterId);
@@ -105,7 +105,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 차근차근_에이스부터_식스까지_순서대로_기입하면_상단기준이_58점이_된다()
+        public void StepByStep_LowersUpperThresholdToFiftyEightWhenAcesToSixesFilledInOrder()
         {
             var random = new SequenceRandom(0);
             AcquireAugment(YachtAugmentRuntime.StepByStepId);
@@ -120,7 +120,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 패스트스트레이트_8턴이내_스몰과_라지를_모두기입하면_15점을_받는다()
+        public void FastStraight_GivesFifteenPointsForSmallAndLargeWithinEightTurns()
         {
             var random = new SequenceRandom(0);
             AcquireAugment(YachtAugmentRuntime.FastStraightId);
@@ -137,7 +137,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 뚝심_9턴이후_풀하우스_득점시_7점을_받는다()
+        public void Grit_GivesSevenPointsForFullHouseFromTurnNine()
         {
             var random = new SequenceRandom(0);
             AcquireAugment(YachtAugmentRuntime.HoldoutId);
@@ -156,7 +156,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 신중한스트레이트_스몰먼저_기입후_라지기입시_7점을_받고_라지먼저시_실패한다()
+        public void CautiousStraight_GivesSevenPointsForSmallThenLargeAndFailsIfLargeFirst()
         {
             var random = new SequenceRandom(0);
             AcquireAugment(YachtAugmentRuntime.CautiousStraightId);
@@ -173,7 +173,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 티끌모아태산_1의눈_7개_누적시_15점을_받는다()
+        public void EveryLittleCounts_GivesFifteenPointsOnSevenAccumulatedOnes()
         {
             var random = new SequenceRandom(0);
             AcquireAugment(YachtAugmentRuntime.EveryLittleId);
@@ -200,7 +200,50 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 따라쟁이_상대가_기입한_카테고리를_따라_기입하면_보상한다()
+        public void EveryLittleCounts_StopsCountingAfterRewardIsGranted()
+        {
+            var random = new SequenceRandom(0);
+            AcquireAugment(YachtAugmentRuntime.EveryLittleId);
+
+            // 1이 다섯 개면 한 번에 7개 문턱을 넘지는 못하므로 두 번에 나눠 도달시킨다.
+            for (int i = 0; i < 4; i++) state.Dice[i].Value = 1;
+            state.Dice[4].Value = 2;
+            runtime.AfterScoreCommit(state, 0, 1, ScoreCategory.Aces, 4, 4, state.Dice, random);
+
+            for (int i = 0; i < 3; i++) state.Dice[i].Value = 1;
+            state.Dice[3].Value = 2;
+            state.Dice[4].Value = 2;
+            runtime.AfterScoreCommit(state, 0, 1, ScoreCategory.FullHouse, 7, 7, state.Dice, random);
+            Assert.That(state.AugmentPlayers[0].EveryLittleRewarded, Is.True);
+
+            // 보상 이후의 기입은 눈금도 보상도 늘리지 않는다.
+            int countAfterReward = state.AugmentPlayers[0].EveryLittleCount;
+            int bonusAfterReward = state.Players[0].augmentBonusScore;
+            for (int i = 0; i < 5; i++) state.Dice[i].Value = 1;
+            runtime.AfterScoreCommit(state, 0, 2, ScoreCategory.Choice, 5, 5, state.Dice, random);
+
+            Assert.That(state.Players[0].augmentBonusScore, Is.EqualTo(bonusAfterReward));
+            Assert.That(state.AugmentPlayers[0].EveryLittleCount, Is.EqualTo(countAfterReward));
+        }
+
+        [Test]
+        public void EveryLittleCounts_DoesNotCountOnesFromScratchedTurn()
+        {
+            var random = new SequenceRandom(0);
+            AcquireAugment(YachtAugmentRuntime.EveryLittleId);
+
+            // 1이 다섯 개여도 기본 점수가 0이면(스크래치) 눈금을 세지 않는다.
+            for (int i = 0; i < 5; i++) state.Dice[i].Value = 1;
+            runtime.AfterScoreCommit(state, 0, 1, ScoreCategory.LargeStraight, 0, 0, state.Dice, random);
+            Assert.That(state.AugmentPlayers[0].EveryLittleCount, Is.EqualTo(0));
+
+            // 같은 주사위라도 점수가 들어간 기입은 정상적으로 센다.
+            runtime.AfterScoreCommit(state, 0, 2, ScoreCategory.Aces, 5, 5, state.Dice, random);
+            Assert.That(state.AugmentPlayers[0].EveryLittleCount, Is.EqualTo(5));
+        }
+
+        [Test]
+        public void Copycat_RewardsFillingSameCategoryAsOpponent()
         {
             var random = new SequenceRandom(0);
             AcquireAugment(YachtAugmentRuntime.CopycatId);
@@ -217,7 +260,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 예언자_3턴간_목표숫자_일치시_7점을_받는다()
+        public void Prophet_GivesSevenPointsWhenTargetNumberMatchesForThreeTurns()
         {
             var random = new SequenceRandom(10);
             AcquireAugment(YachtAugmentRuntime.ProphetId);
@@ -235,7 +278,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 배수진_기존에_기입했던_기본점수와_동일한_점수를_기입하면_10점을_받는다()
+        public void LastStand_GivesTenPointsForMatchingPreviouslyFilledBaseScore()
         {
             var random = new SequenceRandom(0);
             AcquireAugment(YachtAugmentRuntime.DoublingId);
@@ -252,7 +295,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 노즈도르무_턴시간을_15초로_제한하고_10턴유지시_9점을_받는다()
+        public void Nozdormu_LimitsTurnToFifteenSecondsAndGivesNinePointsAfterTenTurns()
         {
             var random = new SequenceRandom(0);
             state.AugmentPlayers[0].TurnsTaken = 2;

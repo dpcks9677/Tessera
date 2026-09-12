@@ -13,7 +13,7 @@ namespace Tessera.Editor.Tests
     public sealed class OctahedronOrientationTests
     {
         [Test]
-        public void 여덟_면_법선은_서로_다르고_정규화되어_있다()
+        public void EightFaceNormalsAreDistinctAndNormalized()
         {
             Vector3[] normals = DiceFaceOrientation.OctaFaceNormals;
             Assert.That(normals.Length, Is.EqualTo(8));
@@ -30,7 +30,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 어떤_착지회전에서도_목표면이_위로_온다()
+        public void TargetFaceEndsUpAtAnyLandingRotation()
         {
             UnityEngine.Random.InitState(20260905);
 
@@ -49,7 +49,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 카메라정렬회전은_목표면을_카메라쪽으로_돌린다()
+        public void CameraAlignRotationTurnsTargetFaceTowardCamera()
         {
             // 카메라가 75도로 내려다보므로 면 법선은 위에서 15도 기운 방향을 향해야 한다.
             Vector3 expected = Quaternion.Euler(-15f, 0f, 0f) * Vector3.up;
@@ -64,7 +64,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 정렬하면_어떤_면이든_숫자가_정방향으로_선다()
+        public void AligningMakesDigitUprightOnAnyFace()
         {
             UnityEngine.Random.InitState(20260908);
 
@@ -90,7 +90,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 눈_바꿔_새기는_회전은_팔면체_대칭이라_실루엣이_변하지_않는다()
+        public void PipReengraveRotationKeepsSilhouetteByOctahedralSymmetry()
         {
             // 대칭 회전이면 축 꼭짓점이 다시 축 꼭짓점으로 간다. 아니면 몸체가 다른 모양으로 보인다.
             Vector3[] corners = { Vector3.right, Vector3.up, Vector3.forward };
@@ -113,7 +113,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 팔면주사위는_프리셋의_뒤쪽_슬롯을_쓴다()
+        public void OctahedronDiceUseRearPresetSlots()
         {
             var types = new[]
             {
@@ -128,7 +128,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 팔면주사위가_없으면_슬롯_순서를_바꾸지_않는다()
+        public void WithoutOctahedronDiceSlotOrderIsUnchanged()
         {
             var types = new[] { DieType.Normal, DieType.Golden, DieType.Sevens, DieType.HeavyRed, DieType.Couple };
 

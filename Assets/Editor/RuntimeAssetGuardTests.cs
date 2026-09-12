@@ -30,7 +30,7 @@ public class RuntimeAssetGuardTests
     }
 
     [Test]
-    public void 에셋_머티리얼은_저장되지_않는_사본으로_바뀐다()
+    public void AssetMaterialIsSwappedForNonPersistentCopy()
     {
         Material asset = LoadMaterialAsset();
         MeshRenderer renderer = target.GetComponent<MeshRenderer>();
@@ -45,7 +45,7 @@ public class RuntimeAssetGuardTests
     }
 
     [Test]
-    public void 저장_직전에는_구운_에셋_참조로_돌아온다()
+    public void JustBeforeSaveItRevertsToBakedAssetReference()
     {
         Material asset = LoadMaterialAsset();
         MeshRenderer renderer = target.GetComponent<MeshRenderer>();
@@ -64,7 +64,7 @@ public class RuntimeAssetGuardTests
     /// 두 인스턴스가 같은 버퍼를 덮어쓰므로, 필터마다 사본을 갈라 줘야 한다.
     /// </summary>
     [Test]
-    public void 공유된_메시는_필터마다_별도_사본으로_갈린다()
+    public void SharedMeshIsSplitIntoPerFilterCopy()
     {
         GameObject other = GameObject.CreatePrimitive(PrimitiveType.Cube);
         other.hideFlags = HideFlags.HideAndDontSave;
@@ -89,7 +89,7 @@ public class RuntimeAssetGuardTests
     }
 
     [Test]
-    public void 이미_갈라_준_메시는_다시_복제하지_않는다()
+    public void AlreadySplitMeshIsNotClonedAgain()
     {
         MeshFilter filter = target.GetComponent<MeshFilter>();
 

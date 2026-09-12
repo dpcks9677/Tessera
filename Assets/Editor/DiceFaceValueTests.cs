@@ -16,7 +16,7 @@ namespace Tessera.Editor.Tests
     public sealed class DiceFaceValueTests
     {
         [Test]
-        public void 세븐스주사위는_2부터7까지를_여섯면에_하나씩_새긴다()
+        public void SevensDieEngravesTwoToSevenOnSixFaces()
         {
             var used = new HashSet<int>();
 
@@ -31,7 +31,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 팔면주사위는_여덟면을_1부터6까지에_대응시킨다()
+        public void OctahedronDieMapsEightFacesToOneThroughSix()
         {
             int[] faces = DiceFaceValues.Get(DieType.Octahedron);
             Assert.That(faces, Is.Not.Null);
@@ -47,7 +47,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 일반주사위는_값과_면번호가_같다()
+        public void NormalDieValueEqualsFaceIndex()
         {
             Assert.That(DiceFaceValues.Get(DieType.Normal), Is.Null);
             for (int value = 1; value <= 6; value++)
@@ -57,7 +57,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 규칙이_만드는_눈은_모두_새겨진_면을_가진다()
+        public void EveryValueRulesProduceHasEngravedFace()
         {
             foreach (YachtDieType logical in Enum.GetValues(typeof(YachtDieType)))
             {
@@ -75,7 +75,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 세븐스의_눈7은_회전계산을_터뜨리지_않는다()
+        public void SevensValueSevenDoesNotBreakRotationMath()
         {
             // 값 7을 그대로 넘기면 FaceNormals[6]을 읽어 예외가 났다. 면 인덱스로 옮기면 6면 안에 들어온다.
             int face = DiceFaceValues.FaceIndexOf(DieType.Sevens, 7);
@@ -87,7 +87,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 어떤_착지회전에서도_목표면이_위로_온다()
+        public void TargetFaceEndsUpAtAnyLandingRotation()
         {
             UnityEngine.Random.InitState(20260904);
 

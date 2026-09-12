@@ -53,7 +53,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 판뒤집기_첫굴림후_사용가능하고_사용시_기록된다()
+        public void TableFlip_IsUsableAfterFirstRollAndIsRecordedOnUse()
         {
             AcquireAugment(YachtAugmentRuntime.TableFlipId);
 
@@ -73,7 +73,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 등가교환_기본굴림소진후_최대3회_사용가능하고_5점씩_차감된다()
+        public void EquivalentExchange_AllowsUpToThreeUsesAfterRollsRunOutAndCostsFivePointsEach()
         {
             AcquireAugment(YachtAugmentRuntime.EquivalentExchangeId);
 
@@ -103,7 +103,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 등가교환_미보유_플레이어는_사용불가이며_예외가_없다()
+        public void EquivalentExchange_IsUnusableWithoutOwnershipAndThrowsNoException()
         {
             // 코스믹 큐브의 소진(회색) 상태가 바로 이 경로다. 화면이 갱신마다 밟으므로
             // false를 돌려주는 것보다 예외가 나지 않는 것이 더 중요한 단언이다.
@@ -115,7 +115,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 굴림예산_상태는_남은굴림과_등가교환_가능여부로_정해진다()
+        public void RollBudgetStateIsDecidedByRemainingRollsAndExchangeAvailability()
         {
             // 굴림이 남아 있으면 등가교환 보유 여부와 무관하게 평소 상태다.
             Assert.That(YachtTurnFlowPresenter.ResolveRollBudgetState(3, false), Is.EqualTo(RollBudgetState.Normal));
@@ -127,7 +127,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 갬빗_굴림전_사용가능하고_주사위수를_4개로_줄인후_다음턴은_6개가된다()
+        public void Gambit_IsUsableBeforeRollReducesDiceToFourThenNextTurnHasSix()
         {
             AcquireAugment(YachtAugmentRuntime.GambitId);
 
@@ -159,7 +159,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 더블다운_9턴이후_굴림전_사용가능하고_점수를_1_5배로_부스트한다()
+        public void DoubleDown_IsUsableBeforeRollFromTurnNineAndBoostsScoreByOnePointFive()
         {
             AcquireAugment(YachtAugmentRuntime.DoubleDownId);
 
@@ -192,7 +192,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 주사위연금술_첫굴림후_킵되지않은_주사위_눈금을_1씩_감소시킨다()
+        public void DiceAlchemy_DecreasesUnkeptDiceValuesByOneAfterFirstRoll()
         {
             AcquireAugment(YachtAugmentRuntime.DiceAlchemyId);
 

@@ -105,7 +105,7 @@ F1/F2 해상도 전환이 자동으로 반영된다.
 - 큐브 실루엣이 배경에서 덜 떨어져 보이면 코드 수정 없이 `_EdgeIntensity`(기본 2.60)와
   `_RimIntensity`(기본 0.85)를 올려 자체 발광 외곽을 강화한다.
 
-이 배치는 `PixelEdgeFilterTests.엣지_피처는_불투명_직후에_실행된다`로 고정해 두었다.
+이 배치는 `PixelEdgeFilterTests.EdgeFeatureRunsRightAfterOpaque`로 고정해 두었다.
 뒤로 옮기면 테스트가 깨진다.
 
 밝은 발광체를 선택적으로 빼야 할 경우를 대비해 `_EdgeLuminanceSuppression`을 노출했다.
@@ -401,7 +401,7 @@ Bayer 4×4 임계 행렬을 **가상 격자 좌표**(`floor(uv * _VirtualResolut
 - **바꿀 것이 있을 때만 씬을 더럽힌다.** 이미 맞아 있으면 아무것도 하지 않는다.
 - 플레이 중에는 컨트롤러가 주인이므로 실행하지 않는다.
 
-재발 방지로 계약 테스트를 하나 두었다. `PixelEdgeFilterTests.씬에_구워진_업스케일_재질이_게임_시작값과_같다`가 씬을 열어 재질 값을 `PixelFilterSettings.StartResolution`과 비교한다. 시작값을 다시 바꾸면 이 테스트가 먼저 깨진다.
+재발 방지로 계약 테스트를 하나 두었다. `PixelEdgeFilterTests.BakedUpscaleMaterialMatchesGameStartValues`가 씬을 열어 재질 값을 `PixelFilterSettings.StartResolution`과 비교한다. 시작값을 다시 바꾸면 이 테스트가 먼저 깨진다.
 
 ### 11.4 검증 (2026-09-06)
 

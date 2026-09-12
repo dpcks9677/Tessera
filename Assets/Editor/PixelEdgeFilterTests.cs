@@ -23,7 +23,7 @@ namespace Tessera.Editor.Tests
         private const string ScenePath = "Assets/Scenes/Augmented Dice.unity";
 
         [Test]
-        public void 엣지_셰이더는_필요한_프로퍼티를_모두_가진다()
+        public void EdgeShaderHasAllRequiredProperties()
         {
             Shader shader = Shader.Find(PixelEdgeRendererFeature.ShaderPath);
             Assert.That(shader, Is.Not.Null, $"{PixelEdgeRendererFeature.ShaderPath} 셰이더를 찾지 못했습니다.");
@@ -47,7 +47,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void PC_렌더러에_엣지_피처가_하나만_등록된다()
+        public void PcRendererRegistersExactlyOneEdgeFeature()
         {
             ScriptableRendererData rendererData = AssetDatabase.LoadAssetAtPath<ScriptableRendererData>(PcRendererPath);
             Assert.That(rendererData, Is.Not.Null, $"{PcRendererPath} 을 찾지 못했습니다.");
@@ -61,7 +61,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 엣지_피처는_불투명_직후에_실행된다()
+        public void EdgeFeatureRunsRightAfterOpaque()
         {
             ScriptableRendererData rendererData = AssetDatabase.LoadAssetAtPath<ScriptableRendererData>(PcRendererPath);
             Assert.That(rendererData, Is.Not.Null);
@@ -78,7 +78,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 업스케일_셰이더는_양자화_프로퍼티를_가진다()
+        public void UpscaleShaderHasQuantizationProperties()
         {
             Shader shader = Shader.Find("DicePoC/PixelUpscale");
             Assert.That(shader, Is.Not.Null, "DicePoC/PixelUpscale 셰이더를 찾지 못했습니다.");
@@ -99,7 +99,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 씬에_구워진_업스케일_재질이_게임_시작값과_같다()
+        public void BakedUpscaleMaterialMatchesGameStartValues()
         {
             // 플레이 전 에디터 프리뷰와 플레이 직후 화면이 달라지지 않게 고정한다.
             // 시작 해상도를 640x360에서 480x270으로 바꿨을 때 실제로 어긋났던 자리다.
@@ -140,7 +140,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 팔레트는_셰이더_배열에_들어가고_색이_겹치지_않는다()
+        public void PaletteFitsShaderArrayWithoutDuplicateColors()
         {
             Color[] palette = TesseraPixelPalette.Build();
 
@@ -166,7 +166,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 표시가_없거나_꺼진_카메라는_엣지_패스를_받지_않는다()
+        public void CameraWithoutMarkerOrDisabledSkipsEdgePass()
         {
             GameObject cameraObject = new("Pixel Edge Test Camera", typeof(Camera));
             try

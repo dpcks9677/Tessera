@@ -22,7 +22,7 @@ namespace Tessera.Editor.Tests
         private static readonly Color32 Indigo = new(0x36, 0x4b, 0x6e, 0xff);
 
         [Test]
-        public void 같은_인자면_항상_같은_픽셀이_나온다()
+        public void SameArgumentsAlwaysProduceSamePixels()
         {
             Color32[] first = Pixels(AugmentStickerTexture.DefaultBase);
             Color32[] second = Pixels(AugmentStickerTexture.DefaultBase);
@@ -31,7 +31,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 몸통은_톱니_없이_꽉_찬_사각형이다()
+        public void BodyIsSolidRectangleWithoutJaggedEdges()
         {
             Color32[] pixels = Pixels(AugmentStickerTexture.DefaultBase);
 
@@ -45,7 +45,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 그림자는_한쪽_모서리로만_한_칸_밀린다()
+        public void ShadowOffsetsOneCellTowardSingleCorner()
         {
             Color32[] pixels = Pixels(AugmentStickerTexture.DefaultBase);
             Color32 shadow = AugmentStickerTexture.DefaultShadow;
@@ -64,7 +64,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 그림자_바깥_두_귀퉁이만_비어_있다()
+        public void OnlyTwoCornersOutsideShadowAreEmpty()
         {
             Color32[] pixels = Pixels(AugmentStickerTexture.DefaultBase);
 
@@ -78,7 +78,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 금테는_몸통_가장자리에서_정해진_칸수만큼_안쪽이다()
+        public void GoldBorderSitsFixedCellsInsideBodyEdge()
         {
             Color32[] pixels = Pixels(AugmentStickerTexture.DefaultBase);
             Color32 gold = AugmentStickerTexture.DefaultBorder;
@@ -104,7 +104,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 색상코드를_바꿔도_금테와_그림자는_그대로다()
+        public void ChangingColorCodeKeepsGoldBorderAndShadow()
         {
             Color32[] burgundy = Pixels(AugmentStickerTexture.DefaultBase);
             Color32[] indigo = Pixels(Indigo);
@@ -140,7 +140,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 가로로_긴_실제_칸_크기에서도_구조가_유지된다()
+        public void StructureHoldsAtWideRealCellSize()
         {
             const int width = 59;
             const int height = 15;
@@ -158,7 +158,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 최소_크기_아래로_요청해도_최소_크기로_만든다()
+        public void RequestBelowMinimumSizeClampsToMinimum()
         {
             // 8보다 작게 부르면 8로 올린다. 그래야 그림자 한 칸과 금테 한 줄이 들어간다.
             Color32[] pixels = AugmentStickerTexture.CreatePixels(

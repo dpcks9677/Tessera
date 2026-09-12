@@ -10,7 +10,7 @@ using UnityEngine.UI;
 public sealed class AugmentCardViewTests
 {
     [Test]
-    public void CommonCard_이름효과종류를_같은레이아웃에표시한다()
+    public void CommonCard_ShowsNameEffectAndKindInSameLayout()
     {
         GameObject canvasObject = new("Augment Card Test Canvas", typeof(Canvas));
         try
@@ -54,7 +54,7 @@ public sealed class AugmentCardViewTests
     [TestCase(AugmentCardDisplayState.Conflict, false, 2f)]
     [TestCase(AugmentCardDisplayState.Used, false, 1f)]
     [TestCase(AugmentCardDisplayState.Disabled, false, 1f)]
-    public void CommonCard_상태별강조와입력여부를_즉시구분한다(
+    public void CommonCard_DistinguishesHighlightAndInputStateAtOnce(
         AugmentCardDisplayState state,
         bool expectedInteractable,
         float expectedOutlineDistance)
@@ -89,7 +89,7 @@ public sealed class AugmentCardViewTests
     }
 
     [Test]
-    public void CommonCard_여섯상태는_서로다른배경색을사용한다()
+    public void CommonCard_SixStatesUseDistinctBackgroundColors()
     {
         GameObject canvasObject = new("Augment State Palette Test Canvas", typeof(Canvas));
         try
@@ -118,7 +118,7 @@ public sealed class AugmentCardViewTests
     }
 
     [Test]
-    public void TrayCard_고해상도오버레이와3D양피지를_슬롯에배치한다()
+    public void TrayCard_PlacesCrispOverlayAndParchmentInSlot()
     {
         GameObject anchorObject = new("Tray Slot Anchor");
         try
@@ -155,7 +155,7 @@ public sealed class AugmentCardViewTests
     }
 
     [Test]
-    public void TrayCard_호버와클릭선택을_높이와상태로표현한다()
+    public void TrayCard_ExpressesHoverAndClickByHeightAndState()
     {
         GameObject anchorObject = new("Interactive Tray Slot Anchor");
         try
@@ -195,7 +195,7 @@ public sealed class AugmentCardViewTests
     }
 
     [Test]
-    public void Parchment_네프리셋은_직사각형본문과2점5회말림및큐브인장을가진다()
+    public void Parchment_FourPresetsHaveRectBodyCurlAndCubeSeal()
     {
         var signatures = new HashSet<string>();
         foreach (AugmentParchmentPreset preset in System.Enum.GetValues(typeof(AugmentParchmentPreset)))
@@ -245,7 +245,7 @@ public sealed class AugmentCardViewTests
     [TestCase(1)]
     [TestCase(2)]
     [TestCase(3)]
-    public void Parchment_정적3D프리팹과선택프리뷰는_네프리셋을제공한다(int presetId)
+    public void Parchment_StaticPrefabAndPreviewProvideFourPresets(int presetId)
     {
         GameObject prefab = Resources.Load<GameObject>($"AugmentScrolls/AugmentScrollPreset_{presetId}");
         Assert.That(prefab, Is.Not.Null);
@@ -270,7 +270,7 @@ public sealed class AugmentCardViewTests
     }
 
     [Test]
-    public void CommonCard_왼쪽장식거터를비운_공통안전영역을사용한다()
+    public void CommonCard_UsesSafeAreaWithEmptyLeftGutter()
     {
         GameObject canvasObject = new("Augment Safe Area Test Canvas", typeof(Canvas));
         try
@@ -293,7 +293,7 @@ public sealed class AugmentCardViewTests
     }
 
     [Test]
-    public void CommonCard_헤더_본문을_위에서아래로쌓는다()
+    public void CommonCard_StacksHeaderAndBodyTopToBottom()
     {
         GameObject canvasObject = new("Augment Row Order Test Canvas", typeof(Canvas));
         try
@@ -335,7 +335,7 @@ public sealed class AugmentCardViewTests
     private static float TopMargin(RectTransform rect) => -rect.offsetMax.y;
 
     [Test]
-    public void CardTray_세슬롯앵커와카드비율을제공한다()
+    public void CardTray_ProvidesThreeSlotAnchorsAndCardRatio()
     {
         GameObject parent = new("Augment Tray Test Parent");
         try
@@ -354,7 +354,7 @@ public sealed class AugmentCardViewTests
     }
 
     [Test]
-    public void CommonCard_임시픽셀아이콘은_64픽셀Point필터를사용한다()
+    public void CommonCard_FallbackPixelIconUses64pxPointFilter()
     {
         GameObject canvasObject = new("Augment Icon Test Canvas", typeof(Canvas));
         try

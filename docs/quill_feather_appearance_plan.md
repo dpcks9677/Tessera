@@ -208,7 +208,7 @@ EditMode 테스트 9개(`Assets/Editor/QuillFeatherAppearanceTests.cs`)가 각�
 | 6 | 슬릿이 메시 노치와 정렬된다 (`SlitCycles × BarbSlant = 2` 직접 검증) |
 | 7 | 팔레트에 갈색이 없다 (마호가니 회귀 차단) |
 | 8 | 노치가 깊어졌지만 비대칭을 뒤집지 않는다 (최솟값 0.60~0.68) |
-| 9 | 결정성 |
+| 9 | IsDeterministic |
 
 노멀맵 정렬은 테스트하지 않는다. 같은 상수를 참조하는 것 자체가 구조적 보장이라 테스트가 상수를 두 번 적는 동어반복이 된다.
 

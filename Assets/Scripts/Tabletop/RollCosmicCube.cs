@@ -63,7 +63,6 @@ namespace Tessera.Tabletop
         public int CurrentZodiacIndex => currentZodiacIndex;
         public string CurrentZodiacName => ZodiacConstellationData.GetDefinition(currentZodiacIndex).nameKr;
         public string CurrentZodiacNameEn => ZodiacConstellationData.GetDefinition(currentZodiacIndex).nameEn;
-        public event Action OnClicked;
 
         // 렌더러 및 트랜스폼 레퍼런스
         private Transform floatingCubeRoot;
@@ -337,8 +336,6 @@ namespace Tessera.Tabletop
 
         public void TriggerClickFeedback()
         {
-            OnClicked?.Invoke();
-
             if (!gameObject.activeInHierarchy) return;
 
             // 1. 발광 플래시 및 6개 면 파티클 버스트

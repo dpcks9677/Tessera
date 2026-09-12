@@ -22,7 +22,7 @@ public sealed class TurnBalanceIndicatorTests
     }
 
     [Test]
-    public void BuildGeometry_필수파트를_중복없이_재생성한다()
+    public void BuildGeometry_RebuildsRequiredPartsWithoutDuplication()
     {
         indicator.BuildGeometry();
         indicator.BuildGeometry();
@@ -37,7 +37,7 @@ public sealed class TurnBalanceIndicatorTests
     }
 
     [Test]
-    public void SetActiveSide_왼쪽과_오른쪽의_기울기와_인장위치를_대칭으로_표현한다()
+    public void SetActiveSide_MirrorsTiltAndSealPositionForBothSides()
     {
         indicator.SetActiveSide(TurnSide.Left, false);
         float leftAngle = indicator.CurrentBeamAngle;
@@ -56,7 +56,7 @@ public sealed class TurnBalanceIndicatorTests
     }
 
     [Test]
-    public void SetActiveSide_None은_천칭과_인장을_중앙으로_복원한다()
+    public void SetActiveSide_NoneRestoresScaleAndSealToCenter()
     {
         indicator.SetActiveSide(TurnSide.Left, false);
         indicator.SetActiveSide(TurnSide.None, false);
@@ -67,7 +67,7 @@ public sealed class TurnBalanceIndicatorTests
     }
 
     [Test]
-    public void Create_장식레이어와_앤틱실버_왁스재질을_사용한다()
+    public void Create_UsesDecorLayerAndAntiqueSilverWaxMaterial()
     {
         Assert.That(indicator.gameObject.layer, Is.EqualTo(11));
         Assert.That(indicator.transform.localEulerAngles.y, Is.EqualTo(50f).Within(0.01f));
@@ -80,7 +80,7 @@ public sealed class TurnBalanceIndicatorTests
     }
 
     [Test]
-    public void BuildGeometry_판타지형_기단과_곡선빔_링크체인_오목접시를_생성한다()
+    public void BuildGeometry_CreatesFantasyPlinthCurvedBeamLinkChainAndConcavePan()
     {
         Assert.That(indicator.transform.Find("Balance_Ornate_Base_Lower"), Is.Not.Null);
         Assert.That(indicator.transform.Find("Balance_Turned_Column"), Is.Not.Null);
@@ -98,7 +98,7 @@ public sealed class TurnBalanceIndicatorTests
     }
 
     [Test]
-    public void 인장_이동궤적은_시작과_도착을_정확히_지나며_하나의_부드러운_호를_그린다()
+    public void SealTravelPathPassesExactEndpointsAlongSingleSmoothArc()
     {
         MethodInfo evaluateArc = typeof(TurnBalanceIndicator).GetMethod(
             "EvaluateTransferArc", BindingFlags.Static | BindingFlags.NonPublic);

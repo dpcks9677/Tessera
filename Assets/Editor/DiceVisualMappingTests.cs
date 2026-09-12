@@ -16,7 +16,7 @@ namespace Tessera.Editor.Tests
     public sealed class DiceVisualMappingTests
     {
         [Test]
-        public void Resolve_모든_규칙주사위종류를_고유한_화면종류로_옮긴다()
+        public void Resolve_MapsEveryRuleDieTypeToUniqueVisualType()
         {
             var seen = new Dictionary<DieType, YachtDieType>();
 
@@ -39,7 +39,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void Resolve가_반환한_화면종류는_모두_전용_팔레트를_가진다()
+        public void ResolvedVisualTypesAllHaveDedicatedPalette()
         {
             DiePaletteDefinition normal = DicePaletteCatalog.GetDefinition(DieType.Normal);
 
@@ -57,7 +57,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 팔각주사위는_원본의_미드나잇_네이비를_쓴다()
+        public void OctahedronDieUsesOriginalMidnightNavy()
         {
             DiePaletteDefinition octa = DicePaletteCatalog.GetDefinition(DieType.Octahedron);
 

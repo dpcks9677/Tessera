@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -79,7 +78,6 @@ namespace Tessera.Tabletop
         public int OuterRuneProgress => roundProgressActive ? roundProgress : outerRuneProgress;
         
 
-        public event Action StateChanged;
 public bool StoneRunesLit => stoneRunesLit;
 
         private sealed class GlyphVisual
@@ -744,8 +742,6 @@ public bool StoneRunesLit => stoneRunesLit;
             {
                 ApplyGlyphState(runeStones[i].glyph, stoneRunesLit);
             }
-
-            StateChanged?.Invoke();
         }
 
         private void ApplyGlyphState(GlyphVisual visual, bool lit)

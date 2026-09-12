@@ -28,14 +28,14 @@ namespace Tessera.Editor.Tests
         private const float Yaw = 15f;
 
         [Test]
-        public void 회전각이_0이면_꽂힘_자세_그대로다()
+        public void ZeroRotationKeepsDockedPose()
         {
             Pose(P1Cell, 0f, out _, out Quaternion rotation);
             Assert.That(Quaternion.Angle(rotation, Docked), Is.LessThan(0.01f));
         }
 
         [Test]
-        public void 양수_각도는_화면에서_시계방향이다()
+        public void PositiveAngleIsClockwiseOnScreen()
         {
             // 카메라가 yaw 없이 내려다보므로 화면 오른쪽이 +X, 화면 위쪽이 +Z입니다.
             // 위에서 오른쪽으로 도는 것이 시계방향이고, 그것이 +Z에서 +X로 가는 방향입니다.
@@ -47,13 +47,13 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 세로축_회전이라_종이에_대한_기울기가_바뀌지_않는다()
+        public void VerticalAxisRotationKeepsTiltAgainstPaper()
         {
             Assert.That(Feather(Yaw).y, Is.EqualTo(Feather(0f).y).Within(1e-4f));
         }
 
         [Test]
-        public void 두_플레이어가_같은_자세를_쓴다()
+        public void BothPlayersShareSamePose()
         {
             // 좌우반전은 폐기했습니다. 자세는 칸 위치와 무관합니다.
             QuillHoverAnimator.ResolveWritingPose(P1Cell, Docked, SheetUp, Yaw, out _, out Quaternion p1);
@@ -63,7 +63,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 닙은_칸_중앙_바로_위에_놓인다()
+        public void NibSitsDirectlyAboveCellCenter()
         {
             Pose(P1Cell, Yaw, out Vector3 position, out _);
 
@@ -73,7 +73,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 회전각은_닙_위치를_건드리지_않는다()
+        public void RotationAngleDoesNotMoveNibPosition()
         {
             Pose(P1Cell, 0f, out Vector3 straight, out _);
             Pose(P1Cell, Yaw, out Vector3 turned, out _);
@@ -82,7 +82,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 회전축은_월드축이_아니라_종이의_세로축이다()
+        public void RotationAxisIsPaperVerticalNotWorldAxis()
         {
             // 종이를 기울이면 회전축도 따라 기웁니다.
             Vector3 tiltedUp = (Quaternion.Euler(0f, 0f, 30f) * Vector3.up).normalized;

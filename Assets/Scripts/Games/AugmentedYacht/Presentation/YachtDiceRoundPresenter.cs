@@ -248,6 +248,25 @@ namespace Tessera.Games.AugmentedYacht
         }
 
         /// <summary>
+        /// 굴림 결과를 콘솔에 남긴다. 에디터 전용이다.
+        ///
+        /// Debug.Log는 조건부 컴파일이 아니라 인자가 항상 평가된다. 호출부에 두면 빌드에서도
+        /// 목록 두 개와 보간 문자열이 굴림마다 할당되므로, Conditional 메서드로 감싸 호출 자체를 지운다.
+        /// </summary>
+        [System.Diagnostics.Conditional("UNITY_EDITOR")]
+        private void LogRollTrace(int clipIndex, bool isMirrored)
+        {
+            List<int> rolledValues = new();
+            List<int> keptValues = new();
+            for (int i = 0; i < diceCount; i++)
+            {
+                if (keptDice[i]) keptValues.Add(diceValues[i]);
+                else rolledValues.Add(diceValues[i]);
+            }
+            Debug.Log($"<color=#2EA3FF>[주사위 굴림 #{rollIndex}]</color> Preset #{clipIndex + 1} (미러링: {isMirrored}) | 굴린 눈: [{string.Join(", ", rolledValues)}], 킵된 눈: [{string.Join(", ", keptValues)}], 전체 결과: [{string.Join(", ", diceValues)}]");
+        }
+
+        /// <summary>
         /// 굴림 궤적을 재생하고 결과를 보드 중앙에 정렬한다.
         /// 눈과 프리셋은 권위 명령 결과에서 이미 확정된 값이며 여기서 다시 뽑지 않는다.
         /// </summary>
@@ -260,14 +279,7 @@ namespace Tessera.Games.AugmentedYacht
             presetCatalog.TryGetClip(presentation.PresetFile, clipIndex, out WebPresetClip clip);
             bool isMirrored = presentation.IsMirrored;
 
-            List<int> rolledValues = new();
-            List<int> keptValues = new();
-            for (int i = 0; i < diceCount; i++)
-            {
-                if (keptDice[i]) keptValues.Add(diceValues[i]);
-                else rolledValues.Add(diceValues[i]);
-            }
-            Debug.Log($"<color=#2EA3FF>[주사위 굴림 #{rollIndex}]</color> Preset #{clipIndex + 1} (미러링: {isMirrored}) | 굴린 눈: [{string.Join(", ", rolledValues)}], 킵된 눈: [{string.Join(", ", keptValues)}], 전체 결과: [{string.Join(", ", diceValues)}]");
+            LogRollTrace(clipIndex, isMirrored);
 
             for (int i = 0; i < activeDice.Count; i++)
             {

@@ -18,7 +18,7 @@ namespace Tessera.Editor.Tests
         private const string GoldenDie = "golden-die";
 
         [Test]
-        public void 변형증강을_획득하면_대상_칸에_부착_요청이_생긴다()
+        public void AcquiringModificationAugmentCreatesAttachRequestOnTargetCategory()
         {
             List<AugmentVfxRequest> requests = Plan(
                 State(),
@@ -31,7 +31,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 변형이_아닌_계열을_획득하면_요청이_생기지_않는다()
+        public void AcquiringNonModificationKindCreatesNoRequest()
         {
             List<AugmentVfxRequest> requests = Plan(
                 State(),
@@ -42,7 +42,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 랜덤박스가_변형증강을_주면_부착_요청이_생긴다()
+        public void RandomBoxGrantingModificationAugmentCreatesAttachRequest()
         {
             YachtGameEvent replaced = Event(YachtGameEventType.AugmentReplaced, 1, augmentId: "random-box");
             replaced.RelatedAugmentId = Mountain;
@@ -55,7 +55,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 교체된_칸으로_점수를_확정하면_낙인_요청이_생긴다()
+        public void CommittingScoreOnReplacedCategoryCreatesBrandRequest()
         {
             List<AugmentVfxRequest> requests = Plan(
                 State(LuckySevens),
@@ -67,7 +67,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 교체되지_않은_칸으로_확정하면_요청이_생기지_않는다()
+        public void CommittingOnUnreplacedCategoryCreatesNoRequest()
         {
             List<AugmentVfxRequest> requests = Plan(
                 State(LuckySevens),
@@ -77,7 +77,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 증강을_가지지_않은_상대의_확정에는_반응하지_않는다()
+        public void CommitByOpponentWithoutAugmentIsIgnored()
         {
             List<AugmentVfxRequest> requests = Plan(
                 State(LuckySevens),
@@ -87,7 +87,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 여러_이벤트가_섞여_와도_관련된_것만_순서대로_옮긴다()
+        public void MixedEventsCarryOnlyRelevantOnesInOrder()
         {
             List<AugmentVfxRequest> requests = Plan(
                 State(LuckySevens),
@@ -103,7 +103,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void AugmentTriggered는_변형계열에서_쓰지_않으므로_무시한다()
+        public void AugmentTriggeredIsIgnoredForModificationKind()
         {
             List<AugmentVfxRequest> requests = Plan(
                 State(LuckySevens),
@@ -113,7 +113,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 다이스알케미를_발동하면_연기가림_요청이_생긴다()
+        public void TriggeringDiceAlchemyCreatesSmokeCoverRequest()
         {
             List<AugmentVfxRequest> requests = Plan(
                 State(),
@@ -125,7 +125,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 다른_수동행동을_발동하면_요청이_생기지_않는다()
+        public void TriggeringOtherManualActionCreatesNoRequest()
         {
             List<AugmentVfxRequest> requests = Plan(
                 State(),
@@ -135,7 +135,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 다이스알케미_발동이_다른_이벤트와_섞여도_순서대로_옮긴다()
+        public void DiceAlchemyMixedWithOtherEventsCarriesInOrder()
         {
             List<AugmentVfxRequest> requests = Plan(
                 State(LuckySevens),
@@ -150,7 +150,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 잘못된_입력에도_예외_없이_무시한다()
+        public void InvalidInputIsIgnoredWithoutException()
         {
             YachtGameState state = State(LuckySevens);
             var requests = new List<AugmentVfxRequest>();
@@ -164,7 +164,7 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void 결과를_비우지_않고_이어_붙인다()
+        public void ResultsAreAppendedWithoutClearing()
         {
             YachtGameState state = State();
             var requests = new List<AugmentVfxRequest>();
