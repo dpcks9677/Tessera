@@ -229,48 +229,13 @@ namespace Tessera.Tabletop
             Shader litShader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
             Shader unlitShader = Shader.Find("Universal Render Pipeline/Unlit") ?? litShader;
 
-            // 1. RollOrb의 lowerBase_stone 및 upperBase_stone, goldTrim, goldDark와 100% 동일한 머티리얼 구성
-            RollOrb rollOrb = FindFirstObjectByType<RollOrb>();
-            Material lowerStoneMat = null;
-            Material upperStoneMat = null;
-            Material goldTrimMat = null;
-            Material goldDarkMat = null;
-
-            if (rollOrb != null)
-            {
-                Transform lowerT = rollOrb.transform.Find("Base_Platform/LowerBase_Stone");
-                if (lowerT != null && lowerT.TryGetComponent<MeshRenderer>(out var mrLower))
-                {
-                    lowerStoneMat = Application.isPlaying ? mrLower.material : mrLower.sharedMaterial;
-                }
-
-                Transform upperT = rollOrb.transform.Find("Base_Platform/UpperBase_Stone");
-                if (upperT != null && upperT.TryGetComponent<MeshRenderer>(out var mrUpper))
-                {
-                    upperStoneMat = Application.isPlaying ? mrUpper.material : mrUpper.sharedMaterial;
-                }
-
-                Transform goldRingT = rollOrb.transform.Find("Base_Platform/Base_GoldRing");
-                if (goldRingT != null && goldRingT.TryGetComponent<MeshRenderer>(out var mrGold))
-                {
-                    goldTrimMat = Application.isPlaying ? mrGold.material : mrGold.sharedMaterial;
-                }
-
-                Transform footT = rollOrb.transform.Find("Pillar_Pedestal/Pillar_Foot");
-                if (footT != null && footT.TryGetComponent<MeshRenderer>(out var mrFoot))
-                {
-                    goldDarkMat = Application.isPlaying ? mrFoot.material : mrFoot.sharedMaterial;
-                }
-            }
-
-            if (lowerStoneMat == null)
-                lowerStoneMat = CreateMat(unlitShader, "Orb_StoneRimMat", new Color(0.34f, 0.38f, 0.42f), 0.04f, 0.28f);
-            if (upperStoneMat == null)
-                upperStoneMat = CreateMat(unlitShader, "Orb_StoneBaseMat", new Color(0.52f, 0.56f, 0.60f), 0.05f, 0.32f);
-            if (goldTrimMat == null)
-                goldTrimMat = CreateMat(litShader, "Orb_GoldTrimMat", new Color(0.86f, 0.68f, 0.28f), 0.88f, 0.68f);
-            if (goldDarkMat == null)
-                goldDarkMat = CreateMat(litShader, "Orb_GoldDarkMat", new Color(0.58f, 0.44f, 0.16f), 0.85f, 0.52f);
+            // 1. 스톤 베이스와 골드 트림 머티리얼. 예전에는 씬의 수정구에서 머티리얼을 빌려오고
+            //    없을 때만 새로 만들었으나, 수정구가 성운 큐브로 대체되어 이 경로만 남았다.
+            //    머티리얼 이름은 베이커가 에셋 파일명을 만드는 근거이므로 바꾸지 않는다.
+            Material lowerStoneMat = CreateMat(unlitShader, "Orb_StoneRimMat", new Color(0.34f, 0.38f, 0.42f), 0.04f, 0.28f);
+            Material upperStoneMat = CreateMat(unlitShader, "Orb_StoneBaseMat", new Color(0.52f, 0.56f, 0.60f), 0.05f, 0.32f);
+            Material goldTrimMat = CreateMat(litShader, "Orb_GoldTrimMat", new Color(0.86f, 0.68f, 0.28f), 0.88f, 0.68f);
+            Material goldDarkMat = CreateMat(litShader, "Orb_GoldDarkMat", new Color(0.58f, 0.44f, 0.16f), 0.85f, 0.52f);
 
             // 2. 보석 본체와 리지는 라이팅에 기대지 않는 Unlit 평면색이다. 색만으로 점등/소등을 표현한다.
             //    이 경로는 굽기 전 씬에서만 돈다. 구운 프리팹은

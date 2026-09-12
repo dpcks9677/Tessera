@@ -465,13 +465,6 @@ public static class DiceShapeBaker
         return found;
     }
 
-    private static string DescribeNames(List<Transform> transforms)
-    {
-        var names = new List<string>();
-        for (int i = 0; i < transforms.Count && i < 8; i++) names.Add(transforms[i].name);
-        return string.Join(", ", names);
-    }
-
     private static Mesh SaveMesh(Mesh mesh, string assetName)
     {
         string path = $"{MeshFolder}/{assetName}.mesh";

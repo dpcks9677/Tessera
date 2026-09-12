@@ -104,11 +104,6 @@ namespace Tessera.Dice
             return topValue;
         }
 
-        public static Quaternion GetUprightRotation(Quaternion landingRotation, Vector3 faceUpDirection)
-        {
-            return GetTopRotation(GetTopValue(landingRotation), faceUpDirection);
-        }
-
         // ------------------------------------------------------------ 8면 주사위(M7-T5)
 
         /// <summary>지금 위를 향하고 있는 8면 주사위의 면 인덱스(1~8).</summary>

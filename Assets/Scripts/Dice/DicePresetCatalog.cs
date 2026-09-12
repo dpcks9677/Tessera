@@ -134,7 +134,6 @@ namespace Tessera.Dice
         public readonly int Fps;
         public readonly WebPresetFrame[] Frames;
         public readonly WebPresetSoundEvent[] SoundEvents;
-        public int FrameCount => Frames.Length;
 
         public WebPresetClip(string mode, int diceCount, float score, int fps, WebPresetFrame[] frames, WebPresetSoundEvent[] soundEvents)
         {

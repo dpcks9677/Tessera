@@ -149,8 +149,7 @@ namespace Tessera.Games.AugmentedYacht
                 DiceKeepTarget target = hit.collider.GetComponentInParent<DiceKeepTarget>();
                 if (target != null) hitIndex = target.Index;
 
-                hitRollTrigger = hit.collider.GetComponentInParent<RollCosmicCube>() != null
-                    || hit.collider.GetComponentInParent<RollOrb>() != null;
+                hitRollTrigger = hit.collider.GetComponentInParent<RollCosmicCube>() != null;
 
                 if (mouse.leftButton.wasPressedThisFrame) PlayDecorationFeedback(hit);
             }

@@ -40,7 +40,6 @@ namespace Tessera.Games.AugmentedYacht
         private long lastVfxRevision = -1;
         private AugmentTrayPresenter augmentTray;
         private YachtDiceRoundPresenter dice;
-        private RollOrb rollOrb;
         private RollCosmicCube rollCosmicCube;
         private RerollCounterBar rerollCounterBar;
         private RunicSlateMatrix runicSlateMatrix;
@@ -91,7 +90,6 @@ namespace Tessera.Games.AugmentedYacht
             ParchmentScoreSheet sheet,
             AugmentTrayPresenter tray,
             YachtDiceRoundPresenter diceRound,
-            RollOrb orb,
             RollCosmicCube cube,
             RerollCounterBar reroll,
             RunicSlateMatrix runes,
@@ -101,7 +99,6 @@ namespace Tessera.Games.AugmentedYacht
             Camera camera)
         {
             scoreSheet = sheet;
-            rollOrb = orb;
             rollCosmicCube = cube;
             rerollCounterBar = reroll;
             runicSlateMatrix = runes;
@@ -579,9 +576,8 @@ namespace Tessera.Games.AugmentedYacht
             Phase = PresentationPhase.Rolling;
             SetRollInteraction(false);
 
-            // 코스믹 큐브 / 수정구 황도 12궁 다음 별자리로 순차 전환 (부드러운 크로스페이드)
+            // 코스믹 큐브 황도 12궁 다음 별자리로 순차 전환 (부드러운 크로스페이드)
             rollCosmicCube?.AdvanceZodiac();
-            rollOrb?.AdvanceZodiac();
 
             RollPresentation presentation = pendingRollResult?.RollPresentation;
             if (presentation == null)
@@ -687,7 +683,6 @@ namespace Tessera.Games.AugmentedYacht
         private void SetRollInteraction(bool interactable)
         {
             rollCosmicCube?.SetInteractable(interactable);
-            rollOrb?.SetInteractable(interactable);
             RefreshRollBudgetState();
         }
 
@@ -884,7 +879,7 @@ namespace Tessera.Games.AugmentedYacht
                 : $"KEEP {dice.KeptCount}/{dice.DiceCount}";
 
             string valuesSummary = Phase.HasCompletedRoll() ? $" [ {string.Join(", ", dice.Values)} ]" : "";
-            string currentZodiac = rollCosmicCube != null ? rollCosmicCube.CurrentZodiacName : (rollOrb != null ? rollOrb.CurrentZodiacName : "");
+            string currentZodiac = rollCosmicCube != null ? rollCosmicCube.CurrentZodiacName : "";
             string zodiacInfo = !string.IsNullOrEmpty(currentZodiac) ? $"  |  ★ {currentZodiac}" : "";
             string modeText = gameSession.Mode == YachtGameMode.Augmented ? "증강" : "일반";
             string turnInfo = $"{modeText}  |  P{gameSession.CurrentPlayerIndex + 1}  |  {gameSession.CurrentRound}/12 라운드  |  굴림 {gameSession.RollsRemaining}회";

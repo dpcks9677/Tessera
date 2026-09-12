@@ -738,10 +738,6 @@ namespace Tessera.Games.Yacht
             result = LastCommandResult = Execute(YachtCommandType.RollDice, CurrentPlayerIndex);
             return result.Accepted;
         }
-        public bool TryUseTableFlip(out YachtGameCommandResult result)
-        {
-            return TryUseAugmentAction(YachtAugmentRuntime.TableFlipId, out result);
-        }
         public bool TryUseAugmentAction(string augmentId, out YachtGameCommandResult result)
         {
             result = LastCommandResult = Execute(YachtCommandType.UseAugmentAction, CurrentPlayerIndex, augmentId: augmentId);

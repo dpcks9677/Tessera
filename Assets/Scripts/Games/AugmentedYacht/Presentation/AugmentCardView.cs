@@ -398,11 +398,6 @@ namespace Tessera.Games.AugmentedYacht
                 for (int x = minX; x <= maxX; x++) Set(pixels, x, y, color);
         }
 
-        private static void ClearRect(Color32[] pixels, int minX, int minY, int maxX, int maxY)
-        {
-            FillRect(pixels, minX, minY, maxX, maxY, default);
-        }
-
         private static void FillDiamond(Color32[] pixels, int centerX, int centerY, int radius, Color32 color)
         {
             for (int y = centerY - radius; y <= centerY + radius; y++)

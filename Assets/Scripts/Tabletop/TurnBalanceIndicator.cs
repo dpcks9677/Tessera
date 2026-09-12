@@ -637,16 +637,6 @@ namespace Tessera.Tabletop
             SetupPart(obj, parent, position, Vector3.zero, halfScale * 2f, material);
         }
 
-        private static void CreateRod(string name, Transform parent, Vector3 start, Vector3 end, float radius, Material material)
-        {
-            Vector3 direction = end - start;
-            GameObject obj = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            obj.name = name;
-            SetupPart(obj, parent, (start + end) * 0.5f, Vector3.zero,
-                new Vector3(radius * 2f, direction.magnitude * 0.5f, radius * 2f), material);
-            obj.transform.localRotation = Quaternion.FromToRotation(Vector3.up, direction.normalized);
-        }
-
         private static void SetupPart(GameObject obj, Transform parent, Vector3 position, Vector3 rotation,
             Vector3 scale, Material material)
         {

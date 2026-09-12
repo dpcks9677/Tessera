@@ -24,7 +24,6 @@ namespace Tessera.Games.AugmentedYacht
         [SerializeField] private GameObject octahedronDieModel;
         [SerializeField] private GameObject sevensDieModel;
         [SerializeField] private Mesh yachtTrayMesh;
-        [SerializeField] private Texture2D playmatTexture;
 
         [Header("Rendering")]
         [SerializeField] private Shader upscaleShader;
@@ -39,7 +38,6 @@ namespace Tessera.Games.AugmentedYacht
         [Header("Tabletop Props")]
         [SerializeField] private ParchmentScoreSheet parchmentScoreSheet;
         [SerializeField] private AugmentCardTray augmentCardTray;
-        [SerializeField] private RollOrb rollOrb;
         [SerializeField] private RollCosmicCube rollCosmicCube;
         [SerializeField] private RerollCounterBar rerollCounterBar;
         [SerializeField] private HourglassTimer hourglassTimer;
@@ -82,13 +80,10 @@ namespace Tessera.Games.AugmentedYacht
         private const float TableWidth = 15.6f;
         private const float LeftSectionWidth = TableWidth * 0.25f;
         private const float CenterSectionWidth = TableWidth * 0.45f;
-        private const float RightSectionWidth = TableWidth * 0.3f;
         private const float CenterSectionX = -TableWidth * 0.5f + LeftSectionWidth + CenterSectionWidth * 0.5f;
-        private const int DecorationLayer = 11;
 
         public ParchmentScoreSheet ScoreSheet => parchmentScoreSheet;
         public AugmentCardTray CardTray => augmentCardTray;
-        public RollOrb RollOrb => rollOrb;
         public RollCosmicCube RollCosmicCube => rollCosmicCube;
         public RerollCounterBar RerollCounter => rerollCounterBar;
         public HourglassTimer Hourglass => hourglassTimer;
@@ -320,7 +315,7 @@ namespace Tessera.Games.AugmentedYacht
                 turnFlow.TrayRebindRequested += EnsureAugmentTray;
             }
 
-            turnFlow.BindProps(parchmentScoreSheet, augmentTray, diceRound, rollOrb, rollCosmicCube, rerollCounterBar,
+            turnFlow.BindProps(parchmentScoreSheet, augmentTray, diceRound, rollCosmicCube, rerollCounterBar,
                 runicSlateMatrix, turnBalanceIndicator, hourglassTimer,
                 hourglassTimer != null ? hourglassTimer.transform : null, sceneRefs.WorldCamera);
             turnFlow.BindRules(diceCount, presetCatalog != null ? presetCatalog.NormalFiveDiceClipCount : 20, launchMode);
@@ -553,7 +548,6 @@ namespace Tessera.Games.AugmentedYacht
         private void OnRollTriggerHoverChanged(bool hovered)
         {
             if (rollCosmicCube != null) rollCosmicCube.SetHovered(hovered);
-            if (rollOrb != null) rollOrb.SetHovered(hovered);
         }
 
         private void OnRollTriggerClicked()
@@ -561,7 +555,6 @@ namespace Tessera.Games.AugmentedYacht
             if (turnFlow == null || !turnFlow.CanInitiateRoll()) return;
 
             if (rollCosmicCube != null) rollCosmicCube.TriggerClickFeedback();
-            if (rollOrb != null) rollOrb.TriggerClickFeedback();
 
             turnFlow.RollDice();
         }
@@ -635,7 +628,6 @@ namespace Tessera.Games.AugmentedYacht
         {
             parchmentScoreSheet = BindProp(parchmentScoreSheet);
             augmentCardTray = BindProp(augmentCardTray);
-            rollOrb = BindProp(rollOrb, warnIfMissing: false);
             rollCosmicCube = BindProp(rollCosmicCube);
             rerollCounterBar = BindProp(rerollCounterBar);
             hourglassTimer = BindProp(hourglassTimer);
@@ -701,7 +693,7 @@ namespace Tessera.Games.AugmentedYacht
                 runicPresenter = GetComponent<YachtRunicPresenter>() ?? gameObject.AddComponent<YachtRunicPresenter>();
             }
 
-            runicPresenter.Bind(runicSlateMatrix, parchmentScoreSheet);
+            runicPresenter.Bind(runicSlateMatrix);
         }
 
         /// <summary>디버그 컨트롤 패널을 붙이고 동작을 건다. 옛 가로 배치 버튼을 대신한다.</summary>

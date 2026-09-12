@@ -231,9 +231,6 @@ namespace Tessera.Games.Yacht
         public int NormalRollCount { get; }
 
         public IReadOnlyList<YachtDieState> Dice { get; }
-
-        /// <summary>이번 턴이 이 플레이어의 몇 번째 턴인지입니다. 1부터 시작합니다.</summary>
-        public int TurnNumber => Player.TurnsTaken + 1;
     }
 
     /// <summary>수동 행동 증강을 사용하는 시점입니다.</summary>

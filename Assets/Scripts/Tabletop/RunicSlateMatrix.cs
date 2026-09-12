@@ -76,9 +76,6 @@ namespace Tessera.Tabletop
         public int ExtraTurnCount => extraTurnCount;
         public int MaxExtraTurns => maxExtraTurns;
         public int OuterRuneProgress => roundProgressActive ? roundProgress : outerRuneProgress;
-        
-
-public bool StoneRunesLit => stoneRunesLit;
 
         private sealed class GlyphVisual
         {
@@ -196,15 +193,6 @@ public bool StoneRunesLit => stoneRunesLit;
             ApplyRuneStates();
         }
 
-        public void SetMaxExtraTurns(int capacity)
-        {
-            maxExtraTurns = Mathf.Clamp(capacity, 1, VisualCapacity);
-            if (extraTurnCount > maxExtraTurns)
-            {
-                SetExtraTurnCount(maxExtraTurns, Application.isPlaying);
-            }
-        }
-
         /// <summary>
         /// 기본 요트 다이스의 현재 라운드를 외곽 12개 룬에 누적 표시합니다.
         /// 증강용 수정 스톤과 외곽 룬 시퀀스 상태는 변경하지 않습니다.
@@ -213,13 +201,6 @@ public bool StoneRunesLit => stoneRunesLit;
         {
             roundProgress = Mathf.Clamp(round, 0, OuterRuneCount);
             roundProgressActive = true;
-            ApplyRuneStates();
-        }
-
-        public void ClearRoundProgress()
-        {
-            roundProgress = 0;
-            roundProgressActive = false;
             ApplyRuneStates();
         }
 
@@ -265,20 +246,6 @@ public bool StoneRunesLit => stoneRunesLit;
             return true;
         }
 
-        public void PlayOuterRuneSequence()
-        {
-            if (!Application.isPlaying)
-            {
-                outerRuneProgress = OuterRuneCount;
-                stoneRunesLit = true;
-                ApplyRuneStates();
-                return;
-            }
-
-            StopRuneSequence();
-            runeSequenceRoutine = StartCoroutine(OuterRuneSequenceRoutine(true));
-        }
-
         public void AdvanceDebugRuneLighting()
         {
             StopRuneSequence();
@@ -304,19 +271,6 @@ public bool StoneRunesLit => stoneRunesLit;
             SetExtraTurnCount(next, Application.isPlaying);
         }
 
-        public void ResetVisualState(bool clearStones)
-        {
-            StopAllManagedCoroutines();
-            outerRuneProgress = 0;
-            stoneRunesLit = false;
-            if (clearStones)
-            {
-                extraTurnCount = 0;
-                EnsureStoneCountImmediate(0);
-            }
-            PositionStonesImmediate();
-            ApplyRuneStates();
-        }
 
         private IEnumerator GrantExtraTurnsRoutine(int target)
         {
@@ -552,32 +506,6 @@ public bool StoneRunesLit => stoneRunesLit;
                 GlyphVisual visual = BuildHorizontalGlyph(runeRoot.transform, RunicGlyphData.GetOuterRune(i), 0.27f, 0.31f, 0.050f);
                 visual.root = runeRoot;
                 outerRunes.Add(visual);
-            }
-        }
-
-        private void BuildInnerArcGuide()
-        {
-            GameObject guideRoot = new("Recessed 120 Degree Arc Guide");
-            guideRoot.layer = DecorationLayer;
-            guideRoot.transform.SetParent(transform, false);
-            guideRoot.transform.localPosition = new Vector3(0f, BasinTopY + 0.006f, 0f);
-
-            const int arcSegments = 24;
-            const float radius = 0.575f;
-            for (int i = 0; i < arcSegments; i++)
-            {
-                float a0 = Mathf.Lerp(-60f, 60f, (float)i / arcSegments);
-                float a1 = Mathf.Lerp(-60f, 60f, (float)(i + 1) / arcSegments);
-                Vector3 p0 = PolarPosition(a0, radius);
-                Vector3 p1 = PolarPosition(a1, radius);
-                CreateHorizontalSegment(guideRoot.transform, $"Arc_{i:00}", p0, p1, 0.018f, 0.006f, channelMaterial);
-            }
-
-            foreach (float boundaryAngle in new[] { -60f, 60f })
-            {
-                Vector3 p0 = PolarPosition(boundaryAngle, 0.18f);
-                Vector3 p1 = PolarPosition(boundaryAngle, radius);
-                CreateHorizontalSegment(guideRoot.transform, $"Boundary_{boundaryAngle:+00;-00}", p0, p1, 0.016f, 0.006f, channelMaterial);
             }
         }
 

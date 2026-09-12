@@ -13,12 +13,6 @@ namespace Tessera.Games.Yacht
         private string[] ids = Array.Empty<string>();
         private IAugmentState[] states = Array.Empty<IAugmentState>();
 
-        public int Count => ids.Length;
-
-        public string IdAt(int index) => ids[index];
-
-        public IAugmentState StateAt(int index) => states[index];
-
         /// <summary>해당 증강의 상태를 반환하고, 없으면 만들어서 보관합니다.</summary>
         public T GetOrCreate<T>(string augmentId) where T : class, IAugmentState, new()
         {

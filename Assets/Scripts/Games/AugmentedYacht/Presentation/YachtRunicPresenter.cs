@@ -13,12 +13,10 @@ namespace Tessera.Games.AugmentedYacht
     public sealed class YachtRunicPresenter : MonoBehaviour
     {
         private RunicSlateMatrix runicSlateMatrix;
-        private ParchmentScoreSheet scoreSheet;
 
-        public void Bind(RunicSlateMatrix matrix, ParchmentScoreSheet sheet)
+        public void Bind(RunicSlateMatrix matrix)
         {
             runicSlateMatrix = matrix;
-            scoreSheet = sheet;
             ResolveMatrix();
         }
 

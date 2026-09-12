@@ -47,22 +47,11 @@ public static class BuildDiceGraphicsPoC
     {
         GameObject dice = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Reference/normal_dice.fbx");
         Mesh yachtTray = EnsureYachtTrayMesh();
-        Texture2D playmat = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Reference/playmat.png");
         Shader shader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/Rendering/Shaders/DicePixelUpscale.shader");
-        if (dice == null || yachtTray == null || playmat == null || shader == null)
+        if (dice == null || yachtTray == null || shader == null)
         {
-            Debug.LogError("Tessera build stopped: FBX dice model, playmat, or upscale shader missing.");
+            Debug.LogError("Tessera build stopped: FBX dice model or upscale shader missing.");
             return;
-        }
-
-        TextureImporter importer = (TextureImporter)AssetImporter.GetAtPath("Assets/Art/Reference/playmat.png");
-        if (importer != null && (importer.filterMode != FilterMode.Point || importer.mipmapEnabled))
-        {
-            importer.filterMode = FilterMode.Point;
-            importer.mipmapEnabled = false;
-            importer.textureCompression = TextureImporterCompression.Uncompressed;
-            importer.SaveAndReimport();
-            playmat = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Reference/playmat.png");
         }
 
         Scene previous = SceneManager.GetActiveScene();
@@ -78,7 +67,6 @@ public static class BuildDiceGraphicsPoC
         SerializedObject serialized = new(controller);
         serialized.FindProperty("diceModel").objectReferenceValue = dice;
         serialized.FindProperty("yachtTrayMesh").objectReferenceValue = yachtTray;
-        serialized.FindProperty("playmatTexture").objectReferenceValue = playmat;
         serialized.FindProperty("upscaleShader").objectReferenceValue = shader;
         serialized.ApplyModifiedPropertiesWithoutUndo();
 

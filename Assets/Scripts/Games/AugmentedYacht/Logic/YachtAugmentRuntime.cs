@@ -1097,66 +1097,6 @@ namespace Tessera.Games.Yacht
             return result;
         }
 
-        private static void GrantBonus(
-            YachtGameState state,
-            int playerIndex,
-            string augmentId,
-            int score,
-            ICollection<YachtGameEvent> events)
-        {
-            state.Players[playerIndex].augmentBonusScore += score;
-            state.Players[playerIndex].RecalculateTotal();
-            events.Add(new YachtGameEvent
-            {
-                Type = YachtGameEventType.AugmentTriggered,
-                PlayerIndex = playerIndex,
-                AugmentId = augmentId,
-                Score = score,
-                Message = $"{augmentId}: {(score >= 0 ? "+" : string.Empty)}{score}점"
-            });
-        }
-
-        private static int CountUsedOnes(
-            ScoreCategory category,
-            int baseScore,
-            IReadOnlyList<YachtDieState> dice)
-        {
-            // 스크래치는 어떤 주사위도 족보 계산에 사용한 것으로 보지 않는다.
-            if (baseScore == 0) return 0;
-            int count = 0;
-            for (int i = 0; i < (dice?.Count ?? 0); i++)
-                if (dice[i].Value == 1) count++;
-            return count;
-        }
-
-        private static bool IsFilled(PlayerScoreData scores, ScoreCategory category)
-        {
-            int index = (int)category;
-            return index <= 5
-                ? scores.upperFilled[index] || scores.upperScores[index] != -1
-                : scores.lowerFilled[index - 7] || scores.lowerScores[index - 7] != -1;
-        }
-
-        private static int GetBaseScore(PlayerScoreData scores, ScoreCategory category)
-        {
-            int index = (int)category;
-            if (index <= 5)
-                return scores.upperBaseScores[index] != -1 ? scores.upperBaseScores[index] : scores.upperScores[index];
-            int lower = index - 7;
-            return scores.lowerBaseScores[lower] != -1 ? scores.lowerBaseScores[lower] : scores.lowerScores[lower];
-        }
-
-        private static int SelectEmptyCategory(YachtGameState state, int playerIndex, IRandomSource random)
-        {
-            var empty = new List<int>();
-            for (int i = 0; i < YachtScoreCalculator.ScorableCategories.Length; i++)
-            {
-                ScoreCategory category = YachtScoreCalculator.ScorableCategories[i];
-                if (!IsFilled(state.Players[playerIndex], category)) empty.Add((int)category);
-            }
-            return empty.Count == 0 ? -1 : empty[random.NextInt(0, empty.Count)];
-        }
-
         private static bool Contains(IReadOnlyList<int> values, int target)
         {
             for (int i = 0; i < (values?.Count ?? 0); i++) if (values[i] == target) return true;

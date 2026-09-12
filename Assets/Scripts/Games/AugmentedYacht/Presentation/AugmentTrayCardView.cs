@@ -61,7 +61,6 @@ namespace Tessera.Games.AugmentedYacht
         public bool IsSelected => selected;
         public bool IsHovered { get; private set; }
         public RectTransform OverlayRect => overlayRect;
-        public Transform DepthMask => depthMask;
         public Transform VisualRoot => visualRoot;
         public AugmentScrollModel ScrollModel => scrollModel;
         public float CardAspectRatio => Mathf.Max(1f, cardAspectRatio);
