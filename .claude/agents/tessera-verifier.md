@@ -65,16 +65,13 @@ curl -s -m 60 -X POST http://127.0.0.1:<port>/skill/test_run_by_name \
   -H 'Content-Type: application/json' -d '{"testName":"YachtGameRulesTests","testMode":"EditMode"}'
 ```
 
-### 5. 결과 필터링 (필수)
+### 5. 결과 판정
 
-**이 프로젝트에는 `.asmdef` 가 하나도 없습니다.** 모든 런타임 코드가 `Assembly-CSharp`, 모든 `Assets/Editor` 코드가 `Assembly-CSharp-Editor` 로 들어갑니다. 그래서 어셈블리 단위로 "Tessera 테스트만" 걸러낼 방법이 없고, 전체 EditMode 실행이 약 812개가 됩니다.
+**이 프로젝트에는 `.asmdef` 가 하나도 없습니다.** 모든 런타임 코드가 `Assembly-CSharp`, 모든 `Assets/Editor` 코드가 `Assembly-CSharp-Editor` 로 들어갑니다. 테스트는 `Assets/Editor/` 의 27개 클래스, 249개입니다.
 
-그중 Tessera 것은 26개 클래스, `[Test]` 약 213개뿐입니다. 나머지는 `UnitySkills.Tests.Core` 패키지 자체 테스트이며 **매 실행 3~7개가 이 저장소와 무관하게 실패합니다.**
+전체 EditMode 실행은 이 249개뿐입니다. `Packages/manifest.json` 에서 `testables` 항목을 제거했기 때문에 `com.besty.unity-skills` 패키지 자체 테스트(약 626개)는 실행되지 않습니다. 따라서 **걸러낼 대상이 없고, 실패는 전부 이 저장소 책임입니다.** 스킵도 0건이어야 합니다. Tessera 코드에는 `[Ignore]` 나 `Assert.Ignore` 가 한 건도 없습니다.
 
-`failedTestNames` 에서 `UnitySkills.Tests.Core` 네임스페이스를 제외한 뒤 판정하십시오. 이걸 빼먹으면 매번 거짓 실패를 보고하게 됩니다.
-
-Tessera 테스트 클래스 (`Assets/Editor/`):
-`YachtGameRulesTests`(30), `YachtModificationAugmentTests`(23), `YachtEnhanceAugmentTests`(11), `YachtQuestAugmentTests`(11), `YachtManualActionAugmentTests`(7), `YachtDraftOrderTests`(5), `AugmentCardViewTests`, `AugmentParchmentStateTests`, `AugmentStickerCatalogTests`, `AugmentStickerTextureTests`, `AugmentVfxPlannerTests`, `CelSurfaceTests`, `DiceFaceValueTests`, `DicePresetBakeTests`, `DiceShapeAssetTests`, `DiceVisualMappingTests`, `FontFallbackTests`, `OctahedronOrientationTests`, `PixelEdgeFilterTests`, `PixelReadabilityMetricsTests`, `QuillWritingPoseTests`, `RerollCounterBarTests`, `RollCosmicCubeAugmentStateTests`, `RuntimeAssetGuardTests`, `ScoreSheetColumnLayoutTests`, `TurnBalanceIndicatorTests`.
+결과에 `UnitySkills.Tests.Core` 가 나타나면 패키지 재설치나 버전 갱신으로 `manifest.json` 의 `testables` 가 되살아난 것입니다. 그 사실을 보고하십시오.
 
 ## 폴백: dotnet build
 
@@ -92,12 +89,14 @@ dotnet build Assembly-CSharp-Editor.csproj
 
 ## 시각 확인
 
-필요할 때만 씁니다. **테스트 실행 중에는 절대 호출하지 않습니다.**
+**기본은 찍지 않는 것입니다.** 테스트가 판정하는 대상은 스크린샷으로 다시 확인하지 않습니다. 오케스트레이터가 명시적으로 요구했고, 그 항목을 수치 조회(`scene_get_info`, `*_get_properties`)로 확인할 수 없을 때만 찍습니다. **테스트 실행 중에는 절대 호출하지 않습니다.**
+
+해상도는 `960x540` 을 기본으로 씁니다. 이미지 토큰은 넓이에 비례하며 `1920x1080` 은 약 2.7배 비쌉니다. 픽셀 판독성이나 폰트 글리프처럼 해상도 자체가 판정 대상일 때만 올립니다. `returnImage` 는 쓰지 않고 저장된 PNG 경로를 읽습니다.
 
 ```bash
 curl -s -m 120 -X POST http://127.0.0.1:<port>/skill/scene_screenshot \
   -H 'Content-Type: application/json' \
-  -d '{"filename":"verify.png","width":1920,"height":1080}'
+  -d '{"filename":"verify.png","width":960,"height":540}'
 ```
 
 `filename` 은 경로 구분자 없는 순수 파일명이어야 하며 `Assets/Screenshots/` 에 저장됩니다. 비동기라 약 1프레임 뒤에 파일이 생기므로 읽기에 실패하면 200ms 후 재시도합니다.
@@ -106,9 +105,11 @@ curl -s -m 120 -X POST http://127.0.0.1:<port>/skill/scene_screenshot \
 
 ## 반환 형식
 
+**한국어로 보고합니다.**
+
 1. **판정 한 줄** — 통과 / 실패 / 검증 불가 중 하나와 근거 요약.
-2. **실패한 Tessera 테스트** — 클래스.메서드 이름과 실패 메시지. 없으면 "없음".
-3. **제외한 패키지 테스트** — `UnitySkills.Tests.Core` 에서 몇 개를 걸러냈는지 숫자만.
+2. **실패한 테스트** — 클래스.메서드 이름과 실패 메시지. 없으면 "없음".
+3. **스킵된 테스트** — 0건이어야 정상입니다. 0이 아니면 이름을 적습니다.
 4. **컴파일 경고** — 새로 생긴 것만. 상시 발생하는 URP 폐기 경고 3건은 제외.
 
 테스트 원문 로그를 통째로 붙여넣지 마십시오. 판정에 필요한 줄만 인용합니다.
