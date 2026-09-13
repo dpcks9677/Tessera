@@ -3,7 +3,7 @@ using System;
 namespace Tessera.Games.Yacht
 {
     [Serializable]
-    public sealed class FastStraightState : IAugmentState
+    public sealed class FastStraightState : IAugmentState, IAugmentProgressText
     {
         public bool SmallScored;
         public bool LargeScored;
@@ -15,6 +15,20 @@ namespace Tessera.Games.Yacht
             LargeScored = LargeScored,
             Rewarded = Rewarded
         };
+
+        public AugmentProgress DescribeProgress(in AugmentProgressQuery query)
+        {
+            bool failed = !Rewarded && query.Player.TurnsTaken >= FastStraight.DeadlineTurn;
+            AugmentProgressOutcome outcome = Rewarded
+                ? AugmentProgressOutcome.Succeeded
+                : failed ? AugmentProgressOutcome.Failed : AugmentProgressOutcome.InProgress;
+            var lines = new[]
+            {
+                new AugmentProgressLine($"{FastStraight.DeadlineTurn}턴 안에 {ScoreCategoryNames.Get(ScoreCategory.SmallStraight)} 기입", SmallScored),
+                new AugmentProgressLine($"{FastStraight.DeadlineTurn}턴 안에 {ScoreCategoryNames.Get(ScoreCategory.LargeStraight)} 기입", LargeScored)
+            };
+            return new AugmentProgress(outcome, lines);
+        }
     }
 
     /// <summary>8턴 이내에 스몰 스트레이트와 라지 스트레이트를 모두 득점하면 +15점입니다.</summary>

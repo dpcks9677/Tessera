@@ -128,7 +128,8 @@ namespace Tessera.Games.AugmentedYacht
         public void Bind(
             YachtAugmentDefinition value,
             int presetId,
-            AugmentCardDisplayState state = AugmentCardDisplayState.Owned)
+            AugmentCardDisplayState state = AugmentCardDisplayState.Owned,
+            AugmentProgress? progress = null)
         {
             definition = value;
             selected = false;
@@ -137,7 +138,7 @@ namespace Tessera.Games.AugmentedYacht
             if (card != null)
             {
                 card.SetParchmentPreset(preset, true);
-                card.Bind(value, value == null ? AugmentCardDisplayState.Disabled : state);
+                card.Bind(value, value == null ? AugmentCardDisplayState.Disabled : state, progress: progress);
             }
             if (scrollModel != null && value != null) scrollModel.SetDisplayState(state);
             if (gameObject.activeInHierarchy) SyncOverlayTransform();

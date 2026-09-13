@@ -3,7 +3,7 @@ using System;
 namespace Tessera.Games.Yacht
 {
     [Serializable]
-    public sealed class NozdormuState : IAugmentState
+    public sealed class NozdormuState : IAugmentState, IAugmentProgressText
     {
         public int TargetTurn;
         public bool Rewarded;
@@ -13,6 +13,17 @@ namespace Tessera.Games.Yacht
             TargetTurn = TargetTurn,
             Rewarded = Rewarded
         };
+
+        public AugmentProgress DescribeProgress(in AugmentProgressQuery query)
+        {
+            AugmentProgressOutcome outcome = Rewarded ? AugmentProgressOutcome.Succeeded : AugmentProgressOutcome.InProgress;
+            int remaining = Math.Max(0, TargetTurn - query.Player.TurnsTaken);
+            var lines = new[]
+            {
+                new AugmentProgressLine($"턴 타이머가 15초인 상태로 플레이하기 ({remaining}턴 남음!)", Rewarded)
+            };
+            return new AugmentProgress(outcome, lines);
+        }
     }
 
     /// <summary>턴 제한 시간을 15초로 제한하고 목표 턴을 유지하면 +9점입니다.</summary>

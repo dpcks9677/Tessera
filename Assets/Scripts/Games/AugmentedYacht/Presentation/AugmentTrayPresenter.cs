@@ -120,8 +120,10 @@ namespace Tessera.Games.AugmentedYacht
             effectText = YachtHudFactory.CreateText(canvas, "Yacht Augment Effect Text", "", new Vector2(0f, 58f),
                 new Vector2(760f, 44f), new Vector2(0.5f, 0f), 18, TextAnchor.MiddleCenter);
             effectText.color = new Color32(255, 205, 95, 255);
-            hoverDetailText = YachtHudFactory.CreateText(canvas, "Yacht Augment Hover Detail Text", "", new Vector2(0f, 126f),
-                new Vector2(820f, 64f), new Vector2(0.5f, 0f), 16, TextAnchor.MiddleCenter);
+            // 대상 족보·진행 상태 줄이 늘어난 만큼 기존보다 두 줄 더 들어갈 높이로 키운다.
+            // 아래쪽(effectText 쪽) 여백은 그대로 두고 위로만 늘린다.
+            hoverDetailText = YachtHudFactory.CreateText(canvas, "Yacht Augment Hover Detail Text", "", new Vector2(0f, 146f),
+                new Vector2(820f, 104f), new Vector2(0.5f, 0f), 16, TextAnchor.MiddleCenter);
             hoverDetailText.color = new Color32(255, 226, 151, 255);
             hoverDetailText.gameObject.SetActive(false);
             for (int i = 0; i < actionButtons.Length; i++)
@@ -329,12 +331,12 @@ namespace Tessera.Games.AugmentedYacht
                 SetHoveredSlot(-1);
             }
 
-            IReadOnlyList<string> owned = augmented && gameInProgress && playerIndex >= 0
-                ? session.State.AugmentPlayers[playerIndex].OwnedIds
-                : Array.Empty<string>();
-            IReadOnlyList<int> presets = playerIndex >= 0
-                ? session.State.AugmentPlayers[playerIndex].OwnedCardPresetIds
-                : Array.Empty<int>();
+            IReadOnlyYachtAugmentPlayerState playerState = augmented && gameInProgress && playerIndex >= 0
+                ? session.State.AugmentPlayers[playerIndex]
+                : null;
+            IReadOnlyPlayerScoreData playerScores = playerIndex >= 0 ? session?.State.Players[playerIndex] : null;
+            IReadOnlyList<string> owned = playerState?.OwnedIds ?? Array.Empty<string>();
+            IReadOnlyList<int> presets = playerState?.OwnedCardPresetIds ?? Array.Empty<int>();
             if (selectedSlot >= owned.Count) selectedSlot = -1;
 
             for (int i = 0; i < ownedCards.Length; i++)
@@ -345,9 +347,23 @@ namespace Tessera.Games.AugmentedYacht
                 view.SetVisible(visible);
                 if (!visible) continue;
                 int presetId = i < (presets?.Count ?? 0) ? presets[i] : 0;
-                view.Bind(YachtAugmentRuntime.Lookup(owned[i]), presetId);
+                view.Bind(YachtAugmentRuntime.Lookup(owned[i]), presetId, progress: DescribeProgress(playerState, playerScores, owned[i]));
                 view.SetSelected(i == selectedSlot);
             }
+        }
+
+        /// <summary>
+        /// 보유 증강의 진행 상태를 카드에 찍을 줄 목록으로 바꾼다. 진행도 개념이 없는 증강이면
+        /// null이다 — 카드는 이때 진행 블록을 그리지 않는다. 퀘스트 증강은 전부 획득 시점에
+        /// <see cref="IOnAugmentSelected"/>로 상태를 만들어 두므로, 보유 중인데 상태가 없는 경우는 없다.
+        /// 조회에는 <see cref="AugmentStateStore.Find"/>만 쓴다. <c>GetOrCreate</c>는 없는 id에
+        /// 상태를 새로 만들어 버려 조회만으로 상태를 오염시킨다.
+        /// </summary>
+        private static AugmentProgress? DescribeProgress(IReadOnlyYachtAugmentPlayerState playerState, IReadOnlyPlayerScoreData scores, string augmentId)
+        {
+            IAugmentState state = playerState?.FindState(augmentId);
+            if (state is not IAugmentProgressText progressText) return null;
+            return progressText.DescribeProgress(new AugmentProgressQuery(playerState, scores));
         }
 
         private void SetHoveredSlot(int slotIndex)
@@ -358,18 +374,25 @@ namespace Tessera.Games.AugmentedYacht
 
             hoveredSlot = slotIndex;
             YachtAugmentDefinition definition = null;
+            AugmentTrayCardView hoveredView = null;
             if (slotIndex >= 0 && slotIndex < ownedCards.Length)
             {
-                AugmentTrayCardView view = ownedCards[slotIndex];
-                view?.SetHovered(true);
-                definition = view?.Definition;
+                hoveredView = ownedCards[slotIndex];
+                hoveredView?.SetHovered(true);
+                definition = hoveredView?.Definition;
             }
 
             if (hoverDetailText == null) return;
             bool show = definition != null;
             hoverDetailText.gameObject.SetActive(show);
-            if (show)
-                hoverDetailText.text = $"{definition.DisplayName}\n{definition.Description}";
+            if (!show) return;
+
+            // 진행 상태는 카드가 전부 보여주므로 호버 상세에는 대상 족보만 남긴다.
+            string detail = $"{definition.DisplayName}\n{definition.Description}";
+            if (AugmentStickerCatalog.TryGetTargetCategory(definition, out _))
+                detail += $"\n대상: {AugmentStickerCatalog.MarkLabel(definition.Id, definition.DisplayName)}";
+
+            hoverDetailText.text = detail;
         }
 
         private static bool IsOwned(YachtGameSession session, int playerIndex, string augmentId)

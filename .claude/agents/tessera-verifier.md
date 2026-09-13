@@ -40,7 +40,7 @@ curl -s -m 60 -X POST http://127.0.0.1:<port>/skill/debug_check_compilation \
 
 ### 3. 실행 상태 확인
 
-`scene_get_info` 로 Play Mode 여부와 `isDirty` 를 확인합니다. Play Mode 중이면 `test_run` 이 `InvalidOperationException: This cannot be used during play mode` 로 실패합니다. 씬이 dirty 해도 테스트가 막힌 전례가 있습니다. 둘 중 하나라도 해당하면 보고하고 사용자 판단을 요청합니다.
+`scene_get_info` 로 `isDirty` 를, `editor_playmode_inspect` 로 Play Mode 여부(`isPlaying`, `isPaused`)를 확인합니다. **`scene_get_info` 는 Play Mode 여부를 드러내지 않습니다.** 이것만 보고 넘어가면 일시정지된 Play Mode에서 `test_run` 이 "An unexpected error happened while running tests" 로 즉시 실패하고, 원인은 콘솔의 `This cannot be used during play mode` 에서야 드러납니다. Play Mode 중이면 `test_run` 이 `InvalidOperationException: This cannot be used during play mode` 로 실패합니다. 씬이 dirty 해도 테스트가 막힌 전례가 있습니다. 둘 중 하나라도 해당하면 보고하고 사용자 판단을 요청합니다.
 
 ### 4. 테스트 실행
 
@@ -57,6 +57,8 @@ curl -s -m 30 -X POST http://127.0.0.1:<port>/skill/test_get_result \
 **`job_wait` 을 쓰지 마십시오.** test/playmode 잡은 메인 스레드에서 진행되는데 `job_wait` 이 그 스레드를 막아, `waitNotSupported: true` 를 돌려주며 타임아웃만 소모합니다. `test_get_result` 또는 `GET /jobs/{id}` 로 폴링합니다.
 
 Test Runner는 직렬화돼 있습니다. 진행 중인 실행이 있는데 두 번째 `test_run` 을 시작하지 않습니다.
+
+**테스트 파일을 새로 추가한 직후에는 디스커버리 캐시를 먼저 갱신하십시오.** Test Runner의 디스커버리 결과는 캐시되며 새 컴파일 결과를 바로 반영하지 않습니다. 갱신하지 않으면 `test_run` 이 새 테스트를 뺀 이전 개수만 돌려주어 "신규 테스트가 통째로 누락된" 것처럼 보이고, `test_run_by_name` 으로 새 클래스를 지목하면 `Test filter did not match any cached discovery result` 경고와 함께 `did not leave 'starting' within 90 seconds` 로 타임아웃됩니다. 둘 다 코드 결함이 아니므로 구현을 의심하기 전에 `test_discover_start` 로 디스커버리를 갱신하고 개수가 늘어난 것을 확인한 뒤 다시 실행합니다.
 
 범위가 좁은 검증이면 클래스 단위가 훨씬 빠르고 안전합니다.
 

@@ -9,6 +9,36 @@
 
 ---
 
+### 2026-09-14 — Claude (`M17-T3` 퀘스트 진행 표시 TMP 전환 및 화면 확인 완료)
+
+- 작업 ID: `M17-T3` (시작 상태 `DOING`, 현재 `DONE`)
+- 완료 내용: 사용자 화면 확인에서 지적된 문제를 반영해 퀘스트 진행 줄 표시 방식을 재작업. 진행 줄만 `TextMeshProUGUI`로 전환하고 취소선은 리치 텍스트 `<s>` 태그로 처리. Mulmaru.ttf로 런타임 동적 TMP 폰트 에셋을 생성했고, 픽셀 폰트에 취소선 메트릭이 없어 한글 '가' 글리프 세로 중앙 기준으로 `strikethroughOffset`을 보정. "퀘스트" 밑줄은 역할이 없어 제거(사용자 결정). 진행 블록은 고정 3줄 예약을 버리고 실측 높이의 가변 블록으로 카드 하단(푸터)에 붙였고, 콘텐츠 세이프 영역 아래 여백을 `FooterBleed`(10px)만큼 사용
+- 환경 조치: TMP Essential Resources(`Assets/TextMesh Pro/`)를 REST에 `ImportPackage` 엔드포인트가 없어 `.unitypackage`를 tar로 직접 풀어 GUID를 보존한 채 수동 배치
+- 검증: `AugmentCardViewTests` 56/56, `AugmentProgressTextTests` 14/14(신규), `YachtQuestAugmentTests` 14/14 통과(2026-09-14). EditMode 전체 재실행은 이번엔 하지 않음(267/267은 2026-09-13 기록)
+- 화면 확인: 사용자가 직접 완료(2026-09-14)
+- 변경 파일: `docs/agent/work_plan.md`, `docs/agent/session_log.md` 및 관련 프로덕션·테스트 코드(오케스트레이터 세션 별도 커밋 예정)
+- 다음 작업: `M17` 남은 `TODO` 중 다음 태스크 선정 대기
+
+### 2026-09-13 — Claude (`M17-T2` 플레이어별 드래프트 UI)
+
+- 작업 ID: `M17-T2` (시작 상태 `DOING`, 현재 `DONE`)
+- 조사 결과: 게이팅·차례 표시가 이미 구현돼 있어 프로덕션 코드 변경 없이 회귀 테스트만 추가했다
+- 추가한 테스트: `OnlyCurrentDraftPlayerCanSelectAugment`. 차례가 아닌 플레이어의 `TrySelectAugment` 호출이 `NotDrafting`으로 거부되고 `Draft.PlayerIndex`와 양쪽 `OwnedIds`가 불변이며, 같은 상태에서 올바른 플레이어는 성공하는 대조를 포함
+- 검증: EditMode 242/242 통과
+- 부수 작업: `R-006` 대응책을 정보 은닉 수용으로 교체. `M17-T1` `DROPPED`. `M17-T9-1`·`M17-T18`·`M17-T22` 화면 확인 완료 처리. §6 요약표 `M17` 상태 `DOING` 정정
+- 환경 조치: EditMode 테스트가 미저장 씬 변경 때문에 Unity에서 거부되어, 사용자 승인 후 `Assets/Scenes/Augmented Dice.unity`를 내용 변경 없이 저장한 뒤 실행했다
+- 변경 파일: `Assets/Editor/YachtDraftOrderTests.cs`, `docs/agent/work_plan.md`, `docs/agent/session_log.md`, `Assets/Scenes/Augmented Dice.unity`
+- 다음 작업: 미지정
+
+### 2026-09-13 — Claude (`M17-T9-1`·`M17-T18`·`M17-T22` 화면 확인 완료)
+
+- 작업 ID: `M17-T9-1-5`·`M17-T18-5`·`M17-T22` (시작 상태 각각 `DOING`, 현재 `DONE`)
+- 시작 상태: 세 태스크 모두 코드·에셋 작업은 끝났고 Play 모드 화면 확인만 열려 있었다
+- 완료 내용: 사용자가 세 화면 확인을 직접 수행. 코드 변경 없이 계획서 상태만 `DOING` → `DONE`으로 갱신
+- 변경 파일: 없음 (`docs/agent/work_plan.md`, `docs/agent/session_log.md` 상태 갱신만)
+- 다음 작업: 미지정. M17 미착수 태스크(`M17-T1`~`M17-T7`, `M17-T9`, `M17-T10`~`M17-T12`) 중 사용자 지목 대기
+- 추가 교정: §6 마일스톤 요약표의 `M17` 행 상태를 `TODO` → `DOING`으로 정정. `M17-T8`·`M17-T16`·`M17-T17`·`M17-T9-1`·`M17-T18`·`M17-T22`가 이미 `DONE`이라 미착수가 아니었음
+- 추가 교정: 사용자 지시로 `M17-T1`을 `DROPPED` 처리하고 `M17-T2`를 `DOING`으로 전환
 
 ### 2026-09-12 — Claude (`M17-T22` 깃펜 외부 모델 교체, `M17-T19` 폐기)
 

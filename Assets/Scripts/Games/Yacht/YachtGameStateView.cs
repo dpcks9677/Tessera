@@ -55,6 +55,9 @@ namespace Tessera.Games.Yacht
         int BonusScore { get; }
         int TotalScore { get; }
         int CalculateUpperSum();
+
+        /// <summary>해당 칸이 채워졌는지 봅니다. 0점 기입도 채워진 것으로 봅니다.</summary>
+        bool IsFilled(ScoreCategory category);
     }
 
     /// <summary>플레이어별 증강 보유 상황의 읽기 전용 뷰다.</summary>
@@ -64,6 +67,13 @@ namespace Tessera.Games.Yacht
         IReadOnlyList<int> OwnedCardPresetIds { get; }
         int ExtraTurns { get; }
         int TurnsTaken { get; }
+
+        /// <summary>
+        /// 증강 하나의 진행 상태를 조회합니다. 없으면 null입니다.
+        /// 저장소 전체를 노출하지 않는 이유는 <see cref="AugmentStateStore.GetOrCreate{T}"/>가
+        /// 조회만으로 상태를 새로 만들어 버리기 때문입니다. 읽기 전용 뷰에서는 이 조회만 허용합니다.
+        /// </summary>
+        IAugmentState FindState(string augmentId);
     }
 
     /// <summary>권위 상태 전체의 읽기 전용 뷰다.</summary>

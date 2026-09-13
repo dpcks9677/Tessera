@@ -75,6 +75,35 @@ namespace Tessera.Editor.Tests
             Assert.That(state.Draft.PlayerIndex, Is.Zero, "선공이 고른 뒤에는 후공 차례여야 합니다.");
         }
 
+        [Test]
+        public void OnlyCurrentDraftPlayerCanSelectAugment()
+        {
+            YachtAugmentRuntime runtime = BeginDraft(
+                round: 6, p1Total: 40, p2Total: 12, random: new SequenceRandom(0), out YachtGameState state);
+
+            int currentPlayer = state.Draft.PlayerIndex;
+            int impersonator = currentPlayer == 0 ? 1 : 0;
+            string augmentId = state.Draft.Options[0];
+            var ownedBefore = new List<string>[state.AugmentPlayers.Length];
+            for (int i = 0; i < state.AugmentPlayers.Length; i++)
+                ownedBefore[i] = new List<string>(state.AugmentPlayers[i].OwnedIds);
+
+            bool selectedByImpersonator = runtime.TrySelectAugment(
+                state, impersonator, augmentId, new SequenceRandom(0), out _, out YachtCommandErrorCode errorCode, out _);
+
+            Assert.That(selectedByImpersonator, Is.False, "현재 차례가 아닌 플레이어는 증강을 선택할 수 없어야 합니다.");
+            Assert.That(errorCode, Is.EqualTo(YachtCommandErrorCode.NotDrafting));
+            Assert.That(state.Draft.PlayerIndex, Is.EqualTo(currentPlayer), "사칭이 거부되면 차례가 넘어가지 않아야 합니다.");
+            for (int i = 0; i < state.AugmentPlayers.Length; i++)
+                Assert.That(state.AugmentPlayers[i].OwnedIds, Is.EqualTo(ownedBefore[i]),
+                    $"거부된 선택으로 P{i + 1}의 보유 증강이 바뀌면 안 됩니다.");
+
+            bool selectedByCurrentPlayer = runtime.TrySelectAugment(
+                state, currentPlayer, augmentId, new SequenceRandom(0), out _, out _, out _);
+
+            Assert.That(selectedByCurrentPlayer, Is.True, "실제 차례 플레이어는 같은 증강을 선택할 수 있어야 합니다.");
+        }
+
         private static YachtAugmentRuntime BeginDraft(
             int round, int p1Total, int p2Total, IRandomSource random, out YachtGameState state)
         {

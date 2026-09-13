@@ -3,7 +3,7 @@ using System;
 namespace Tessera.Games.Yacht
 {
     [Serializable]
-    public sealed class NoTimeToWasteState : IAugmentState
+    public sealed class NoTimeToWasteState : IAugmentState, IAugmentProgressText
     {
         public int RemainingTurns = 3;
         public bool Failed;
@@ -15,6 +15,19 @@ namespace Tessera.Games.Yacht
             Failed = Failed,
             Rewarded = Rewarded
         };
+
+        public AugmentProgress DescribeProgress(in AugmentProgressQuery query)
+        {
+            AugmentProgressOutcome outcome = Rewarded
+                ? AugmentProgressOutcome.Succeeded
+                : Failed ? AugmentProgressOutcome.Failed : AugmentProgressOutcome.InProgress;
+            int count = NoTimeToWaste.RequiredStreak - RemainingTurns;
+            var lines = new[]
+            {
+                new AugmentProgressLine($"리롤 없이 족보 기입 ({count}/{NoTimeToWaste.RequiredStreak})", count >= NoTimeToWaste.RequiredStreak)
+            };
+            return new AugmentProgress(outcome, lines);
+        }
     }
 
     /// <summary>연속 3턴 첫 굴림 직후 기입하면 +15점입니다.</summary>

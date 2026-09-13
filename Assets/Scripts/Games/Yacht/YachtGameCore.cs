@@ -171,6 +171,14 @@ namespace Tessera.Games.Yacht
         int IReadOnlyPlayerScoreData.BonusScore => bonusScore;
         int IReadOnlyPlayerScoreData.TotalScore => totalScore;
 
+        bool IReadOnlyPlayerScoreData.IsFilled(ScoreCategory category)
+        {
+            int index = (int)category;
+            return index <= 5
+                ? upperFilled[index] || upperScores[index] != -1
+                : lowerFilled[index - 7] || lowerScores[index - 7] != -1;
+        }
+
         private void EnsureArrays()
         {
             if (upperScores == null || upperScores.Length != 6) upperScores = new[] { -1, -1, -1, -1, -1, -1 };

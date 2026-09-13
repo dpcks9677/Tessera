@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace Tessera.Games.Yacht
 {
     [Serializable]
-    public sealed class BountyHunterState : IAugmentState
+    public sealed class BountyHunterState : IAugmentState, IAugmentProgressText
     {
         public int TargetCategory = -1;
         public int Successes;
@@ -18,6 +18,22 @@ namespace Tessera.Games.Yacht
             Scratches = Scratches,
             Rewarded = Rewarded
         };
+
+        public AugmentProgress DescribeProgress(in AugmentProgressQuery query)
+        {
+            bool done = Rewarded || Successes >= BountyHunter.RequiredSuccesses;
+            AugmentProgressOutcome outcome = done ? AugmentProgressOutcome.Succeeded : AugmentProgressOutcome.InProgress;
+            var lines = new List<AugmentProgressLine>
+            {
+                new($"타겟으로 지정된 족보를 {BountyHunter.RequiredSuccesses}회 기입하기 ({Successes}/{BountyHunter.RequiredSuccesses})", done)
+            };
+            if (!done)
+            {
+                string targetName = TargetCategory >= 0 ? ScoreCategoryNames.Get((ScoreCategory)TargetCategory) : "미지정";
+                lines.Add(new AugmentProgressLine(targetName, false, isTargetNote: true));
+            }
+            return new AugmentProgress(outcome, lines);
+        }
     }
 
     /// <summary>지정된 카테고리를 3번 채우면 보너스를 받습니다. 0점 기입 시 보너스가 감소합니다.</summary>

@@ -319,6 +319,31 @@ namespace Tessera.Editor.Tests
             Assert.That(runtime.GetTurnDuration(state, 0, 60f), Is.EqualTo(60f));
         }
 
+        [Test]
+        public void AllQuestAugments_HaveInProgressStateImmediatelyAfterSelection()
+        {
+            // 퀘스트 증강 판정 기준: 카탈로그 등록 목록 중 QuestAugment를 상속하는 핸들러 전부.
+            // 카탈로그 기반이라 새 퀘스트 증강이 추가되면 이 테스트가 자동으로 검사 대상에 포함한다.
+            foreach (IAugmentHandler handler in YachtAugmentCatalog.All)
+            {
+                if (handler is not QuestAugment) continue;
+
+                SetUp(); // 증강마다 독립된 상태에서 획득 직후를 검사한다.
+                AcquireAugment(handler.Id);
+
+                var playerState = (IReadOnlyYachtAugmentPlayerState)state.AugmentPlayers[0];
+                IAugmentState augmentState = playerState.FindState(handler.Id);
+
+                Assert.That(augmentState, Is.InstanceOf<IAugmentProgressText>(),
+                    $"{handler.Id}: 획득 직후 진행 상태가 없습니다. OnSelected에서 상태를 만들어야 합니다.");
+
+                var query = new AugmentProgressQuery(playerState, state.Players[0]);
+                AugmentProgress progress = ((IAugmentProgressText)augmentState).DescribeProgress(query);
+                Assert.That(progress.Outcome, Is.EqualTo(AugmentProgressOutcome.InProgress),
+                    $"{handler.Id}: 획득 직후 진행 상태가 InProgress가 아닙니다 (실제: {progress.Outcome}).");
+            }
+        }
+
         private sealed class SequenceRandom : IRandomSource
         {
             private readonly int[] values;

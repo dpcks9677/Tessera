@@ -3,7 +3,7 @@ using System;
 namespace Tessera.Games.Yacht
 {
     [Serializable]
-    public sealed class StepByStepState : IAugmentState
+    public sealed class StepByStepState : IAugmentState, IAugmentProgressText
     {
         public int CategoryIndex;
         public bool Failed;
@@ -15,6 +15,20 @@ namespace Tessera.Games.Yacht
             Failed = Failed,
             Rewarded = Rewarded
         };
+
+        public AugmentProgress DescribeProgress(in AugmentProgressQuery query)
+        {
+            AugmentProgressOutcome outcome = Rewarded
+                ? AugmentProgressOutcome.Succeeded
+                : Failed ? AugmentProgressOutcome.Failed : AugmentProgressOutcome.InProgress;
+            var lines = new[]
+            {
+                new AugmentProgressLine(
+                    $"{ScoreCategoryNames.Get(ScoreCategory.Aces)}부터 {ScoreCategoryNames.Get(ScoreCategory.Sixes)}까지 순서대로 기입 ({CategoryIndex}/{StepByStep.TotalUpperCategories})",
+                    CategoryIndex >= StepByStep.TotalUpperCategories)
+            };
+            return new AugmentProgress(outcome, lines);
+        }
     }
 
     /// <summary>상단 항목을 에이스부터 식스까지 순서대로 기입하면 상단 기준이 58점이 되고 완료 보너스를 받습니다.</summary>
@@ -22,6 +36,7 @@ namespace Tessera.Games.Yacht
     {
         public const int UpperBonusThreshold = 58;
         public const int RewardScore = 55;
+        public const int TotalUpperCategories = 6;
 
         public override string Id => YachtAugmentRuntime.StepByStepId;
 

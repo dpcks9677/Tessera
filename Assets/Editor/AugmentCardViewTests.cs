@@ -1,10 +1,12 @@
 ﻿using System.Collections.Generic;
 using NUnit.Framework;
+using TMPro;
 using Tessera.Core;
 using Tessera.Games.AugmentedYacht;
 using Tessera.Games.Yacht;
 using Tessera.Tabletop;
 using UnityEngine;
+using UnityEngine.TextCore;
 using UnityEngine.UI;
 
 public sealed class AugmentCardViewTests
@@ -382,6 +384,477 @@ public sealed class AugmentCardViewTests
         finally
         {
             Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    private static AugmentCardView CreateCard(out GameObject canvasObject, string name = "Progress Test Canvas")
+    {
+        canvasObject = new GameObject(name, typeof(Canvas));
+        return AugmentCardView.Create(
+            canvasObject.transform, "Test Card", Vector2.zero,
+            new Vector2(460f, 460f / AugmentCardView.TrayCardAspectRatio),
+            new Vector2(.5f, .5f), null);
+    }
+
+    private static YachtAugmentDefinition QuestDefinition() => new()
+    {
+        Id = YachtAugmentRuntime.HoldoutId,
+        DisplayName = "알박기",
+        Description = "9턴 이후 풀하우스에 득점하면 +7점입니다.",
+        Kind = YachtAugmentKind.Quest
+    };
+
+    [Test]
+    public void NonQuestCard_LeavesProgressBlockInactiveAndBodyOffsetUnchanged()
+    {
+        AugmentCardView card = CreateCard(out GameObject canvasObject);
+        try
+        {
+            var definition = new YachtAugmentDefinition
+            {
+                Id = YachtAugmentRuntime.LuckySevensId,
+                DisplayName = "럭키 세븐",
+                Description = "눈금 총합 조건을 만족하면 15점을 얻습니다.",
+                Target = "Aces",
+                Kind = YachtAugmentKind.Modification
+            };
+
+            card.Bind(definition, AugmentCardDisplayState.Available);
+
+            Assert.That(card.ProgressBlockRoot.activeSelf, Is.False);
+            // progress 없는 카드는 본문 bottom 여백이 footerHeight+6(=28)로 유지된다.
+            Assert.That(card.DescriptionText.rectTransform.offsetMin.y, Is.EqualTo(28f).Within(.001f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    [Test]
+    public void QuestCard_ReservesBlockHeightWithoutOverlappingBody()
+    {
+        AugmentCardView card = CreateCard(out GameObject canvasObject);
+        try
+        {
+            var lines = new[]
+            {
+                new AugmentProgressLine("9턴 이후에 Full House 기입", false)
+            };
+            card.Bind(QuestDefinition(), AugmentCardDisplayState.Owned,
+                progress: new AugmentProgress(AugmentProgressOutcome.InProgress, lines));
+
+            Assert.That(card.ProgressBlockRoot.activeSelf, Is.True);
+            // 본문 bottom 여백이 (실측 블록 높이 - FooterBleed)와 같아야 겹치지 않는다.
+            Assert.That(card.DescriptionText.rectTransform.offsetMin.y,
+                Is.EqualTo(card.ProgressBlockHeight - AugmentCardView.FooterBleed).Within(.001f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    [TestCase(AugmentProgressOutcome.InProgress, "퀘스트 진행 중")]
+    [TestCase(AugmentProgressOutcome.Succeeded, "퀘스트 성공")]
+    [TestCase(AugmentProgressOutcome.Failed, "퀘스트 실패")]
+    public void QuestCard_ShowsWebOriginalStatusLabel(AugmentProgressOutcome outcome, string expectedLabel)
+    {
+        AugmentCardView card = CreateCard(out GameObject canvasObject);
+        try
+        {
+            var lines = new[] { new AugmentProgressLine("9턴 이후에 Full House 기입", outcome == AugmentProgressOutcome.Succeeded) };
+            card.Bind(QuestDefinition(), AugmentCardDisplayState.Owned, progress: new AugmentProgress(outcome, lines));
+
+            Assert.That(card.StatusLabel.text, Is.EqualTo(expectedLabel));
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    [Test]
+    public void QuestCard_StrikesThroughDoneLineButNotPendingLine()
+    {
+        AugmentCardView card = CreateCard(out GameObject canvasObject);
+        try
+        {
+            var lines = new[]
+            {
+                new AugmentProgressLine("완료된 목표", true),
+                new AugmentProgressLine("남은 목표", false)
+            };
+            card.Bind(QuestDefinition(), AugmentCardDisplayState.Owned,
+                progress: new AugmentProgress(AugmentProgressOutcome.InProgress, lines));
+
+            AugmentCardView.ProgressRow doneRow = card.ProgressRows[0];
+            AugmentCardView.ProgressRow pendingRow = card.ProgressRows[1];
+
+            Assert.That(doneRow.Text.text, Does.Contain("<s>"), "달성 줄에는 취소선이 켜져야 한다.");
+            Assert.That(pendingRow.Text.text, Does.Not.Contain("<s>"), "진행 중 줄에는 취소선이 없어야 한다.");
+            Assert.That(doneRow.Group.alpha, Is.EqualTo(0.7f).Within(.001f));
+            Assert.That(pendingRow.Group.alpha, Is.EqualTo(1f).Within(.001f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    [Test]
+    public void QuestCard_FailedOutcomeStrikesAllLinesWithLowerOpacityOnPendingOnes()
+    {
+        AugmentCardView card = CreateCard(out GameObject canvasObject);
+        try
+        {
+            var lines = new[]
+            {
+                new AugmentProgressLine("완료된 목표", true),
+                new AugmentProgressLine("실패한 목표", false)
+            };
+            card.Bind(QuestDefinition(), AugmentCardDisplayState.Owned,
+                progress: new AugmentProgress(AugmentProgressOutcome.Failed, lines));
+
+            AugmentCardView.ProgressRow doneRow = card.ProgressRows[0];
+            AugmentCardView.ProgressRow failedRow = card.ProgressRows[1];
+
+            Assert.That(doneRow.Text.text, Does.Contain("<s>"));
+            Assert.That(failedRow.Text.text, Does.Contain("<s>"), "실패 시 미달성 줄도 취소선이 켜져야 한다.");
+            Assert.That(doneRow.Group.alpha, Is.EqualTo(0.7f).Within(.001f));
+            Assert.That(failedRow.Group.alpha, Is.EqualTo(0.6f).Within(.001f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    [Test]
+    public void QuestCard_RowHasNoUnderline()
+    {
+        AugmentCardView card = CreateCard(out GameObject canvasObject);
+        try
+        {
+            var lines = new[] { new AugmentProgressLine("9턴 이후에 Full House 기입", false) };
+            card.Bind(QuestDefinition(), AugmentCardDisplayState.Owned,
+                progress: new AugmentProgress(AugmentProgressOutcome.InProgress, lines));
+
+            AugmentCardView.ProgressRow row = card.ProgressRows[0];
+            Assert.That(row.Text.text, Does.Not.Contain("<u>"));
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    [Test]
+    public void QuestCard_TargetNoteRowHasNoUnderline()
+    {
+        AugmentCardView card = CreateCard(out GameObject canvasObject);
+        try
+        {
+            var lines = new[]
+            {
+                new AugmentProgressLine("타겟으로 지정된 족보를 3회 기입하기 (0/3)", false),
+                new AugmentProgressLine("미지정", false, isTargetNote: true)
+            };
+            card.Bind(QuestDefinition(), AugmentCardDisplayState.Owned,
+                progress: new AugmentProgress(AugmentProgressOutcome.InProgress, lines));
+
+            Assert.That(card.ProgressRows[1].Text.text, Does.Not.Contain("<u>"));
+            Assert.That(card.ProgressRows[1].Text.text, Does.Contain("현재 타겟"));
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    [Test]
+    public void QuestCard_LongestDescriptionStillFitsReservedBodyAtMinimumBestFitSize()
+    {
+        // Copycat이 11종 중 설명 본문이 가장 길다. best-fit 결과(레이아웃 패스 필요)를 직접 믿지 않고,
+        // 최소 크기(14pt, resizeTextMinSize)로 TextGenerator를 직접 돌려 줄 수 x 줄 높이가
+        // 본문 rect 높이 안에 들어오는지 본다. 레이아웃 패스와 무관하다.
+        AugmentCardView card = CreateCard(out GameObject canvasObject);
+        try
+        {
+            var definition = new YachtAugmentDefinition
+            {
+                Id = YachtAugmentRuntime.CopycatId,
+                DisplayName = "카피캣",
+                Description = "상대가 이미 기입한 족보를 따라 기입합니다. 초이스 이상에서 동점 기입 시 즉시, 또는 3회 누적 시 +10점입니다.",
+                Kind = YachtAugmentKind.Quest
+            };
+            var lines = new[] { new AugmentProgressLine("상대방이 이미 기입한 족보와 동일한 족보 기입 (0/3)", false) };
+            card.Bind(definition, AugmentCardDisplayState.Owned,
+                progress: new AugmentProgress(AugmentProgressOutcome.InProgress, lines));
+
+            Text body = card.DescriptionText;
+            var generator = new TextGenerator();
+            TextGenerationSettings settings = body.GetGenerationSettings(new Vector2(body.rectTransform.rect.width, 1000f));
+            settings.fontSize = body.resizeTextMinSize;
+            settings.resizeTextForBestFit = false;
+            generator.Populate(body.text, settings);
+
+            float ppu = Mathf.Max(1f, body.pixelsPerUnit);
+            float totalHeight = 0f;
+            foreach (UILineInfo line in generator.lines) totalHeight += line.height / ppu;
+
+            Assert.That(totalHeight, Is.LessThanOrEqualTo(body.rectTransform.rect.height),
+                "Copycat 설명 본문이 최소 폰트 크기에서도 진행 블록이 줄인 영역을 넘칩니다.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    [Test]
+    public void ProgressRow_UsesMulmaruFontBeforeMeasuringVisualLines()
+    {
+        // 폰트 폴백이 일어나면 아래 시각 줄 측정이 전부 무의미해지므로 먼저 전제를 확인한다.
+        AugmentCardView card = CreateCard(out GameObject canvasObject);
+        try
+        {
+            var lines = new[] { new AugmentProgressLine("9턴 이후에 Full House 기입", false) };
+            card.Bind(QuestDefinition(), AugmentCardDisplayState.Owned,
+                progress: new AugmentProgress(AugmentProgressOutcome.InProgress, lines));
+
+            TMP_FontAsset font = card.ProgressRows[0].Text.font;
+            Assert.That(font, Is.Not.Null);
+            Assert.That(font.faceInfo.familyName, Does.Contain("Mulmaru"),
+                $"진행 행 폰트가 Mulmaru가 아니라 {font.faceInfo.familyName}으로 폴백됐습니다. 이후 시각 줄 측정을 신뢰할 수 없습니다.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    [Test]
+    public void ProgressFont_StrikethroughSitsInsideHangulGlyphMiddle()
+    {
+        // 픽셀 폰트는 OS/2 취소선 메트릭이 없어 LoadProgressFont가 '가' 글리프 기준으로 직접 보정한다.
+        // 그 보정값이 실제로 글리프 세로 중앙 부근에 있는지 확인한다.
+        AugmentCardView card = CreateCard(out GameObject canvasObject);
+        try
+        {
+            var lines = new[] { new AugmentProgressLine("완료된 목표", true) };
+            card.Bind(QuestDefinition(), AugmentCardDisplayState.Owned,
+                progress: new AugmentProgress(AugmentProgressOutcome.InProgress, lines));
+
+            TMP_FontAsset font = card.ProgressRows[0].Text.font;
+            Assert.That(font.characterLookupTable.TryGetValue('가', out TMP_Character ch), Is.True);
+            GlyphMetrics metrics = ch.glyph.metrics;
+            float bearingY = metrics.horizontalBearingY;
+            float height = metrics.height;
+            float offset = font.faceInfo.strikethroughOffset;
+
+            Assert.That(offset, Is.GreaterThan(0f));
+            Assert.That(offset, Is.InRange(bearingY - height * 0.75f, bearingY - height * 0.25f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    [Test]
+    public void QuestCard_ProgressBlockHeightShrinksWithFewerRows()
+    {
+        AugmentCardView oneRowCard = CreateCard(out GameObject oneRowCanvas, "Progress Height Test Canvas 1");
+        AugmentCardView threeRowCard = CreateCard(out GameObject threeRowCanvas, "Progress Height Test Canvas 3");
+        try
+        {
+            var oneLine = new[] { new AugmentProgressLine("A", false) };
+            var threeLines = new[]
+            {
+                new AugmentProgressLine("A", false),
+                new AugmentProgressLine("B", false),
+                new AugmentProgressLine("C", false)
+            };
+            oneRowCard.Bind(QuestDefinition(), AugmentCardDisplayState.Owned,
+                progress: new AugmentProgress(AugmentProgressOutcome.InProgress, oneLine));
+            threeRowCard.Bind(QuestDefinition(), AugmentCardDisplayState.Owned,
+                progress: new AugmentProgress(AugmentProgressOutcome.InProgress, threeLines));
+
+            Assert.That(oneRowCard.ProgressBlockHeight, Is.GreaterThan(0f));
+            Assert.That(oneRowCard.ProgressBlockHeight, Is.LessThan(threeRowCard.ProgressBlockHeight));
+        }
+        finally
+        {
+            Object.DestroyImmediate(oneRowCanvas);
+            Object.DestroyImmediate(threeRowCanvas);
+        }
+    }
+
+    /// <summary>
+    /// 11종 각각 가장 긴 상태로 만든 <see cref="AugmentProgress"/>다. 실제 State.DescribeProgress를
+    /// 그대로 호출해 만들므로 문구가 로직과 항상 일치한다.
+    /// </summary>
+    private static IEnumerable<TestCaseData> WorstCaseQuestProgressCases()
+    {
+        var query = new AugmentProgressQuery(new YachtAugmentPlayerState(), new PlayerScoreData());
+        yield return new TestCaseData(YachtAugmentRuntime.FastStraightId,
+            (AugmentProgress)new FastStraightState { SmallScored = true }.DescribeProgress(query));
+        yield return new TestCaseData(YachtAugmentRuntime.NoTimeToWasteId,
+            (AugmentProgress)new NoTimeToWasteState { RemainingTurns = 1 }.DescribeProgress(query));
+        yield return new TestCaseData(YachtAugmentRuntime.StepByStepId,
+            (AugmentProgress)new StepByStepState { CategoryIndex = 3 }.DescribeProgress(query));
+        yield return new TestCaseData(YachtAugmentRuntime.HoldoutId,
+            (AugmentProgress)new HoldoutState().DescribeProgress(query));
+        yield return new TestCaseData(YachtAugmentRuntime.CautiousStraightId,
+            (AugmentProgress)new CautiousStraightState { SmallScored = true }.DescribeProgress(query));
+        yield return new TestCaseData(YachtAugmentRuntime.EveryLittleId,
+            (AugmentProgress)new EveryLittleCountsState { Count = 3 }.DescribeProgress(query));
+        // Copycat "(조건 달성!)" — Rewarded인데 3회 미만일 때만 붙는, 가장 긴 문구다.
+        yield return new TestCaseData(YachtAugmentRuntime.CopycatId,
+            (AugmentProgress)new CopycatState { Count = 1, Rewarded = true }.DescribeProgress(query));
+        yield return new TestCaseData(YachtAugmentRuntime.DoublingId,
+            (AugmentProgress)new DoublingState().DescribeProgress(query));
+        yield return new TestCaseData(YachtAugmentRuntime.NozdormuId,
+            (AugmentProgress)new NozdormuState { TargetTurn = 12 }.DescribeProgress(query));
+        // BountyHunter 미완료 + 두 줄짜리 타겟명("4 of a Kind")이 가장 길다.
+        yield return new TestCaseData(YachtAugmentRuntime.BountyHunterId,
+            (AugmentProgress)new BountyHunterState { Successes = 1, TargetCategory = (int)ScoreCategory.FourOfAKind }.DescribeProgress(query));
+        // Prophet 두 자리 숫자 3개.
+        yield return new TestCaseData(YachtAugmentRuntime.ProphetId,
+            (AugmentProgress)new ProphetState { TurnsRemaining = 1, Targets = new[] { 12, 25, 30 } }.DescribeProgress(query));
+    }
+
+    [TestCaseSource(nameof(WorstCaseQuestProgressCases))]
+    public void QuestCard_WorstCaseWording_KeepsVisualLineSumWithinThree(string augmentId, AugmentProgress progress)
+    {
+        AugmentCardView card = CreateCard(out GameObject canvasObject);
+        try
+        {
+            var definition = new YachtAugmentDefinition
+            {
+                Id = augmentId,
+                DisplayName = augmentId,
+                Description = "설명",
+                Kind = YachtAugmentKind.Quest
+            };
+            card.Bind(definition, AugmentCardDisplayState.Owned, progress: progress);
+
+            int totalVisualLines = 0;
+            foreach (AugmentCardView.ProgressRow row in card.ProgressRows)
+            {
+                if (!row.Rect.gameObject.activeSelf) continue;
+                totalVisualLines += AugmentCardView.CountVisualLines(row.Text);
+            }
+
+            Assert.That(totalVisualLines, Is.LessThanOrEqualTo(3),
+                $"{augmentId}: 진행 블록 시각 줄 합이 3을 넘습니다(실제 {totalVisualLines}줄). 문구를 줄이거나 슬롯을 늘려야 합니다.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    [TestCaseSource(nameof(WorstCaseQuestProgressCases))]
+    public void QuestCard_ActiveRowsStackTopToBottomWithoutOverlap(string augmentId, AugmentProgress progress)
+    {
+        AugmentCardView card = CreateCard(out GameObject canvasObject);
+        try
+        {
+            var definition = new YachtAugmentDefinition { Id = augmentId, DisplayName = augmentId, Description = "설명", Kind = YachtAugmentKind.Quest };
+            card.Bind(definition, AugmentCardDisplayState.Owned, progress: progress);
+
+            float previousBottom = float.PositiveInfinity;
+            foreach (AugmentCardView.ProgressRow row in card.ProgressRows)
+            {
+                if (!row.Rect.gameObject.activeSelf) continue;
+                (float top, float bottom) = AugmentCardView.RowBlockLocalRange(row.Rect);
+                Assert.That(top, Is.LessThanOrEqualTo(previousBottom + .01f),
+                    $"{augmentId}: 행이 위에서 아래로 순서대로 놓이지 않았거나 겹칩니다.");
+                Assert.That(bottom, Is.LessThanOrEqualTo(top),
+                    $"{augmentId}: 행 bottom이 top보다 위에 있습니다.");
+                previousBottom = bottom;
+            }
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    [Test]
+    public void QuestCard_WrappedDoneLineStrikesThroughEveryVisualLine()
+    {
+        AugmentCardView card = CreateCard(out GameObject canvasObject);
+        try
+        {
+            var query = new AugmentProgressQuery(new YachtAugmentPlayerState(), new PlayerScoreData());
+            AugmentProgress progress = new CopycatState { Count = 1, Rewarded = true }.DescribeProgress(query);
+            var definition = new YachtAugmentDefinition { Id = YachtAugmentRuntime.CopycatId, DisplayName = "카피캣", Description = "설명", Kind = YachtAugmentKind.Quest };
+            card.Bind(definition, AugmentCardDisplayState.Owned, progress: progress);
+
+            AugmentCardView.ProgressRow row = card.ProgressRows[0];
+            Assert.That(AugmentCardView.CountVisualLines(row.Text), Is.GreaterThanOrEqualTo(2),
+                "이 케이스는 카드 폭에서 두 시각 줄로 넘어가야 줄바꿈 취소선을 검증할 수 있다.");
+
+            // TMP는 <s> 태그 구간이 줄바꿈되면 시각 줄마다 각각 선을 긋는다.
+            Assert.That(row.Text.text, Does.StartWith("<s>"));
+            Assert.That(row.Text.text, Does.EndWith("</s>"));
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    [Test]
+    public void TrayCard_ProgressLineIsVisibleOnSameCardAndLayerAsText()
+    {
+        // 실제 게임 화면은 AugmentCardView.Create가 아니라 AugmentTrayCardView.Create → Bind 경로를
+        // 탄다. 이 경로에서 진행도가 텍스트와 다른 카드·레이어·활성 상태에 놓이면 화면에서만
+        // 선이 안 보이는 문제가 생길 수 있어, 그 경로를 그대로 재현해 확인한다.
+        GameObject anchorObject = new("Tray Progress Regression Anchor");
+        try
+        {
+            Vector2 slotSize = new(4.58f, 2.58f);
+            AugmentTrayCardView view = AugmentTrayCardView.Create(anchorObject.transform, slotSize, 0);
+            var query = new AugmentProgressQuery(new YachtAugmentPlayerState(), new PlayerScoreData());
+            AugmentProgress progress = new FastStraightState { SmallScored = true }.DescribeProgress(query);
+            var definition = new YachtAugmentDefinition
+            {
+                Id = YachtAugmentRuntime.FastStraightId,
+                DisplayName = "재빠른 스트레이트",
+                Description = "설명",
+                Kind = YachtAugmentKind.Quest
+            };
+            view.Bind(definition, (int)AugmentParchmentPreset.GentleWave, progress: progress);
+            view.SetVisible(true);
+
+            // 트레이 카드 하나에는 AugmentCardView가 하나뿐이어야 한다. 둘 이상이면 진행도가
+            // 화면에 보이지 않는 카드에 Bind됐을 수 있다.
+            AugmentCardView[] cardsInHierarchy = view.GetComponentsInChildren<AugmentCardView>(true);
+            Assert.That(cardsInHierarchy, Has.Length.EqualTo(1),
+                $"트레이 카드 하나에 AugmentCardView가 {cardsInHierarchy.Length}개 있습니다.");
+            Assert.That(cardsInHierarchy[0], Is.SameAs(view.Card));
+
+            AugmentCardView card = view.Card;
+            Assert.That(card.ProgressBlockRoot.activeInHierarchy, Is.True,
+                "진행 블록이 활성인 카드를 찾지 못했습니다. 진행도가 다른 카드에 Bind됐을 수 있습니다.");
+
+            AugmentCardView.ProgressRow row = card.ProgressRows[0];
+            Assert.That(row.Text.enabled, Is.True, "row.Text가 비활성입니다 — 텍스트도 안 보일 것입니다.");
+            Assert.That(row.Text.text, Does.Contain("<s>"), "취소선 태그가 빠졌습니다.");
+            Assert.That(row.Text.gameObject.layer, Is.EqualTo(TesseraLayers.CrispUI));
+            Assert.That(row.Text.color.a, Is.GreaterThan(0f), "텍스트 색 알파가 0입니다.");
+
+            float combinedAlpha = 1f;
+            foreach (CanvasGroup group in row.Text.GetComponentsInParent<CanvasGroup>(true)) combinedAlpha *= group.alpha;
+            Assert.That(combinedAlpha, Is.GreaterThan(0f), "텍스트를 덮은 CanvasGroup 알파 곱이 0입니다.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(anchorObject);
         }
     }
 }

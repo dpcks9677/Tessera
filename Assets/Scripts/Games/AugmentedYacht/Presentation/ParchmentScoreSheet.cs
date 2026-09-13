@@ -754,10 +754,20 @@ namespace Tessera.Games.AugmentedYacht
             Transform[] scoreColumns = { columnRects[ColumnP1Scores], columnRects[ColumnP2Scores] };
             Text[][] scoreLabels = { p1ScoreLabels, p2ScoreLabels };
 
-            // 3. 족보 데이터
-            string[] upperNames = { "Aces", "Deuces", "Threes", "Fours", "Fives", "Sixes" };
+            // 3. 족보 데이터. 이름은 ScoreCategoryNames로 퀘스트 진행도 문구와 표기를 맞춘다.
+            string[] upperNames =
+            {
+                ScoreCategoryNames.Get(ScoreCategory.Aces), ScoreCategoryNames.Get(ScoreCategory.Deuces),
+                ScoreCategoryNames.Get(ScoreCategory.Threes), ScoreCategoryNames.Get(ScoreCategory.Fours),
+                ScoreCategoryNames.Get(ScoreCategory.Fives), ScoreCategoryNames.Get(ScoreCategory.Sixes)
+            };
             string[] upperIcons = { "dice_1", "dice_2", "dice_3", "dice_4", "dice_5", "dice_6" };
-            string[] lowerNames = { "Choice", "4 of a Kind", "Full House", "S. Straight", "L. Straight", "Yacht" };
+            string[] lowerNames =
+            {
+                ScoreCategoryNames.Get(ScoreCategory.Choice), ScoreCategoryNames.Get(ScoreCategory.FourOfAKind),
+                ScoreCategoryNames.Get(ScoreCategory.FullHouse), ScoreCategoryNames.Get(ScoreCategory.SmallStraight),
+                ScoreCategoryNames.Get(ScoreCategory.LargeStraight), ScoreCategoryNames.Get(ScoreCategory.Yacht)
+            };
             string[] lowerIcons = { "choice", "4oak", "fullhouse", "s_straight", "l_straight", "yacht" };
 
             // 4. 족보 행 12개 (Row 1..6 Aces~Sixes, Row 8..13 Choice~Yacht)

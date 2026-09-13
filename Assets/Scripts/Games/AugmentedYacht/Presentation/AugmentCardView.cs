@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using TMPro;
 using Tessera.Games.Yacht;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.TextCore;
 using UnityEngine.UI;
 
 namespace Tessera.Games.AugmentedYacht
@@ -22,11 +24,48 @@ namespace Tessera.Games.AugmentedYacht
     {
         public const float TrayCardAspectRatio = 1.774f;
 
+        // 퀘스트 진행 블록 레이아웃 상수. 웹 원본 getQuestProgressText 형식(라벨 + 점선 + 하위 목표 줄)을
+        // 카드 하단에 그대로 옮긴다. 값 근거는 docs 계획서 "카드 레이아웃" 절 참고.
+        // 헤더·본문·여백 배치는 Build()의 카드 공통 배치와 SetProgressBlock()의 본문 되돌림이
+        // 같은 값을 알아야 하므로 여기 한 곳에 모은다.
+        // 블록 높이는 고정이 아니라 행 수·줄바꿈에 따라 매 Bind마다 다시 잰다(SetProgressBlock 참고).
+        private const float HeaderHeight = 46f;
+        private const float FooterHeight = 22f;
+        private const float DescriptionTopMargin = HeaderHeight + 16f;
+        private const float DescriptionBottomDefault = FooterHeight + 6f;
+
+        private const int RowSlotCount = 3;
+        private const float BlockBottom = 0f;
+        private const float RowGapAboveDash = 2f;
+        private const float DashHeight = 3f;
+        private const float GapAboveLabel = 2f;
+        private const float LabelHeight = 15f;
+        private const float DashSpanX = 4f;
+        private const float DashGapX = 4f;
+
+        // 콘텐츠 세이프 영역 아래에 남는 양피지 여백을 진행 블록이 잡아먹도록, 블록 아랫변을 그만큼 더
+        // 내려 그린다(ContentSafeRect 자체는 트레이 오버레이 계산이 걸려 있어 건드리지 않는다).
+        public const float FooterBleed = 10f;
+
+        // 웹 원본과 같은 상태 라벨 색이다. docs/reference/art_style_guide.md 톤과 별개로,
+        // 이 세 색은 사용자가 원본 웹과 동일하게 지정했다.
+        private static readonly Color StatusInProgress = new Color32(0x34, 0x98, 0xdb, 0xff);
+        private static readonly Color StatusSucceeded = new Color32(0xD4, 0xAF, 0x37, 0xff);
+        private static readonly Color StatusFailed = new Color32(0xe7, 0x4c, 0x3c, 0xff);
+
         private static readonly Color Parchment = new(0.97f, 0.95f, 0.91f, 1f);
         private static readonly Color Ink = new(0.16f, 0.10f, 0.07f, 1f);
         private static readonly Color Crimson = new(0.53f, 0.18f, 0.13f, 1f);
         private static readonly Color AntiqueGold = new(0.90f, 0.66f, 0.24f, 1f);
         private static readonly Color Indigo = new(0.21f, 0.29f, 0.43f, 1f);
+
+        /// <summary>진행 블록 행 하나. 취소선은 막대가 아니라 리치 텍스트 `&lt;s&gt;` 태그로 긋는다.</summary>
+        public sealed class ProgressRow
+        {
+            public RectTransform Rect;
+            public TextMeshProUGUI Text;
+            public CanvasGroup Group;
+        }
 
         private Image background;
         private Image header;
@@ -38,6 +77,12 @@ namespace Tessera.Games.AugmentedYacht
         private Text nameText;
         private Text descriptionText;
         private Text kindText;
+        private Text targetText;
+        private Text statusLabel;
+        private Image[] dashes = Array.Empty<Image>();
+        private readonly ProgressRow[] progressRows = new ProgressRow[RowSlotCount];
+        private GameObject progressBlockRoot;
+        private RectTransform progressBlockRect;
         private Button button;
         private bool overlayContentOnly;
 
@@ -45,6 +90,23 @@ namespace Tessera.Games.AugmentedYacht
         public Text NameText => nameText;
         public Text DescriptionText => descriptionText;
         public Text KindText => kindText;
+        public Text TargetText => targetText;
+        public Text StatusLabel => statusLabel;
+        public GameObject ProgressBlockRoot => progressBlockRoot;
+        public IReadOnlyList<ProgressRow> ProgressRows => progressRows;
+
+        /// <summary>진행 블록의 실측 높이다. progress가 없으면 0이다.</summary>
+        public float ProgressBlockHeight { get; private set; }
+
+        /// <summary>테스트 지원용. 어떤 Text가 실제로 몇 개의 시각 줄로 렌더되는지 그대로 노출한다.</summary>
+        public static int CountVisualLines(TMP_Text text) => text.GetTextInfo(text.text).lineCount;
+
+        /// <summary>
+        /// 테스트 지원용. row.Rect의 블록 위쪽 기준 (top, bottom) y를 되짚는다. 행 rect는 블록 위쪽에
+        /// 고정한 anchor(위쪽 변)를 기준으로 놓이므로 offsetMax.y·offsetMin.y가 이미 그 값이다(둘 다 ≤0).
+        /// </summary>
+        public static (float Top, float Bottom) RowBlockLocalRange(RectTransform rowRect) =>
+            (rowRect.offsetMax.y, rowRect.offsetMin.y);
         public Image Icon => icon;
         public Image Background => background;
         public Image StateAccent => stateAccent;
@@ -75,13 +137,15 @@ namespace Tessera.Games.AugmentedYacht
             return card;
         }
 
-        public void Bind(YachtAugmentDefinition definition, AugmentCardDisplayState state, Sprite overrideIcon = null)
+        public void Bind(YachtAugmentDefinition definition, AugmentCardDisplayState state, Sprite overrideIcon = null, AugmentProgress? progress = null)
         {
             if (definition == null)
             {
                 nameText.text = "알 수 없는 증강";
                 descriptionText.text = "표시 데이터를 찾을 수 없습니다.";
                 kindText.text = "미확인";
+                targetText.text = string.Empty;
+                SetProgressBlock(null);
                 icon.sprite = overrideIcon != null ? overrideIcon : AugmentPixelIconFactory.Get(YachtAugmentKind.Enhance);
                 icon.color = overrideIcon != null ? Color.white : IconColor(YachtAugmentKind.Enhance);
                 SetState(AugmentCardDisplayState.Disabled);
@@ -91,11 +155,102 @@ namespace Tessera.Games.AugmentedYacht
             nameText.text = definition.DisplayName;
             descriptionText.text = Compact(definition.Description);
             kindText.text = KindLabel(definition.Kind);
+            targetText.text = AugmentStickerCatalog.TryGetTargetCategory(definition, out _)
+                ? AugmentStickerCatalog.MarkLabel(definition.Id, definition.DisplayName)
+                : string.Empty;
+            SetProgressBlock(progress);
             Sprite augmentIcon = overrideIcon ?? Resources.Load<Sprite>($"AugmentIcons/{definition.Id}");
             icon.sprite = augmentIcon != null ? augmentIcon : AugmentPixelIconFactory.Get(definition.Kind);
             // 증강 고유 아이콘은 앤틱 잉크색이 구워져 있으므로 틴트하지 않는다.
             icon.color = augmentIcon != null ? Color.white : IconColor(definition.Kind);
             SetState(state);
+        }
+
+        /// <summary>
+        /// 퀘스트 진행 블록을 켜고 채우거나(progress 있음), 끄고 본문 여백을 되돌린다(progress 없음).
+        /// 행은 재사용만 하고 파괴하지 않는다 — Build에서 미리 만들어 둔 3개 슬롯을 매번 다시 채운다.
+        /// 블록 높이는 실제 줄 수만큼만 차지하도록 매번 다시 재고, 본문 아래 여백도 그 높이에 맞춘다.
+        /// </summary>
+        private void SetProgressBlock(AugmentProgress? progress)
+        {
+            bool hasProgress = progress.HasValue && progress.Value.Lines.Count > 0;
+            progressBlockRoot.SetActive(hasProgress);
+
+            if (!hasProgress)
+            {
+                SetStretch(descriptionText.rectTransform, 4f, 4f, DescriptionTopMargin, DescriptionBottomDefault);
+                ProgressBlockHeight = 0f;
+                for (int i = 0; i < progressRows.Length; i++) SetRowActive(progressRows[i], false);
+                return;
+            }
+
+            AugmentProgress value = progress.Value;
+            statusLabel.text = StatusLabelText(value.Outcome);
+            statusLabel.color = StatusColor(value.Outcome);
+
+            // 행은 실제 시각 줄 높이만큼만 차지하며 라벨·점선 아래에서 위→아래로 쌓인다.
+            float rowsAreaTop = LabelHeight + GapAboveLabel + DashHeight + RowGapAboveDash;
+            float rowWidth = progressBlockRect.rect.width - 8f; // 좌우 4px 여백
+            float runningTop = rowsAreaTop;
+            for (int i = 0; i < progressRows.Length; i++)
+            {
+                if (i >= value.Lines.Count)
+                {
+                    SetRowActive(progressRows[i], false);
+                    continue;
+                }
+                runningTop = BindRow(progressRows[i], value.Lines[i], value.Outcome, runningTop, rowWidth);
+            }
+
+            float blockHeight = runningTop + BlockBottom;
+            ProgressBlockHeight = blockHeight;
+
+            // 블록 아랫변을 콘텐츠 세이프 영역 밖(FooterBleed)까지 내려 그린다. 본문 여백도 같은 값으로 맞춘다.
+            float contentHeight = contentRoot.rect.height;
+            SetStretch(progressBlockRect, 0f, 0f, contentHeight - (blockHeight - FooterBleed), -FooterBleed);
+            SetStretch(descriptionText.rectTransform, 4f, 4f, DescriptionTopMargin, blockHeight - FooterBleed);
+        }
+
+        private static string StatusLabelText(AugmentProgressOutcome outcome) => outcome switch
+        {
+            AugmentProgressOutcome.Succeeded => "퀘스트 성공",
+            AugmentProgressOutcome.Failed => "퀘스트 실패",
+            _ => "퀘스트 진행 중"
+        };
+
+        private static Color StatusColor(AugmentProgressOutcome outcome) => outcome switch
+        {
+            AugmentProgressOutcome.Succeeded => StatusSucceeded,
+            AugmentProgressOutcome.Failed => StatusFailed,
+            _ => StatusInProgress
+        };
+
+        private void SetRowActive(ProgressRow row, bool active)
+        {
+            row.Rect.gameObject.SetActive(active);
+        }
+
+        /// <summary>
+        /// 행을 채우고 실제 시각 줄 높이만큼 위치·크기를 잡는다. <paramref name="topOffset"/>는 블록
+        /// 위쪽 변에서 이 행의 윗변까지 아래로 잰 거리(≥0)다. 반환값은 다음 행이 이어받을 topOffset이다.
+        /// 취소선은 별도 막대가 아니라 리치 텍스트 `&lt;s&gt;` 태그로 긋는다.
+        /// </summary>
+        private float BindRow(ProgressRow row, AugmentProgressLine line, AugmentProgressOutcome outcome, float topOffset, float rowWidth)
+        {
+            row.Rect.gameObject.SetActive(true);
+            bool strike = line.Done || outcome == AugmentProgressOutcome.Failed;
+            string content = line.IsTargetNote
+                ? $"└ 현재 타겟: <color=#D4AF37>{line.Text}</color>"
+                : $"<b>퀘스트</b>: {line.Text}";
+            row.Text.text = strike ? $"<s>{content}</s>" : content;
+            row.Text.color = Ink;
+
+            float rowHeight = Mathf.Max(row.Text.GetPreferredValues(row.Text.text, rowWidth, 0f).y, 1f);
+            SetTopStretch(row.Rect, 4f, 4f, topOffset, rowHeight);
+
+            row.Group.alpha = strike ? (line.Done ? 0.7f : 0.6f) : 1f;
+
+            return topOffset + rowHeight;
         }
 
         public void SetState(AugmentCardDisplayState state)
@@ -196,17 +351,13 @@ namespace Tessera.Games.AugmentedYacht
             // 위에서 아래로 헤더 · 강조선 · 본문이 한 줄씩 쌓이는 배치다.
             // 각 행은 콘텐츠 사각형의 위아래 여백만으로 위치를 정하므로 카드 크기가 달라져도 비율이 유지된다.
             // footerHeight는 그리는 행이 아니라 본문 아래에 남기는 여백이다.
-            float headerHeight = 46f;
-            float accentTop = headerHeight;
-            float footerHeight = 22f;
-
             header = CreateImage(contentRoot, "Crimson Header", Vector2.zero, Vector2.zero, Crimson);
-            SetStretch(header.rectTransform, 0f, 0f, 0f, contentHeight - headerHeight);
+            SetStretch(header.rectTransform, 0f, 0f, 0f, contentHeight - HeaderHeight);
             header.raycastTarget = false;
 
             // 잉크 아이콘을 양피지 위에 직접 얹으므로 받침판은 배치 기준으로만 남기고 그리지 않는다.
             iconBacking = CreateImage(contentRoot, "Pixel Icon Backing", Vector2.zero, Vector2.zero, Color.clear);
-            SetStretch(iconBacking.rectTransform, 4f, contentWidth - 38f, 6f, contentHeight - headerHeight + 6f);
+            SetStretch(iconBacking.rectTransform, 4f, contentWidth - 38f, 6f, contentHeight - HeaderHeight + 6f);
             iconBacking.raycastTarget = false;
             icon = CreateImage(iconBacking.transform, "Pixel Icon", Vector2.zero, new Vector2(-6f, -6f), AntiqueGold, true);
             icon.preserveAspect = true;
@@ -214,22 +365,133 @@ namespace Tessera.Games.AugmentedYacht
 
             // 이름은 크림슨 헤더 위에 얹히므로 잉크색이 아니라 양피지색으로 뽑는다.
             nameText = CreateText(contentRoot, "Name", "증강", Vector2.zero, Vector2.zero, 22, TextAnchor.MiddleLeft, Parchment);
-            SetStretch(nameText.rectTransform, 44f, 84f, 0f, contentHeight - headerHeight);
+            SetStretch(nameText.rectTransform, 44f, 84f, 0f, contentHeight - HeaderHeight);
             kindText = CreateText(contentRoot, "Kind Badge", "종류", Vector2.zero, Vector2.zero, 17, TextAnchor.MiddleRight, AntiqueGold);
-            SetStretch(kindText.rectTransform, contentWidth - 76f, 4f, 0f, contentHeight - headerHeight);
+            SetStretch(kindText.rectTransform, contentWidth - 76f, 4f, 0f, contentHeight - HeaderHeight);
 
             // 상태 강조선이 헤더와 본문을 가르는 구분선을 겸한다.
             stateAccent = CreateImage(contentRoot, "State Accent", Vector2.zero, Vector2.zero, AntiqueGold);
-            SetStretch(stateAccent.rectTransform, 2f, 2f, accentTop, contentHeight - accentTop - 2f);
+            SetStretch(stateAccent.rectTransform, 2f, 2f, HeaderHeight, contentHeight - HeaderHeight - 2f);
             stateAccent.raycastTarget = false;
 
             descriptionText = CreateText(contentRoot, "Effect Body", "효과", Vector2.zero, Vector2.zero, 18, TextAnchor.UpperLeft, Ink);
-            SetStretch(descriptionText.rectTransform, 4f, 4f, accentTop + 16f, footerHeight + 6f);
+            SetStretch(descriptionText.rectTransform, 4f, 4f, DescriptionTopMargin, DescriptionBottomDefault);
             descriptionText.resizeTextForBestFit = true;
             descriptionText.resizeTextMinSize = 14;
             descriptionText.resizeTextMaxSize = 19;
             descriptionText.horizontalOverflow = HorizontalWrapMode.Wrap;
             descriptionText.verticalOverflow = VerticalWrapMode.Truncate;
+
+            // footerHeight 여백 안에 대상 족보를 둔다. 본문 아래에 남겨 둔 자리라 본문 크기를 다시 계산할 필요가 없다.
+            // 변형 카드에서만 채워지고, 퀘스트 카드는 진행 블록이 이 자리를 대신 쓴다(SetProgressBlock).
+            targetText = CreateText(contentRoot, "Target Badge", "", Vector2.zero, Vector2.zero, 14, TextAnchor.LowerLeft, AntiqueGold);
+            SetStretch(targetText.rectTransform, 4f, 4f, contentHeight - FooterHeight - 2f, 2f);
+
+            BuildProgressBlock(contentWidth, contentHeight);
+        }
+
+        /// <summary>
+        /// 퀘스트 진행 블록을 미리 만들어 둔다. Bind마다 켜고 끄고 다시 채우기만 하며, 자식을
+        /// 파괴하거나 새로 만들지 않는다. 상태 라벨 → 점선 → 하위 목표 줄 최대 3개 순서다.
+        /// 라벨·점선은 블록 위쪽에서부터의 거리가 고정이라 여기서 한 번만 배치한다. 블록 자체의
+        /// 위치·크기와 행(row)들의 배치는 실제 줄 수에 따라 달라지므로 SetProgressBlock이 매번 다시 잡는다.
+        /// </summary>
+        private void BuildProgressBlock(float contentWidth, float contentHeight)
+        {
+            GameObject blockObject = new("Progress Block", typeof(RectTransform));
+            blockObject.transform.SetParent(contentRoot, false);
+            progressBlockRect = blockObject.GetComponent<RectTransform>();
+            progressBlockRoot = blockObject;
+
+            statusLabel = CreateText(progressBlockRect, "Status Label", "", Vector2.zero, Vector2.zero, 14, TextAnchor.MiddleLeft, StatusInProgress);
+            statusLabel.fontStyle = FontStyle.Bold;
+            SetTopStretch(statusLabel.rectTransform, 4f, 4f, 0f, LabelHeight);
+
+            float dashTop = LabelHeight + GapAboveLabel;
+            int dashCount = Mathf.Max(1, Mathf.FloorToInt((contentWidth - DashSpanX) / (DashSpanX + DashGapX)));
+            dashes = new Image[dashCount];
+            for (int i = 0; i < dashCount; i++)
+            {
+                Image dash = CreateImage(progressBlockRect, $"Dash {i + 1}", Vector2.zero, Vector2.zero, AntiqueGold);
+                float left = i * (DashSpanX + DashGapX);
+                SetTopStretch(dash.rectTransform, left, contentWidth - (left + DashSpanX), dashTop, DashHeight);
+                dash.raycastTarget = false;
+                dashes[i] = dash;
+            }
+
+            for (int i = 0; i < RowSlotCount; i++)
+            {
+                progressRows[i] = CreateProgressRow(progressBlockRect, i);
+            }
+        }
+
+        /// <summary>
+        /// 행 하나를 만든다. 위아래 위치는 실제 내용에 따라 <see cref="BindRow"/>가 매번 다시 잡으므로,
+        /// 여기서는 자리표시자 위치로만 둔다(항상 Bind 전에 쓰이지 않는다).
+        /// </summary>
+        private ProgressRow CreateProgressRow(Transform parent, int index)
+        {
+            GameObject rowObject = new($"Progress Row {index + 1}", typeof(RectTransform), typeof(CanvasGroup));
+            rowObject.transform.SetParent(parent, false);
+            RectTransform rowRect = rowObject.GetComponent<RectTransform>();
+            SetTopStretch(rowRect, 4f, 4f, 0f, 0f);
+
+            TextMeshProUGUI rowText = CreateProgressText(rowRect);
+
+            return new ProgressRow
+            {
+                Rect = rowRect,
+                Text = rowText,
+                Group = rowObject.GetComponent<CanvasGroup>()
+            };
+        }
+
+        /// <summary>진행 행 전용 TMP 텍스트를 만든다. 취소선을 리치 텍스트 태그로 긋기 위해 richText를 켠다.</summary>
+        private static TextMeshProUGUI CreateProgressText(Transform parent)
+        {
+            GameObject textObject = new("Row Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+            textObject.transform.SetParent(parent, false);
+            RectTransform rect = textObject.GetComponent<RectTransform>();
+            SetStretch(rect, 0f, 0f, 0f, 0f);
+
+            TextMeshProUGUI text = textObject.GetComponent<TextMeshProUGUI>();
+            TMP_FontAsset font = LoadProgressFont();
+            if (font != null) text.font = font;
+            text.fontSize = 12;
+            text.alignment = TextAlignmentOptions.TopLeft;
+            text.color = Ink;
+            text.richText = true;
+            text.textWrappingMode = TextWrappingModes.Normal;
+            text.overflowMode = TextOverflowModes.Overflow;
+            text.raycastTarget = false;
+            text.text = string.Empty;
+            return text;
+        }
+
+        private static TMP_FontAsset progressFont;
+
+        private static TMP_FontAsset LoadProgressFont()
+        {
+            if (progressFont != null) return progressFont;
+            Font source = LoadFont();
+            // 별도 폰트 에셋 파일을 두지 않고 레거시 Font로부터 런타임 동적 아틀라스를 생성한다.
+            progressFont = TMP_FontAsset.CreateFontAsset(source);
+            if (progressFont != null)
+            {
+                progressFont.hideFlags = HideFlags.DontSave;
+
+                // 픽셀 폰트에는 OS/2 취소선 메트릭이 없어 strikethroughOffset이 0으로 잡혀 기준선(밑줄처럼)에
+                // 그려진다. 한글 글리프 하나("가")를 기준으로 세로 중앙에 오도록 직접 계산해 둔다.
+                progressFont.TryAddCharacters("가");
+                if (progressFont.characterLookupTable.TryGetValue('가', out TMP_Character ch) && ch.glyph != null)
+                {
+                    GlyphMetrics metrics = ch.glyph.metrics;
+                    FaceInfo face = progressFont.faceInfo;
+                    face.strikethroughOffset = metrics.horizontalBearingY - metrics.height / 2f;
+                    progressFont.faceInfo = face;
+                }
+            }
+            return progressFont;
         }
 
         /// <summary>부모 사각형에 네 변 여백만으로 붙인다. 행 단위 배치를 좌표 계산 없이 표현하기 위한 것이다.</summary>
@@ -240,6 +502,19 @@ namespace Tessera.Games.AugmentedYacht
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.offsetMin = new Vector2(left, bottom);
             rect.offsetMax = new Vector2(-right, -top);
+        }
+
+        /// <summary>
+        /// 부모의 위쪽 변에 고정하고 좌우로만 늘린다. 높이가 매번 달라지는 진행 블록·행처럼
+        /// "위에서 topOffset만큼 내려가 height만큼 차지"를 표현할 때 쓴다.
+        /// </summary>
+        private static void SetTopStretch(RectTransform rect, float left, float right, float topOffset, float height)
+        {
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.anchoredPosition = new Vector2((left - right) / 2f, -topOffset);
+            rect.sizeDelta = new Vector2(-(left + right), height);
         }
 
         private static Image CreateImage(Transform parent, string name, Vector2 position, Vector2 size, Color color, bool stretch = false)

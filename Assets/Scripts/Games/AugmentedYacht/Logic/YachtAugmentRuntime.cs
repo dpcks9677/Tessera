@@ -95,6 +95,7 @@ namespace Tessera.Games.Yacht
         IReadOnlyList<int> IReadOnlyYachtAugmentPlayerState.OwnedCardPresetIds => OwnedCardPresetIds;
         int IReadOnlyYachtAugmentPlayerState.ExtraTurns => ExtraTurns;
         int IReadOnlyYachtAugmentPlayerState.TurnsTaken => TurnsTaken;
+        IAugmentState IReadOnlyYachtAugmentPlayerState.FindState(string augmentId) => States.Find(augmentId);
 
         // --- 구 상태 필드 호환성 프로퍼티 (States 위임) ---
         public int NoTimeRemaining

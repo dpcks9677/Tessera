@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace Tessera.Games.Yacht
 {
     [Serializable]
-    public sealed class ProphetState : IAugmentState
+    public sealed class ProphetState : IAugmentState, IAugmentProgressText
     {
         public int TurnsRemaining = 3;
         public int[] Targets = Array.Empty<int>();
@@ -14,6 +14,20 @@ namespace Tessera.Games.Yacht
             TurnsRemaining = TurnsRemaining,
             Targets = Targets != null ? (int[])Targets.Clone() : Array.Empty<int>()
         };
+
+        public AugmentProgress DescribeProgress(in AugmentProgressQuery query)
+        {
+            bool done = TurnsRemaining <= 0;
+            AugmentProgressOutcome outcome = done ? AugmentProgressOutcome.Succeeded : AugmentProgressOutcome.InProgress;
+            string targetList = Targets != null && Targets.Length > 0
+                ? string.Join(", ", Array.ConvertAll(Targets, t => t.ToString()))
+                : "대기 중";
+            var lines = new[]
+            {
+                new AugmentProgressLine($"제시 숫자 [{targetList}]와 같은 점수 기입 ({TurnsRemaining}턴 남음)", done)
+            };
+            return new AugmentProgress(outcome, lines);
+        }
     }
 
     /// <summary>3턴 동안 매 턴 3개의 목표 숫자가 주어지며, 기본 점수와 일치하면 +7점입니다.</summary>
