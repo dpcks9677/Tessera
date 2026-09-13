@@ -1,7 +1,7 @@
 # Cozy Fantasy Hearth & Tabletop Art Style Guide
 
 > **문서 종류**: 기준 문서 (사람 대상)
-> **코드 대조 기준**: 2026-09-13 · 커밋 `8cc0273`
+> **코드 대조 기준**: 2026-09-14 · 커밋 `0a2f770`
 > 이 문서는 위 시점의 코드에서 확인된 것만 기술합니다. 계획 항목은 상태 표기로 구분합니다.
 > 작성 원칙은 [`docs/README.md`](../README.md)를 보십시오.
 
@@ -90,13 +90,16 @@ graph LR
 ## 6. 외부 에셋 출처
 
 프로젝트 대부분의 3D 프롭은 에디터 제너레이터가 절차적으로 만들지만, 일부는 외부에서 가져온
-모델입니다. 외부 에셋은 `Assets/Art/Reference/`에 둡니다.
+모델입니다. 개별 모델 파일은 `Assets/Art/Reference/`에 둡니다. 다만 에셋 스토어 패키지처럼
+자체 폴더 구조를 갖고 들어오는 것은 임포트된 폴더를 그대로 두므로, 경로가 이 규칙을 따르지
+않습니다.
 
 | 에셋 | 출처 | 라이선스 |
 |---|---|---|
 | `quill_pen_low.fbx` | 제3자 로우폴리 깃펜 모델 (`free-quill-pen-lowpoly`) | **미기록.** 내려받은 패키지에 라이선스 파일이 없었습니다. 배포 전에 출처와 이용 조건을 확인해 여기 적어야 합니다 |
 | `normal_dice.fbx` | 자체 제작 (`normal_dice.blend`) | 자체 |
 | `yacht-tray.stl` → `yacht-tray.asset` | 자체 제작 | 자체 |
+| `Assets/msVFX_Free Smoke Effects Pack/` | 제3자 연기 VFX 팩 (`Materials/msVFX_Stylized Smoke 1_Material.mat`, `Prefabs/msVFX_Stylized Smoke 1~4.prefab`, `Textures/msVFX_Stylized Smoke 1_Texture.png`) | **미기록.** 팩 폴더 안에 라이선스·README 파일이 하나도 없습니다. 배포 전에 출처와 이용 조건을 확인해 여기 적어야 합니다 |
 
 > **`quill_pen_low.fbx`의 라이선스 미기록은 배포 전에 반드시 해소해야 하는 항목입니다.**
 > 이 경고는 원래 `Assets/Docs/README.md`에 있었고, 그 문서를 `docs/archive/plans/poc_technical_notes.md`로
@@ -104,6 +107,13 @@ graph LR
 >
 > 깃펜 알베도 `quill_pen_albedo.png`는 원본의 베이스 컬러와 오퍼시티 맵을 합친 256×256 텍스처입니다.
 > 원본 2048² 6장(11.2 MB) 대신 쓰고 있습니다.
+
+> **`msVFX_Free Smoke Effects Pack`의 라이선스 미기록도 배포 전에 반드시 해소해야 하는 항목입니다.**
+> `Assets/Resources/Vfx/DiceSmokeBurst.prefab`은 이 팩의 `msVFX_Stylized Smoke 2.prefab`을 소스로 삼은
+> 프리팹 인스턴스이며, 머티리얼만 프로젝트 자체 제작한 `DiceSmokeBurst.mat`(자체 텍스처
+> `DiceSmokeBurstTexture.png` 사용)으로 덮어써 씁니다. 파티클 모듈 파라미터(발사 속도, 크기, 색상
+> 그라디언트 등)는 소스 프리팹의 오버라이드로 남아 있어, 팩 자체의 라이선스 조건이 이 파생물에도
+> 그대로 적용됩니다.
 
 **임포트 주의**: `quill_pen_low.fbx`는 FBX 임포터의 `Use File Scale`을 **꺼야 합니다.** 켜면 0.01 배율이
 적용돼 깃펜이 점 하나로 줄어듭니다.

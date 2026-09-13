@@ -1,7 +1,7 @@
 # Tessera 아키텍처 결정 기록 (ADR)
 
 > **문서 종류**: 기준 문서 (사람 대상)
-> **코드 대조 기준**: 2026-09-13 · 커밋 `8cc0273`
+> **코드 대조 기준**: 2026-09-14 · 커밋 `0a2f770`
 > 이 문서는 위 시점의 코드에서 확인된 것만 기술합니다. 계획 항목은 상태 표기로 구분합니다.
 > 작성 원칙은 [`docs/README.md`](../README.md)를 보십시오.
 
@@ -41,9 +41,9 @@
 | 상태 배타 소유 | `LocalGameAuthority`가 `YachtGameState`를 단독 소유 |
 | 변경 경로 단일화 | 모든 변경이 `Execute(YachtGameCommand)` → `YachtGameCommandResult`를 통과 |
 | 중복 명령 방지 | `CommandId` 기반 dedupe |
-| 낙관적 동시성 | `YachtGameCore.cs:206` `Revision` + `:271` `ExpectedRevision`, 불일치 시 `RevisionMismatch` |
+| 낙관적 동시성 | `YachtGameCore.cs:229` `Revision` + `:309` `ExpectedRevision`, 불일치 시 `RevisionMismatch` |
 | 변경 내역 보유 | `YachtGameEvent[]` |
-| 원격 전환 대비 | `YachtGameCore.cs:409-413` `IGameAuthority.ExecuteAsync`가 `Task<>` 반환 |
+| 원격 전환 대비 | `YachtGameCore.cs:454, 457` `IGameAuthority.ExecuteAsync`가 `Task<>` 반환 |
 | 난수 주입 | `IRandomSource` (테스트에서 결정론적 시드 주입 가능) |
 
 주사위 값 결정, 점수 저장, 변경사항 보유는 전부 이미 한 객체에 모여 있다. 부족한 것은 상태 소유권이 아니라 **프레젠테이션 계층에서의 접근 편의성**이다. 그것은 배선 문제이며 전역화로 풀 문제가 아니다.
@@ -60,7 +60,7 @@
 
 권위가 결정할 것과 클라이언트가 연출할 것은 분리되어야 하며, 현재 코드는 이미 분리해 두었다.
 
-`YachtGameCore.cs:302-309`:
+`YachtGameCore.cs:340-347`:
 
 ```csharp
 public sealed class RollPresentation
@@ -80,7 +80,7 @@ public sealed class RollPresentation
 매치 수명과 무관한 **불변 카탈로그와 서비스**다. 이미 그렇게 되어 있으며 유지한다.
 
 - `YachtAugmentCatalog` — 정적 `IAugmentHandler[]` 배열
-- `DicePaletteCatalog` (`DicePaletteCatalog.cs:37`) — 정적 클래스 + 머티리얼 캐시
+- `DicePaletteCatalog` (`DicePaletteCatalog.cs:40`) — 정적 클래스 + 머티리얼 캐시
 - 오디오 서비스, 환경설정 등
 
 **판단 기준: 매치가 끝나면 버려져야 하는 것은 인스턴스, 프로세스 내내 바뀌지 않는 것은 정적.**
@@ -115,5 +115,5 @@ public static class MatchRuntime
 ### 후속 작업
 
 - `IReadOnlyGameState` / `IGameCommandSink` 인터페이스 분리 — `M11` 프레젠테이션 분해 시 재검토
-- `AugmentedYachtController.cs:99`의 `augmentViewCatalog` 중복 인스턴스 제거 — 카드 표시용 정의 조회만을 위해 `YachtAugmentRuntime`을 두 번째로 생성하고 있다. 정적 정의 조회로 대체한다 (`M11-T7`)
+- `AugmentedYachtController.cs:99`의 `augmentViewCatalog` 중복 인스턴스 제거 — 카드 표시용 정의 조회만을 위해 `YachtAugmentRuntime`을 두 번째로 생성하고 있다. 정적 정의 조회로 대체한다 (`M11-T7`) — **[재확인 필요, 2026-09-14]** 지목된 `augmentViewCatalog` 식별자와 `AugmentedYachtController.cs:99`는 현재 코드에 존재하지 않는다(99번째 줄은 `TurnFlow` 프로퍼티). 카드 표시 경로(`AugmentTrayPresenter.cs`)는 `ownedCards[...].Definition`으로 조회하며 런타임을 중복 생성하지 않아, 원 항목이 지목한 문제는 해소된 것으로 보인다. 다만 `new YachtAugmentRuntime()` 중복 생성 자체는 `YachtDebugPanel.EnsureDefinitions()`(디버그 패널 전용)에 남아 있으며, 이를 원 항목과 같은 문제로 볼지는 미결이다.
 - `AugmentStateStore` 직렬화 지원 — `{id, typeTag, payload}` 평탄화 (`M18-T8`)

@@ -1,7 +1,7 @@
 # Tessera 신입 개발자를 위한 프로젝트 구조 및 아키텍처 온보딩 가이드
 
 > **문서 종류**: 기준 문서 (사람 대상)
-> **코드 대조 기준**: 2026-09-13 · 커밋 `8cc0273`
+> **코드 대조 기준**: 2026-09-14 · 커밋 `0a2f770`
 > 이 문서는 위 시점의 코드에서 확인된 것만 기술합니다. 계획 항목은 상태 표기로 구분합니다.
 > 작성 원칙은 [`docs/README.md`](../README.md)를 보십시오.
 
@@ -39,7 +39,7 @@ Tessera는 **벽난로 불꽃과 촛불이 은은하게 타오르는 중세 판�
 - **렌더 파이프라인**: Universal Render Pipeline (URP)
   - 커스텀 렌더러 피처를 통한 픽셀 엣지 필터링 및 스타일라이즈드 셀 셰이딩 지원.
 - **언어 및 런타임**: C# (.NET Standard / Unity Mono), Microsoft C# 규약 기반.
-- **테스트 환경**: NUnit 기반 Unity EditMode 단위 테스트 프레임워크 (`Assets/Editor`에 `[Test]`/`[TestCase]` 241개로 핵심 규칙 및 회귀 방어).
+- **테스트 환경**: NUnit 기반 Unity EditMode 단위 테스트 프레임워크 (`Assets/Editor`에 `[Test]`/`[TestCase]` 274개로 핵심 규칙 및 회귀 방어).
 - **에셋 관리**: Git LFS (텍스처, 오디오, 폰트 등 바이너리 추적).
 
 ---
@@ -93,7 +93,7 @@ Assets/Scripts/
 > **괄호 안의 이름은 어셈블리가 아니라 C# 네임스페이스입니다.** 이 프로젝트에는 `.asmdef`가 하나도 없어
 > 모든 스크립트가 `Assembly-CSharp` 하나로 컴파일됩니다. 모듈 경계는 컴파일러가 아니라 규약으로 지킵니다.
 >
-> 폴더와 네임스페이스가 어긋나는 지점이 하나 있습니다. `AugmentedYacht/Logic/` 아래 58개 파일은 전부
+> 폴더와 네임스페이스가 어긋나는 지점이 하나 있습니다. `AugmentedYacht/Logic/` 아래 61개 파일은 전부
 > `Tessera.Games.Yacht` 네임스페이스이고, `AugmentedYacht/Presentation/` 아래 26개 파일만
 > `Tessera.Games.AugmentedYacht`입니다. 증강 규칙이 요트 도메인 로직의 연장이기 때문입니다.
 
@@ -330,6 +330,12 @@ classDiagram
   - `IDiceBonusProvider`: 특정 주사위(예: 황금 주사위)가 점수에 보너스를 줄 때 호출. `YachtAugmentScoreEngine`이 부릅니다.
   - `IAfterScoreCommit`: 족보를 채운 직후 후속 효과(예: 보너스 턴, 추가 코인)가 터질 때 호출.
   - `IOnAugmentSelected`: 드래프트에서 카드를 집는 순간 즉시 발동하는 효과.
+
+> `IAugmentProgressText`는 위 훅들과 성격이 다릅니다. 디스패처가 턴 진행 중에 부르는 훅이 아니라,
+> 진행 상태를 카드 배지에 짧게 보고할 수 있는 증강 상태(퀘스트 증강 등)가 선택적으로 구현하는
+> 표시층 전용 계약입니다. `AugmentTrayPresenter`가 `IAugmentState is IAugmentProgressText`로
+> 판정해 호출합니다(`AugmentTrayPresenter.cs:362-367`). 상세는
+> [`augments_specification_and_status.md`](augments_specification_and_status.md)를 참고하세요.
 
 ---
 

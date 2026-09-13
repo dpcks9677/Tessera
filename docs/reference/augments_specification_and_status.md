@@ -1,7 +1,7 @@
 ﻿# Tessera 증강(Augments) 시스템 상세 명세 및 구현 현황서
 
 > **문서 종류**: 기준 문서 (사람 대상)
-> **코드 대조 기준**: 2026-09-13 · 커밋 `8cc0273`
+> **코드 대조 기준**: 2026-09-14 · 커밋 `0a2f770`
 > 이 문서는 위 시점의 코드에서 확인된 것만 기술합니다. 계획 항목은 상태 표기로 구분합니다.
 > 작성 원칙은 [`docs/README.md`](../README.md)를 보십시오.
 
@@ -12,7 +12,7 @@
 ## 목차 (Table of Contents)
 
 1. [증강 시스템 개요](#1-증강-시스템-개요)
-2. [핵심 아키텍처 및 5대 디자인 패턴](#2-핵심-아키텍처-및-5대-디자인-패턴)
+2. [핵심 아키텍처 및 8대 디자인 패턴](#2-핵심-아키텍처-및-8대-디자인-패턴)
 3. [턴 생명주기(Turn Lifecycle)와 8단계 훅(Hook) 오케스트레이션](#3-턴-생명주기turn-lifecycle와-8단계-훅hook-오케스트레이션)
 4. [점수 계산 파이프라인 및 상호 충돌(Conflict) 해결 규칙](#4-점수-계산-파이프라인-및-상호-충돌conflict-해결-규칙)
 5. [증강 55종 전수 구현 현황 및 상세 명세표](#5-증강-55종-전수-구현-현황-및-상세-명세표)
@@ -199,7 +199,7 @@ private static int CompareHandlers<T>(T left, T right) where T : class
 이 `BindAugment` 한 줄이 있어 핸들러가 자기 전용 상태에만 닿을 수 있습니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:602-612
+// Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:603-613
 YachtDiceFacts facts = YachtAugmentScoreEngine.CreateFacts(
     scoringDice, state.AugmentPlayers[playerIndex].OwnedIds);
 Dictionary<ScoreCategory, int> scores = YachtAugmentScoreEngine.CalculateBaseScores(facts);
@@ -265,7 +265,7 @@ public sealed class AugmentStateStore
 단계를 통과합니다. 4장의 수식이 그대로 코드에 있습니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:638-671
+// Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:639-673
 for (int i = 0; i < result.Length; i++)
 {
     ScoreCategory category = YachtScoreCalculator.ScorableCategories[i];
@@ -504,9 +504,9 @@ public sealed class GoldenDie : EnhanceAugment, IDiceLayoutProvider, IDiceBonusP
 주기 때문에, 프레젠테이션 계층이 실수로 권위 상태를 건드릴 수 없습니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/NoTimeToWaste.cs:5-18
+// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/NoTimeToWaste.cs:5-31
 [Serializable]
-public sealed class NoTimeToWasteState : IAugmentState
+public sealed class NoTimeToWasteState : IAugmentState, IAugmentProgressText
 {
     public int RemainingTurns = 3;
     public bool Failed;
@@ -518,6 +518,19 @@ public sealed class NoTimeToWasteState : IAugmentState
         Failed = Failed,
         Rewarded = Rewarded
     };
+
+    public AugmentProgress DescribeProgress(in AugmentProgressQuery query)
+    {
+        AugmentProgressOutcome outcome = Rewarded
+            ? AugmentProgressOutcome.Succeeded
+            : Failed ? AugmentProgressOutcome.Failed : AugmentProgressOutcome.InProgress;
+        int count = NoTimeToWaste.RequiredStreak - RemainingTurns;
+        var lines = new[]
+        {
+            new AugmentProgressLine($"리롤 없이 족보 기입 ({count}/{NoTimeToWaste.RequiredStreak})", count >= NoTimeToWaste.RequiredStreak)
+        };
+        return new AugmentProgress(outcome, lines);
+    }
 }
 ```
 
@@ -599,7 +612,7 @@ sequenceDiagram
 > 먼저 기입한 쪽의 점수가 비어 판정이 불가능해집니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:712-722
+// Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:713-723
 // 라운드 점수 기록은 증강 보유와 무관한 코어 상태다. 결투를 라운드 도중에 획득하는
 // 경로(드래프트 라운드의 턴 전환)가 있어 보유 여부로 게이팅하면 먼저 기입한 쪽의
 // 점수가 비어 판정이 불가능해진다. 그래서 기록은 항상 하고 판정만 훅에 맡긴다.
@@ -660,12 +673,12 @@ $$\text{FinalScore} = \Big(\lfloor \text{BaseScore} \times \text{EnhancementMult
 
 | 규칙 | 메커니즘 | 위치 |
 |---|---|---|
-| 동일 카테고리 배제 | 보유 중인 변형 증강의 `Target` 문자열 비교 | `YachtAugmentRuntime.cs:903-911` |
-| 개별 충돌 선언 | 증강이 `Conflicts` 배열로 선언하고 `HasConflict`가 **양방향** 검사 | `TableFlip.cs:22`, `YachtAugmentRuntime.cs:921-933` |
-| 라운드 제한 | 정의의 `PhaseOneOnly` 플래그 | `YachtAugmentRuntime.cs:899` |
+| 동일 카테고리 배제 | 보유 중인 변형 증강의 `Target` 문자열 비교 | `YachtAugmentRuntime.cs:904-912` |
+| 개별 충돌 선언 | 증강이 `Conflicts` 배열로 선언하고 `HasConflict`가 **양방향** 검사 | `TableFlip.cs:22`, `YachtAugmentRuntime.cs:922-934` |
+| 라운드 제한 | 정의의 `PhaseOneOnly` 플래그 | `YachtAugmentRuntime.cs:900` |
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:895-919
+// Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:896-920
 private bool CanAcquire(YachtGameState state, int playerIndex, string augmentId)
 {
     YachtAugmentDefinition definition = FindDefinition(augmentId);
@@ -698,7 +711,7 @@ private bool CanAcquire(YachtGameState state, int playerIndex, string augmentId)
 한쪽에만 `Conflicts => new[] { YachtAugmentRuntime.OctahedronId }`로 적혀 있습니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:921-933
+// Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:922-934
 private bool HasConflict(YachtAugmentPlayerState player, string candidateId)
 {
     YachtAugmentDefinition candidate = FindDefinition(candidateId);
@@ -718,7 +731,7 @@ private bool HasConflict(YachtAugmentPlayerState player, string candidateId)
 주사위가 5개뿐이므로, 주사위를 요구하는 증강을 무한히 쌓을 수 없습니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:935-940
+// Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:936-941
 private static int RequiredDiceSlots(string augmentId)
 {
     if (YachtAugmentCatalog.Find(augmentId) is IDiceLayoutProvider provider)
@@ -785,6 +798,8 @@ private static int RequiredDiceSlots(string augmentId)
 
 ### 5.3 퀘스트/진행형(Quest) 11종 (DONE)
 특정 턴 수 내에 조건을 달성하면 큰 보너스를 지급하는 장기 과제 증강입니다.
+11종 전용 상태 구조체는 예외 없이 `IAugmentProgressText`를 함께 구현해 카드에 진행 줄을 냅니다.
+상세는 6장의 [6.3 진행 상태 보고 계약](#63-진행-상태-보고-계약-iaugmentprogresstext)을 보십시오.
 
 | No | ID | 이름 | 과제 조건 | 보상 | C# 구현 클래스 | 전용 상태 구조체 | 상태 |
 |:---:|---|---|---|:---:|---|---|:---:|
@@ -862,9 +877,9 @@ private static int RequiredDiceSlots(string augmentId)
 상태 DTO와 진행 로직이 한 파일에 함께 있는 것이 이 프로젝트의 표준 형태입니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/NoTimeToWaste.cs:5-18
+// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/NoTimeToWaste.cs:5-31
 [Serializable]
-public sealed class NoTimeToWasteState : IAugmentState
+public sealed class NoTimeToWasteState : IAugmentState, IAugmentProgressText
 {
     public int RemainingTurns = 3;
     public bool Failed;
@@ -876,11 +891,24 @@ public sealed class NoTimeToWasteState : IAugmentState
         Failed = Failed,
         Rewarded = Rewarded
     };
+
+    public AugmentProgress DescribeProgress(in AugmentProgressQuery query)
+    {
+        AugmentProgressOutcome outcome = Rewarded
+            ? AugmentProgressOutcome.Succeeded
+            : Failed ? AugmentProgressOutcome.Failed : AugmentProgressOutcome.InProgress;
+        int count = NoTimeToWaste.RequiredStreak - RemainingTurns;
+        var lines = new[]
+        {
+            new AugmentProgressLine($"리롤 없이 족보 기입 ({count}/{NoTimeToWaste.RequiredStreak})", count >= NoTimeToWaste.RequiredStreak)
+        };
+        return new AugmentProgress(outcome, lines);
+    }
 }
 ```
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/NoTimeToWaste.cs:56-83
+// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/NoTimeToWaste.cs:69-96
 public void AfterScoreCommit(AugmentCommitContext context)
 {
     var state = GetOrSync(context);
@@ -920,6 +948,63 @@ public void AfterScoreCommit(AugmentCommitContext context)
 ### 6.2 향후 멀티플레이어 네트워크 직렬화 대비
 - `AugmentStateStore`에 저장되는 모든 객체는 순수 C# POCO 클래스이며, `{ string Id, string TypeTag, string PayloadJson }` 형태로 평탄화(Flattening)가 가능하도록 설계되었습니다.
 - 관전자 모드나 게임 재접속(Reconnection) 시, 서버에서 전송받은 스냅샷 JSON을 통해 클라이언트의 증강 런타임 상태를 100% 동일하게 복원할 수 있습니다.
+
+### 6.3 진행 상태 보고 계약 (`IAugmentProgressText`)
+
+퀘스트 상태처럼 진행도 개념이 있는 `IAugmentState`는 `IAugmentProgressText`를 추가로 구현해 카드에
+하위 목표 줄을 낼 수 있습니다. 진행도 개념이 없는 상태는 구현하지 않아도 되는 **선택적** 계약입니다.
+2장의 8대 디자인 패턴과 별도로 다루는 이유는, 이것이 패턴이 아니라 상태 클래스가 선택적으로 얹는
+표시용 계약이기 때문입니다.
+
+계약은 다섯 타입으로 나뉩니다.
+
+- `AugmentProgressQuery`— `IReadOnlyYachtAugmentPlayerState Player`와 `IReadOnlyPlayerScoreData Scores`만 담습니다. 표시층이 이 쿼리의 존재를 몰라도 되게, 로직 계층 안에서만 오갑니다.
+- `IAugmentProgressText`— `AugmentProgress DescribeProgress(in AugmentProgressQuery query)` 하나만 갖는 인터페이스입니다.
+- `AugmentProgress`— `AugmentProgressOutcome Outcome`과 `IReadOnlyList<AugmentProgressLine> Lines`를 갖는 반환값입니다.
+- `AugmentProgressLine`— `Text`, `Done`, `IsTargetNote` 세 필드만 갖는 순수 텍스트 줄입니다. `"퀘스트: "` 같은 접두와 리치 텍스트 태그는 표시층이 붙이므로, 로직층은 UI를 몰라도 됩니다. `IsTargetNote`는 `BountyHunter`의 "현재 타겟: X" 같은 보조 줄 표시에 씁니다.
+- `AugmentProgressOutcome`— `InProgress` / `Succeeded` / `Failed` 3값이며, UI가 이 값으로 상태 라벨 색을 구분합니다.
+
+```csharp
+// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/IAugmentProgressText.cs:1-25
+namespace Tessera.Games.Yacht
+{
+    /// <summary>줄 판정에 필요한 것만 담은 조회 쿼리입니다. UI는 이 쿼리를 몰라도 됩니다.</summary>
+    public readonly struct AugmentProgressQuery
+    {
+        public AugmentProgressQuery(IReadOnlyYachtAugmentPlayerState player, IReadOnlyPlayerScoreData scores)
+        {
+            Player = player;
+            Scores = scores;
+        }
+
+        public readonly IReadOnlyYachtAugmentPlayerState Player;
+        public readonly IReadOnlyPlayerScoreData Scores;
+    }
+
+    /// <summary>
+    /// 진행 상태를 카드 배지에 짧게 보고할 수 있는 증강 상태입니다.
+    /// 진행도 개념이 없는 상태(<see cref="IAugmentState"/>만 구현하는 경우)는 이 인터페이스를
+    /// 구현하지 않아도 됩니다.
+    /// </summary>
+    public interface IAugmentProgressText
+    {
+        AugmentProgress DescribeProgress(in AugmentProgressQuery query);
+    }
+}
+```
+
+소비 측은 `AugmentTrayPresenter`([AugmentTrayPresenter.cs](../../Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentTrayPresenter.cs))입니다.
+보유 증강마다 상태가 `IAugmentProgressText`를 구현하는지 검사해 `DescribeProgress`를 호출하고,
+그 결과를 `AugmentTrayCardView.Bind`의 `progress` 인자로 넘깁니다. `AugmentTrayCardView`는 이 값을
+그대로 내부 `AugmentCardView`에 전달할 뿐이며, 실제 렌더링은 `AugmentCardView.SetProgressBlock`이
+합니다. 완료된 줄(`Done`이 참이거나 `Outcome`이 `Failed`)은 `<s>` 리치 텍스트 태그로 취소선을 그어
+표시합니다.
+
+`Assets/Scripts/Games/Yacht/ScoreCategoryNames.cs`는 족보 칸의 표기를 한 곳에 모은 테이블입니다.
+`CautiousStraight`, `Holdout`, `FastStraight`, `StepByStep`, `BountyHunter` 등 여러 퀘스트 상태의
+`DescribeProgress`가 이 클래스로 카테고리 이름을 얻어 진행도 문구를 만들며, 같은 클래스를
+`ParchmentScoreSheet`의 점수표 칸 이름 렌더링도 함께 씁니다. 두 표기가 같은 출처를 쓰도록 맞춘
+것입니다.
 
 ---
 
