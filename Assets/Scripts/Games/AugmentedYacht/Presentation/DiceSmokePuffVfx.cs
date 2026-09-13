@@ -15,6 +15,20 @@ namespace Tessera.Games.AugmentedYacht
         private const string PrefabResourcePath = "Vfx/DiceSmokeBurst";
         private const float LifetimeMargin = 0.2f;
 
+        /// <summary>
+        /// 버스트 지점을 카메라 쪽으로 당기는 거리다. 주사위 반높이의 1.8배로, 정육면체의 반대각선
+        /// 길이(반높이의 약 1.73배)보다 조금 크다.
+        ///
+        /// 주사위 중심에서 그대로 터뜨리면 파티클 쿼드의 뒤쪽 절반이 주사위 몸통 안에 박힌다. 연기
+        /// 머티리얼은 깊이를 쓰지 않지만(`_ZWrite 0`) 깊이 테스트는 받으므로, 주사위 앞면보다 뒤에
+        /// 놓인 연기 픽셀이 전부 버려져 크기를 키워도 주사위 눈이 계속 보인다. 이만큼 당기면 쿼드
+        /// 전체가 주사위보다 카메라에 가까워져 살아남는다.
+        ///
+        /// 시선 축 방향으로만 당긴다. 위로 올리는 방식도 깊이는 해결하지만, 카메라가 비스듬해서
+        /// 연기가 화면에서 주사위 위로 밀려 중심이 어긋난다.
+        /// </summary>
+        private const float CameraPull = DiceBoardMetrics.ActiveDieHalfSize * 1.8f;
+
         private static GameObject prefab;
         private static bool prefabLoadAttempted;
 
@@ -38,9 +52,12 @@ namespace Tessera.Games.AugmentedYacht
             if (prefab == null) return;
 
             Quaternion rotation = ResolveBurstRotation();
+            Vector3 burstOffset = ResolveBurstOffset();
 
-            foreach (Vector3 position in worldPositions)
+            foreach (Vector3 worldPosition in worldPositions)
             {
+                Vector3 position = worldPosition + burstOffset;
+
                 // 부모를 두지 않고 월드 공간에 그대로 둔다. `DiceVisualPool`은 풀이 아니라
                 // 눈이 바뀔 때마다 주사위 오브젝트를 새로 만들고 이전 것을 Destroy하므로,
                 // 주사위 자식으로 붙이면 연기가 주사위와 함께 사라져 가림 연출이 깨진다.
@@ -67,6 +84,18 @@ namespace Tessera.Games.AugmentedYacht
                     Destroy(instance, LifetimeMargin);
                 }
             }
+        }
+
+        /// <summary>
+        /// 버스트 지점을 주사위 중심에서 카메라 쪽으로 당기는 양이다. 이유는 <see cref="CameraPull"/>에 있다.
+        /// 카메라를 못 찾으면 주사위 중심 그대로 쓴다.
+        /// </summary>
+        private Vector3 ResolveBurstOffset()
+        {
+            if (viewCamera == null) viewCamera = ResolveDiceCamera();
+            if (viewCamera == null) return Vector3.zero;
+
+            return -viewCamera.transform.forward * CameraPull;
         }
 
         /// <summary>
