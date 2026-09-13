@@ -1,155 +1,117 @@
 using System.Collections.Generic;
 using Tessera.Core;
 using UnityEngine;
-using UnityEngine.Rendering;
 
 namespace Tessera.Games.AugmentedYacht
 {
     /// <summary>
     /// `dice-alchemy`(56) 발동 시 킵 안 된 주사위 위로 연기를 터뜨려 눈이 바뀌는 순간을 가린다(M17-T9-1-4).
     ///
-    /// 파티클 시스템 하나로 위치만 바꿔 쏘는 구조다. 게임당 1회 연출이라 풀링하지 않는다.
+    /// 절차적 파티클 대신 외부 에셋팩(`msVFX_Free Smoke Effects Pack`) 프리팹을 위치마다 인스턴스화한다.
+    /// 게임당 1회 연출이라 풀링하지 않는다.
     /// </summary>
     public sealed class DiceSmokePuffVfx : MonoBehaviour
     {
-        private const int ParticlesPerBurst = 14;
-        private static readonly Color[] Palette =
-        {
-            new(0.898f, 0.663f, 0.235f), // #e5a93c 러너 골드
-            new(0.533f, 0.176f, 0.133f), // #882d22 크림슨
-            new(0.212f, 0.294f, 0.431f), // #364b6e 쿨 인디고
-            new(1.000f, 0.620f, 0.235f)  // #ff9e3b 웜 앰버
-        };
+        private const string PrefabResourcePath = "Vfx/DiceSmokeBurst";
+        private const float LifetimeMargin = 0.2f;
 
-        private ParticleSystem smoke;
+        private static GameObject prefab;
+        private static bool prefabLoadAttempted;
 
-        private void Awake()
-        {
-            gameObject.layer = TesseraLayers.Dice;
+        private Camera viewCamera;
 
-            smoke = gameObject.AddComponent<ParticleSystem>();
-            ParticleSystem.MainModule main = smoke.main;
-            main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.playOnAwake = false;
-            main.maxParticles = 80;
-            main.startLifetime = 0.6f;
-            main.startSpeed = new ParticleSystem.MinMaxCurve(0.15f, 0.45f);
-            main.startSize = DiceBoardMetrics.DieSize * 3.2f;
-            main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
-            main.startColor = new ParticleSystem.MinMaxGradient(BuildPaletteGradient())
-            {
-                mode = ParticleSystemGradientMode.RandomColor
-            };
-
-            ParticleSystem.EmissionModule emission = smoke.emission;
-            emission.enabled = false;
-
-            ParticleSystem.ShapeModule shape = smoke.shape;
-            shape.shapeType = ParticleSystemShapeType.Sphere;
-            shape.radius = DiceBoardMetrics.DieSize * 0.55f;
-
-            ParticleSystem.SizeOverLifetimeModule size = smoke.sizeOverLifetime;
-            size.enabled = true;
-            AnimationCurve sizeCurve = new(
-                new Keyframe(0f, 1.0f),
-                new Keyframe(0.3f, 1.5f),
-                new Keyframe(1f, 1.5f)
-            );
-            size.size = new ParticleSystem.MinMaxCurve(1f, sizeCurve);
-
-            ParticleSystem.ColorOverLifetimeModule color = smoke.colorOverLifetime;
-            color.enabled = true;
-            Gradient gradient = new();
-            gradient.SetKeys(
-                new[] { new GradientColorKey(Color.white, 0f) },
-                // 눈 교체 시점(0.25초, 수명 대비 약 0.42)까지 알파 1.0을 유지해야 가림이 성립한다.
-                // 0.55까지로 여유를 두고 그 뒤에 계단으로 걷어낸다.
-                new[]
-                {
-                    new GradientAlphaKey(1.00f, 0.00f),
-                    new GradientAlphaKey(1.00f, 0.55f),
-                    new GradientAlphaKey(0.75f, 0.57f),
-                    new GradientAlphaKey(0.75f, 0.70f),
-                    new GradientAlphaKey(0.50f, 0.72f),
-                    new GradientAlphaKey(0.50f, 0.85f),
-                    new GradientAlphaKey(0.25f, 0.87f),
-                    new GradientAlphaKey(0.00f, 1.00f)
-                }
-            );
-            color.color = gradient;
-
-            ParticleSystemRenderer psRenderer = smoke.GetComponent<ParticleSystemRenderer>();
-            psRenderer.renderMode = ParticleSystemRenderMode.Billboard;
-
-            Shader particleShader = Shader.Find("Universal Render Pipeline/Particles/Unlit")
-                ?? Shader.Find("Particles/Standard Unlit")
-                ?? Shader.Find("Universal Render Pipeline/Unlit")
-                ?? Shader.Find("Standard");
-
-            Material material = new(particleShader) { name = "DiceSmokePuff_Mat" };
-            if (material.HasProperty("_Surface")) material.SetFloat("_Surface", 1); // 1 = Transparent
-            if (material.HasProperty("_Blend")) material.SetFloat("_Blend", 0);     // 0 = Alpha
-            if (material.HasProperty("_ZWrite")) material.SetFloat("_ZWrite", 0f);
-            if (material.HasProperty("_SrcBlend")) material.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
-            if (material.HasProperty("_DstBlend")) material.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
-            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            material.renderQueue = (int)RenderQueue.Transparent;
-            material.SetOverrideTag("RenderType", "Transparent");
-
-            Texture2D texture = Resources.Load<Texture2D>("Vfx/DiceSmokePuff");
-            if (texture != null)
-            {
-                if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", texture);
-                if (material.HasProperty("_MainTex")) material.SetTexture("_MainTex", texture);
-            }
-            psRenderer.material = material;
-        }
-
-        /// <summary>지정한 월드 위치마다 연기를 한 뭉치씩 터뜨린다. 위치는 주사위 중심이며, 방출 시 카메라 쪽으로 끌어올려 쏜다.</summary>
+        /// <summary>지정한 월드 위치마다 연기 프리팹을 하나씩 터뜨린다.</summary>
         public void Burst(IReadOnlyList<Vector3> worldPositions)
         {
             if (worldPositions == null || worldPositions.Count == 0) return;
 
+            if (!prefabLoadAttempted)
+            {
+                prefabLoadAttempted = true;
+                prefab = Resources.Load<GameObject>(PrefabResourcePath);
+                if (prefab == null)
+                {
+                    Debug.LogWarning($"[DiceSmokePuffVfx] '{PrefabResourcePath}' 프리팹을 찾지 못해 연기 연출을 건너뛴다.");
+                }
+            }
+
+            if (prefab == null) return;
+
+            Quaternion rotation = ResolveBurstRotation();
+
             foreach (Vector3 position in worldPositions)
             {
-                // 카메라가 위(약 75° 피치)에서 내려다보므로 월드 +Y가 카메라 쪽이다.
-                // 주사위 중심에서 그대로 쏘면 깊이 테스트에서 주사위 메시 뒤 픽셀이 버려져 눈을 못 가린다.
-                // 주사위 앞쪽으로 끌어올려 깊이 테스트를 통과시킨다.
-                Vector3 emitPosition = position + Vector3.up * (DiceBoardMetrics.DieSize * 0.9f);
-                ParticleSystem.EmitParams emitParams = new()
+                // 부모를 두지 않고 월드 공간에 그대로 둔다. `DiceVisualPool`은 풀이 아니라
+                // 눈이 바뀔 때마다 주사위 오브젝트를 새로 만들고 이전 것을 Destroy하므로,
+                // 주사위 자식으로 붙이면 연기가 주사위와 함께 사라져 가림 연출이 깨진다.
+                GameObject instance = Instantiate(prefab, position, rotation);
+
+                // 프리팹이 이미 Dice 레이어여도 코드에서 한 번 더 맞춘다. 프리팹이 교체되거나
+                // 변형(Prefab Variant) 오버라이드가 풀려도 연기가 픽셀 필터를 그대로 타야 한다.
+                SetLayerRecursive(instance.transform, TesseraLayers.Dice);
+
+                ParticleSystem particles = instance.GetComponent<ParticleSystem>();
+                if (particles != null)
                 {
-                    position = emitPosition,
-                    applyShapeToPosition = true
-                };
-                smoke.Emit(emitParams, ParticlesPerBurst);
+                    // playOnAwake로 보통 자동 재생되지만, 프리팹 값이 바뀌어도 재생을 보장한다.
+                    particles.Play();
+
+                    // 수명을 상수로 박지 않고 파티클 값에서 계산한다. 프리팹 지속시간을 바꿔도
+                    // 인스턴스가 잘리거나 남지 않게 한다.
+                    ParticleSystem.MainModule main = particles.main;
+                    float lifetime = main.duration + main.startLifetime.constantMax + LifetimeMargin;
+                    Destroy(instance, lifetime);
+                }
+                else
+                {
+                    Destroy(instance, LifetimeMargin);
+                }
             }
         }
 
-        private static Gradient BuildPaletteGradient()
+        /// <summary>
+        /// 연기 방출면을 화면과 나란히 세우는 회전이다.
+        ///
+        /// 프리팹의 Shape는 원뿔이고 방출면은 그 축과 직각이다. 회전을 주지 않으면 방출면이 월드 축을
+        /// 따라 서므로, 테이블을 비스듬히 내려보는 이 게임의 카메라에서는 그 면이 옆에서 보여 연기가
+        /// 선 하나로 납작해진다. 원뿔 축을 카메라 정면 벡터의 반대로 돌리면 방출면이 화면과 나란해져
+        /// 주사위를 덮는 원으로 퍼진다.
+        ///
+        /// 주사위마다 카메라 쪽을 개별로 바라보게 하지 않고 정면 벡터 하나를 공유한다. 개별로 바라보면
+        /// 화면 가장자리 주사위의 연기가 안쪽으로 기울어 같은 연출이 주사위마다 다르게 보인다.
+        /// </summary>
+        private Quaternion ResolveBurstRotation()
         {
-            Gradient gradient = new();
-            // RandomColor 모드는 그라디언트를 보간한다. 키를 그대로 4개만 두면 중간 갈색이
-            // 섞여 나와 팔레트 4색이 아니라 주황 띠 하나로 뭉갠다. 색마다 구간을 잡고 경계에
-            // 키를 두 개씩 붙여 계단으로 세워 보간을 막는다.
-            gradient.SetKeys(
-                new[]
-                {
-                    new GradientColorKey(Palette[0], 0.0000f),
-                    new GradientColorKey(Palette[0], 0.2499f),
-                    new GradientColorKey(Palette[1], 0.2500f),
-                    new GradientColorKey(Palette[1], 0.4999f),
-                    new GradientColorKey(Palette[2], 0.5000f),
-                    new GradientColorKey(Palette[2], 0.7499f),
-                    new GradientColorKey(Palette[3], 0.7500f),
-                    new GradientColorKey(Palette[3], 1.0000f)
-                },
-                new[]
-                {
-                    new GradientAlphaKey(1f, 0f),
-                    new GradientAlphaKey(1f, 1f)
-                }
-            );
-            return gradient;
+            if (viewCamera == null) viewCamera = ResolveDiceCamera();
+            if (viewCamera == null) return Quaternion.identity;
+
+            return Quaternion.LookRotation(-viewCamera.transform.forward, Vector3.up);
+        }
+
+        /// <summary>
+        /// 주사위를 그리는 카메라를 찾는다. 태그가 아니라 컬링 마스크로 고르는 이유는, 이 씬이
+        /// 월드·프레젠테이션·Crisp UI 카메라를 함께 쓰고 그중 주사위 레이어를 보는 것만이 연기의
+        /// 기준이기 때문이다.
+        /// </summary>
+        private static Camera ResolveDiceCamera()
+        {
+            int diceMask = TesseraLayers.Mask(TesseraLayers.Dice);
+            Camera[] cameras = Camera.allCameras;
+            for (int i = 0; i < cameras.Length; i++)
+            {
+                if (cameras[i] != null && (cameras[i].cullingMask & diceMask) != 0) return cameras[i];
+            }
+
+            return Camera.main;
+        }
+
+        private static void SetLayerRecursive(Transform t, int layer)
+        {
+            t.gameObject.layer = layer;
+            for (int i = 0; i < t.childCount; i++)
+            {
+                SetLayerRecursive(t.GetChild(i), layer);
+            }
         }
     }
 }

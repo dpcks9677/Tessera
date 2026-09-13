@@ -44,6 +44,27 @@ GET  http://127.0.0.1:<port>/jobs/{id}                       # 비동기 잡 폴
 
 **`job_wait` 을 쓰지 마십시오.** compile/package/test/playmode/play_capture/build_player 잡은 메인 스레드에서 진행되는데 `job_wait` 이 그 스레드를 막아, `waitNotSupported: true` 를 돌려주며 타임아웃만 소모합니다. `GET /jobs/{id}` 또는 `job_status` 로 폴링하십시오.
 
+## 알려진 REST 함정
+
+이전 세션들에서 실제로 부딪혀 우회로를 찾은 지점들입니다. 같은 벽에 다시 시간을 쓰지 마십시오.
+
+**프리팹 프로퍼티 — 구조체 필드는 서브필드로 좁혀야 합니다.** `prefab_set_property` 에 `MinMaxCurve`·`MultiModeParameter` 같은 구조체를 통째로 지정하면 `SEMANTIC_INVALID`(Generic 타입)로 막힙니다. `InitialModule.startSize` 가 아니라 `InitialModule.startSize.scalar`, `ShapeModule.radius` 가 아니라 `ShapeModule.radius.value` 처럼 말단 스칼라까지 내려가면 통합니다. 랜덤 범위는 `.scalar`(상한)와 `.minScalar`(하한)를 각각 설정하고 `minMaxState` 는 건드리지 마십시오. 건드리면 범위 형태가 상수로 바뀝니다.
+
+**프리팹 레이어는 `prefab_set_property` 로 안 됩니다.** `componentType: GameObject` 는 `TARGET_NOT_FOUND: Component type not found` 로 거부됩니다. 우회로는 아래 「임시 인스턴스 경유」입니다.
+
+**임시 인스턴스 경유.** 위 두 경로가 다 막히면 이 순서로 합니다.
+
+1. `prefab_instantiate` 로 씬에 임시 인스턴스 생성. 이름에 `TEMP_` 접두어를 붙여 구분하십시오
+2. `gameobject_set_layer_batch`(레이어) 또는 `component_set_serialized_property`(그 외 값)로 인스턴스에 값 적용
+3. `prefab_apply` 로 프리팹에 반영
+4. `gameobject_delete` 로 임시 인스턴스 삭제
+
+**4단계를 빠뜨리지 마십시오.** 씬에 쓰레기 오브젝트가 남고, 씬이 dirty 로 남아 사용자가 저장 여부를 판단해야 합니다. 삭제했더라도 dirty 는 남으므로 보고에 그 사실을 적으십시오.
+
+**오브젝트 탐색 — 깊은 계층에서 이름 검색이 실패합니다.** `find_objects_by_name` 은 점수표 칸(`P1_Slot_Box_8`)처럼 여러 단계 아래 있는 오브젝트를 못 찾습니다. `hierarchy_describe` 로 단계를 내려가 전체 경로를 확보한 뒤 `gameobject_get_info` / `ui_get_rect_transform` 을 쓰십시오.
+
+**트랜스폼 값의 공간을 확인하십시오.** `gameobject_get_info` 의 `scale` 은 **로컬** 스케일입니다. 월드 `lossyScale` 은 부모 체인을 직접 곱해야 나옵니다. 로컬 위치·회전은 직접 조회되지 않으므로 부모의 월드 트랜스폼으로 역산해야 하며, 부모에 회전이나 균일하지 않은 스케일이 있으면 단순 덧셈·나눗셈으로는 틀립니다. 보고할 때 어느 공간의 값인지 반드시 명시하십시오.
+
 ## 안전 규칙
 
 ### 파괴적 조작 전에 dryRun
