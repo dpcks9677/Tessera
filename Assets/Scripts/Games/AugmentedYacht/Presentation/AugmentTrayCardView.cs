@@ -35,6 +35,15 @@ namespace Tessera.Games.AugmentedYacht
 
         private const string DepthMaskShaderName = "DicePoC/CrispUiDepthMask";
 
+        /// <summary>
+        /// 발동 버튼 콜라이더 두께. 카메라가 기울어진 직교라 두꺼운 슬래브는 시선 방향으로 스크린 상
+        /// 히트 영역이 밀려 그려진 사각형 밖에서도 눌리므로 얇게 둔다.
+        /// </summary>
+        private const float UseActionColliderThickness = .02f;
+
+        /// <summary>호버량이 0→1로 오르내리는 속도. COSMIC CUBE와 같은 규칙이다(RollCosmicCube.cs:541).</summary>
+        private const float UseActionHoverSpeed = 5f;
+
         /// <summary>모든 카드가 함께 쓰는 깊이 전용 재질. 색을 쓰지 않으므로 카드마다 나눌 이유가 없다.</summary>
         private static Material sharedDepthMaskMaterial;
 
@@ -45,6 +54,7 @@ namespace Tessera.Games.AugmentedYacht
         private Canvas overlayCanvas;
         private AugmentCardView card;
         private BoxCollider pointerCollider;
+        private BoxCollider useActionCollider;
         private YachtAugmentDefinition definition;
         private Vector2 cardWorldSize;
         private Vector3 positionVelocity;
@@ -53,13 +63,18 @@ namespace Tessera.Games.AugmentedYacht
         private AugmentParchmentPreset currentPreset;
         private bool hasPreset;
         private bool selected;
+        private bool useActionHovered;
+        private float useActionHoverLerp;
 
         public AugmentCardView Card => card;
         public BoxCollider PointerCollider => pointerCollider;
+        public BoxCollider UseActionCollider => useActionCollider;
         public YachtAugmentDefinition Definition => definition;
         public string AugmentId => definition?.Id;
         public bool IsSelected => selected;
         public bool IsHovered { get; private set; }
+        public bool IsUseActionEnabled => card != null && card.UseActionEnabled;
+        public float UseActionHoverAmount => useActionHoverLerp;
         public RectTransform OverlayRect => overlayRect;
         public Transform VisualRoot => visualRoot;
         public AugmentScrollModel ScrollModel => scrollModel;
@@ -118,6 +133,12 @@ namespace Tessera.Games.AugmentedYacht
             SetLayerRecursively(overlayObject, TesseraLayers.CrispUI);
             MarkDontSaveRecursively(overlayObject);
 
+            GameObject useActionColliderObject = new("Use Action Collider");
+            useActionColliderObject.layer = DecorationLayer;
+            useActionColliderObject.transform.SetParent(visualObject.transform, false);
+            view.useActionCollider = useActionColliderObject.AddComponent<BoxCollider>();
+            useActionColliderObject.SetActive(false);
+
             view.depthMask = CreateDepthMask(visualObject.transform);
 
             view.ApplyPreset(AugmentParchmentPreset.GentleWave);
@@ -131,6 +152,8 @@ namespace Tessera.Games.AugmentedYacht
             AugmentCardDisplayState state = AugmentCardDisplayState.Owned,
             AugmentProgress? progress = null)
         {
+            // 재바인딩·드래프트 카드에 이전 상태가 남지 않게 매번 되돌린다. 프레젠터가 Bind 직후 다시 켠다.
+            SetUseAction(false, false);
             definition = value;
             selected = false;
             AugmentParchmentPreset preset = AugmentParchmentVisuals.Normalize(presetId);
@@ -151,6 +174,7 @@ namespace Tessera.Games.AugmentedYacht
                 IsHovered = false;
                 selected = false;
                 ResetPose();
+                SetUseActionHovered(false);
             }
             gameObject.SetActive(visible);
             if (overlayRect != null) overlayRect.gameObject.SetActive(visible && definition != null);
@@ -173,6 +197,25 @@ namespace Tessera.Games.AugmentedYacht
                 scrollModel.SetDisplayState(value ? AugmentCardDisplayState.Selected : AugmentCardDisplayState.Owned);
         }
 
+        /// <summary>
+        /// 발동 버튼을 켜고 끈다. 카드에 위임하고, 꺼질 때 호버 상태도 초기화한다.
+        ///
+        /// 끌 때도 동기화를 불러야 한다. 클릭 판정이 UI가 아니라 물리 콜라이더라, 여기서 건너뛰면
+        /// 그려지지 않는 버튼의 콜라이더가 살아남아 빈 자리가 계속 눌린다.
+        /// </summary>
+        public void SetUseAction(bool visible, bool enabled)
+        {
+            card?.SetUseAction(visible, enabled);
+            if (!visible) SetUseActionHovered(false);
+            if (gameObject.activeInHierarchy) SyncOverlayTransform();
+        }
+
+        /// <summary>버튼이 비활성이면 호버로 치지 않는다.</summary>
+        public void SetUseActionHovered(bool hovered)
+        {
+            useActionHovered = hovered && IsUseActionEnabled;
+        }
+
         private void Update() => TickHover(Time.unscaledDeltaTime);
 
         public void TickHover(float deltaTime)
@@ -186,6 +229,11 @@ namespace Tessera.Games.AugmentedYacht
             visualRoot.localScale = Vector3.SmoothDamp(
                 visualRoot.localScale, targetScale, ref scaleVelocity, HoverSmoothTime,
                 Mathf.Infinity, Mathf.Max(0f, deltaTime));
+
+            // COSMIC CUBE와 같은 규칙이다. 트윈 라이브러리 없이 MoveTowards로 0→1 0.2초 선형(RollCosmicCube.cs:541).
+            float target = useActionHovered && IsUseActionEnabled ? 1f : 0f;
+            useActionHoverLerp = Mathf.MoveTowards(useActionHoverLerp, target, Mathf.Max(0f, deltaTime) * UseActionHoverSpeed);
+            card?.SetUseActionHoverAmount(useActionHoverLerp);
         }
 
         /// <summary>
@@ -201,6 +249,7 @@ namespace Tessera.Games.AugmentedYacht
             {
                 if (overlayRect != null) overlayRect.gameObject.SetActive(false);
                 if (depthMask != null) depthMask.gameObject.SetActive(false);
+                if (useActionCollider != null) useActionCollider.gameObject.SetActive(false);
                 return;
             }
 
@@ -209,6 +258,7 @@ namespace Tessera.Games.AugmentedYacht
             {
                 overlayRect.gameObject.SetActive(false);
                 if (depthMask != null) depthMask.gameObject.SetActive(false);
+                if (useActionCollider != null) useActionCollider.gameObject.SetActive(false);
                 return;
             }
 
@@ -247,6 +297,26 @@ namespace Tessera.Games.AugmentedYacht
                 Vector3 overlayPosition = overlayRect.localPosition;
                 depthMask.localPosition = new Vector3(overlayPosition.x, DepthMaskLift, overlayPosition.z);
                 depthMask.localScale = new Vector3(cardWidth, cardHeight, 1f);
+            }
+
+            if (useActionCollider != null)
+            {
+                bool visible = card != null && card.UseActionVisible;
+                useActionCollider.gameObject.SetActive(visible);
+                if (visible)
+                {
+                    // 카드 픽셀 → 양피지 로컬. overlay(1/100)과 card.localScale(cardWidth*100/460)이 상쇄돼
+                    // 이 값 하나로 끝난다. 캔버스 +y는 Euler(90,0,0)에 의해 +z로 간다.
+                    float worldPerCardPixel = cardWidth / CardPixelWidth;
+                    Rect local = card.UseActionCardRect;
+                    Vector3 overlayPosition = overlayRect.localPosition;
+                    useActionCollider.transform.localPosition = new Vector3(
+                        overlayPosition.x + local.center.x * worldPerCardPixel,
+                        OverlayLift,
+                        overlayPosition.z + local.center.y * worldPerCardPixel);
+                    useActionCollider.size = new Vector3(
+                        local.width * worldPerCardPixel, UseActionColliderThickness, local.height * worldPerCardPixel);
+                }
             }
         }
 

@@ -418,6 +418,8 @@ namespace Tessera.Games.AugmentedYacht
             inputRouter.RollTriggerClicked += OnRollTriggerClicked;
             inputRouter.AugmentCardHoverChanged += OnAugmentCardHoverChanged;
             inputRouter.AugmentCardClicked += OnAugmentCardClicked;
+            inputRouter.AugmentUseActionHoverChanged += OnAugmentUseActionHoverChanged;
+            inputRouter.AugmentUseActionClicked += OnAugmentUseActionClicked;
         }
 
         /// <summary>렌더 파이프라인 리그를 붙이고 씬 구성 요소를 넘긴다(M10-T2).</summary>
@@ -583,6 +585,16 @@ namespace Tessera.Games.AugmentedYacht
         private void OnAugmentCardClicked(AugmentTrayCardView card)
         {
             augmentTray.ToggleSelection(card);
+        }
+
+        private void OnAugmentUseActionHoverChanged(AugmentTrayCardView card)
+        {
+            augmentTray.SetHoveredUseAction(card);
+        }
+
+        private void OnAugmentUseActionClicked(AugmentTrayCardView card)
+        {
+            augmentTray.RequestUseAction(card);
         }
 
         public void ToggleResolution()

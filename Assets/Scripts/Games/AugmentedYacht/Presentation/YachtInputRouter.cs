@@ -65,9 +65,14 @@ namespace Tessera.Games.AugmentedYacht
         public event Action<AugmentTrayCardView> AugmentCardHoverChanged;
         public event Action<AugmentTrayCardView> AugmentCardClicked;
 
+        /// <summary>가리킨 발동 버튼이 속한 카드. 없으면 null.</summary>
+        public event Action<AugmentTrayCardView> AugmentUseActionHoverChanged;
+        public event Action<AugmentTrayCardView> AugmentUseActionClicked;
+
         private int lastDieHover = -1;
         private bool lastRollTriggerHover;
         private AugmentTrayCardView lastAugmentHover;
+        private AugmentTrayCardView lastUseActionHover;
 
         private void Update()
         {
@@ -106,30 +111,41 @@ namespace Tessera.Games.AugmentedYacht
             if (!TryBuildPointerRay(mouse, AugmentPointerEnabled, out Ray ray))
             {
                 RaiseAugmentHover(null);
+                RaiseUseActionHover(null);
                 return;
             }
 
             // 히트 순서는 보장되지 않는다. 첫 히트를 그대로 쓰면 카드가 겹쳤을 때 뒤쪽이 잡힐 수 있으므로
-            // 가장 가까운 것을 고른다.
+            // 가장 가까운 것을 고른다. 버튼 콜라이더는 카드 콜라이더 안쪽에 얇게 누워 있어 거리로는 늘
+            // 카드가 먼저 잡힌다. 그래서 가까운 순이 아니라 종류로 우선순위를 준다.
             AugmentTrayCardView hitCard = null;
-            float nearestDistance = float.PositiveInfinity;
+            AugmentTrayCardView hitButton = null;
+            float nearestCardDistance = float.PositiveInfinity;
             int hitCount = Physics.RaycastNonAlloc(ray, pointerHits, PointerRayDistance);
             for (int i = 0; i < hitCount; i++)
             {
-                if (pointerHits[i].distance >= nearestDistance) continue;
-
                 AugmentTrayCardView view = pointerHits[i].collider.GetComponentInParent<AugmentTrayCardView>();
                 if (view == null) continue;
 
-                nearestDistance = pointerHits[i].distance;
+                if (pointerHits[i].collider == view.UseActionCollider)
+                {
+                    hitButton = view;
+                    continue;
+                }
+
+                if (pointerHits[i].distance >= nearestCardDistance) continue;
+                nearestCardDistance = pointerHits[i].distance;
                 hitCard = view;
             }
 
-            RaiseAugmentHover(hitCard);
-            if (hitCard != null && mouse.leftButton.wasPressedThisFrame)
-            {
-                AugmentCardClicked?.Invoke(hitCard);
-            }
+            // 버튼 위에서도 카드는 계속 떠 있어야 하므로 둘 중 있는 쪽을 카드 호버로 알린다.
+            RaiseAugmentHover(hitButton != null ? hitButton : hitCard);
+            RaiseUseActionHover(hitButton);
+
+            if (!mouse.leftButton.wasPressedThisFrame) return;
+            // 버튼을 눌렀을 때 카드 선택 토글이 함께 일어나지 않도록, 버튼이 잡히면 버튼만 알린다.
+            if (hitButton != null) AugmentUseActionClicked?.Invoke(hitButton);
+            else if (hitCard != null) AugmentCardClicked?.Invoke(hitCard);
         }
 
         private void PollDicePointer()
@@ -204,6 +220,13 @@ namespace Tessera.Games.AugmentedYacht
             if (lastAugmentHover == card) return;
             lastAugmentHover = card;
             AugmentCardHoverChanged?.Invoke(card);
+        }
+
+        private void RaiseUseActionHover(AugmentTrayCardView card)
+        {
+            if (lastUseActionHover == card) return;
+            lastUseActionHover = card;
+            AugmentUseActionHoverChanged?.Invoke(card);
         }
     }
 }

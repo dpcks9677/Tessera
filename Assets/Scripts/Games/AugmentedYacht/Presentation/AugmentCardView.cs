@@ -47,6 +47,14 @@ namespace Tessera.Games.AugmentedYacht
         // 내려 그린다(ContentSafeRect 자체는 트레이 오버레이 계산이 걸려 있어 건드리지 않는다).
         public const float FooterBleed = 10f;
 
+        // 수동 발동 버튼 레이아웃 상수. 사용자가 실물을 보고 1.2배로 키워 달라고 요청했다(64→77).
+        // 높이는 더 이상 FooterHeight에 묶이지 않는다 — BuildUseAction에서 아랫변을 푸터 아래
+        // 양피지 여백(FooterBleed 안쪽)으로 4px 더 내려 22→26으로 키운다.
+        private const float UseActionWidth = 77f;
+        private const float UseActionMargin = 4f;
+        private const float UseActionBorderThickness = 2f;
+        private const float UseActionGlowSpread = 6f;
+
         // 웹 원본과 같은 상태 라벨 색이다. docs/reference/art_style_guide.md 톤과 별개로,
         // 이 세 색은 사용자가 원본 웹과 동일하게 지정했다.
         private static readonly Color StatusInProgress = new Color32(0x34, 0x98, 0xdb, 0xff);
@@ -58,6 +66,24 @@ namespace Tessera.Games.AugmentedYacht
         private static readonly Color Crimson = new(0.53f, 0.18f, 0.13f, 1f);
         private static readonly Color AntiqueGold = new(0.90f, 0.66f, 0.24f, 1f);
         private static readonly Color Indigo = new(0.21f, 0.29f, 0.43f, 1f);
+
+        // RollCosmicCube의 nearHaloColor(0.02,1.80,3.60)·outerHaloColor(0.00,0.45,2.40)는 HDR이라
+        // UGUI에 그대로 쓸 수 없다. 최대 성분으로 나눠 색조 방향만 남기고 양피지 위에서 죽지 않게 띄운 값이다.
+        private static readonly Color NeonNear = new(0.10f, 0.72f, 1.00f, 1f);
+        private static readonly Color NeonOuter = new(0.16f, 0.36f, 1.00f, 1f);
+
+        /// <summary>
+        /// 버튼 테두리다. 카드 아웃라인·구분선이 쓰는 앤틱 골드를 잉크 쪽으로 눌러, 양피지 위에
+        /// 인쇄된 선처럼 보이게 한 값이다. 순수 잉크색은 카드의 따뜻한 톤에서 너무 튄다.
+        /// </summary>
+        private static readonly Color UseActionFrame = Color.Lerp(AntiqueGold, Ink, 0.30f);
+
+        private static readonly Color UseActionFillTint = Color.Lerp(Parchment, AntiqueGold, 0.18f);
+
+        /// <summary>버튼 안쪽 판이다. 양피지보다 살짝 따뜻하고 진해 "눌러 찍은 칸"으로 읽힌다.</summary>
+        private static readonly Color UseActionFill = new(UseActionFillTint.r, UseActionFillTint.g, UseActionFillTint.b, .85f);
+        private const float UseActionGlowMaxAlpha = .30f;
+        private const float UseActionDisabledAlpha = .38f;
 
         /// <summary>진행 블록 행 하나. 취소선은 막대가 아니라 리치 텍스트 `&lt;s&gt;` 태그로 긋는다.</summary>
         public sealed class ProgressRow
@@ -85,6 +111,13 @@ namespace Tessera.Games.AugmentedYacht
         private RectTransform progressBlockRect;
         private Button button;
         private bool overlayContentOnly;
+        private GameObject useActionButtonObject;
+        private RectTransform useActionRect;
+        private CanvasGroup useActionGroup;
+        private Image useActionBorderImage;
+        private Image useActionFillImage;
+        private Image useActionGlowImage;
+        private Text useActionLabelText;
 
         public Button Button => button;
         public Text NameText => nameText;
@@ -114,6 +147,16 @@ namespace Tessera.Games.AugmentedYacht
         public Outline CardOutline => outline;
         public AugmentParchmentPreset ParchmentPreset { get; private set; }
         public AugmentCardDisplayState DisplayState { get; private set; }
+
+        /// <summary>버튼 사각형을 카드 중심 기준 픽셀 좌표로 미리 계산해 둔 것. 콜라이더 동기화가
+        /// 런타임 트랜스폼 조회 없이 결정적으로 도는 데 쓴다.</summary>
+        public Rect UseActionCardRect { get; private set; }
+        public bool UseActionVisible => useActionButtonObject != null && useActionButtonObject.activeSelf;
+        public bool UseActionEnabled { get; private set; }
+        public RectTransform UseActionRect => useActionRect;
+        public Text UseActionLabel => useActionLabelText;
+        public Color UseActionBorderColor => useActionBorderImage != null ? useActionBorderImage.color : default;
+        public Color UseActionGlowColor => useActionGlowImage != null ? useActionGlowImage.color : default;
 
         public static AugmentCardView Create(
             Transform parent,
@@ -314,6 +357,27 @@ namespace Tessera.Games.AugmentedYacht
             for (int i = 0; i < graphics.Length; i++) graphics[i].raycastTarget = enabled && graphics[i] == background;
         }
 
+        /// <summary>발동 버튼을 켜고 끈다. 비활성이면 흐리게 표시하고 호버 연출도 되돌린다.</summary>
+        public void SetUseAction(bool visible, bool enabled)
+        {
+            if (useActionButtonObject == null) return;
+            useActionButtonObject.SetActive(visible);
+            UseActionEnabled = enabled;
+            useActionGroup.alpha = enabled ? 1f : UseActionDisabledAlpha;
+            if (!enabled) SetUseActionHoverAmount(0f);
+        }
+
+        /// <summary>테두리·후광만 잉크 → 네온 파랑으로 보간한다. fill과 라벨 색은 그대로 둔다.</summary>
+        public void SetUseActionHoverAmount(float amount)
+        {
+            if (useActionBorderImage == null) return;
+            float t = Mathf.Clamp01(amount);
+            useActionBorderImage.color = Color.Lerp(UseActionFrame, NeonNear, t);
+            Color glow = NeonOuter;
+            glow.a = Mathf.Lerp(0f, UseActionGlowMaxAlpha, t);
+            useActionGlowImage.color = glow;
+        }
+
         private void Build(UnityAction onClick, Vector2 size)
         {
             float width = Mathf.Max(240f, size.x);
@@ -388,6 +452,7 @@ namespace Tessera.Games.AugmentedYacht
             SetStretch(targetText.rectTransform, 4f, 4f, contentHeight - FooterHeight - 2f, 2f);
 
             BuildProgressBlock(contentWidth, contentHeight);
+            BuildUseAction(contentWidth, contentHeight, width, height);
         }
 
         /// <summary>
@@ -423,6 +488,82 @@ namespace Tessera.Games.AugmentedYacht
             {
                 progressRows[i] = CreateProgressRow(progressBlockRect, i);
             }
+        }
+
+        /// <summary>
+        /// 버튼 테두리·fill·후광이 함께 쓰는 둥근 사각형 스프라이트. 카드 캔버스는 TesseraLayers.CrispUI라
+        /// 픽셀 필터 격자를 타지 않으므로 모서리가 계단 없이 부드럽게 나온다. 빌트인 UI 스킨 스프라이트는
+        /// AssetDatabase 전용 경로라 런타임에서 쓸 수 없어, AugmentStickerTexture와 같은 절차 생성
+        /// 방식으로 대체했다. 3장이 공유하므로 RoundedRectSprite가 정적으로 한 번만 구워 캐시해 둔 것을
+        /// 그대로 참조한다.
+        /// </summary>
+        private static Sprite UseActionRoundedSprite => RoundedRectSprite.Shared;
+
+        /// <summary>
+        /// 수동 발동 버튼을 푸터 오른쪽 끝에 미리 만들어 둔다. 윗변은 Target Badge(targetText, L387 근처)와
+        /// 같은 값을 쓰지만, 아랫변은 사용자 요청으로 버튼을 키우면서 푸터 아래 양피지 여백(FooterBleed
+        /// 안쪽)으로 4px 더 내렸다 — 두 rect가 더 이상 완전히 겹치지 않는다. 이 버튼을 쓰는 5종 수동
+        /// 증강은 전부 Kind == Enhance라 AugmentStickerCatalog.HasSticker가 Modification만 통과시키는
+        /// targetText는 항상 빈 문자열이므로, 자리가 겹쳐도 시각 충돌이 없다. 기본은 숨김 — 드래프트
+        /// 카드에는 나타나지 않는다.
+        /// </summary>
+        private void BuildUseAction(float contentWidth, float contentHeight, float cardWidth, float cardHeight)
+        {
+            float left = contentWidth - (UseActionWidth + UseActionMargin);
+            float right = UseActionMargin;
+            float top = contentHeight - FooterHeight - 2f;
+            float bottom = -2f;
+
+            // contentRoot는 ContentSafeRect 비율 그대로라, 그 왼쪽/아래쪽 변의 카드 로컬 좌표를 구하면
+            // 버튼의 contentRoot 기준 여백을 카드 중심 기준 좌표로 그대로 옮길 수 있다.
+            Rect safeRect = AugmentParchmentVisuals.ContentSafeRect;
+            float contentLeftEdge = (safeRect.xMin - 0.5f) * cardWidth;
+            float contentBottomEdge = (safeRect.yMin - 0.5f) * cardHeight;
+            UseActionCardRect = Rect.MinMaxRect(
+                contentLeftEdge + left,
+                contentBottomEdge + bottom,
+                contentLeftEdge + (contentWidth - right),
+                contentBottomEdge + (contentHeight - top));
+
+            // 후광은 버튼 뒤에 6px 크게 깐 사각형 한 장뿐이다. 뒤에 있으므로 바깥 6px만 보인다.
+            useActionGlowImage = CreateImage(contentRoot, "Use Action Glow", Vector2.zero, Vector2.zero, NeonOuter);
+            SetStretch(useActionGlowImage.rectTransform,
+                left - UseActionGlowSpread, right - UseActionGlowSpread,
+                top - UseActionGlowSpread, bottom - UseActionGlowSpread);
+            useActionGlowImage.raycastTarget = false;
+            useActionGlowImage.sprite = UseActionRoundedSprite;
+            useActionGlowImage.type = Image.Type.Sliced;
+            Color glowColor = NeonOuter;
+            glowColor.a = 0f;
+            useActionGlowImage.color = glowColor;
+            // 버튼이 커지면서 후광 윗변이 본문(Effect Body) 아랫변을 살짝 침범한다. 형제 순서를
+            // contentRoot의 맨 앞(=렌더 순서상 가장 아래)으로 내려, 본문 텍스트가 후광 위에 그려지게 한다.
+            useActionGlowImage.transform.SetAsFirstSibling();
+
+            // 테두리는 스트립 4장이 아니라 바깥 사각형(이 Image) + 2px 인셋 fill 두 장으로 만든다.
+            useActionButtonObject = new GameObject("Use Action Button", typeof(RectTransform), typeof(CanvasGroup), typeof(Image));
+            useActionButtonObject.transform.SetParent(contentRoot, false);
+            useActionRect = useActionButtonObject.GetComponent<RectTransform>();
+            SetStretch(useActionRect, left, right, top, bottom);
+            useActionGroup = useActionButtonObject.GetComponent<CanvasGroup>();
+            useActionBorderImage = useActionButtonObject.GetComponent<Image>();
+            useActionBorderImage.color = UseActionFrame;
+            useActionBorderImage.raycastTarget = false;
+            useActionBorderImage.sprite = UseActionRoundedSprite;
+            useActionBorderImage.type = Image.Type.Sliced;
+
+            useActionFillImage = CreateImage(useActionRect, "Use Action Fill", Vector2.zero, Vector2.zero, UseActionFill);
+            SetStretch(useActionFillImage.rectTransform,
+                UseActionBorderThickness, UseActionBorderThickness, UseActionBorderThickness, UseActionBorderThickness);
+            useActionFillImage.raycastTarget = false;
+            useActionFillImage.sprite = UseActionRoundedSprite;
+            useActionFillImage.type = Image.Type.Sliced;
+
+            useActionLabelText = CreateText(useActionRect, "Use Action Label", "사용", Vector2.zero, Vector2.zero, 17, TextAnchor.MiddleCenter, Ink);
+            SetStretch(useActionLabelText.rectTransform, 0f, 0f, 0f, 0f);
+            useActionLabelText.raycastTarget = false;
+
+            useActionButtonObject.SetActive(false);
         }
 
         /// <summary>

@@ -31,11 +31,6 @@ namespace Tessera.Games.AugmentedYacht
             YachtAugmentRuntime.DiceAlchemyId
         };
 
-        private static readonly string[] ManualAugmentLabels =
-        {
-            "판 뒤집기", "등가교환", "갬빗", "더블 다운", "주사위 연금술"
-        };
-
         /// <summary>직전 실행이 남긴 위젯. 다시 만들기 전에 치운다.</summary>
         private static readonly string[] StaleObjectNames =
         {
@@ -43,7 +38,11 @@ namespace Tessera.Games.AugmentedYacht
             "Yacht Augment Owned Text",
             "Yacht Augment Effect Text",
             "Yacht Augment Hover Detail Text",
-            "Use Table Flip",
+            "Use table-flip",
+            "Use equivalent-exchange",
+            "Use gambit",
+            "Use double-down",
+            "Use dice-alchemy",
         };
 
         /// <summary>
@@ -68,8 +67,6 @@ namespace Tessera.Games.AugmentedYacht
         private Text draftTitle;
         private Text effectText;
         private Text hoverDetailText;
-        private readonly Button[] actionButtons = new Button[ManualAugmentIds.Length];
-        private Button tableFlipButton;
 
         private Transform draftRoot;
         private Renderer draftDim;
@@ -126,20 +123,6 @@ namespace Tessera.Games.AugmentedYacht
                 new Vector2(820f, 104f), new Vector2(0.5f, 0f), 16, TextAnchor.MiddleCenter);
             hoverDetailText.color = new Color32(255, 226, 151, 255);
             hoverDetailText.gameObject.SetActive(false);
-            for (int i = 0; i < actionButtons.Length; i++)
-            {
-                string augmentId = ManualAugmentIds[i];
-                actionButtons[i] = YachtHudFactory.CreateButton(
-                    canvas,
-                    $"Use {augmentId}",
-                    ManualAugmentLabels[i],
-                    new Vector2((i - 2) * 152f, 18f),
-                    new Vector2(142f, 48f),
-                    new Vector2(0.5f, 0f),
-                    () => ActionRequested?.Invoke(augmentId));
-                actionButtons[i].gameObject.SetActive(false);
-            }
-            tableFlipButton = actionButtons[0];
         }
 
         public void Refresh(YachtGameSession session, bool interactive, string message)
@@ -160,23 +143,10 @@ namespace Tessera.Games.AugmentedYacht
                 effectText.gameObject.SetActive(augmented && !string.IsNullOrEmpty(message));
                 if (!string.IsNullOrEmpty(message)) effectText.text = message;
             }
-            if (tableFlipButton != null)
-            {
-                tableFlipButton.interactable = gameInProgress && session.CanUseTableFlip && interactive;
-            }
-            for (int i = 0; i < actionButtons.Length; i++)
-            {
-                Button button = actionButtons[i];
-                if (button == null) continue;
-                bool owned = gameInProgress && !session.IsDrafting
-                    && IsOwned(session, session.CurrentPlayerIndex, ManualAugmentIds[i]);
-                button.gameObject.SetActive(owned);
-                if (i > 0) button.interactable = owned && interactive;
-            }
             // 선택 중에는 딤이 판을 덮으므로 보유 카드를 감춘다. 보유 카드 글자는 Crisp UI로 합성돼
             // 딤 위에 그대로 떠 버리기 때문에 켜 두면 선택 화면이 지저분해진다.
             bool drafting = augmented && gameInProgress && session.IsDrafting;
-            RefreshOwnedCardTray(session, augmented, gameInProgress && !drafting);
+            RefreshOwnedCardTray(session, augmented, gameInProgress && !drafting, interactive);
             RefreshDraftCards(session, drafting);
         }
 
@@ -313,7 +283,7 @@ namespace Tessera.Games.AugmentedYacht
             }
         }
 
-        private void RefreshOwnedCardTray(YachtGameSession session, bool augmented, bool gameInProgress)
+        private void RefreshOwnedCardTray(YachtGameSession session, bool augmented, bool gameInProgress, bool interactive)
         {
             if (!augmented || !gameInProgress)
             {
@@ -329,6 +299,7 @@ namespace Tessera.Games.AugmentedYacht
                 displayedPlayer = playerIndex;
                 selectedSlot = -1;
                 SetHoveredSlot(-1);
+                SetHoveredUseAction(null);
             }
 
             IReadOnlyYachtAugmentPlayerState playerState = augmented && gameInProgress && playerIndex >= 0
@@ -349,8 +320,17 @@ namespace Tessera.Games.AugmentedYacht
                 int presetId = i < (presets?.Count ?? 0) ? presets[i] : 0;
                 view.Bind(YachtAugmentRuntime.Lookup(owned[i]), presetId, progress: DescribeProgress(playerState, playerScores, owned[i]));
                 view.SetSelected(i == selectedSlot);
+                if (Array.IndexOf(ManualAugmentIds, owned[i]) >= 0)
+                    view.SetUseAction(true, interactive && CanUseManualAugment(session, owned[i]));
             }
         }
+
+        /// <summary>
+        /// 화면 HUD 버튼에 있던 활성 규칙을 그대로 옮긴 것이다. 판 뒤집기만 단계 조건이 세션에 노출돼 있고,
+        /// 나머지는 실제 사용 시점에 규칙(IManualActionAugment.CanUse)이 거른다.
+        /// </summary>
+        private static bool CanUseManualAugment(YachtGameSession session, string augmentId) =>
+            !string.Equals(augmentId, YachtAugmentRuntime.TableFlipId, StringComparison.Ordinal) || session.CanUseTableFlip;
 
         /// <summary>
         /// 보유 증강의 진행 상태를 카드에 찍을 줄 목록으로 바꾼다. 진행도 개념이 없는 증강이면
@@ -395,17 +375,20 @@ namespace Tessera.Games.AugmentedYacht
             hoverDetailText.text = detail;
         }
 
-        private static bool IsOwned(YachtGameSession session, int playerIndex, string augmentId)
+        /// <summary>가리킨 카드만 발동 버튼 호버를 켠다. null이면 전부 끈다.</summary>
+        public void SetHoveredUseAction(AugmentTrayCardView card)
         {
-            if (session?.State?.AugmentPlayers == null
-                || playerIndex < 0 || playerIndex >= session.State.AugmentPlayers.Count) return false;
-            IReadOnlyList<string> owned = session.State.AugmentPlayers[playerIndex].OwnedIds;
-            for (int i = 0; i < owned.Count; i++)
-            {
-                if (string.Equals(owned[i], augmentId, StringComparison.Ordinal)) return true;
-            }
-            return false;
+            for (int i = 0; i < ownedCards.Length; i++)
+                ownedCards[i]?.SetUseActionHovered(ownedCards[i] == card);
         }
+
+        /// <summary>발동 버튼을 눌렀다. 보유 슬롯에 있고 활성 상태일 때만 알린다.</summary>
+        public void RequestUseAction(AugmentTrayCardView card)
+        {
+            if (card == null || Array.IndexOf(ownedCards, card) < 0 || !card.IsUseActionEnabled) return;
+            ActionRequested?.Invoke(card.AugmentId);
+        }
+
         /// <summary>가리킨 카드를 바꾼다. null이면 안내를 숨긴다.</summary>
         public void SetHoveredCard(AugmentTrayCardView card)
         {

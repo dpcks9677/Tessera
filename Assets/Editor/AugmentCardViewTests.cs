@@ -857,4 +857,227 @@ public sealed class AugmentCardViewTests
             Object.DestroyImmediate(anchorObject);
         }
     }
+
+    private static YachtAugmentDefinition TableFlipDefinition() => new()
+    {
+        Id = YachtAugmentRuntime.TableFlipId,
+        DisplayName = "판 뒤집기",
+        Description = "발동 버튼 검증용 정의입니다.",
+        Kind = YachtAugmentKind.Enhance
+    };
+
+    [Test]
+    public void UseButton_SitsInFooterRightEdgeInsideCardMask()
+    {
+        AugmentCardView card = CreateCard(out GameObject canvasObject);
+        try
+        {
+            Assert.That(card.UseActionCardRect.width, Is.EqualTo(77f).Within(.01f));
+            Assert.That(card.UseActionCardRect.height, Is.EqualTo(26f).Within(.01f));
+            Assert.That(card.UseActionRect.parent, Is.EqualTo(card.ContentRoot));
+            // 오른쪽 끝 여백 4px.
+            Assert.That(-card.UseActionRect.offsetMax.x, Is.EqualTo(4f).Within(.001f));
+
+            // 윗변만 Target Badge(targetText)와 같은 값을 쓴다. 아랫변은 버튼을 키우며 푸터 아래
+            // 양피지 여백으로 더 내려가 더 이상 같지 않다.
+            Assert.That(card.UseActionRect.offsetMax.y, Is.EqualTo(card.TargetText.rectTransform.offsetMax.y).Within(.001f));
+
+            // 본문 아랫변보다 버튼 윗변이 아래에 있어야 겹치지 않는다.
+            float buttonTop = card.UseActionRect.offsetMin.y + card.UseActionCardRect.height;
+            float bodyBottom = card.DescriptionText.rectTransform.offsetMin.y;
+            Assert.That(buttonTop, Is.LessThanOrEqualTo(bodyBottom));
+
+            // 카드 사각형(RectMask2D가 잘라내는 경계) 안에 완전히 들어간다.
+            RectTransform cardRect = card.GetComponent<RectTransform>();
+            float halfWidth = cardRect.sizeDelta.x / 2f;
+            float halfHeight = cardRect.sizeDelta.y / 2f;
+            Assert.That(card.UseActionCardRect.xMax, Is.LessThanOrEqualTo(halfWidth));
+            Assert.That(card.UseActionCardRect.yMin, Is.GreaterThanOrEqualTo(-halfHeight));
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    [Test]
+    public void UseButton_StartsHiddenUntilTurnedOn()
+    {
+        GameObject anchorObject = new("Use Action Visibility Anchor");
+        try
+        {
+            AugmentTrayCardView view = AugmentTrayCardView.Create(anchorObject.transform, new Vector2(4.58f, 2.58f), 0);
+            Assert.That(view.Card.UseActionVisible, Is.False, "생성 직후에는 숨겨져 있어야 한다.");
+
+            view.Bind(TableFlipDefinition(), (int)AugmentParchmentPreset.GentleWave);
+            view.SetUseAction(true, true);
+            Assert.That(view.Card.UseActionVisible, Is.True);
+
+            view.Bind(TableFlipDefinition(), (int)AugmentParchmentPreset.GentleWave);
+            Assert.That(view.Card.UseActionVisible, Is.False, "재바인딩 시 이전 상태가 남지 않고 숨김으로 되돌아가야 한다.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(anchorObject);
+        }
+    }
+
+    [Test]
+    public void UseButton_UsesFlatPrintedLookWithoutShadow()
+    {
+        AugmentCardView card = CreateCard(out GameObject canvasObject);
+        try
+        {
+            Assert.That(card.UseActionRect.GetComponentsInChildren<Shadow>(true), Is.Empty);
+            Assert.That(card.UseActionRect.GetComponentsInChildren<Outline>(true), Is.Empty);
+            Assert.That(card.UseActionLabel.text, Is.EqualTo("사용"));
+            Assert.That(card.UseActionLabel.fontSize, Is.EqualTo(17));
+            // Ink와 같은 값이다(AugmentCardView 내부 색 상수는 비공개라 값으로 비교한다).
+            Assert.That(card.UseActionLabel.color, Is.EqualTo(new Color(0.16f, 0.10f, 0.07f, 1f)));
+
+            // 양피지 위에서 fill(밝은 앤틱 골드 톤)이 테두리(잉크 쪽으로 누른 톤)보다 밝아야 한다.
+            // 정확한 리터럴이 아니라 관계로 검사해 팔레트 값이 바뀌어도 이 테스트는 안 깨진다.
+            Image fill = card.UseActionRect.Find("Use Action Fill").GetComponent<Image>();
+            Color fillColor = fill.color;
+            Color borderColor = card.UseActionBorderColor;
+            Assert.That(fillColor.r + fillColor.g + fillColor.b, Is.GreaterThan(borderColor.r + borderColor.g + borderColor.b));
+
+            // 테두리·fill·후광 세 장 모두 빌트인 둥근 사각형 스프라이트를 9-슬라이스로 쓴다.
+            Image border = card.UseActionRect.GetComponent<Image>();
+            Transform glow = card.ContentRoot.Find("Use Action Glow");
+            Image glowImage = glow.GetComponent<Image>();
+            foreach (Image roundedImage in new[] { border, fill, glowImage })
+            {
+                Assert.That(roundedImage.sprite, Is.Not.Null);
+                Assert.That(roundedImage.type, Is.EqualTo(Image.Type.Sliced));
+                // 1이면 9-슬라이스 테두리가 100배로 부풀어 모서리만이 아니라 버튼 전체가 늘어난다.
+                Assert.That(roundedImage.pixelsPerUnit, Is.EqualTo(1f).Within(.001f));
+            }
+
+            Assert.That(glowImage.raycastTarget, Is.False);
+            foreach (Graphic graphic in card.UseActionRect.GetComponentsInChildren<Graphic>(true))
+                Assert.That(graphic.raycastTarget, Is.False);
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    [Test]
+    public void UseButton_DisabledDimsAndSuppressesGlow()
+    {
+        GameObject anchorObject = new("Use Action Disabled Anchor");
+        try
+        {
+            AugmentTrayCardView view = AugmentTrayCardView.Create(anchorObject.transform, new Vector2(4.58f, 2.58f), 0);
+            view.Bind(TableFlipDefinition(), (int)AugmentParchmentPreset.GentleWave);
+            view.SetVisible(true);
+            view.SetUseAction(true, false);
+
+            Assert.That(view.Card.UseActionEnabled, Is.False);
+            CanvasGroup group = view.Card.UseActionRect.GetComponent<CanvasGroup>();
+            Assert.That(group.alpha, Is.LessThan(1f));
+
+            Color before = view.Card.UseActionBorderColor;
+            view.SetUseActionHovered(true);
+            for (int i = 0; i < 4; i++) view.TickHover(0.05f);
+
+            Assert.That(view.UseActionHoverAmount, Is.Zero, "비활성 버튼은 호버해도 호버량이 오르지 않아야 한다.");
+            Assert.That(view.Card.UseActionBorderColor, Is.EqualTo(before));
+        }
+        finally
+        {
+            Object.DestroyImmediate(anchorObject);
+        }
+    }
+
+    [Test]
+    public void UseButton_HoverFadesBorderToNeonBlue()
+    {
+        GameObject anchorObject = new("Use Action Hover Anchor");
+        try
+        {
+            AugmentTrayCardView view = AugmentTrayCardView.Create(anchorObject.transform, new Vector2(4.58f, 2.58f), 0);
+            view.Bind(TableFlipDefinition(), (int)AugmentParchmentPreset.GentleWave);
+            view.SetVisible(true);
+            view.SetUseAction(true, true);
+            Image fill = view.Card.UseActionRect.Find("Use Action Fill").GetComponent<Image>();
+            Color fillBefore = fill.color;
+            view.SetUseActionHovered(true);
+
+            // dt*5f 0.2초 규칙: 0.05f씩 4회면 정확히 1에 도달한다.
+            for (int i = 0; i < 4; i++) view.TickHover(0.05f);
+
+            Assert.That(view.UseActionHoverAmount, Is.EqualTo(1f).Within(.001f));
+            Color border = view.Card.UseActionBorderColor;
+            Assert.That(border.b, Is.GreaterThan(border.r));
+            Assert.That(border.b, Is.GreaterThan(border.g));
+            Assert.That(view.Card.UseActionGlowColor.a, Is.EqualTo(0.30f).Within(.01f));
+            // 이번 수정의 핵심 요구: 호버가 최대여도 fill 색은 그대로여야 한다.
+            Assert.That(fill.color, Is.EqualTo(fillBefore));
+
+            view.SetUseActionHovered(false);
+            for (int i = 0; i < 4; i++) view.TickHover(0.05f);
+            Assert.That(view.UseActionHoverAmount, Is.Zero);
+        }
+        finally
+        {
+            Object.DestroyImmediate(anchorObject);
+        }
+    }
+
+    [Test]
+    public void TrayCard_UseActionColliderMatchesButtonRect()
+    {
+        GameObject anchorObject = new("Use Action Collider Anchor");
+        try
+        {
+            Vector2 slotSize = new(4.58f, 2.58f);
+            AugmentTrayCardView view = AugmentTrayCardView.Create(anchorObject.transform, slotSize, 0);
+            view.Bind(TableFlipDefinition(), (int)AugmentParchmentPreset.GentleWave);
+            view.SetVisible(true);
+            view.SetUseAction(true, true);
+
+            Assert.That(view.UseActionCollider.gameObject.activeSelf, Is.True);
+            Assert.That(view.UseActionCollider.transform.parent, Is.EqualTo(view.VisualRoot));
+            Assert.That(view.UseActionCollider.size.y, Is.EqualTo(0.02f).Within(.0001f));
+
+            // 카드 픽셀 → 양피지 로컬 배율. AugmentTrayCardView.CardPixelWidth(460, 비공개)와 같은 값이다.
+            float cardWidth = view.OverlayRect.sizeDelta.x / 100f;
+            float worldPerCardPixel = cardWidth / 460f;
+            Rect local = view.Card.UseActionCardRect;
+            Assert.That(view.UseActionCollider.size.x, Is.EqualTo(local.width * worldPerCardPixel).Within(.0001f));
+            Assert.That(view.UseActionCollider.size.z, Is.EqualTo(local.height * worldPerCardPixel).Within(.0001f));
+
+            // 카드 사각형 안, 오른쪽 아래 푸터에 있어야 한다. 캔버스 +y는 Euler(90,0,0)에 의해 +z로 간다.
+            Vector3 overlayPosition = view.OverlayRect.localPosition;
+            Assert.That(view.UseActionCollider.transform.localPosition.x, Is.GreaterThan(overlayPosition.x));
+            Assert.That(view.UseActionCollider.transform.localPosition.z, Is.LessThan(overlayPosition.z));
+
+            view.SetUseAction(false, false);
+            Assert.That(view.UseActionCollider.gameObject.activeSelf, Is.False);
+        }
+        finally
+        {
+            Object.DestroyImmediate(anchorObject);
+        }
+    }
+
+    [Test]
+    public void RoundedRectSprite_CornersAreTransparentAndCenterIsOpaque()
+    {
+        Color32[] pixels = RoundedRectSprite.CreatePixels(
+            RoundedRectSprite.DefaultSize, RoundedRectSprite.DefaultSize, RoundedRectSprite.DefaultRadius);
+        int size = RoundedRectSprite.DefaultSize;
+
+        Assert.That(pixels[(0 * size) + 0].a, Is.EqualTo(0), "좌하단 모서리는 투명해야 한다.");
+        Assert.That(pixels[(0 * size) + (size - 1)].a, Is.EqualTo(0), "우하단 모서리는 투명해야 한다.");
+        Assert.That(pixels[((size - 1) * size) + 0].a, Is.EqualTo(0), "좌상단 모서리는 투명해야 한다.");
+        Assert.That(pixels[((size - 1) * size) + (size - 1)].a, Is.EqualTo(0), "우상단 모서리는 투명해야 한다.");
+
+        Color32 center = pixels[((size / 2) * size) + (size / 2)];
+        Assert.That(center.a, Is.EqualTo(255), "중앙은 불투명해야 한다.");
+        Assert.That(center.r, Is.EqualTo(255), "색은 흰색이어야 한다 — 실제 색은 Image.color가 입힌다.");
+    }
 }
