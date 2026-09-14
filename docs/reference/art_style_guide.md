@@ -100,6 +100,9 @@ graph LR
 | `normal_dice.fbx` | 자체 제작 (`normal_dice.blend`) | 자체 |
 | `yacht-tray.stl` → `yacht-tray.asset` | 자체 제작 | 자체 |
 | `Assets/msVFX_Free Smoke Effects Pack/` | 제3자 연기 VFX 팩 (`Materials/msVFX_Stylized Smoke 1_Material.mat`, `Prefabs/msVFX_Stylized Smoke 1~4.prefab`, `Textures/msVFX_Stylized Smoke 1_Texture.png`) | **미기록.** 팩 폴더 안에 라이선스·README 파일이 하나도 없습니다. 배포 전에 출처와 이용 조건을 확인해 여기 적어야 합니다 |
+| `Assets/Art/Reference/coin.glb` | **반입 예정(`M17-T23`).** 제3자 동전 3D 모델 (`gold-coin.zip`에서 풀린 Blender glTF 2.0 파일) | 미기록 |
+| `Assets/Art/Reference/coin_head_source.png` | **반입 예정(`M17-T23`).** 사용자 제공 흉상 선화 | 미기록 |
+| `Assets/Art/Reference/coin_tail_source.png` | **반입 예정(`M17-T23`).** 사용자 제공 리라·월계관 선화 | 미기록 |
 
 > **`quill_pen_low.fbx`의 라이선스 미기록은 배포 전에 반드시 해소해야 하는 항목입니다.**
 > 이 경고는 원래 `Assets/Docs/README.md`에 있었고, 그 문서를 `docs/archive/plans/poc_technical_notes.md`로
@@ -114,6 +117,11 @@ graph LR
 > `DiceSmokeBurstTexture.png` 사용)으로 덮어써 씁니다. 파티클 모듈 파라미터(발사 속도, 크기, 색상
 > 그라디언트 등)는 소스 프리팹의 오버라이드로 남아 있어, 팩 자체의 라이선스 조건이 이 파생물에도
 > 그대로 적용됩니다.
+
+> **`coin.glb`·`coin_head_source.png`·`coin_tail_source.png`는 아직 프로젝트에 반입되지 않았습니다.**
+> `M17-T23`(코인 메시 반입과 앞뒷면 구분, 상세는 [`docs/agent/m17_coin_mesh_plan.md`](../agent/m17_coin_mesh_plan.md))의
+> 산출물로 들어올 예정이며, 위 행은 실제 임포트 전 출처 기록입니다. 출처·라이선스는 사용자 확인이
+> 필요한 열린 항목이고, 반입 시점에 이 경고와 라이선스 칸을 갱신합니다.
 
 **임포트 주의**: `quill_pen_low.fbx`는 FBX 임포터의 `Use File Scale`을 **꺼야 합니다.** 켜면 0.01 배율이
 적용돼 깃펜이 점 하나로 줄어듭니다.

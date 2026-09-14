@@ -9,6 +9,21 @@
 
 ---
 
+### 2026-09-14 — Claude (`M17-T23` 코인 메시 반입 계획 수립)
+
+- 작업 ID: `M17-T23` (신규, `TODO`. 하위 `M17-T23-1`만 `DONE`)
+- 사용자 요청: `coin-toss` 증강(HOLD) 구현 전에 동전 3D 모델을 프로젝트에 반입하고 앞뒤(흉상/리라) 문양을 구분
+- 승인된 계획: 사용자 제공 문양(`head.png`, `tail.png`) 실측, 소스 메시(`coin.glb`) 실측, Unity 에디터 전용 최소 glb 파서로 반입, prim 0을 `faceNormal.y` 부호로 Head/Tail 분할, 캡 UV를 XZ 재투영, 서브메시가 아닌 자식 GameObject 3개(Body/Face_Head/Face_Tail) 구조, 선화→면 앨비도 변환 파이프라인(잉크 마스크→크롭→굵기 보정→축소→색 입히기)
+- 완료 내용: 계획서 [`docs/agent/m17_coin_mesh_plan.md`](m17_coin_mesh_plan.md) 작성. 구현은 아직 없다. `docs/agent/work_plan.md` M17 표에 `M17-T23` 행 추가, `docs/reference/art_style_guide.md` §6 출처표에 `coin.glb`·`coin_head_source.png`·`coin_tail_source.png` 반입 예정 행 3개 추가
+- 변경 파일: `docs/agent/m17_coin_mesh_plan.md`(신규), `docs/agent/work_plan.md`, `docs/reference/art_style_guide.md`, `docs/agent/session_log.md`
+- 다음 작업: `M17-T23-2`(`CoinGlbReader` + 테스트)
+
+**같은 날 후속(구현 진행)**: `M17-T23-2`~`M17-T23-6` 완료. `CoinGlbReaderTests` 5/5, `CoinFaceTextureConverterTests` 8/8, `CoinMeshBakerTests` 8/8 통과. 베이킹 산출물 9개 존재, 삼각형 Head 428/Tail 414/Edge 846, 텍스처 64×64 Point·밉맵 off·무압축·Clamp, 프리팹 `localScale` 0.6039·레이어 11·콜라이더 없음 확인. 구현 중 수정 2건: (a) 변환기 풀링 영역을 소스 전체가 아니라 크롭 bbox로 제한(가장자리 클램프로 bbox 경계 잉크가 격자 모서리까지 번지던 버그 수정), (b) 캡 UV 중심 테스트를 "축에 가장 가까운 정점" 대신 "캡 정점 평균 UV"로 교체(데시메이트 원반이라 캡 안쪽 정점 없음). 텍스처 잉크 비율 head 26.3% / tail 34.1%. 64×64 결과 관찰: head(흉상)는 구멍 있는 실루엣으로 남고, tail(리라)은 굵기 보정으로 거의 꽉 찬 원반이 되어 리라 형태가 소실됨. 가독성 판단은 `M17-T23-7`·`M17-T23-8`에서. `M17-T23-7`·`M17-T23-8`은 `TODO` 유지(사용자 시각 확인 대기)
+
+**같은 날 후속(`M17-T23-7` 1차 시각 확인 피드백 반영)**: 사용자 1차 확인 피드백 3건 — (1) 굵기 보정 2텍셀 → 1텍셀(양면), (2) 프리팹 루트 `localScale` 0.6039 → 0.8(지름 약 1.59, 주사위 한 변 1.014의 약 1.57배), (3) 동전 내부원이 너무 평평함 → 필드(테두리 안쪽 원판)와 문양 획 둘 다에 음각 느낌 필요. 반영: 메시는 캡 평판 높이 `|y|` 0.0696 → 0.03으로 파고, 법선을 높이축 확대에 맞춰 해석적으로 보정. 텍스처는 3색 음각 음영(바탕 `#E5A93C`, 홈 안쪽 `#956E27`, 홈 그림자 `#503B15`)으로 전환, 광원 방향 `(+1, -1)`은 씬 키라이트·카메라 세팅에서 도출. `CoinFaceTextureConverter.Convert`에 `lightFrom` 인자 추가, `DefaultMinStrokeTexels` 1, 신규 `InkShadowColor`. 베이커 상수는 `ModelScale = 0.8f`·`FaceLightFrom`·`SourcePlateauHeight`/`RimLipHeight`/`FieldPlateauHeight`로 재구성. 검증: `CoinGlbReaderTests` 5/5, `CoinFaceTextureConverterTests` 11/11(신규 6종), `CoinMeshBakerTests` 11/11 통과. 재굽기 후 픽셀 분포 head 바탕 3170/안쪽 752/그림자 174, tail 2863/1057/176. 관찰: head는 머리칼·얼굴·목·받침대 구분됨, tail은 리라 U자 몸통·줄·월계관 테두리가 드러남(이전 원반화 개선). 재굽기 중 메시 이름 미설정 경고 3건(`Main Object Name '' does not match filename`) 발견, `SaveMesh`에서 `mesh.name` 지정 후 재굽기로 소멸 확인. 커밋 직전 EditMode 전체 재실행은 하지 않음(피드백 반영 전 전체 실행에서 Tessera 테스트는 전부 통과, 실패 8건은 `UnitySkills.Tests.Core` 소속). 상태: `M17-T23-7`은 `TODO` 유지(재확인 대기), `M17-T23` 전체는 `DOING` 유지
+- 변경 파일: `docs/agent/m17_coin_mesh_plan.md`, `docs/agent/work_plan.md`, `docs/agent/session_log.md` 및 관련 프로덕션·테스트 코드(오케스트레이터 세션 별도 커밋 예정)
+- 다음 작업: `M17-T23-7` 재확인(1텍셀·스케일 0.8·음각 반영 결과 시각 확인)
+
 ### 2026-09-14 — Claude (`M17-T3` 퀘스트 진행 표시 TMP 전환 및 화면 확인 완료)
 
 - 작업 ID: `M17-T3` (시작 상태 `DOING`, 현재 `DONE`)
