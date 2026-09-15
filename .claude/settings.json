@@ -1,6 +1,7 @@
 {
   "env": {
-    "PYTHONHASHSEED": "0"
+    "PYTHONHASHSEED": "0",
+    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "200000"
   },
   "hooks": {
     "UserPromptSubmit": [
@@ -8,7 +9,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/korean-guard.js\"",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/korean-guard.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/main-session-guard.py\"",
             "timeout": 10
           }
         ]

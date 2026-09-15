@@ -15,7 +15,7 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 - 압축은 문체에만 적용합니다. **조사와 어미는 생략하거나 변형하지 않습니다.** 한국어에서 조사는 군더더기가 아니라 문법입니다.
 - `unity-skills` 모듈 문서는 필요한 모듈 하나만 읽습니다. Unity 조작은 알려진 REST 엔드포인트 직접 호출을 우선합니다. 중국어 유입량과 토큰을 함께 줄입니다.
 
-이 규칙은 `.claude/hooks/korean-guard.js` 가 매 턴 재주입합니다. 훅을 받지 않는 서브에이전트를 위해 여기에도 남깁니다.
+이 규칙은 `.claude/hooks/korean-guard.py` 가 매 턴 재주입합니다. 훅을 받지 않는 서브에이전트를 위해 여기에도 남깁니다.
 
 ## 0.1. 검증 스크린샷
 
@@ -181,6 +181,19 @@ Rules:
 - **커밋·푸시 실행은 `tessera-committer`(`model: sonnet`, `effort: low`)에 위임합니다.** 오케스트레이터가 직접 `git commit`·`git push`를 실행하지 않습니다. 커밋은 메시지 작성과 `git` 호출뿐이라 설계 판단이 없고, 범위와 메시지 방향은 이미 정해져 위임 프롬프트에 실립니다. 이 위임은 허가 규칙을 대체하지 않습니다. 위 「커밋 & 푸시」대로 매번 사용자 허가를 먼저 받고, 실행만 넘깁니다.
 - 다른 서브에이전트는 커밋하지 않습니다.
 - 계획서와 실제 코드가 어긋나면 임의로 판단해 진행하지 말고 사용자에게 확인합니다. 실제로 어긋난 사례가 있습니다(`D-041`).
+
+### 토큰 예산
+
+주 세션은 매 턴 컨텍스트 전체를 다시 읽습니다. 사용량은 **턴 수 × 컨텍스트 크기**입니다. 2026-09 초 로그에서 주 세션이 전체의 83%를 썼습니다. 세션당 약 400턴, 평균 컨텍스트 250k였고 압축은 한 번도 없었습니다.
+
+- 태스크 하나가 끝나면 `/clear` 로 새로 시작합니다. 이어서 할 맥락은 계획서와 세션 로그에 있습니다.
+- `settings.json` 의 `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` 이 자동 압축 기준을 200k로 낮춥니다. 1M 창에서는 자동 압축이 사실상 일어나지 않습니다.
+- 주 세션은 Unity REST `curl` 을 직접 치지 않습니다. 컴파일 대기·폴링·테스트는 `tessera-verifier`, 씬 조작은 `tessera-unity-operator` 가 합니다.
+- 주 세션은 셸 `grep`/`find`/`cat`/`sed` 로 탐색하지 않습니다. 조사는 `tessera-scout` 에 넘기고, 특정 줄 확인만 `Read`(offset/limit)로 합니다.
+- 내장 `Explore`·`Plan` 대신 `tessera-scout` 를 씁니다. 여러 Explore가 같은 파일을 각자 통째로 읽은 사례가 있습니다.
+- 설계 판단이 거의 없는 세션(반복 수정, Unity 조작 위주)은 `/model sonnet` 으로 전환합니다.
+
+`.claude/hooks/main-session-guard.py` 가 주 세션의 Unity `curl`·셸 탐색 호출에 위 규칙을 상기시킵니다. 차단하지는 않으며, 서브에이전트(`agent_id` 가 있는 호출)는 건너뜁니다.
 
 ### 역할별 재사용 방침
 
