@@ -11,10 +11,11 @@ namespace Tessera.Dice
     ///
     /// 원본 preset-studio/src/diceMaterials.js:66-74 이식.
     /// 묵직한 주사위(4·4·5·5·6·6)는 값 4·5·6이 일반 주사위의 같은 번호 면과 겹쳐 표가 필요 없다.
+    /// 세븐스는 1번 면만 7로 바꾸고 2~6번 면은 일반 주사위와 같다(M17).
     /// </summary>
     public static class DiceFaceValues
     {
-        private static readonly int[] SevensFaces = { 2, 3, 4, 5, 6, 7 };
+        private static readonly int[] SevensFaces = { 7, 2, 3, 4, 5, 6 };
         private static readonly int[] OctahedronFaces = { 1, 2, 3, 4, 4, 5, 5, 6 };
 
         /// <summary>면 값 표. 값과 면 인덱스가 같은 종류는 null이다.</summary>
