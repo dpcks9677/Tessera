@@ -1606,10 +1606,11 @@ namespace Tessera.Games.AugmentedYacht
             }
 
             int upperSum = data.CalculateUpperSum();
+            int upperBonusThreshold = data.UpperBonusThreshold;
             if (bonusText != null)
             {
-                bonusText.text = $"Bonus ({upperSum}/63)";
-                SetLabelColor(bonusText, upperSum >= 63 ? bonusScoreGold : new Color32(35, 20, 12, 255));
+                bonusText.text = $"Bonus ({upperSum}/{upperBonusThreshold})";
+                SetLabelColor(bonusText, upperSum >= upperBonusThreshold ? bonusScoreGold : new Color32(35, 20, 12, 255));
             }
             if (labels[6] != null)
             {

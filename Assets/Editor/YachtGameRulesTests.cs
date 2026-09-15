@@ -171,7 +171,7 @@ namespace Tessera.Editor.Tests
             runtime.Initialize(state, 2);
             state.AugmentPlayers[0].OwnedIds = new[] { YachtAugmentRuntime.NoTimeToWasteId };
 
-            Assert.That(definitions.Count, Is.EqualTo(45));
+            Assert.That(definitions.Count, Is.EqualTo(46));
             Assert.That(definitions[0].Id, Is.EqualTo(YachtAugmentRuntime.LuckySevensId));
             Assert.That(state.AugmentPlayers[1].OwnedIds, Is.Empty);
             Assert.That(state.GlobalAugmentIds, Is.Empty);
@@ -762,7 +762,7 @@ namespace Tessera.Editor.Tests
             string[] excluded =
             {
                 "anti-ace-deuces", "anti-four-threes", "prime-numbers", "anti-six-fours", "anti-six-fives", "anti-five-sixes",
-                "four-by-four", "two-households", "strange-die", "coin-toss"
+                "four-by-four", "two-households", "strange-die"
             };
             for (int i = 0; i < excluded.Length; i++)
                 Assert.That(runtime.FindDefinition(excluded[i]), Is.Null, excluded[i]);

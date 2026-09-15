@@ -63,7 +63,8 @@ namespace Tessera.Games.Yacht
             new EquivalentExchange(),
             new Gambit(),
             new DoubleDown(),
-            new DiceAlchemy()
+            new DiceAlchemy(),
+            new CoinToss()
         };
 
         public static IReadOnlyList<IAugmentHandler> All => Handlers;

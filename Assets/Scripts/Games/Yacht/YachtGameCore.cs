@@ -170,6 +170,7 @@ namespace Tessera.Games.Yacht
         bool IReadOnlyPlayerScoreData.HasBonus => hasBonus;
         int IReadOnlyPlayerScoreData.BonusScore => bonusScore;
         int IReadOnlyPlayerScoreData.TotalScore => totalScore;
+        int IReadOnlyPlayerScoreData.UpperBonusThreshold => upperBonusThreshold;
 
         bool IReadOnlyPlayerScoreData.IsFilled(ScoreCategory category)
         {
@@ -233,6 +234,9 @@ namespace Tessera.Games.Yacht
         public int CurrentRound = 1;
         public int RollsRemaining = YachtGameSession.MaxRolls;
         public bool HasRolled;
+
+        /// <summary>이번 턴 증강으로 추가된 굴림 수. 턴 시작 시 0</summary>
+        public int BonusRolls;
         public YachtDieState[] Dice = Array.Empty<YachtDieState>();
         public PlayerScoreData[] Players = Array.Empty<PlayerScoreData>();
         public YachtScoreCandidate[] Candidates = Array.Empty<YachtScoreCandidate>();
@@ -281,6 +285,7 @@ namespace Tessera.Games.Yacht
         int IReadOnlyYachtGameState.CurrentRound => CurrentRound;
         int IReadOnlyYachtGameState.RollsRemaining => RollsRemaining;
         bool IReadOnlyYachtGameState.HasRolled => HasRolled;
+        int IReadOnlyYachtGameState.BonusRolls => BonusRolls;
         bool IReadOnlyYachtGameState.IsExtraTurnPhase => IsExtraTurnPhase;
         IReadOnlyList<IReadOnlyYachtDieState> IReadOnlyYachtGameState.Dice => Dice;
         IReadOnlyList<IReadOnlyPlayerScoreData> IReadOnlyYachtGameState.Players => Players;
@@ -326,6 +331,7 @@ namespace Tessera.Games.Yacht
         public string AugmentId;
         public string RelatedAugmentId;
         public string Message;
+        public int CoinFaces;
     }
 
     [Serializable]

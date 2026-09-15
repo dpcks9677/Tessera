@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using Tessera.Dice;
 using Tessera.Games.Yacht;
 using Tessera.Tabletop;
 
@@ -63,6 +64,14 @@ namespace Tessera.Games.AugmentedYacht
         private string pendingTurnTransitionMessage;
         private Coroutine rollRoutine;
         private Coroutine smokeRoutine;
+        private Coroutine coinTossRoutine;
+        private CoinTossVfx coinTossVfx;
+
+        /// <summary>연출 시퀀스가 하나라도 도는 중인가. 새 증강 행동·굴림 입력을 막을 때 쓴다.</summary>
+        private bool IsAugmentSequenceRunning => smokeRoutine != null || coinTossRoutine != null;
+
+        /// <summary>동전 던지기 연출이 동전을 배치할 트레이 중심 X. <see cref="BindRules"/>가 채운다.</summary>
+        private float centerSectionX;
 
         private const float TurnDurationSeconds = YachtGameOptions.DefaultTurnDurationSeconds;
 
@@ -136,11 +145,12 @@ namespace Tessera.Games.AugmentedYacht
             resultText = result;
         }
 
-        public void BindRules(int count, int presetClips, YachtGameMode mode)
+        public void BindRules(int count, int presetClips, YachtGameMode mode, float centerX = 0f)
         {
             diceCount = count;
             presetClipCount = presetClips;
             launchMode = mode;
+            centerSectionX = centerX;
         }
 
         /// <summary>게임을 시작할 수 있는 대기 상태로 만든다.</summary>
@@ -199,6 +209,13 @@ namespace Tessera.Games.AugmentedYacht
                 dice?.SetUnkeptCrispRenderersVisible(true);
                 dice?.ApplyValuesToVisuals();
             }
+            if (coinTossRoutine != null)
+            {
+                StopCoroutine(coinTossRoutine);
+                coinTossRoutine = null;
+                dice?.SetVisible(true);
+            }
+            coinTossVfx?.Cleanup();
             dice?.StopAnimations();
 
             launchMode = mode;
@@ -279,6 +296,16 @@ namespace Tessera.Games.AugmentedYacht
             for (int i = result.Events.Length - 1; i >= 0; i--)
                 if (!string.IsNullOrEmpty(result.Events[i].Message)) return result.Events[i].Message;
             return null;
+        }
+
+        /// <summary>50 `coin-toss` 발동 이벤트의 동전 비트마스크를 읽는다. 없으면 0이다.</summary>
+        private static int GetCoinFaces(YachtGameCommandResult result)
+        {
+            if (result?.Events == null) return 0;
+            for (int i = result.Events.Length - 1; i >= 0; i--)
+                if (string.Equals(result.Events[i].AugmentId, YachtAugmentRuntime.CoinTossId, StringComparison.Ordinal))
+                    return result.Events[i].CoinFaces;
+            return 0;
         }
 
         private void BeginTurnTimer()
@@ -457,7 +484,7 @@ namespace Tessera.Games.AugmentedYacht
                 return;
             }
 
-            bool canRoll = gameSession.CanRoll && Phase.IsInteractive() && !dice.AllKept && smokeRoutine == null;
+            bool canRoll = gameSession.CanRoll && Phase.IsInteractive() && !dice.AllKept && !IsAugmentSequenceRunning;
             SetRollInteraction(canRoll);
 
             if (gameSession.Phase == YachtGamePhase.ScoreSelection && Phase != PresentationPhase.TurnTransition)
@@ -479,7 +506,7 @@ namespace Tessera.Games.AugmentedYacht
         public bool CanInitiateRoll()
         {
             if (gameSession == null || !gameSession.CanRoll || !Phase.IsInteractive()) return false;
-            if (smokeRoutine != null) return false;
+            if (IsAugmentSequenceRunning) return false;
             return !dice.AllKept;
         }
 
@@ -523,7 +550,7 @@ namespace Tessera.Games.AugmentedYacht
         public void UseAugmentAction(string augmentId)
         {
             if (gameSession == null || !Phase.IsInteractive()) return;
-            if (smokeRoutine != null) return;
+            if (IsAugmentSequenceRunning) return;
             if (!gameSession.TryUseAugmentAction(augmentId, out pendingRollResult))
             {
                 UpdateStatusText(pendingRollResult?.ErrorMessage);
@@ -540,12 +567,22 @@ namespace Tessera.Games.AugmentedYacht
                     Phase = PresentationPhase.AwaitingRoll;
                 }
 
+                // 50 coin-toss: 동전이 노는 동안 주사위를 숨기므로 여기서 먼저 보이면 안 된다.
+                // 착지 후 RunCoinTossSequence가 직접 보이기·숨기기를 관리한다.
+                if (diceCountUnchanged && HasCue(pendingRollResult, AugmentVfxCue.CoinToss))
+                {
+                    SetRollInteraction(false);
+                    coinTossRoutine = StartCoroutine(RunCoinTossSequence(
+                        GetCoinFaces(pendingRollResult), GetAugmentEventMessage(pendingRollResult)));
+                    return;
+                }
+
                 dice.SetVisible(true);
                 scoreSheet?.ClearCandidateScores();
 
                 // 56 dice-alchemy: 눈이 연기에 가려 바뀌는 사이 값 반영을 늦춘다. 대상 판정은
                 // AugmentVfxPlanner가 테이블 주도로 한다(사양서 §3.4).
-                if (diceCountUnchanged && HasDiceSmokeSwap(pendingRollResult))
+                if (diceCountUnchanged && HasCue(pendingRollResult, AugmentVfxCue.DiceSmokeSwap))
                 {
                     SetRollInteraction(false);
                     smokeRoutine = StartCoroutine(RunDiceSmokeSwapSequence(GetAugmentEventMessage(pendingRollResult)));
@@ -603,8 +640,8 @@ namespace Tessera.Games.AugmentedYacht
             UpdateStatusText();
         }
 
-        /// <summary>이 명령이 연기 가림 연출을 요구하는지. 어떤 증강이 그런지는 planner가 판정한다.</summary>
-        private bool HasDiceSmokeSwap(YachtGameCommandResult result)
+        /// <summary>이 명령이 지정한 연출 신호를 요구하는지. 어떤 증강이 그런지는 planner가 판정한다.</summary>
+        private bool HasCue(YachtGameCommandResult result, AugmentVfxCue cue)
         {
             if (result?.Events == null || result.Events.Length == 0) return false;
 
@@ -612,7 +649,7 @@ namespace Tessera.Games.AugmentedYacht
             AugmentVfxPlanner.Plan(result.Events, gameSession.State, vfxBuffer);
             for (int i = 0; i < vfxBuffer.Count; i++)
             {
-                if (vfxBuffer[i].Cue == AugmentVfxCue.DiceSmokeSwap) return true;
+                if (vfxBuffer[i].Cue == cue) return true;
             }
             return false;
         }
@@ -649,11 +686,52 @@ namespace Tessera.Games.AugmentedYacht
             SetRollInteraction(CanInitiateRoll());
         }
 
+        /// <summary>
+        /// 동전 3개를 던진다(50 `coin-toss`). 로직은 이미 결과를 반영했고 여기서는 표시를 미룰 뿐이다.
+        /// 주사위는 동전이 노는 동안 킵 줄 포함 전부 숨긴다(<see cref="YachtDiceRoundPresenter.SetVisible"/>이
+        /// 이미 그렇게 동작한다. HandleTurnCompleted 등에서 쓰는 선례를 그대로 재사용한다).
+        /// </summary>
+        private IEnumerator RunCoinTossSequence(int faces, string message)
+        {
+            SetRollInteraction(false);
+            turnDelay?.Pause();
+            dice?.SetVisible(false);
+
+            coinTossVfx ??= new CoinTossVfx();
+            yield return coinTossVfx.Play(faces, centerSectionX);
+
+            if (gameSession == null || dice == null)
+            {
+                coinTossVfx.Cleanup();
+                coinTossRoutine = null;
+                dice?.SetVisible(true);
+                yield break;
+            }
+
+            dice.SyncFromAuthority(gameSession.State.Dice);
+            dice.ApplyValuesToVisuals();
+            dice.SetVisible(true);
+            coinTossVfx.Cleanup();
+
+            if (gameSession.Phase == YachtGamePhase.ScoreSelection)
+                scoreSheet?.ShowCandidateScores(gameSession.CurrentPlayerIndex, gameSession.CurrentCandidates);
+            else
+                scoreSheet?.RefreshAllScores();
+
+            rerollCounterBar?.SetRollsRemaining(gameSession.RollsRemaining, YachtGameSession.MaxRolls);
+            RefreshAugmentPresentation(message);
+            UpdateStatusText(message);
+
+            coinTossRoutine = null;
+            turnDelay?.Resume();
+            SetRollInteraction(CanInitiateRoll());
+        }
+
         public bool SetDieKept(int index, bool kept)
         {
             if (gameSession == null || !gameSession.CanKeepDice) return false;
             if (Phase != PresentationPhase.Settled) return false;
-            if (smokeRoutine != null) return false;
+            if (IsAugmentSequenceRunning) return false;
             if (index < 0 || index >= dice.DiceCount || !dice.HasVisual(index)) return false;
             if (dice.IsKept(index) == kept) return true;
 

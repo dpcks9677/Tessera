@@ -227,7 +227,7 @@ namespace Tessera.Games.Yacht
         public int BaseScore { get; }
         public int FinalScore { get; }
 
-        /// <summary>이번 턴에 사용한 기본 굴림 횟수입니다. 판 뒤집기 같은 추가 굴림은 세지 않습니다.</summary>
+        /// <summary>이번 턴에 사용한 기본 굴림 횟수입니다. 보너스 굴림 포함, 판 뒤집기 무료 굴림 제외</summary>
         public int NormalRollCount { get; }
 
         public IReadOnlyList<YachtDieState> Dice { get; }

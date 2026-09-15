@@ -9,6 +9,51 @@
 
 ---
 
+### 2026-09-15 — Claude (`M17-T24` EditMode·Play Mode 검증 통과, `DONE`)
+
+- 작업 ID: `M17-T24` (시작 상태 `DOING`, 현재 `DONE`)
+- 완료 내용: 새 연출 사양(주사위 숨김·게임 트레이 내부 투척·2초 대기·재표시)을 반영한 코드로 EditMode 전체 재실행. 1204건 중 1200 통과·실패 0·스킵 4(unity-skills 패키지 소속). 사용자가 Play Mode 시각 확인을 통과함(2026-09-15). `M17-T24` 상태를 `DONE`으로 전이
+- 변경 파일: `docs/agent/work_plan.md`(§2 진행 포인터, `M17-T24`·`M17-T13` 행), `docs/agent/m17_vfx_spec.md`(50번 행 효과음 미구현 명시), `docs/reference/augments_specification_and_status.md`(구현 현황 종합·50번 행 `DONE`), `docs/agent/session_log.md`
+- 실행한 검증: EditMode 전체 실행, 사용자 Play Mode 시각 확인
+- 검증 결과: EditMode 1204건 중 1200 통과·실패 0·스킵 4(unity-skills 패키지). Play Mode 시각 확인 통과
+- 새 결정/가정: 효과음(동전 튕김·회전·착지)은 `M17-T24` 완료 조건에서 제외하고 `M17-T13`(증강 사운드·촉각 피드백, `DEFERRED`) 범위로 이관
+- 남은 문제/차단 요소: 없음(효과음은 `M17-T13` 재개 시점으로 이관)
+- 다음 작업: `M17` 남은 `TODO`(`M17-T4`~`M17-T7`, `M17-T9`, `M17-T10`, `M17-T12` 등) 중 사용자 지목 대기
+
+### 2026-09-15 — Claude (`M17-T24` coin-toss 연출 사양 변경: 트레이 내부 배치·주사위 숨김)
+
+- 작업 ID: `M17-T24` (기존 `DOING` 유지)
+- 사용자 요청: coin-toss 연출 사양 변경. 기존 배치(트레이 오른쪽 러너 위, `centerSectionX+5.8/7.6/9.4`, Y `-0.30`, 착지 후 0.8초 유지 뒤 결과 반영, 주사위는 그대로 노출)를 다음으로 교체 — 발동 시 주사위(킵 줄 포함 전체)를 숨기고, 게임 트레이 안(`centerSectionX -1.8/0/+1.8`, Y `= RollSurfaceY(0.2)+0.08`, Z `= TrayCenterZ(-0.3)`)에 동전 3개를 던짐. 착지 후 2초 대기 → 주사위 값 반영 후 재표시 → 동전 숨김(파괴) → 점수표·리롤 바·문구 반영 → 입력 해제. 새 게임 시작으로 연출이 중단되는 경로에서도 주사위 표시를 복구
+- 완료 내용: 문서 사양 갱신(`docs/agent/m17_vfx_spec.md` §3.2 50번 행). 코드 구현도 병행 반영됨 — 주사위 숨김은 기존 `YachtDiceRoundPresenter.SetVisible` 재사용, 신규 테스트 `ResolveAnchorStaysWithinTrayPlayBounds` 추가, `dotnet build` 오류 0. EditMode 검증은 아직 진행 중이며 이 항목은 검증 완료를 의미하지 않음
+- 변경 파일: `docs/agent/m17_vfx_spec.md`, `docs/agent/session_log.md`
+- 실행한 검증: 없음(문서 변경만)
+- 검증 결과: 해당 없음
+- 새 결정/가정: 없음(기존 결정 미변경, 연출 사양 값만 교체)
+- 남은 문제/차단 요소: EditMode 테스트 실행 및 Play Mode 시각 확인 대기
+- 다음 작업: EditMode 테스트 실행 후 Play Mode 시각 확인
+
+### 2026-09-15 — Claude (`M17-T24` coin-toss 증강 로직·동전 스핀 연출 구현)
+
+- 작업 ID: `M17-T24` (신규, `TODO`에서 시작, 현재 `DOING`)
+- 완료 내용: HOLD였던 `coin-toss`(원본 id 50) 증강을 구현. 동전 3개 앞면 수로 분기(0개 −5점, 1개 최저 주사위 6 고정, 2개 이번 턴 리롤 +1, 3개 상단 보너스 기준 min(현재,57)). `CoinToss`/`CoinTossState`(`Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Enhance/CoinToss.cs`)가 `EnhanceAugment`·`IManualActionAugment` 구현. `YachtGameState.BonusRolls`를 신설해 보너스 굴림을 일반 굴림과 분리 기록하고 `Commit`의 `normalRollCount`를 `MaxRolls + BonusRolls − RollsRemaining`으로 재계산해 `NoTimeToWaste` 판정을 보존. `ParchmentScoreSheet`의 상단 보너스 표시 63 하드코딩을 플레이어 `upperBonusThreshold` 참조로 교체(부수적으로 `random-box`(58) 등 표시도 교정됨). 연출은 동전 3개를 해석적으로 굽는 스핀 프리셋 5종(`Tessera/Bake/Coin Spin Presets`, 체공 0.9초·높이 3.0·X축 반바퀴 4/6/8/10/12회·착지 후 0.45초 감쇠 흔들림·30fps, `Assets/Resources/Vfx/CoinSpin/coin_spin_0..4.json`)과 재생기 `Assets/Scripts/Dice/CoinTossVfx.cs`로 구현. `YachtTurnFlowPresenter.RunCoinTossSequence`가 착지 후 주사위·점수·리롤 바·카드 문구를 반영하며 연출 중 입력·턴 타이머 정지. 테스트 신규: `YachtManualActionAugmentTests`(코인 7종), `CoinSpinPresetTests`, `AugmentVfxPlannerTests`. 정의 수 45→46, 드래프트 제외 목록에서 `coin-toss` 제거
+- 변경 파일: 프로덕션·테스트 코드 다수(오케스트레이터 세션 별도 커밋 예정), `docs/agent/work_plan.md`, `docs/agent/m17_vfx_spec.md`, `docs/agent/m7_graphics_spec.md`, `docs/reference/augments_specification_and_status.md`, `docs/archive/augment_migration_matrix.md`, `docs/agent/session_log.md`
+- 실행한 검증: 미실행(EditMode 테스트와 Play Mode 시각 확인 대기)
+- 검증 결과: 대기
+- 새 결정/가정: (1) 동전 스핀 연출은 물리 시뮬레이션 대신 해석적 궤적 베이크 방식 채택(재현성·성능). (2) 보너스 굴림은 `RollsRemaining` 소모와 별도로 `BonusRolls`에 기록해 기존 리롤 카운트 기반 판정(`NoTimeToWaste` 등)을 보존. (3) 점수표 상단 보너스 기준 표시를 하드코딩 63에서 플레이어 실제 임계값 참조로 교정. (4) 코인 프리셋 선택 난수를 판정(코인 결과) 난수와 분리해 시드 기반 결정성 테스트를 보호
+- 남은 문제/차단 요소: EditMode 테스트 미실행, Play Mode 시각 확인(동전 배치 Y/Z 임시값 포함) 대기
+- 다음 작업: `M17-T24` EditMode 테스트 실행 후 Play Mode 시각 확인
+
+### 2026-09-15 — Claude (`M17-T23-7` 2차 재확인 통과, `M17-T23-8` 현행 유지, `M17-T23` 완료)
+
+- 작업 ID: `M17-T23-7`·`M17-T23-8` (시작 상태 각각 `TODO`/재확인 대기·`미착수`, 현재 `DONE`). `M17-T23` 전체 시작 상태 `DOING`, 현재 `DONE`
+- 완료 내용: `tessera-unity-operator`가 `Assets/Scenes/Augmented Dice.unity`에 확인용 코인 인스턴스 2개(`Coin_CheckHead` `(4.4, 2.814, -0.3)` 무회전, `Coin_CheckTail` `(5.6, 2.814, -0.3)` 뒤집음, 둘 다 스케일 0.8·레이어 Decoration)를 배치해 사용자 2차 시각 확인 진행. 씬에 주사위가 런타임 스폰이라 배치 위치는 `DiceBoardMetrics` 상수 역산으로 산출. 사용자 판정: 통과. 코멘트: 리라(뒷면) 실루엣은 잘 안 보이지만 그대로 사용. 확인 후 인스턴스 제거·씬 저장. 이어서 `M17-T23-8` 가독성 후속 판단을 사용자에게 확인한 결과 현행 유지 결정(`MinStrokeTexels`·`CoverageThreshold` 조정, 크기 확대, CrispUI 승격 모두 보류). 코드·에셋 변경 없음(문서만)
+- 변경 파일: `docs/agent/m17_coin_mesh_plan.md`, `docs/agent/work_plan.md`, `docs/agent/session_log.md`
+- 실행한 검증: 없음(코드 변경 없음). 시각 확인은 사용자 직접 수행
+- 검증 결과: `Coin_CheckHead`/`Coin_CheckTail` 시각 확인 통과
+- 새 결정/가정: `M17-T23-8` 가독성 후속 조정(획 굵기·`CoverageThreshold`·크기 확대·CrispUI 256 승격) 전부 보류, 현행 유지. `CrispPathSize = 256` 경로는 미사용으로 남음
+- 남은 문제/차단 요소: `scene_screenshot`이 Game View 미렌더 상태에서 파일을 쓰지 않는 문제가 재발해 `camera_screenshot`(오프스크린 카메라)으로 우회함(도구 자체는 미해결). §8의 `coin.glb`·문양 소스 라이선스는 여전히 미확인
+- 다음 작업: `M17` 남은 `TODO`(`M17-T4`~`M17-T7`, `M17-T9`, `M17-T10`, `M17-T12` 등) 중 사용자 지목 대기
+
 ### 2026-09-14 — Claude (`M17-T23` 코인 메시 반입 계획 수립)
 
 - 작업 ID: `M17-T23` (신규, `TODO`. 하위 `M17-T23-1`만 `DONE`)

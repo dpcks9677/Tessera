@@ -226,6 +226,183 @@ namespace Tessera.Editor.Tests
             Assert.That(code2, Is.EqualTo(YachtCommandErrorCode.AugmentAlreadyUsed));
         }
 
+        [Test]
+        public void CoinToss_ZeroHeads_AppliesFivePointPenalty()
+        {
+            AcquireAugment(YachtAugmentRuntime.CoinTossId);
+
+            // 굴림 전에는 불가
+            state.HasRolled = false;
+            Assert.That(runtime.TryUseCoinToss(state, 0, new SequenceRandom(0, 0, 0), out var code1, out _), Is.False);
+            Assert.That(code1, Is.EqualTo(YachtCommandErrorCode.RollRequired));
+            state.HasRolled = true;
+
+            int before = state.Players[0].augmentBonusScore;
+            Assert.That(runtime.TryUseCoinToss(state, 0, new SequenceRandom(0, 0, 0), out _, out _), Is.True);
+            Assert.That(state.Players[0].augmentBonusScore - before, Is.EqualTo(-5));
+
+            var coinState = (CoinTossState)state.AugmentPlayers[0].States.Find(YachtAugmentRuntime.CoinTossId);
+            Assert.That(coinState.Heads, Is.EqualTo(0));
+            Assert.That(coinState.IsUsed, Is.True);
+
+            // 재사용 불가
+            Assert.That(runtime.TryUseCoinToss(state, 0, new SequenceRandom(0, 0, 0), out var code2, out _), Is.False);
+            Assert.That(code2, Is.EqualTo(YachtCommandErrorCode.AugmentAlreadyUsed));
+        }
+
+        [Test]
+        public void CoinToss_OneHead_SetsLowestDieToSixEvenIfKeptAndBreaksTiesByIndex()
+        {
+            AcquireAugment(YachtAugmentRuntime.CoinTossId);
+            state.HasRolled = true;
+
+            // 슬롯 1, 2가 최저값(1)으로 동점. 슬롯 1은 킵된 상태.
+            state.Dice[0].Value = 3;
+            state.Dice[1].Value = 1;
+            state.Dice[1].IsKept = true;
+            state.Dice[2].Value = 1;
+            state.Dice[3].Value = 5;
+            state.Dice[4].Value = 6;
+
+            Assert.That(runtime.TryUseCoinToss(state, 0, new SequenceRandom(1, 0, 0), out _, out _), Is.True);
+
+            var coinState = (CoinTossState)state.AugmentPlayers[0].States.Find(YachtAugmentRuntime.CoinTossId);
+            Assert.That(coinState.Heads, Is.EqualTo(1));
+
+            // 동점이면 인덱스가 가장 앞선 주사위(슬롯 1)가 6이 된다. 킵 여부와 무관.
+            Assert.That(state.Dice[1].Value, Is.EqualTo(6));
+            Assert.That(state.Dice[2].Value, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void CoinToss_TwoHeads_GrantsOneExtraRoll()
+        {
+            AcquireAugment(YachtAugmentRuntime.CoinTossId);
+            state.HasRolled = true;
+            state.RollsRemaining = 0;
+
+            Assert.That(runtime.TryUseCoinToss(state, 0, new SequenceRandom(1, 1, 0), out _, out _), Is.True);
+
+            var coinState = (CoinTossState)state.AugmentPlayers[0].States.Find(YachtAugmentRuntime.CoinTossId);
+            Assert.That(coinState.Heads, Is.EqualTo(2));
+            Assert.That(state.RollsRemaining, Is.EqualTo(1));
+            Assert.That(state.BonusRolls, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void CoinToss_ThreeHeads_LowersUpperBonusThresholdButNeverRaisesIt()
+        {
+            AcquireAugment(YachtAugmentRuntime.CoinTossId);
+            state.HasRolled = true;
+            state.Players[0].upperBonusThreshold = 58;
+
+            Assert.That(runtime.TryUseCoinToss(state, 0, new SequenceRandom(1, 1, 1), out _, out _), Is.True);
+
+            var coinState = (CoinTossState)state.AugmentPlayers[0].States.Find(YachtAugmentRuntime.CoinTossId);
+            Assert.That(coinState.Heads, Is.EqualTo(3));
+            Assert.That(state.Players[0].upperBonusThreshold, Is.EqualTo(57));
+        }
+
+        [Test]
+        public void CoinToss_ThreeHeads_KeepsAlreadyLowerThreshold()
+        {
+            AcquireAugment(YachtAugmentRuntime.CoinTossId);
+            state.HasRolled = true;
+            state.Players[0].upperBonusThreshold = 55;
+
+            Assert.That(runtime.TryUseCoinToss(state, 0, new SequenceRandom(1, 1, 1), out _, out _), Is.True);
+
+            Assert.That(state.Players[0].upperBonusThreshold, Is.EqualTo(55));
+        }
+
+        [Test]
+        public void CoinToss_ExtraRoll_AllowsRollingAgainAndResetsBonusRollsOnNextTurn()
+        {
+            // StartGame이 드래프트 후보를 섞느라 같은 난수원의 NextInt를 여러 번 소비한다.
+            // 코인 결과만 정확히 통제하려고 NextBool 전용 채널을 쓰는 더블을 쓴다.
+            LocalGameAuthority authority = CreateAugmentedAuthority(new FixedBoolRandom(true, true, false));
+            ExecuteAuthority(authority, YachtCommandType.StartGame, "start");
+            YachtGameState authorityState = authority.CurrentState;
+            authorityState.Draft.IsActive = false;
+            authorityState.Phase = YachtGamePhase.ScoreSelection;
+            authorityState.HasRolled = true;
+            authorityState.RollsRemaining = 0;
+            authorityState.AugmentPlayers[0].OwnedIds = new[] { YachtAugmentRuntime.CoinTossId };
+
+            YachtGameCommandResult use = ExecuteAuthority(
+                authority, YachtCommandType.UseAugmentAction, "coin-toss", augmentId: YachtAugmentRuntime.CoinTossId);
+
+            Assert.That(use.Accepted, Is.True);
+            Assert.That(use.State.RollsRemaining, Is.EqualTo(1));
+            Assert.That(use.State.BonusRolls, Is.EqualTo(1));
+            bool canRoll = use.State.Phase == YachtGamePhase.ScoreSelection && use.State.RollsRemaining > 0;
+            Assert.That(canRoll, Is.True);
+            Assert.That(use.Events, Has.Length.EqualTo(1));
+            Assert.That(use.Events[0].Type, Is.EqualTo(YachtGameEventType.AugmentActionUsed));
+            Assert.That(use.Events[0].CoinFaces, Is.EqualTo(0b011));
+            Assert.That(use.Events[0].Message, Is.EqualTo("코인 토스: 앞면 2개 — 리롤 +1"));
+
+            YachtGameCommandResult commit = ExecuteAuthority(
+                authority, YachtCommandType.CommitScore, "commit", category: ScoreCategory.Aces);
+            Assert.That(commit.Accepted, Is.True);
+            Assert.That(ExecuteAuthority(authority, YachtCommandType.AdvanceTurn, "advance").Accepted, Is.True);
+            Assert.That(authority.CurrentState.BonusRolls, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void CoinToss_ExtraRoll_CountsAsOneRollForNoTimeToWaste()
+        {
+            LocalGameAuthority authority = CreateAugmentedAuthority(new FixedBoolRandom(true, true, false));
+            ExecuteAuthority(authority, YachtCommandType.StartGame, "start");
+            YachtGameState authorityState = authority.CurrentState;
+            authorityState.Draft.IsActive = false;
+            authorityState.Phase = YachtGamePhase.ScoreSelection;
+            authorityState.HasRolled = true;
+            authorityState.RollsRemaining = YachtGameSession.MaxRolls - 1; // 1회 굴림을 소진한 상태
+            authorityState.AugmentPlayers[0].OwnedIds = new[]
+            {
+                YachtAugmentRuntime.CoinTossId,
+                YachtAugmentRuntime.NoTimeToWasteId
+            };
+            authorityState.AugmentPlayers[0].NoTimeRemaining = 3;
+
+            ExecuteAuthority(authority, YachtCommandType.UseAugmentAction, "coin-toss", augmentId: YachtAugmentRuntime.CoinTossId);
+            YachtGameCommandResult commit = ExecuteAuthority(
+                authority, YachtCommandType.CommitScore, "commit", category: ScoreCategory.Aces);
+
+            Assert.That(commit.Accepted, Is.True);
+            Assert.That(commit.State.AugmentPlayers[0].NoTimeFailed, Is.False);
+            Assert.That(commit.State.AugmentPlayers[0].NoTimeRemaining, Is.EqualTo(2));
+        }
+
+        private static LocalGameAuthority CreateAugmentedAuthority(IRandomSource random)
+        {
+            return new LocalGameAuthority(new YachtGameOptions
+            {
+                Mode = YachtGameMode.Augmented,
+                PresetClipCount = 20
+            }, random);
+        }
+
+        private static YachtGameCommandResult ExecuteAuthority(
+            LocalGameAuthority authority,
+            YachtCommandType type,
+            string commandId,
+            ScoreCategory category = default,
+            string augmentId = null)
+        {
+            int playerIndex = authority.CurrentState.CurrentPlayerIndex;
+            return authority.Execute(new YachtGameCommand
+            {
+                CommandId = commandId,
+                ExpectedRevision = authority.CurrentState.Revision,
+                PlayerIndex = playerIndex,
+                Type = type,
+                Category = category,
+                AugmentId = augmentId
+            });
+        }
+
         private sealed class SequenceRandom : IRandomSource
         {
             private readonly int[] values;
@@ -246,6 +423,32 @@ namespace Tessera.Editor.Tests
             }
 
             public bool NextBool() => NextInt(0, 2) == 1;
+        }
+
+        /// <summary>
+        /// NextInt와 NextBool을 별도 채널로 다루는 더블입니다. LocalGameAuthority를 거치는 테스트는
+        /// StartGame의 드래프트 셔플이 NextInt를 얼마나 소비하는지 알 수 없어 코인 결과(NextBool)만
+        /// 정확히 고정하려고 씁니다. NextInt는 굴림·셔플에 쓰이지만 이 더블을 쓰는 테스트들은
+        /// 굴림 결과를 직접 상태에 대입하므로 값은 아무거나 상관없습니다.
+        /// </summary>
+        private sealed class FixedBoolRandom : IRandomSource
+        {
+            private readonly bool[] values;
+            private int index;
+
+            public FixedBoolRandom(params bool[] values)
+            {
+                this.values = values;
+            }
+
+            public int NextInt(int minInclusive, int maxExclusive) => minInclusive;
+
+            public bool NextBool()
+            {
+                bool value = index < values.Length && values[index];
+                index++;
+                return value;
+            }
         }
     }
 }

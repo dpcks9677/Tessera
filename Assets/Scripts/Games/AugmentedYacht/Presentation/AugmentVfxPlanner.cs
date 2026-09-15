@@ -13,7 +13,10 @@ namespace Tessera.Games.AugmentedYacht
         StickerStamp,
 
         /// <summary>연기가 주사위를 가린 사이에 눈이 바뀐다. 56 `dice-alchemy` 전용이다.</summary>
-        DiceSmokeSwap
+        DiceSmokeSwap,
+
+        /// <summary>동전 3개를 던진다. 50 `coin-toss` 전용이다.</summary>
+        CoinToss
     }
 
     public readonly struct AugmentVfxRequest
@@ -76,6 +79,7 @@ namespace Tessera.Games.AugmentedYacht
 
                     case YachtGameEventType.AugmentActionUsed:
                         TryAddDiceSmokeSwap(gameEvent, output);
+                        TryAddCoinToss(gameEvent, output);
                         break;
                 }
             }
@@ -115,6 +119,15 @@ namespace Tessera.Games.AugmentedYacht
         {
             if (!string.Equals(gameEvent.AugmentId, YachtAugmentRuntime.DiceAlchemyId, System.StringComparison.Ordinal)) return;
             output.Add(new AugmentVfxRequest(AugmentVfxCue.DiceSmokeSwap, gameEvent.PlayerIndex, gameEvent.AugmentId, default));
+        }
+
+        /// <summary>50 `coin-toss` 발동 순간 동전 던지기 요청을 냅니다. faces는 이벤트의 <c>CoinFaces</c>를
+        /// 소비 측이 직접 읽으므로 이 요청 struct에는 싣지 않습니다. <see cref="ScoreCategory"/>는 이 큐에서
+        /// 의미가 없어 기본값을 넣습니다.</summary>
+        private static void TryAddCoinToss(YachtGameEvent gameEvent, List<AugmentVfxRequest> output)
+        {
+            if (!string.Equals(gameEvent.AugmentId, YachtAugmentRuntime.CoinTossId, System.StringComparison.Ordinal)) return;
+            output.Add(new AugmentVfxRequest(AugmentVfxCue.CoinToss, gameEvent.PlayerIndex, gameEvent.AugmentId, default));
         }
 
         private static IReadOnlyList<string> OwnedIds(IReadOnlyYachtGameState state, int playerIndex)

@@ -334,7 +334,7 @@ namespace Tessera.Games.AugmentedYacht
             turnFlow.BindProps(parchmentScoreSheet, augmentTray, diceRound, rollCosmicCube, rerollCounterBar,
                 runicSlateMatrix, turnBalanceIndicator, hourglassTimer,
                 hourglassTimer != null ? hourglassTimer.transform : null, sceneRefs.WorldCamera);
-            turnFlow.BindRules(diceCount, presetCatalog != null ? presetCatalog.NormalFiveDiceClipCount : 20, launchMode);
+            turnFlow.BindRules(diceCount, presetCatalog != null ? presetCatalog.NormalFiveDiceClipCount : 20, launchMode, CenterSectionX);
         }
 
         /// <summary>모드가 시작됐다. 트레이 표시와 주사위 색상은 씬 쪽 표현이라 여기서 맞춘다.</summary>
