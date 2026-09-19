@@ -496,9 +496,9 @@ namespace Tessera.Games.AugmentedYacht
             Texture2D warmTex = null;
 
 #if UNITY_EDITOR
-            baseTex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Parchment/parchment_base.png");
-            burntTex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Parchment/parchment_burnt_edge.png");
-            warmTex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Parchment/parchment_warm_sand.png");
+            baseTex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Generated/Parchment/parchment_base.png");
+            burntTex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Generated/Parchment/parchment_burnt_edge.png");
+            warmTex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Generated/Parchment/parchment_warm_sand.png");
 #endif
 
             // Layer 1 (Bottom): -5.2° 회전 / 짙은 에크루 톤 / 그을린 모서리 (테이블 바닥 밀착)
@@ -670,8 +670,8 @@ namespace Tessera.Games.AugmentedYacht
 #if UNITY_EDITOR
             if (fontMain == null)
             {
-                fontMain = UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/alagard.ttf")
-                    ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/m6x11.ttf");
+                fontMain = UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Art/ThirdParty/Fonts/alagard.ttf")
+                    ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Art/ThirdParty/Fonts/m6x11.ttf");
             }
 #endif
             if (fontMain == null) fontMain = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
@@ -1076,7 +1076,7 @@ namespace Tessera.Games.AugmentedYacht
 
             Image img = obj.GetComponent<Image>();
 #if UNITY_EDITOR
-            Sprite sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"Assets/Textures/Parchment/Icons/{iconName}.png");
+            Sprite sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"Assets/Art/Generated/Parchment/Icons/{iconName}.png");
             if (sp != null) img.sprite = sp;
 #endif
             img.color = tint ?? Color.white;

@@ -36,13 +36,13 @@ public static class DiceShapeBaker
     // 글리프는 직접 만든 7세그먼트 메시가 아니라 타이머·점수표와 같은 폰트로 찍는다. 원본 해상도로
     // 합성되므로 UI 글자와 같은 서체를 쓰는 편이 화면에서 하나로 읽힌다. 세로 크기는
     // 대략 `0.07 × fontSize × characterSize` 단위라 아래 값이 약 0.43이 된다.
-    private const string DigitFontPath = "Assets/Fonts/alagard.ttf";
-    private const string DigitFallbackFontPath = "Assets/Fonts/m6x11.ttf";
+    private const string DigitFontPath = "Assets/Art/ThirdParty/Fonts/alagard.ttf";
+    private const string DigitFallbackFontPath = "Assets/Art/ThirdParty/Fonts/m6x11.ttf";
     private const int DigitFontSize = 64;
     private const float DigitCharacterSize = 0.096f;
     private const float PipSurfaceLift = 0.01f;
 
-    private const string DiceModelPath = "Assets/Art/Reference/normal_dice.fbx";
+    private const string DiceModelPath = "Assets/Art/Source/Dice/normal_dice.fbx";
     private const string MeshFolder = "Assets/Art/Generated/Dice";
     private const string PrefabFolder = "Assets/Prefabs/Dice";
 

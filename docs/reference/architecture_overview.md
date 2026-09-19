@@ -124,6 +124,21 @@ Assets/Scripts/
 #### 5) `Tessera.Games.Yacht` & `Tessera.Games.AugmentedYacht`
 - **게임의 심장부**: 순수 도메인 로직(`Logic`)과 화면 표현(`Presentation`)이 엄격하게 분리되어 있습니다.
 
+### 3.1 `Assets/Art/` 디렉터리 구조 (2026-09-19 재편)
+
+`Assets/Art/` 아래 최상위 폴더는 "누가 이 파일을 쓰는가"로 나뉩니다.
+
+```
+Assets/Art/
+├── Source/<도메인>/         # 사람이 만든 원본·베이커 입력 (예: Source/Coin/coin.glb)
+├── ThirdParty/              # 외부 반입 에셋. 라이선스·README를 폴더에 동봉
+└── Generated/<도메인>/<종류>/   # 에디터 베이커 산출물. 재생성 가능, 원본이 아님
+```
+
+- `Resources.Load`가 필요한 생성물은 `Generated/<도메인>/Resources/<이름>/`처럼 `Generated` 안에
+  `Resources` 폴더를 중첩합니다. `Resources.Load` 호출 경로 자체는 `<이름>/...`로 폴더 이동과 무관하게 유지됩니다.
+- 오디오는 `Assets/Audio/Sfx/<도메인>/<종류>/`에 둡니다. 도메인 폴더는 쓰는 소리가 실제로 늘어날 때만 추가합니다.
+
 ---
 
 ## 4. 씬(Scene) 계층 구조 및 런타임 수명 주기

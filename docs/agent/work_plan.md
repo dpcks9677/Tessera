@@ -118,7 +118,7 @@ EOS 또는 Steam 기반 호스트 온라인 연결
 | 주사위 값 결정 | 컨트롤러에 결합됨 | `AugmentedYachtController`가 `UnityEngine.Random` 사용 |
 | 베이킹 프리셋 선택 | 컨트롤러에 결합됨 | 일반 5주사위 프리셋을 직접 선택 |
 | 주사위 킵 상태 | 프레젠테이션 계층에 일부 존재 | 권위 상태로 이동 필요 |
-| 증강 정의 데이터 | 55개 존재 | `Assets/StreamingAssets/WebSource/data/augments.json` |
+| 증강 정의 데이터 | 55개 존재 | `Assets/StreamingAssets/WebSource/data/augments.json` (2026-09-19 디렉터리 재편에서 삭제. 코드에서 읽지 않던 웹 잔재였음) |
 | 증강 카드 트레이 비주얼 | 구현됨 | `Assets/Scripts/Tabletop/AugmentCardTray.cs` |
 | 실제 증강 런타임 | 미구현 | 트리거, 상태, 효과 처리기 필요 |
 | 네트워크 모듈 | 비어 있음 | `Assets/Scripts/Network` |
@@ -587,7 +587,7 @@ Assets/Scripts/Games/AugmentedYacht/AugmentedYachtController.cs
 ### 현재 증강 데이터
 
 ```text
-Assets/StreamingAssets/WebSource/data/augments.json
+Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/YachtAugmentCatalog.cs
 ```
 
 ### 원칙 한 줄 요약

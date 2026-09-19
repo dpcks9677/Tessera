@@ -6,7 +6,7 @@ using UnityEngine;
 
 public static class AugmentScrollAssetGenerator
 {
-    private const string RootFolder = "Assets/Resources/AugmentScrolls";
+    private const string RootFolder = "Assets/Art/Generated/AugmentScrolls/Resources/AugmentScrolls";
     private const string MeshFolder = RootFolder + "/Meshes";
     private const string MaterialFolder = RootFolder + "/Materials";
     private const string PreviewFolder = RootFolder + "/Previews";
@@ -30,7 +30,10 @@ public static class AugmentScrollAssetGenerator
     [MenuItem("Tessera/Graphics/Generate Augment Scroll Assets")]
     public static void Generate()
     {
-        EnsureFolder("Assets/Resources", "AugmentScrolls");
+        EnsureFolder("Assets/Art", "Generated");
+        EnsureFolder("Assets/Art/Generated", "AugmentScrolls");
+        EnsureFolder("Assets/Art/Generated/AugmentScrolls", "Resources");
+        EnsureFolder("Assets/Art/Generated/AugmentScrolls/Resources", "AugmentScrolls");
         EnsureFolder(RootFolder, "Meshes");
         EnsureFolder(RootFolder, "Materials");
         EnsureFolder(RootFolder, "Previews");

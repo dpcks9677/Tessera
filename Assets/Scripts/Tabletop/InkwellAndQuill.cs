@@ -7,7 +7,7 @@ namespace Tessera.Tabletop
     /// 중세 여관/서재 테이블탑 우측 하단을 장식하는 3D 고광택 블랙 세라믹 잉크통과 깃펜 오브젝트
     ///
     /// 잉크통은 프리미티브 원통 5개로 코드에서 만들고, 깃펜은 외부 로우폴리 모델
-    /// <c>Assets/Art/Reference/quill_pen_low.fbx</c>를 인스턴스화해 쓴다. 깃펜을 절차적으로
+    /// <c>Assets/Art/Source/Quill/quill_pen_low.fbx</c>를 인스턴스화해 쓴다. 깃펜을 절차적으로
     /// 만들던 시절에는 깃털 실루엣과 깃가지 틈을 코드 상수로 맞춰야 했는데, 화면이 480x270
     /// 가상 격자로 필터링되는 탓에 그 디테일이 대부분 남지 않아 투자 대비 효과가 없었다.
     /// </summary>
@@ -18,8 +18,8 @@ namespace Tessera.Tabletop
 
         private const string QuillRootName = "Quill Pen Root";
         private const string QuillModelName = "Quill_Model";
-        private const string QuillModelPath = "Assets/Art/Reference/quill_pen_low.fbx";
-        private const string QuillMaterialPath = "Assets/Art/Reference/QuillPen.mat";
+        private const string QuillModelPath = "Assets/Art/Source/Quill/quill_pen_low.fbx";
+        private const string QuillMaterialPath = "Assets/Art/Source/Quill/QuillPen.mat";
 
         /// <summary>
         /// 모델을 <see cref="QuillRootName"/> 로컬 좌표계에 맞추는 배율.

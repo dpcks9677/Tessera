@@ -10,7 +10,7 @@ namespace Tessera.Editor.Tests
     [TestFixture]
     public sealed class CoinMeshBakerTests
     {
-        private const string GlbPath = "Assets/Art/Reference/coin.glb";
+        private const string GlbPath = "Assets/Art/Source/Coin/coin.glb";
 
         private static CoinMeshSplit SplitReferenceCoin()
         {

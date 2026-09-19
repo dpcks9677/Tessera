@@ -20,7 +20,7 @@ namespace Tessera.EditorTools
     /// </summary>
     public static class WoodPlankTextureGenerator
     {
-        private const string OutputDirectory = "Assets/Textures/Wood";
+        private const string OutputDirectory = "Assets/Art/Generated/Wood";
         private const int PlankCount = 4;
         private const int SeedBase = 20260908;
 

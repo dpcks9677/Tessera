@@ -11,8 +11,8 @@ using Tessera.Games.AugmentedYacht;
 public static class BuildDiceGraphicsPoC
 {
     private const string ScenePath = "Assets/Scenes/Augmented Dice.unity";
-    private const string TrayStlPath = "Assets/Art/Reference/yacht-tray.stl";
-    private const string TrayMeshPath = "Assets/Art/Reference/yacht-tray.asset";
+    private const string TrayStlPath = "Assets/Art/Source/Tray/yacht-tray.stl";
+    private const string TrayMeshPath = "Assets/Art/Generated/Tray/yacht-tray.asset";
     [MenuItem("Tools/Tessera/Rebuild Augmented Dice Scene")]
     public static void RebuildScene()
     {
@@ -45,7 +45,7 @@ public static class BuildDiceGraphicsPoC
 
     private static void BuildScene(bool openAfterBuild)
     {
-        GameObject dice = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Reference/normal_dice.fbx");
+        GameObject dice = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Source/Dice/normal_dice.fbx");
         Mesh yachtTray = EnsureYachtTrayMesh();
         Shader shader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/Rendering/Shaders/DicePixelUpscale.shader");
         if (dice == null || yachtTray == null || shader == null)

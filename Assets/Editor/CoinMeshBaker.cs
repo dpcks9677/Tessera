@@ -30,9 +30,9 @@ public sealed class CoinMeshSplit
 
 public static class CoinMeshBaker
 {
-    private const string GlbPath = "Assets/Art/Reference/coin.glb";
-    private const string HeadSourcePath = "Assets/Art/Reference/coin_head_source.png";
-    private const string TailSourcePath = "Assets/Art/Reference/coin_tail_source.png";
+    private const string GlbPath = "Assets/Art/Source/Coin/coin.glb";
+    private const string HeadSourcePath = "Assets/Art/Source/Coin/coin_head_source.png";
+    private const string TailSourcePath = "Assets/Art/Source/Coin/coin_tail_source.png";
     private const string GeneratedFolder = "Assets/Art/Generated/Coin";
     private const string MeshFolder = GeneratedFolder + "/Meshes";
     private const string MaterialFolder = GeneratedFolder + "/Materials";

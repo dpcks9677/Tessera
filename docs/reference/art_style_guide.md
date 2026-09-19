@@ -90,19 +90,19 @@ graph LR
 ## 6. 외부 에셋 출처
 
 프로젝트 대부분의 3D 프롭은 에디터 제너레이터가 절차적으로 만들지만, 일부는 외부에서 가져온
-모델입니다. 개별 모델 파일은 `Assets/Art/Reference/`에 둡니다. 다만 에셋 스토어 패키지처럼
-자체 폴더 구조를 갖고 들어오는 것은 임포트된 폴더를 그대로 두므로, 경로가 이 규칙을 따르지
-않습니다.
+모델입니다. 개별 모델 파일은 `Assets/Art/Source/<도메인>/`에 둡니다. 다만 에셋 스토어 패키지처럼
+자체 폴더 구조를 갖고 들어오는 것은 `Assets/Art/ThirdParty/`에 임포트된 폴더를 그대로 두므로,
+경로가 이 규칙을 따르지 않습니다.
 
 | 에셋 | 출처 | 라이선스 |
 |---|---|---|
 | `quill_pen_low.fbx` | 제3자 로우폴리 깃펜 모델 (`free-quill-pen-lowpoly`) | **미기록.** 내려받은 패키지에 라이선스 파일이 없었습니다. 배포 전에 출처와 이용 조건을 확인해 여기 적어야 합니다 |
 | `normal_dice.fbx` | 자체 제작 (`normal_dice.blend`) | 자체 |
 | `yacht-tray.stl` → `yacht-tray.asset` | 자체 제작 | 자체 |
-| `Assets/msVFX_Free Smoke Effects Pack/` | 제3자 연기 VFX 팩 (`Materials/msVFX_Stylized Smoke 1_Material.mat`, `Prefabs/msVFX_Stylized Smoke 1~4.prefab`, `Textures/msVFX_Stylized Smoke 1_Texture.png`) | **미기록.** 팩 폴더 안에 라이선스·README 파일이 하나도 없습니다. 배포 전에 출처와 이용 조건을 확인해 여기 적어야 합니다 |
-| `Assets/Art/Reference/coin.glb` | **반입 예정(`M17-T23`).** 제3자 동전 3D 모델 (`gold-coin.zip`에서 풀린 Blender glTF 2.0 파일) | 미기록 |
-| `Assets/Art/Reference/coin_head_source.png` | **반입 예정(`M17-T23`).** 사용자 제공 흉상 선화 | 미기록 |
-| `Assets/Art/Reference/coin_tail_source.png` | **반입 예정(`M17-T23`).** 사용자 제공 리라·월계관 선화 | 미기록 |
+| `Assets/Art/ThirdParty/msVFX_Free Smoke Effects Pack/` | 제3자 연기 VFX 팩 (`Materials/msVFX_Stylized Smoke 1_Material.mat`, `Prefabs/msVFX_Stylized Smoke 1~4.prefab`, `Textures/msVFX_Stylized Smoke 1_Texture.png`) | **미기록.** 팩 폴더 안에 라이선스·README 파일이 하나도 없습니다. 배포 전에 출처와 이용 조건을 확인해 여기 적어야 합니다 |
+| `Assets/Art/Source/Coin/coin.glb` | **반입 예정(`M17-T23`).** 제3자 동전 3D 모델 (`gold-coin.zip`에서 풀린 Blender glTF 2.0 파일) | 미기록 |
+| `Assets/Art/Source/Coin/coin_head_source.png` | **반입 예정(`M17-T23`).** 사용자 제공 흉상 선화 | 미기록 |
+| `Assets/Art/Source/Coin/coin_tail_source.png` | **반입 예정(`M17-T23`).** 사용자 제공 리라·월계관 선화 | 미기록 |
 
 > **`quill_pen_low.fbx`의 라이선스 미기록은 배포 전에 반드시 해소해야 하는 항목입니다.**
 > 이 경고는 원래 `Assets/Docs/README.md`에 있었고, 그 문서를 `docs/archive/plans/poc_technical_notes.md`로

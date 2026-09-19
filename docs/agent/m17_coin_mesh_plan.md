@@ -112,7 +112,7 @@ Coin.prefab (root, layer Decoration=11, localScale = WorldDiameter / SourceDiame
 
 ### 4.6 선화 → 동전 면 앨비도 변환 (에디터, 순수 함수)
 
-원본 선화는 `Assets/Art/Reference/coin_head_source.png`(흉상), `coin_tail_source.png`(리라)로 복사해 보존한다. 베이커가 이를 읽어 면 앨비도를 `Assets/Art/Generated/Coin/Textures/coin_{head,tail}_albedo.png`로 굽는다. 원본은 덮어쓰지 않는다.
+원본 선화는 `Assets/Art/Source/Coin/coin_head_source.png`(흉상), `coin_tail_source.png`(리라)로 복사해 보존한다. 베이커가 이를 읽어 면 앨비도를 `Assets/Art/Generated/Coin/Textures/coin_{head,tail}_albedo.png`로 굽는다. 원본은 덮어쓰지 않는다.
 
 변환 단계(`CoinFaceTextureConverter`, 입력 `Color32[]`·크기 → 출력 `Color32[]`):
 1. **잉크 마스크**: `alpha ≥ 128 && 휘도 < 128` 이면 잉크.
@@ -140,8 +140,8 @@ Coin.prefab (root, layer Decoration=11, localScale = WorldDiameter / SourceDiame
 
 | 경로 | 역할 |
 |---|---|
-| `Assets/Art/Reference/coin.glb` | 메시 소스 복사본. Unity는 DefaultAsset으로 두고 베이커가 `File.ReadAllBytes`로 읽음 |
-| `Assets/Art/Reference/coin_head_source.png`, `coin_tail_source.png` | 사용자 선화 원본(`Downloads/head.png`, `tail.png`) |
+| `Assets/Art/Source/Coin/coin.glb` | 메시 소스 복사본. Unity는 DefaultAsset으로 두고 베이커가 `File.ReadAllBytes`로 읽음 |
+| `Assets/Art/Source/Coin/coin_head_source.png`, `coin_tail_source.png` | 사용자 선화 원본(`Downloads/head.png`, `tail.png`) |
 | `Assets/Editor/CoinGlbReader.cs` | glb → 축 변환된 프리미티브 배열. 순수 함수 |
 | `Assets/Editor/CoinFaceTextureConverter.cs` | 선화 → 면 앨비도 픽셀. 순수 함수 |
 | `Assets/Editor/CoinMeshBaker.cs` | 메뉴 `Tessera/Bake/Coin Model`. 분할·재투영(순수 static) + mesh/mat/png/prefab 저장. 자동 호출 안 함 |

@@ -9,6 +9,34 @@
 
 ---
 
+### 2026-09-19 — Claude (아트·오디오 디렉터리 재편 및 미사용 에셋 정리)
+
+- 작업 ID: 없음. 마일스톤·태스크로 기록하지 않고 세션 로그로만 남긴다(사용자 결정)
+- 동기: 아트 리소스가 `Art/`, `Textures/`, `Fonts/`, `Resources/`, 루트 msVFX 팩, `StreamingAssets/WebSource/` 여섯 곳에 흩어져 있었음
+- 새 규칙: `Assets/Art/{Source,ThirdParty,Generated}/<도메인>/`. 출처(누가 이 파일을 쓰는가) 기준으로 최상위를 나눈다. `Resources.Load` 대상 생성물은 `Generated/<도메인>/` 안에 중첩 `Resources/` 폴더를 둔다. 오디오는 `Assets/Audio/Sfx/<도메인>/<종류>/`
+- 선행 커밋: `eb7a85e`로 기존 미커밋 에디터 재직렬화 변경분을 먼저 분리
+- 이동: Unity `asset_move`로 60건 이동, GUID 보존 확인. 폴더 20개 신설
+- 삭제 41건. 판정 규칙은 GUID·C# 문자열 경로·`Resources.Load` 이름·`StreamingAssets` 파일 IO 네 경로 모두에 참조가 없는 것. 예외로 `Art/Source` 원본과 msVFX 팩은 보존
+  - 효과음 `roll_45.mp3`·`scoreboard.mp3`·`turn_change.mp3` (코드 참조 없음)
+  - `WebSource/ui/`, `textures/`(14개), `models/yacht-tray.stl`, `data/augments.json` (읽는 코드 없음. 웹 프로젝트 잔재)
+  - `runner_emerald_ribbon.png`, `runner_emerald_wide.png`, `score_sheet_grid.png`, `wood_grain_knots.png` (참조 없음)
+  - `Dice_Digit_1~6.mesh` (현재 `DiceShapeBaker`가 생성하지 않는 옛 산출물)
+  - AugmentScrolls 메시 16개 (`_PaperFrontAndUnderside`·`_RolledInnerLayers`·`_SealBand`·`_WaxSeal`, 프리셋 프리팹이 참조하지 않는 옛 파트)
+  - `Readme.asset`, `normal_dice.blend.bak`, `normal_dice.blend1`, 빈 `Screenshots/`
+  - 보존: `SampleSceneProfile.asset`(RP 에셋이 참조), `InputSystem_Actions`(`EditorBuildSettings`가 참조), Tabletop 머티리얼·메시·텍스처 149개(전부 사용 중)
+- 코드: C# 경로 문자열 약 20개 파일 교체. `AugmentScrollAssetGenerator`는 다단계 폴더 생성으로 변경. `YachtAudioService`를 `StreamingAssets` + `UnityWebRequest` 로딩에서 직렬화 필드 `rollClips`/`impactClips`로 전환하고 `PublishClips()`를 추가해 컨트롤러 `Start`에서 호출. 씬 `Dice Graphics PoC`에 `YachtAudioService` 컴포넌트를 붙이고 클립 8개 할당. 오디오 임포트는 DecompressOnLoad·Vorbis·Force To Mono
+- `.gitignore`에 `*.blend1`, `*.blend.bak`(및 `.meta`) 추가
+- 문서: `docs/reference`·`docs/agent` 문서의 경로를 갱신하고 `architecture_overview.md` §3.1을 신설. 시점 기록 문서(session_log 과거 항목, decisions, completed, archive)는 미수정
+- 검증: 컴파일 에러 0. 누락 참조 0(씬·프리팹·머티리얼 117개 파일, 참조 GUID 264개 대조). EditMode Tessera 328/328 통과(29개 클래스). 패키지 `UnitySkills.Tests.*` 860개 중 3 실패·6 스킵은 패키지 소속(타임아웃·csproj 공유 위반). Play 모드 Console 에러·경고 0, `YachtAudioService`·`BakedDiceController` 클립 4/4·4/4, 판자·양피지 텍스처, HUD 폰트 Mulmaru, `Quill_Model` 로드 확인. 시각 확인 생략(전 항목 조회로 확인)
+- 알려진 문제·후속:
+  - 런타임 스크립트 6개가 `#if UNITY_EDITOR` `AssetDatabase`로만 텍스처·폰트·모델을 로드해 플레이어 빌드에서 null (별건)
+  - `AugmentScrollModel.cs:438` `Resources.Load("Parchment/parchment_base")` 폴백은 원래부터 죽은 코드
+  - `ProcessRunnerTexture`는 저장소 밖 개인 경로를 읽어 다른 환경에서 실행 불가
+  - `Packages/manifest.json`의 `testables`에 `com.besty.unity-skills`가 되살아나 있어 EditMode 전체 실행에 패키지 테스트 860개가 섞임(원래 의도적으로 제거했던 항목. 커밋 `eb7a85e`에 포함됨)
+  - `AugmentCardViewTests`는 단독 실행 시 `QuestCard_*` 5개가 TMP 아틀라스 파괴로 실패, 전체 스위트에서는 통과
+- 변경 파일: 이동/삭제된 에셋 60+41건, C# 경로 문자열 약 20개 파일, 씬 `Dice Graphics PoC`, `.gitignore`, `docs/reference/architecture_overview.md`, `docs/reference/art_style_guide.md`, `docs/reference/augments_specification_and_status.md`, `docs/agent/work_plan.md`, `docs/agent/m17_coin_mesh_plan.md`, `docs/agent/m7_graphics_spec.md`, `docs/agent/session_log.md`
+- 다음 작업: 미지정
+
 ### 2026-09-14 — Claude (`M17-T23` 코인 메시 반입 계획 수립)
 
 - 작업 ID: `M17-T23` (신규, `TODO`. 하위 `M17-T23-1`만 `DONE`)

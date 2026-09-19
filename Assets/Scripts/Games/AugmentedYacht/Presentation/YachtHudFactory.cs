@@ -73,9 +73,9 @@ namespace Tessera.Games.AugmentedYacht
             Text text = textObject.GetComponent<Text>();
             Font font = null;
 #if UNITY_EDITOR
-            font = UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/Mulmaru.ttf")
-                ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/alagard.ttf")
-                ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/m6x11.ttf");
+            font = UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Art/ThirdParty/Fonts/Mulmaru.ttf")
+                ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Art/ThirdParty/Fonts/alagard.ttf")
+                ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Art/ThirdParty/Fonts/m6x11.ttf");
 #endif
             text.font = font ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             if (text.font != null && text.font.material != null && text.font.material.mainTexture != null)

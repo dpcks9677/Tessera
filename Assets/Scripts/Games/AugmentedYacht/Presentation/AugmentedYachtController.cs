@@ -117,7 +117,7 @@ namespace Tessera.Games.AugmentedYacht
             if (diceModel == null)
             {
 #if UNITY_EDITOR
-                diceModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Reference/normal_dice.fbx");
+                diceModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Source/Dice/normal_dice.fbx");
 #endif
             }
 #if UNITY_EDITOR
@@ -202,7 +202,7 @@ namespace Tessera.Games.AugmentedYacht
 
         private void Start()
         {
-            StartCoroutine(audioService.LoadClipsAsync());
+            audioService.PublishClips();
         }
 
         private void Update()

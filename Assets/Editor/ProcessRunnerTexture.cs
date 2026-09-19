@@ -11,7 +11,7 @@ namespace Tessera.EditorTools
         public static void CleanWideRunner()
         {
             string sourceJpgPath = @"C:\Users\dpcks\.gemini\antigravity-ide\brain\6b8818f8-d7b5-4a55-aff0-19fd94c1649c\stylized_emerald_runner_wide_1786809081381.jpg";
-            string destPngPath = Path.Combine(Application.dataPath, "Textures", "Backgrounds", "runner_emerald_wide.png");
+            string destPngPath = Path.Combine(Application.dataPath, "Art", "Generated", "Backgrounds", "runner_emerald_wide.png");
             string publicPngPath = Path.Combine(Application.dataPath, "..", "preset-studio", "public", "textures", "backgrounds", "runner_emerald_wide.png");
 
             if (!File.Exists(sourceJpgPath))
@@ -136,8 +136,8 @@ namespace Tessera.EditorTools
             Object.DestroyImmediate(sourceTex);
             Object.DestroyImmediate(resultTex);
 
-            AssetDatabase.ImportAsset("Assets/Textures/Backgrounds/runner_emerald_wide.png", ImportAssetOptions.ForceUpdate);
-            TextureImporter importer = AssetImporter.GetAtPath("Assets/Textures/Backgrounds/runner_emerald_wide.png") as TextureImporter;
+            AssetDatabase.ImportAsset("Assets/Art/Generated/Backgrounds/runner_emerald_wide.png", ImportAssetOptions.ForceUpdate);
+            TextureImporter importer = AssetImporter.GetAtPath("Assets/Art/Generated/Backgrounds/runner_emerald_wide.png") as TextureImporter;
             if (importer != null)
             {
                 importer.alphaIsTransparency = true;

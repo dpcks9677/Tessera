@@ -11,9 +11,9 @@ namespace Tessera.EditorTools
     [InitializeOnLoad]
     public static class FontFallbackSetup
     {
-        private const string MulmaruPath = "Assets/Fonts/Mulmaru.ttf";
-        private const string AlagardPath = "Assets/Fonts/alagard.ttf";
-        private const string M6x11Path = "Assets/Fonts/m6x11.ttf";
+        private const string MulmaruPath = "Assets/Art/ThirdParty/Fonts/Mulmaru.ttf";
+        private const string AlagardPath = "Assets/Art/ThirdParty/Fonts/alagard.ttf";
+        private const string M6x11Path = "Assets/Art/ThirdParty/Fonts/m6x11.ttf";
 
         static FontFallbackSetup()
         {

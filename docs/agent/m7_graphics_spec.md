@@ -195,7 +195,7 @@ M5에서는 규칙 검증을 위한 최소 표시와 임시 리소스만 사용�
 - 사용자 요청/결정: 2D 이미지 방식 대신 제공된 레퍼런스를 바탕으로 일부가 말린 채 펼쳐진 3D 스크롤 오브젝트를 제작하고, 말린 부분 중앙에 밀랍 인장을 배치하며 종이 질감을 강화함
 - 완료 내용: 가로형 슬롯에 맞춘 펼쳐진 양면 본체, 탑다운에서 단면이 보이는 2중 나선 롤, 중앙 밀랍 인장·밴드·리본, 오버레이 안전 영역을 구현함. 종이 Base Color와 URP Lit 재질을 제작하고 정적 메시·재질·프리팹 5종을 생성해 보유 카드 런타임에 연결함
 - 계획 문서: 이 문서 부록 C
-- 변경 파일: `Assets/Scripts/Games/AugmentedYacht/AugmentScrollModel.cs`, `Assets/Editor/AugmentScrollAssetGenerator.cs`, `Assets/Resources/AugmentScrolls`, `Assets/Scripts/Games/AugmentedYacht/AugmentTrayCardView.cs`, 카드 전용 EditMode 테스트
+- 변경 파일: `Assets/Scripts/Games/AugmentedYacht/AugmentScrollModel.cs`, `Assets/Editor/AugmentScrollAssetGenerator.cs`, `Assets/Art/Generated/AugmentScrolls/Resources/AugmentScrolls`, `Assets/Scripts/Games/AugmentedYacht/AugmentTrayCardView.cs`, 카드 전용 EditMode 테스트
 - 실행한 검증: 격리된 Unity 프로젝트 스크립트 컴파일, 정적 프리팹 5종 생성, 메시·UV·노멀·탄젠트 및 인장·오버레이 앵커 테스트 추가, 변경 파일 정적 검사
 - 검증 결과: Unity 컴파일 오류 0개, 프리팹 5종과 구성 메시 25개 생성 성공. 재검증에서 카드·양피지 전용 EditMode 23/23, 전체 EditMode 59/59 통과. Play Mode에서 프리셋 0·2·4의 보유 카드 3장, 카드당 메시 5개, 중앙 인장, 오버레이 활성 및 일반 모드 비활성을 확인함
 - 검증 캡처: `Assets/Screenshots/m7_t4_3d_scroll_validation.png`
@@ -621,7 +621,7 @@ M7 관련 문서가 네 개로 흩어져 있어 무엇이 기준인지 찾기 �
   - 종이 앞/뒤, 가죽, 밀랍, 내부 시안 선 재질을 생성한다.
   - 4종 프리팹과 선택 창용 정면 프리뷰 스프라이트를 같은 원본에서 함께 베이크한다.
   - 기존 5번째 프리팹은 새 프리셋 생성 검증이 끝난 뒤 제거한다.
-- `Assets/Resources/AugmentScrolls`
+- `Assets/Art/Generated/AugmentScrolls/Resources/AugmentScrolls`
   - 프리팹 4종, 공통 재질, 메시, 프리뷰 스프라이트를 저장한다.
 
 ##### 6.3 런타임 연결과 프리셋 이관
@@ -889,7 +889,7 @@ Augment Scroll Root
 #### 10. 구현 결과
 
 - `AugmentScrollModelFactory`가 펼친 양면 종이, 2중 나선 롤, 인장 밴드, 리본 꼬리, 불규칙 밀랍 인장과 오버레이 앵커를 생성한다.
-- `AugmentScrollAssetGenerator`가 위 결과를 `Resources/AugmentScrolls` 아래의 정적 메시·재질·프리팹 5종으로 굽는다.
+- `AugmentScrollAssetGenerator`가 위 결과를 `Assets/Art/Generated/AugmentScrolls/Resources/AugmentScrolls` 아래의 정적 메시·재질·프리팹 5종으로 굽는다. `Resources.Load` 경로 자체는 `AugmentScrolls/...`로 불변이다.
 - 런타임은 프리셋 ID에 맞는 정적 프리팹을 우선 인스턴스화하고, 에셋 누락 시에만 같은 구조를 임시 생성한다.
 - 종이 Base Color는 레퍼런스의 오래된 섬유·넓은 얼룩·가장자리 변색을 새로 해석해 제작했으며 URP Lit 재질에 `Metallic 0`, `Smoothness 0.08~0.11`로 연결했다.
 - 보유 카드 정보는 펼쳐진 본문 안전 영역의 4개 앵커를 `Pixel Presentation`에 투영하며, 말린 부분과 밀랍 인장을 가리지 않는다.

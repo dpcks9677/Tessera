@@ -128,6 +128,12 @@ yarn-error.log*
 /[Aa]ssets/_Recovery/
 /[Aa]ssets/_Recovery.meta
 
+# Blender 자동 백업. 원본 .blend만 추적한다.
+*.blend1
+*.blend1.meta
+*.blend.bak
+*.blend.bak.meta
+
 # Unity가 만드는 빈 임시 폴더. 내용물이 없고 추적할 가치가 없다.
 /[Aa]ssets/Temp/
 /[Aa]ssets/Temp.meta

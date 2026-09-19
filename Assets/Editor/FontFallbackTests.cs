@@ -10,17 +10,17 @@ namespace Tessera.Editor.Tests
         [Test]
         public void MulmaruFontAssetExistsInProject()
         {
-            Font mulmaru = AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/Mulmaru.ttf");
-            Assert.That(mulmaru, Is.Not.Null, "Assets/Fonts/Mulmaru.ttf 에셋이 로드되지 않았습니다.");
+            Font mulmaru = AssetDatabase.LoadAssetAtPath<Font>("Assets/Art/ThirdParty/Fonts/Mulmaru.ttf");
+            Assert.That(mulmaru, Is.Not.Null, "Assets/Art/ThirdParty/Fonts/Mulmaru.ttf 에셋이 로드되지 않았습니다.");
         }
 
         [Test]
         public void AlagardFontFallbackContainsMulmaru()
         {
-            Font mulmaru = AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/Mulmaru.ttf");
+            Font mulmaru = AssetDatabase.LoadAssetAtPath<Font>("Assets/Art/ThirdParty/Fonts/Mulmaru.ttf");
             Assert.That(mulmaru, Is.Not.Null);
 
-            TrueTypeFontImporter importer = AssetImporter.GetAtPath("Assets/Fonts/alagard.ttf") as TrueTypeFontImporter;
+            TrueTypeFontImporter importer = AssetImporter.GetAtPath("Assets/Art/ThirdParty/Fonts/alagard.ttf") as TrueTypeFontImporter;
             Assert.That(importer, Is.Not.Null, "alagard.ttf의 TrueTypeFontImporter를 가져올 수 없습니다.");
 
             // .meta YAML의 키는 fallbackFontReferences지만 직렬화 프로퍼티 이름은 다르다.
@@ -34,10 +34,10 @@ namespace Tessera.Editor.Tests
         [Test]
         public void M6x11FontFallbackContainsMulmaru()
         {
-            Font mulmaru = AssetDatabase.LoadAssetAtPath<Font>("Assets/Fonts/Mulmaru.ttf");
+            Font mulmaru = AssetDatabase.LoadAssetAtPath<Font>("Assets/Art/ThirdParty/Fonts/Mulmaru.ttf");
             Assert.That(mulmaru, Is.Not.Null);
 
-            TrueTypeFontImporter importer = AssetImporter.GetAtPath("Assets/Fonts/m6x11.ttf") as TrueTypeFontImporter;
+            TrueTypeFontImporter importer = AssetImporter.GetAtPath("Assets/Art/ThirdParty/Fonts/m6x11.ttf") as TrueTypeFontImporter;
             Assert.That(importer, Is.Not.Null, "m6x11.ttf의 TrueTypeFontImporter를 가져올 수 없습니다.");
 
             // .meta YAML의 키는 fallbackFontReferences지만 직렬화 프로퍼티 이름은 다르다.

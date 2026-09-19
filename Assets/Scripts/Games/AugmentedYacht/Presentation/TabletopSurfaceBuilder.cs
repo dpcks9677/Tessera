@@ -155,7 +155,7 @@ namespace Tessera.Games.AugmentedYacht
                 Texture2D woodTexture = null;
 #if UNITY_EDITOR
                 woodTexture = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(
-                    $"Assets/Textures/Wood/wood_plank_{i + 1}.png");
+                    $"Assets/Art/Generated/Wood/wood_plank_{i + 1}.png");
 #endif
 
                 // 텍스처가 색을 통째로 들고 있다. 판자별 색을 곱하면 이중 착색이 되므로 흰색을 준다.

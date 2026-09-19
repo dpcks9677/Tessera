@@ -10,7 +10,7 @@ namespace Tessera.Editor.Tests
     [TestFixture]
     public sealed class CoinGlbReaderTests
     {
-        private const string GlbPath = "Assets/Art/Reference/coin.glb";
+        private const string GlbPath = "Assets/Art/Source/Coin/coin.glb";
 
         [Test]
         public void ReadsBothPrimitivesWithExpectedCounts()

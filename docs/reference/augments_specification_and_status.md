@@ -535,8 +535,9 @@ public sealed class NoTimeToWasteState : IAugmentState, IAugmentProgressText
 ```
 
 **ScriptableObject 기반 데이터 주도 설계는 쓰지 않습니다.** 증강 45종은 전부 C# 코드로 정의돼 있고,
-증강용 `.asset` 파일은 하나도 없습니다. `Assets/StreamingAssets/WebSource/data/augments.json`에 원본
-기획 데이터 55개 항목이 남아 있지만 런타임 코드는 이 파일을 읽지 않습니다. 출처 참고용입니다.
+증강용 `.asset` 파일은 하나도 없습니다. 원본 기획 데이터 55개 항목을 담고 있던
+`Assets/StreamingAssets/WebSource/data/augments.json`은 런타임 코드가 읽지 않는 웹 잔재였고
+2026-09-19 디렉터리 재편에서 삭제됐습니다.
 
 ---
 
@@ -835,9 +836,9 @@ private static int RequiredDiceSlots(string augmentId)
 
 > **배제 방법은 블랙리스트가 아닙니다.** HOLD 4종과 아래 CUT 6종을 걸러 내는 코드는 없습니다.
 > `YachtAugmentCatalog.Handlers` 배열에 인스턴스가 없으면 드래프트 후보 생성 단계에서 애초에 조회되지
-> 않으므로 자동으로 빠집니다 (2장 5절 참조). 원본 기획 메타데이터는
-> `Assets/StreamingAssets/WebSource/data/augments.json`에 55개 항목 그대로 남아 있으나 런타임 코드는
-> 이 파일을 읽지 않습니다. 구현 45종 + HOLD 4종 + CUT 6종 = 55종입니다.
+> 않으므로 자동으로 빠집니다 (2장 5절 참조). 원본 기획 메타데이터 55개 항목을 담고 있던
+> `Assets/StreamingAssets/WebSource/data/augments.json`은 런타임 코드가 읽지 않는 웹 잔재였고
+> 2026-09-19 디렉터리 재편에서 삭제됐습니다. 구현 45종 + HOLD 4종 + CUT 6종 = 55종입니다.
 
 | No | ID | 이름 | 보류 사유 및 향후 리워크 계획 |
 |:---:|---|---|---|
