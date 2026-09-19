@@ -65,6 +65,18 @@ GET  http://127.0.0.1:<port>/jobs/{id}                       # 비동기 잡 폴
 
 **트랜스폼 값의 공간을 확인하십시오.** `gameobject_get_info` 의 `scale` 은 **로컬** 스케일입니다. 월드 `lossyScale` 은 부모 체인을 직접 곱해야 나옵니다. 로컬 위치·회전은 직접 조회되지 않으므로 부모의 월드 트랜스폼으로 역산해야 하며, 부모에 회전이나 균일하지 않은 스케일이 있으면 단순 덧셈·나눗셈으로는 틀립니다. 보고할 때 어느 공간의 값인지 반드시 명시하십시오.
 
+**`asset_refresh` 는 빈 바디로 부르면 411 입니다.** `curl -X POST` 에 바디가 없으면 `Length Required` 로 거부됩니다. `-d '{}'` 를 붙이십시오.
+
+**`asset_move` / `asset_delete` 는 폴더 경로를 받으면 재귀로 처리합니다.** 폴더째 옮길 때 파일을 하나씩 나열할 필요가 없습니다. GUID 는 보존됩니다.
+
+**`asset_create_folder` 는 부모가 없으면 실패합니다.** 여러 단계 폴더를 만들 때는 깊이 순서대로 배치를 나누십시오. 한 배치에 깊이를 섞으면 부모 없음 에러가 납니다.
+
+**배열 필드는 크기부터 정합니다.** `component_set_serialized_property` 로 배열을 채울 때 먼저 `"<field>.Array.size"` 를 설정하고, 그다음 `"<field>.Array.data[i]"` 에 `assetPath` 로 원소를 넣습니다. 크기를 건너뛰면 인덱스가 없어 실패합니다.
+
+**`python3` 를 쓰지 마십시오.** 이 환경의 `python3` 는 Windows Store 스텁이라 exit code 49 로 항상 실패합니다. JSON 은 PowerShell `Invoke-RestMethod` / `ConvertFrom-Json` 으로 다룹니다. Python 이 꼭 필요하면 `C:\Users\dpcks\AppData\Local\Programs\Python\Python312\python.exe` 를 직접 부르십시오.
+
+**GUID 대조는 인덱스를 한 번만 만드십시오.** `Library/PackageCache` 재귀 검색은 Windows 에서 수 분 걸립니다. 참조 guid 마다 검색하지 말고 `Assets/**/*.meta`·`Library/PackageCache/**/*.meta`·`Packages/**/*.meta` 의 guid 전체를 한 번 모아 대조하십시오.
+
 ## 안전 규칙
 
 ### 파괴적 조작 전에 dryRun

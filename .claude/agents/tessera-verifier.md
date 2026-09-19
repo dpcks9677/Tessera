@@ -40,7 +40,7 @@ curl -s -m 60 -X POST http://127.0.0.1:<port>/skill/debug_check_compilation \
 
 ### 3. 실행 상태 확인
 
-`scene_get_info` 로 `isDirty` 를, `editor_playmode_inspect` 로 Play Mode 여부(`isPlaying`, `isPaused`)를 확인합니다. **`scene_get_info` 는 Play Mode 여부를 드러내지 않습니다.** 이것만 보고 넘어가면 일시정지된 Play Mode에서 `test_run` 이 "An unexpected error happened while running tests" 로 즉시 실패하고, 원인은 콘솔의 `This cannot be used during play mode` 에서야 드러납니다. Play Mode 중이면 `test_run` 이 `InvalidOperationException: This cannot be used during play mode` 로 실패합니다. 씬이 dirty 해도 테스트가 막힌 전례가 있습니다. 둘 중 하나라도 해당하면 보고하고 사용자 판단을 요청합니다.
+`scene_get_info` 로 `isDirty` 를, `editor_playmode_inspect` 로 Play Mode 여부(`isPlaying`, `isPaused`)를 확인합니다. `editor_playmode_inspect` 는 `target` 이 필수라 `{}` 로는 답하지 않습니다. 씬에 실재하는 오브젝트 이름을 `name` 에 넣으십시오. **`scene_get_info` 는 Play Mode 여부를 드러내지 않습니다.** 이것만 보고 넘어가면 일시정지된 Play Mode에서 `test_run` 이 "An unexpected error happened while running tests" 로 즉시 실패하고, 원인은 콘솔의 `This cannot be used during play mode` 에서야 드러납니다. Play Mode 중이면 `test_run` 이 `InvalidOperationException: This cannot be used during play mode` 로 실패합니다. 씬이 dirty 해도 테스트가 막힌 전례가 있습니다. 둘 중 하나라도 해당하면 보고하고 사용자 판단을 요청합니다.
 
 ### 4. 테스트 실행
 
@@ -60,7 +60,7 @@ Test Runner는 직렬화돼 있습니다. 진행 중인 실행이 있는데 두 
 
 **테스트 파일을 새로 추가한 직후에는 디스커버리 캐시를 먼저 갱신하십시오.** Test Runner의 디스커버리 결과는 캐시되며 새 컴파일 결과를 바로 반영하지 않습니다. 갱신하지 않으면 `test_run` 이 새 테스트를 뺀 이전 개수만 돌려주어 "신규 테스트가 통째로 누락된" 것처럼 보이고, `test_run_by_name` 으로 새 클래스를 지목하면 `Test filter did not match any cached discovery result` 경고와 함께 `did not leave 'starting' within 90 seconds` 로 타임아웃됩니다. 둘 다 코드 결함이 아니므로 구현을 의심하기 전에 `test_discover_start` 로 디스커버리를 갱신하고 개수가 늘어난 것을 확인한 뒤 다시 실행합니다.
 
-범위가 좁은 검증이면 클래스 단위가 훨씬 빠르고 안전합니다.
+범위가 좁은 검증이면 클래스 단위가 훨씬 빠르고 안전합니다. 예외: `AugmentCardViewTests` 는 단독 실행하면 `QuestCard_*` 5개가 `MissingReferenceException: Texture2D has been destroyed`(TMP 폰트 아틀라스)로 재현성 있게 실패하지만 전체 스위트에서는 통과합니다. 이 클래스는 전체 실행 결과로 판정하십시오.
 
 ```bash
 curl -s -m 60 -X POST http://127.0.0.1:<port>/skill/test_run_by_name \
@@ -69,9 +69,9 @@ curl -s -m 60 -X POST http://127.0.0.1:<port>/skill/test_run_by_name \
 
 ### 5. 결과 판정
 
-**이 프로젝트에는 `.asmdef` 가 하나도 없습니다.** 모든 런타임 코드가 `Assembly-CSharp`, 모든 `Assets/Editor` 코드가 `Assembly-CSharp-Editor` 로 들어갑니다. 테스트는 `Assets/Editor/` 의 27개 클래스, 249개입니다.
+**이 프로젝트에는 `.asmdef` 가 하나도 없습니다.** 모든 런타임 코드가 `Assembly-CSharp`, 모든 `Assets/Editor` 코드가 `Assembly-CSharp-Editor` 로 들어갑니다. 테스트는 `Assets/Editor/` 에 있으며 2026-09-19 기준 29개 클래스, 328개입니다. 테스트가 계속 추가되므로 이 수치를 기준값으로 인용하지 말고 `test_discover_start` → `test_discover_get_result` 의 `fullName` 을 집계해 실측하십시오. `test_run` 의 `filter` 는 어셈블리명을 받지 않습니다. 넣으면 `Test filter did not match any cached discovery result` 로 0건 매칭된 채 멈춥니다.
 
-전체 EditMode 실행은 이 249개뿐입니다. `Packages/manifest.json` 에서 `testables` 항목을 제거했기 때문에 `com.besty.unity-skills` 패키지 자체 테스트(약 626개)는 실행되지 않습니다. 따라서 **걸러낼 대상이 없고, 실패는 전부 이 저장소 책임입니다.** 스킵도 0건이어야 합니다. Tessera 코드에는 `[Ignore]` 나 `Assert.Ignore` 가 한 건도 없습니다.
+전체 EditMode 실행은 이 저장소 테스트뿐입니다. `Packages/manifest.json` 에서 `testables` 항목을 제거했기 때문에 `com.besty.unity-skills` 패키지 자체 테스트(약 626개)는 실행되지 않습니다. 따라서 **걸러낼 대상이 없고, 실패는 전부 이 저장소 책임입니다.** 스킵도 0건이어야 합니다. Tessera 코드에는 `[Ignore]` 나 `Assert.Ignore` 가 한 건도 없습니다.
 
 결과에 `UnitySkills.Tests.Core` 가 나타나면 패키지 재설치나 버전 갱신으로 `manifest.json` 의 `testables` 가 되살아난 것입니다. 그 사실을 보고하십시오.
 
@@ -102,6 +102,10 @@ curl -s -m 120 -X POST http://127.0.0.1:<port>/skill/scene_screenshot \
 ```
 
 `filename` 은 경로 구분자 없는 순수 파일명이어야 하며 `Assets/Screenshots/` 에 저장됩니다. 비동기라 약 1프레임 뒤에 파일이 생기므로 읽기에 실패하면 200ms 후 재시도합니다.
+
+`editor_play` 는 도메인 리로드를 일으켜 서버가 15~20초 응답하지 않습니다. 그동안 걸린 요청은 타임아웃되므로 포트를 다시 탐색하며 재시도하십시오.
+
+Play Mode 중 배열 필드 값을 볼 때 `component_get_properties` 는 `"UnityEngine.AudioClip[]"` 처럼 타입명만 돌려줍니다. 원소 개수와 null 여부는 `component_get_serialized_properties` 의 `Array.size` / `Array.data[n]` 로 확인하십시오.
 
 `editor_play_capture` 는 Play Mode에 진입·이탈하면서 **저장 안 된 씬 변경을 폐기합니다.** 씬 편집 직후에 호출하지 않습니다. `approvalBehavior: forbid` 라 bypass 모드에서만 동작합니다.
 
