@@ -9,6 +9,18 @@
 
 ---
 
+### 2026-09-20 — Claude (훅 Python 이식 잔여 정리)
+
+- 작업 ID: 없음. 커밋 `4aee9db`의 Node → Python 훅 이식에서 검증되지 않은 채 남아 있던 3개 지점을 정리하며, 마일스톤·태스크로 기록하지 않는다
+- 시작 상태: 머지 `b068bef` 이후 훅 2개와 `settings.json`은 Python 경로로 일관됐고 `korean-guard.js` 잔여 참조도 0건. 저장소 상태 자체는 이미 정상이었고, 남은 것은 이식 당시 확인하지 못한 동작 3건
+- ① 서브에이전트 면제 검증: `main-session-guard.py`에 임시 프로브를 넣어 훅 입력 원본을 덤프하고, 주 세션 Bash 호출과 `tessera-scout` Bash 호출의 키를 비교했다. 서브에이전트 입력에만 `agent_id`와 `agent_type`이 실리는 것을 확인해 기존 `agent_id` 면제가 유효함을 확정. 코드 변경 없이 주석에 확인 근거를 남기고 프로브는 제거
+- ② `korean-guard.py`가 stdin을 읽지 않던 비대칭 해소: JS 판을 그대로 옮기며 빠진 부분. 하네스가 프롬프트 페이로드를 stdin으로 넘기므로 파이프를 비우지 않으면 페이로드가 파이프 버퍼를 넘길 때 Windows에서 기록 측이 막힐 수 있다. `sys.stdin.buffer.read()` 한 줄 추가
+- ③ 셸 탐색 경고의 오탐 축소: 기존 정규식은 `git`·`graphify` 로 시작하는 명령만 면제해, 다른 명령의 출력을 `head`로 자르거나 `docs/`·`.claude/` 문서를 읽을 때도 매번 경고가 붙었다. 명령을 `|`·`;`·`&&` 단위로 나눠 세그먼트별 선두 명령과 경로 인자를 보도록 교체. 경로 인자가 없으면 표준입력 필터로 보고 지나가되 `rg`·`find`는 인자 없이 작업 디렉터리를 훑으므로 경고를 유지하고, 경로 인자가 전부 `docs/`·`.claude/`·`*.md` 면 면제한다
+- 검증: 케이스 12개 표로 판정해 불일치 0건. 면제 6건(`ls docs/ | head`, `git ls-files | head`, `cat .claude/settings.json`, `docs/` 대상 `grep` 2건, `/health` curl), 경고 6건(`Assets/` 대상 `grep`, 인자 없는 `rg`, `find .`, `Assets/` 경로 `cat`, `/skill/` REST curl). 서브에이전트 입력은 무출력·exit 0, `korean-guard.py`는 100KB 페이로드에서 exit 0
+- 시각 확인 생략, 사유: 훅 스크립트 변경이라 화면 결과물 없음
+- 변경 파일: `.claude/hooks/main-session-guard.py`, `.claude/hooks/korean-guard.py`, `CLAUDE.md`, 이 문서
+- 다음 작업: `M17-T23-7` 동전 시각 재점검
+
 ### 2026-09-20 — Claude (LOAD-03 정적 TMP 아틀라스 캐시 가드 보강)
 
 - 작업 ID: `LOAD-03`

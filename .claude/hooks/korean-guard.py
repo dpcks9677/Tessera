@@ -15,6 +15,11 @@
 import json
 import sys
 
+# Drain the hook input even though none of it is needed: the harness writes the
+# prompt payload to this process's stdin, and leaving the pipe unread risks the
+# writer blocking on Windows once the payload outgrows the pipe buffer.
+sys.stdin.buffer.read()
+
 out = {
     "hookSpecificOutput": {
         "hookEventName": "UserPromptSubmit",

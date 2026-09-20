@@ -201,7 +201,7 @@ Unity Technologies 공식 플러그인 `unity@unity-agent-plugin` 이 설치돼 
 - 내장 `Explore`·`Plan` 대신 `tessera-scout` 를 씁니다. 여러 Explore가 같은 파일을 각자 통째로 읽은 사례가 있습니다.
 - 설계 판단이 거의 없는 세션(반복 수정, Unity 조작 위주)은 `/model sonnet` 으로 전환합니다.
 
-`.claude/hooks/main-session-guard.py` 가 주 세션의 Unity `curl`·셸 탐색 호출에 위 규칙을 상기시킵니다. 차단하지는 않으며, 서브에이전트(`agent_id` 가 있는 호출)는 건너뜁니다.
+`.claude/hooks/main-session-guard.py` 가 주 세션의 Unity `curl`·셸 탐색 호출에 위 규칙을 상기시킵니다. 차단하지는 않으며, 서브에이전트(`agent_id` 가 있는 호출)는 건너뜁니다. 소스 트리 탐색만 대상이라 다른 명령의 출력을 `head`/`tail` 로 자르는 경우와 `docs/`·`.claude/`·`*.md` 를 읽는 경우는 조용히 지나갑니다.
 
 ### 역할별 재사용 방침
 
