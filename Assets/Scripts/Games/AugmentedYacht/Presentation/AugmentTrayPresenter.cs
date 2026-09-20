@@ -28,7 +28,8 @@ namespace Tessera.Games.AugmentedYacht
             YachtAugmentRuntime.EquivalentExchangeId,
             YachtAugmentRuntime.GambitId,
             YachtAugmentRuntime.DoubleDownId,
-            YachtAugmentRuntime.DiceAlchemyId
+            YachtAugmentRuntime.DiceAlchemyId,
+            YachtAugmentRuntime.CoinTossId
         };
 
         /// <summary>직전 실행이 남긴 위젯. 다시 만들기 전에 치운다.</summary>

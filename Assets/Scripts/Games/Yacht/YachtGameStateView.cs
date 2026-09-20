@@ -55,6 +55,7 @@ namespace Tessera.Games.Yacht
         int BonusScore { get; }
         int TotalScore { get; }
         int CalculateUpperSum();
+        int UpperBonusThreshold { get; }
 
         /// <summary>해당 칸이 채워졌는지 봅니다. 0점 기입도 채워진 것으로 봅니다.</summary>
         bool IsFilled(ScoreCategory category);
@@ -86,6 +87,7 @@ namespace Tessera.Games.Yacht
         int CurrentRound { get; }
         int RollsRemaining { get; }
         bool HasRolled { get; }
+        int BonusRolls { get; }
         bool IsExtraTurnPhase { get; }
         IReadOnlyList<IReadOnlyYachtDieState> Dice { get; }
         IReadOnlyList<IReadOnlyPlayerScoreData> Players { get; }

@@ -377,6 +377,7 @@ namespace Tessera.Games.Yacht
         public const string DoubleDownId = "double-down";
         public const string PiggyBankId = "piggy-bank";
         public const string DiceAlchemyId = "dice-alchemy";
+        public const string CoinTossId = "coin-toss";
         public const int StepByStepUpperBonusThreshold = 58;
         public const int DraftOptionCount = 3;
 
@@ -826,6 +827,22 @@ namespace Tessera.Games.Yacht
                 return Fail(YachtCommandErrorCode.AugmentUnavailable, "미지원", out code, out message);
             var context = new AugmentActionContext(state, playerIndex, null, null);
             context.BindAugment(DiceAlchemyId);
+            if (!action.CanUse(context, out code, out message)) return false;
+            action.Use(context);
+            return true;
+        }
+
+        public bool TryUseCoinToss(
+            YachtGameState state,
+            int playerIndex,
+            IRandomSource random,
+            out YachtCommandErrorCode code,
+            out string message)
+        {
+            if (YachtAugmentCatalog.Find(CoinTossId) is not IManualActionAugment action)
+                return Fail(YachtCommandErrorCode.AugmentUnavailable, "미지원", out code, out message);
+            var context = new AugmentActionContext(state, playerIndex, random, null);
+            context.BindAugment(CoinTossId);
             if (!action.CanUse(context, out code, out message)) return false;
             action.Use(context);
             return true;

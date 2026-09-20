@@ -282,8 +282,10 @@ public static class DiceShapeBaker
     }
 
     /// <summary>
-    /// 세븐스 주사위는 D6 몸체를 그대로 쓰되 눈을 한 칸씩 밀어 새긴다.
-    /// 면 값 표가 2·3·4·5·6·7이므로 i번 면에는 i+1눈이 와야 한다(원본 diceMaterials.js:69-70).
+    /// 세븐스 주사위는 2~6번 면은 D6 원본을 그대로 쓰고(눈 오브젝트·음각 홈 모두 유지) 1번 면만
+    /// 7눈 면으로 바꾼다. 몸체 메시에 1~6 눈이 형상으로 파여 있어, 눈을 다른 면으로 옮기면
+    /// 홈과 어긋나 원래 값이 그대로 비쳐 보이기 때문이다. 1번 면의 가운데 홈은 7눈의 가운데와 겹친다.
+    /// 가운데 눈은 1번 면의 기존 Pip_1을 그대로 쓰고, 나머지 6개(키패드 1·3·4·6·7·9)만 새로 만든다.
     /// </summary>
     private static void BakeSevensPrefab(GameObject diceModel)
     {
@@ -301,45 +303,40 @@ public static class DiceShapeBaker
 
         Transform pipsParent = allPips[0].parent;
         float diagonal = MeasureDiagonalOffset(allPips);
-        int[] faceValues = DiceFaceValues.Get(DieType.Sevens);
 
-        // 면마다 중심·방향·눈 크기를 먼저 재 둔다. 지우고 나면 잴 수 없다.
-        var faceCenters = new Vector3[6];
-        var faceRotations = new Quaternion[6];
-        var faceScales = new Vector3[6];
-        var faceCounts = new int[6];
-
+        // 1번 면 눈(가운데 하나)만 재서 면 중심·방향·크기를 얻는다. 다른 면 눈은 손대지 않는다.
+        var faceOnePips = new List<Transform>();
         foreach (Transform dot in allPips)
         {
-            int face = ParseFaceIndex(dot.name);
-            if (face < 1 || face > 6) continue;
-
-            faceCenters[face - 1] += dot.localPosition;
-            faceRotations[face - 1] = dot.localRotation;
-            faceScales[face - 1] = dot.localScale;
-            faceCounts[face - 1]++;
+            if (ParseFaceIndex(dot.name) == 1) faceOnePips.Add(dot);
         }
 
-        foreach (Transform dot in allPips) Object.DestroyImmediate(dot.gameObject);
-
-        for (int face = 1; face <= 6; face++)
+        Vector3 center = Vector3.zero;
+        Quaternion rotation = Quaternion.identity;
+        Vector3 scale = Vector3.one;
+        foreach (Transform dot in faceOnePips)
         {
-            if (faceCounts[face - 1] == 0) continue;
+            center += dot.localPosition;
+            rotation = dot.localRotation;
+            scale = dot.localScale;
+        }
+        center /= faceOnePips.Count;
 
-            Vector3 center = faceCenters[face - 1] / faceCounts[face - 1];
-            Vector3 normal = center.normalized;
-            Vector3 right = Vector3.Cross(normal, Vector3.up);
-            if (right.sqrMagnitude < 0.001f) right = Vector3.Cross(normal, Vector3.forward);
-            right = right.normalized;
-            Vector3 up = Vector3.Cross(right, normal).normalized;
+        Vector3 normal = center.normalized;
+        Vector3 right = Vector3.Cross(normal, Vector3.up);
+        if (right.sqrMagnitude < 0.001f) right = Vector3.Cross(normal, Vector3.forward);
+        right = right.normalized;
+        Vector3 up = Vector3.Cross(right, normal).normalized;
 
-            foreach (Vector3 offset in PipOffsets(faceValues[face - 1], right, up, diagonal))
-            {
-                GameObject dot = CreateRenderer(pipsParent, $"Pip_{face}", pip.Mesh);
-                dot.transform.localPosition = center + offset;
-                dot.transform.localRotation = faceRotations[face - 1];
-                dot.transform.localScale = faceScales[face - 1];
-            }
+        foreach (Vector3 offset in PipOffsets(7, right, up, diagonal))
+        {
+            if (offset == Vector3.zero) continue; // 가운데는 기존 Pip_1을 그대로 쓴다.
+
+            // 기존 눈과 같은 높이에 두되, 홈이 없는 평면과 겹쳐 깜빡이지 않도록 PipSurfaceLift 만큼 띄운다.
+            GameObject dot = CreateRenderer(pipsParent, "Pip_1", pip.Mesh);
+            dot.transform.localPosition = center + normal * PipSurfaceLift + offset;
+            dot.transform.localRotation = rotation;
+            dot.transform.localScale = scale;
         }
 
         SavePrefab(root, "Die_Sevens");

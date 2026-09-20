@@ -242,19 +242,46 @@ namespace Tessera.Games.Yacht
             action.Use(actionContext);
             if (string.Equals(command.AugmentId, YachtAugmentRuntime.GambitId, StringComparison.Ordinal))
                 ResetDiceForCurrentPlayer();
-            else if (string.Equals(command.AugmentId, YachtAugmentRuntime.DiceAlchemyId, StringComparison.Ordinal))
+            else if (string.Equals(command.AugmentId, YachtAugmentRuntime.DiceAlchemyId, StringComparison.Ordinal)
+                || string.Equals(command.AugmentId, YachtAugmentRuntime.CoinTossId, StringComparison.Ordinal))
                 UpdateCandidates();
+
+            int coinFaces = 0;
+            string actionMessage;
+            if (string.Equals(command.AugmentId, YachtAugmentRuntime.DiceAlchemyId, StringComparison.Ordinal))
+            {
+                actionMessage = "주사위 연금술 사용";
+            }
+            else if (string.Equals(command.AugmentId, YachtAugmentRuntime.CoinTossId, StringComparison.Ordinal))
+            {
+                var coinTossState = state.AugmentPlayers[command.PlayerIndex].States.Find(YachtAugmentRuntime.CoinTossId) as CoinTossState;
+                coinFaces = coinTossState?.Faces ?? 0;
+                int heads = coinTossState?.Heads ?? 0;
+                actionMessage = $"코인 토스: 앞면 {heads}개 — {DescribeCoinTossEffect(heads)}";
+            }
+            else
+            {
+                actionMessage = $"{command.AugmentId} 발동";
+            }
 
             return Accept(new YachtGameEvent
             {
                 Type = YachtGameEventType.AugmentActionUsed,
                 PlayerIndex = command.PlayerIndex,
                 AugmentId = command.AugmentId,
-                Message = string.Equals(command.AugmentId, YachtAugmentRuntime.DiceAlchemyId, StringComparison.Ordinal)
-                    ? "주사위 연금술 사용"
-                    : $"{command.AugmentId} 발동"
+                CoinFaces = coinFaces,
+                Message = actionMessage
             });
         }
+
+        private static string DescribeCoinTossEffect(int heads) => heads switch
+        {
+            0 => "보너스 -5점",
+            1 => "최저 주사위 6",
+            2 => "리롤 +1",
+            3 => "보너스 기준 57",
+            _ => ""
+        };
 
         private YachtGameCommandResult SetDieKept(YachtGameCommand command)
         {
@@ -376,7 +403,7 @@ namespace Tessera.Games.Yacht
             ScoreCategory category = candidate.Category;
             int score = candidate.Score;
             SetScore(state.Players[playerIndex], category, candidate.BaseScore, score);
-            int normalRollCount = YachtGameSession.MaxRolls - state.RollsRemaining;
+            int normalRollCount = YachtGameSession.MaxRolls + state.BonusRolls - state.RollsRemaining;
             var augmentEvents = new List<YachtGameEvent>();
             if (state.Mode == YachtGameMode.Augmented)
                 augmentEvents.AddRange(augmentRuntime.AfterScoreCommit(
@@ -503,6 +530,7 @@ namespace Tessera.Games.Yacht
             state.Candidates = Array.Empty<YachtScoreCandidate>();
             state.HasRolled = false;
             state.RollsRemaining = YachtGameSession.MaxRolls;
+            state.BonusRolls = 0;
             state.IsExtraTurnPhase = false;
             state.Phase = startImmediately ? YachtGamePhase.TurnReady : YachtGamePhase.WaitingToStart;
         }
@@ -511,6 +539,7 @@ namespace Tessera.Games.Yacht
         {
             state.RollsRemaining = YachtGameSession.MaxRolls;
             state.HasRolled = false;
+            state.BonusRolls = 0;
             state.Candidates = Array.Empty<YachtScoreCandidate>();
             if (state.Mode == YachtGameMode.Augmented)
                 augmentRuntime.PrepareTurn(state, state.CurrentPlayerIndex, random, true);
@@ -695,6 +724,7 @@ namespace Tessera.Games.Yacht
         public int CurrentRound => AuthorityState.CurrentRound;
         public int RollsRemaining => AuthorityState.RollsRemaining;
         public bool HasRolled => AuthorityState.HasRolled;
+        public int BonusRolls => AuthorityState.BonusRolls;
         public bool IsDrafting => Phase == YachtGamePhase.Draft;
         public float CurrentTurnDurationSeconds => authority.CurrentTurnDurationSeconds;
         public YachtGameCommandResult LastCommandResult { get; private set; }

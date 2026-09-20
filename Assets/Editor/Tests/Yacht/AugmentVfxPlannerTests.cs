@@ -125,6 +125,18 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
+        public void TriggeringCoinTossCreatesCoinTossRequest()
+        {
+            List<AugmentVfxRequest> requests = Plan(
+                State(),
+                Event(YachtGameEventType.AugmentActionUsed, 0, augmentId: YachtAugmentRuntime.CoinTossId));
+
+            Assert.That(requests.Count, Is.EqualTo(1));
+            Assert.That(requests[0].Cue, Is.EqualTo(AugmentVfxCue.CoinToss));
+            Assert.That(requests[0].PlayerIndex, Is.Zero);
+        }
+
+        [Test]
         public void TriggeringOtherManualActionCreatesNoRequest()
         {
             List<AugmentVfxRequest> requests = Plan(
