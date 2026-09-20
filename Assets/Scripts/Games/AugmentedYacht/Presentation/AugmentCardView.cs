@@ -614,7 +614,12 @@ namespace Tessera.Games.AugmentedYacht
 
         private static TMP_FontAsset LoadProgressFont()
         {
-            if (progressFont != null) return progressFont;
+            // 동적 아틀라스 Texture2D는 폰트 에셋과 수명이 따로 논다. 씬 언로드나 에셋 정리로 아틀라스만
+            // 파괴돼도 폰트 에셋 자체는 살아 있어 != null 검사를 통과하고, 그 상태로 넘기면 TMP가
+            // MissingReferenceException을 낸다. 아틀라스까지 확인하고 없으면 새로 굽는다.
+            if (progressFont != null && progressFont.atlasTexture != null) return progressFont;
+            progressFont = null;
+
             Font source = LoadFont();
             // 별도 폰트 에셋 파일을 두지 않고 레거시 Font로부터 런타임 동적 아틀라스를 생성한다.
             progressFont = TMP_FontAsset.CreateFontAsset(source);

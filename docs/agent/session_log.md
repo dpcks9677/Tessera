@@ -9,6 +9,21 @@
 
 ---
 
+### 2026-09-20 — Claude (LOAD-03 정적 TMP 아틀라스 캐시 가드 보강)
+
+- 작업 ID: `LOAD-03`
+- 경위: LOAD-01 문서 갱신 뒤 `origin/feature/m17-augmented-hotseat`를 머지했다. 머지로 `Tessera.Editor.Tests` 네임스페이스 테스트가 333개에서 349개로 늘고(코인 토스 `M17-T24` 관련 신규 테스트, `CoinSpinPresetTests` 8개 포함) 실행 순서가 바뀌면서, 아침에 등재만 하고 「긴급도 낮음」으로 미뤄 뒀던 LOAD-03 결함이 필터 실행에서도 상시 재현되기 시작했다. `AugmentCardViewTests.QuestCard_*` 5건이 `MissingReferenceException: The object of type 'UnityEngine.Texture2D' has been destroyed`로 실패했고 2회 반복에서 동일하게 재현됐다. 기본 검증 게이트를 빨간불로 만드는 문제라 사용자 판단으로 푸시 전에 먼저 고쳤다
+- 수정: `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs`의 `LoadProgressFont()` 캐시 가드만 변경. `if (progressFont != null) return progressFont;`를 `if (progressFont != null && progressFont.atlasTexture != null) return progressFont; progressFont = null;`로 바꿔, 폰트 에셋은 살아 있지만 동적 아틀라스 `Texture2D`만 파괴된 상태를 걸러내고 새로 굽게 했다. 다른 파일은 손대지 않았고 새 테스트도 추가하지 않았다. 기존 `QuestCard_*` 5건이 재현 테스트 역할을 했다
+- 검증: 컴파일 에러 0. 필터 실행(`testMode=EditMode`, `filter=Tessera.Editor.Tests`) 2회 모두 총 349개, 통과 349, 실패 0, 스킵 0. 직전에 실패하던 5건이 전부 통과로 바뀌었다. 패키지 테스트 혼입 없음
+- 같은 머지에서 함께 처리한 것: `Assets/Editor/CoinSpinPresetTests.cs`가 origin에서 네임스페이스 없이 들어와 `Tessera.Editor.Tests` 필터에서 통째로 빠지는 상태였다. 커밋 `dfe6b8a`의 네임스페이스 통일 대상에서 누락된 것으로 보고 `namespace Tessera.Editor.Tests`로 감쌌다. 이 래핑 덕분에 해당 8개 테스트가 디스커버리·실행 목록에 들어온 것을 확인했다
+- 머지 충돌 4건 해소: `session_log.md`(양쪽 항목 모두 보존, 역순 정렬 유지), `docs/reference/augments_specification_and_status.md`(origin의 개수 표기와 로컬의 `augments.json` 삭제 사실을 결합), graphify 라벨 2개(`PYTHONHASHSEED=0 graphify update .` 재생성본 채택)
+- 머지가 `.claude/hooks/korean-guard.js`를 삭제하고 `korean-guard.py`·`main-session-guard.py`를 되살리며 `settings.json`의 훅 커맨드를 `node`에서 `python`으로 되돌렸다. origin 쪽이 나중 변경이라 그대로 받았다
+- 검증 중 Unity Editor 메인 스레드가 다시 멈춰 사용자가 직접 해제해야 했다(머지로 C# 55개가 한꺼번에 바뀐 직후). `mainThreadIdleMs`가 190초→212초로 단조 증가하고 `queuedRequests`가 5건에서 정체됐다
+- 남은 것: `Assets/Editor/CoinSpinPresetBaker.cs`와 `Assets/Editor/CoinSpinPresetTests.cs`가 `Assets/Editor/` 루트에 있다. 폴더 분리 규칙대로면 각각 `Assets/Editor/Dice/`, `Assets/Editor/Tests/Dice/`다. Unity가 켜진 상태에서 파일 이동이 위험해 미뤘다
+- 시각 확인 생략, 사유: 폰트 캐시 가드 수정이라 테스트로 판정 가능
+- 변경 파일: `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs`, `Assets/Editor/CoinSpinPresetTests.cs`, `docs/agent/session_log.md`, `docs/reference/augments_specification_and_status.md`, `graphify-out/.graphify_labels.json` 및 대응 `.sig`, `.claude/hooks/main-session-guard.py`, `.claude/hooks/korean-guard.py`, `.claude/settings.json`, `docs/agent/improvement_tasks_spec.md`
+- 다음 작업: `M17-T23-7` 동전 시각 재점검
+
 ### 2026-09-20 — Claude (LOAD-01 런타임 에셋 로딩 카탈로그화)
 
 - 작업 ID: `LOAD-01`

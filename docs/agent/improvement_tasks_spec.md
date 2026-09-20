@@ -50,7 +50,7 @@
 | **ARCH-05** | **P5** | asmdef 도입 (`Tessera.Core` → `Dice`/`Tabletop`/`Rendering` → `Games.Yacht` → `Games.AugmentedYacht`) | `Assets/Scripts/` 전체 | 중간 (구조) | `TODO` |
 | **LOAD-01** | **P2** | 런타임 스크립트 5개의 에디터 전용 에셋 로딩(`#if UNITY_EDITOR` + `AssetDatabase.LoadAssetAtPath`)이 플레이어 빌드에서 null 반환 | `AugmentCardView.cs`, `AugmentedYachtController.cs`, `InkwellAndQuill.cs`, `ParchmentScoreSheet.cs`, `YachtHudFactory.cs` | 높음 (빌드 결함) | `DONE` |
 | **LOAD-02** | **P3** | `AugmentScrollModel.cs`의 죽은 `Resources.Load` 폴백 경로 정리 | `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentScrollModel.cs` | 낮음 (단순화) | `TODO` |
-| **LOAD-03** | **P3** | `AugmentCardView.LoadProgressFont`의 정적 TMP 아틀라스 캐시가 파괴된 텍스처를 걸러내지 못함 | `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs` | 낮음 (안정성) | `TODO` |
+| **LOAD-03** | **P3** | `AugmentCardView.LoadProgressFont`의 정적 TMP 아틀라스 캐시가 파괴된 텍스처를 걸러내지 못함 | `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs` | 낮음 (안정성) | `DONE` |
 
 ---
 
@@ -576,7 +576,9 @@ dotnet build Assembly-CSharp.csproj /p:WarningLevel=5
 
 ---
 
-### [LOAD-03] `AugmentCardView.LoadProgressFont`의 정적 TMP 아틀라스 캐시가 파괴된 텍스처를 걸러내지 못함
+### [LOAD-03] `AugmentCardView.LoadProgressFont`의 정적 TMP 아틀라스 캐시가 파괴된 텍스처를 걸러내지 못함 — `DONE`
+
+**완료: 2026-09-20.** 착수 시점에는 긴급도를 낮게 판단했으나, `origin/feature/m17-augmented-hotseat` 머지로 `Tessera.Editor.Tests` 테스트가 333개에서 349개로 늘고 실행 순서가 바뀌면서 필터 실행에서도 결함이 상시 재현되어 기본 검증 게이트가 빨간불이 됐습니다. 사용자 판단으로 푸시 전에 먼저 고쳤습니다.
 
 #### 1. 배경 및 목적
 `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs` 613-636행의 `static TMP_FontAsset progressFont`는 `TMP_FontAsset.CreateFontAsset` 산출물을 `HideFlags.DontSave`로 캐시합니다. 재사용 가드가 `if (progressFont != null)` 하나뿐이라, 폰트 에셋 자체는 살아 있고 그 동적 아틀라스 `Texture2D`만 파괴된 상태를 걸러내지 못해 `MissingReferenceException`이 발생합니다. 2026-09-20 필터 없는 EditMode 전체 실행에서 `AugmentCardViewTests` 63개 중 36개가 이 예외로 실패해 실증됐습니다. 플레이어에서도 씬 언로드 시 같은 상태가 될 수 있습니다.
@@ -584,8 +586,20 @@ dotnet build Assembly-CSharp.csproj /p:WarningLevel=5
 #### 2. 대상 파일
 - [AugmentCardView.cs](../../Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs) (Line 613-636)
 
-#### 3. 착수 조건
-즉시 착수 가능하나 필터 실행 기준으로는 증상이 드러나지 않아 긴급도는 낮습니다. 수정 방향은 가드를 아틀라스 텍스처 유효성까지 검사하도록 넓히는 것입니다.
+#### 3. 해결 내용
+`Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs`의 `LoadProgressFont()` 캐시 가드를 `progressFont != null`에서 `progressFont != null && progressFont.atlasTexture != null`로 넓히고, 아틀라스가 없으면 `progressFont = null`로 되돌려 다시 굽게 했습니다.
+
+```
+- if (progressFont != null) return progressFont;
++ // 동적 아틀라스 Texture2D는 폰트 에셋과 수명이 따로 논다. 씬 언로드나 에셋 정리로 아틀라스만
++ // 파괴돼도 폰트 에셋 자체는 살아 있어 != null 검사를 통과하고, 그 상태로 넘기면 TMP가
++ // MissingReferenceException을 낸다. 아틀라스까지 확인하고 없으면 새로 굽는다.
++ if (progressFont != null && progressFont.atlasTexture != null) return progressFont;
++ progressFont = null;
+```
+
+#### 4. 검증 결과
+컴파일 에러 0. 필터 실행(`testMode=EditMode`, `filter=Tessera.Editor.Tests`) 2회 모두 총 349개, 통과 349, 실패 0, 스킵 0. 직전에 `MissingReferenceException: The object of type 'UnityEngine.Texture2D' has been destroyed`로 실패하던 `AugmentCardViewTests.QuestCard_*` 5건이 전부 통과로 바뀌었습니다. 패키지 테스트 혼입 없음.
 
 ---
 
