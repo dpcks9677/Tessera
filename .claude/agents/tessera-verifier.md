@@ -42,6 +42,26 @@ curl -s -m 60 -X POST http://127.0.0.1:<port>/skill/debug_check_compilation \
 
 `scene_get_info` 로 `isDirty` 를, `editor_playmode_inspect` 로 Play Mode 여부(`isPlaying`, `isPaused`)를 확인합니다. `editor_playmode_inspect` 는 `target` 이 필수라 `{}` 로는 답하지 않습니다. 씬에 실재하는 오브젝트 이름을 `name` 에 넣으십시오. **`scene_get_info` 는 Play Mode 여부를 드러내지 않습니다.** 이것만 보고 넘어가면 일시정지된 Play Mode에서 `test_run` 이 "An unexpected error happened while running tests" 로 즉시 실패하고, 원인은 콘솔의 `This cannot be used during play mode` 에서야 드러납니다. Play Mode 중이면 `test_run` 이 `InvalidOperationException: This cannot be used during play mode` 로 실패합니다. 씬이 dirty 해도 테스트가 막힌 전례가 있습니다. 둘 중 하나라도 해당하면 보고하고 사용자 판단을 요청합니다.
 
+### 3.1 git 조작 뒤에는 씬을 명시적으로 다시 엽니다
+
+`git stash` / `git stash pop` / `git merge --abort` 처럼 **Editor 밖에서 씬 파일이 바뀐 뒤에는 `asset_refresh` 만으로 이미 열려 있는 씬이 디스크와 맞춰지지 않습니다.** `AssetDatabase.Refresh` 는 파일을 재임포트하지만 메모리에 로드된 씬 인스턴스는 갱신하지 않습니다. 이때 `scene_get_info` 는 `isDirty:false` 를 돌려주므로 겉보기에는 정상입니다.
+
+2026-09-20 에 실제로 밟았습니다. `merge --abort` + `stash pop` 직후 `isDirty:false` 인데 `octahedronDieModel` 과 `sevensDieModel` 이 `null` 로 조회됐습니다. 디스크 파일에는 값이 들어 있었습니다. `scene_load` 로 명시적으로 다시 연 뒤에야 정상 값이 나왔습니다. 그대로 테스트를 돌렸다면 디스크와 어긋난 씬을 검증할 뻔했습니다.
+
+git 이 파일을 건드린 정황이 있으면 `scene_load` 로 다시 열고, **재로드 전후의 필드 값을 비교해** 실제로 바뀌었는지 확인하십시오.
+
+### 3.2 Unity 가 열린 채로 트리에서 파일을 빼지 않습니다
+
+Unity 가 로드해 둔 에셋을 `git stash` 등으로 디스크에서 없애면 **Editor 메인 스레드가 멈출 수 있습니다.** 모달 대화상자가 떠서 사용자 입력을 기다리는 것으로 보이며, REST 로는 대화상자의 존재를 조회할 수단도 닫을 수단도 없습니다.
+
+2026-09-20 에 LOAD-01 기준선을 재려고 `Assets/Resources/RuntimeAssetLibrary.asset` 을 포함한 8개 파일을 stash 로 빼낸 직후 발생했습니다. 증상은 이렇습니다.
+
+- `/health` 는 응답하지만 `mainThreadIdleMs` 가 254초 → 430초 → 553초로 계속 증가하기만 함
+- `queuedRequests` 가 17 → 38 로 쌓이기만 하고 줄지 않음
+- `isCompiling:false` 인데도 어떤 스킬도 처리되지 않음. `scene_screenshot` 도 타임아웃이라 시각 확인조차 불가
+
+`isCompiling:false` 인데 `mainThreadIdleMs` 가 단조 증가하면 컴파일 대기가 아닙니다. 폴링을 계속해도 자연 복구되지 않으니 즉시 멈추고, Editor 창을 직접 확인해 달라고 보고하십시오.
+
 ### 4. 테스트 실행
 
 ```bash

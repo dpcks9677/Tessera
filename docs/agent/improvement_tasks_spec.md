@@ -37,7 +37,7 @@
 | 작업 ID | 우선순위 | 작업명 | 주요 대상 파일 | 예상 영향도 | 상태 |
 |:---:|:---:|---|---|:---:|:---:|
 | **BUILD-01** | **P1** | `PixelEdgeRendererFeature.cs` 컴파일 경고 해소 (CS0672, CS0618) | `Assets/Scripts/Rendering/PixelEdgeRendererFeature.cs` | 최하 (안전) | `TODO` |
-| **TEST-01** | **P1** | `FontFallbackTests.cs` 직렬화 API 버그 픽스 검증 및 커밋 | `Assets/Editor/Tests/FontFallbackTests.cs` | 최하 (테스트) | `TODO` |
+| **TEST-01** | **P1** | `FontFallbackTests.cs` 직렬화 API 버그 픽스 검증 및 커밋 | `Assets/Editor/Tests/FontFallbackTests.cs` | 최하 (테스트) | `DONE` |
 | **DOC-01** | **P2** | 기술 문서 정합성 동기화 (`RollOrb` 폐기 반영 및 클린업 완료 기록) | `docs/agent/solid_refactoring_work_plan.md`, `docs/archive/plans/dead_code_cleanup_proposal.md` | 최하 (문서) | `DONE` |
 | **SOLID-T05**| **P2** | `IYachtRuleSet` ISP 분리 (`SelectPresetFile` 뷰 결합 추출) | `Assets/Scripts/Games/Yacht/YachtGameCore.cs`, `LocalGameAuthority.cs` | 낮음 (구조) | `TODO` |
 | **AUG-01** | **P3** | 증강 핸들러 내 불필요한 과도기 `GetOrSync` 동기화 헬퍼 정리 | `Assets/Scripts/Games/AugmentedYacht/Logic/Augments/...` (12개 파일) | 낮음 (단순화) | `TODO` |
@@ -48,8 +48,9 @@
 | **ARCH-03** | **P5** | `Resources/` 사용 축소와 Addressables 전환 검토 | `Assets/Resources/` | 중간 (구조) | `TODO` |
 | **ARCH-04** | **P5** | `DicePresetCatalog`의 StreamingAssets 로드를 `UnityWebRequest` 대응으로 전환 | `Assets/Scripts/Dice/DicePresetCatalog.cs` | 낮음 (이식성) | `TODO` |
 | **ARCH-05** | **P5** | asmdef 도입 (`Tessera.Core` → `Dice`/`Tabletop`/`Rendering` → `Games.Yacht` → `Games.AugmentedYacht`) | `Assets/Scripts/` 전체 | 중간 (구조) | `TODO` |
-| **LOAD-01** | **P2** | 런타임 스크립트 6개의 에디터 전용 에셋 로딩(`#if UNITY_EDITOR` + `AssetDatabase.LoadAssetAtPath`)이 플레이어 빌드에서 null 반환 | `AugmentCardView.cs`, `AugmentedYachtController.cs`, `InkwellAndQuill.cs`, `ParchmentScoreSheet.cs`, `TabletopSurfaceBuilder.cs`, `YachtHudFactory.cs` | 높음 (빌드 결함) | `TODO` |
+| **LOAD-01** | **P2** | 런타임 스크립트 5개의 에디터 전용 에셋 로딩(`#if UNITY_EDITOR` + `AssetDatabase.LoadAssetAtPath`)이 플레이어 빌드에서 null 반환 | `AugmentCardView.cs`, `AugmentedYachtController.cs`, `InkwellAndQuill.cs`, `ParchmentScoreSheet.cs`, `YachtHudFactory.cs` | 높음 (빌드 결함) | `DONE` |
 | **LOAD-02** | **P3** | `AugmentScrollModel.cs`의 죽은 `Resources.Load` 폴백 경로 정리 | `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentScrollModel.cs` | 낮음 (단순화) | `TODO` |
+| **LOAD-03** | **P3** | `AugmentCardView.LoadProgressFont`의 정적 TMP 아틀라스 캐시가 파괴된 텍스처를 걸러내지 못함 | `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs` | 낮음 (안정성) | `TODO` |
 
 ---
 
@@ -135,24 +136,20 @@ dotnet build Assembly-CSharp.csproj /p:WarningLevel=5
 
 ---
 
-### [TEST-01] `FontFallbackTests.cs` 직렬화 API 버그 픽스 검증 및 커밋
+### [TEST-01] `FontFallbackTests.cs` 직렬화 API 버그 픽스 검증 및 커밋 — `DONE`
+
+**완료: 2026-09-20.** 공개 API 전환이 이미 커밋되어 있었고, 재확인 결과를 아래에 남깁니다.
 
 #### 1. 배경 및 목적
-기존 `FontFallbackTests.cs`는 `TrueTypeFontImporter`의 내부 직렬화 프로퍼티 `fallbackFontReferences`를 `SerializedObject`로 탐색했으나, Unity 버전 변경으로 해당 직렬화 프로퍼티명이 내부에서 달라져 항상 null을 반환하여 2건의 테스트가 실패하고 있었습니다. 현재 워킹 트리에 공개 API인 `importer.fontReferences`를 사용하도록 정교하게 수정되어 있습니다.
+기존 `FontFallbackTests.cs`는 `TrueTypeFontImporter`의 내부 직렬화 프로퍼티 `fallbackFontReferences`를 `SerializedObject`로 탐색했으나, Unity 버전 변경으로 해당 직렬화 프로퍼티명이 내부에서 달라져 항상 null을 반환하여 2건의 테스트가 실패하고 있었습니다.
 
 #### 2. 대상 파일
-- [FontFallbackTests.cs](../../Assets/Editor/Tests/FontFallbackTests.cs) (Line 23 ~ Line 50)
+- [FontFallbackTests.cs](../../Assets/Editor/Tests/FontFallbackTests.cs) (Line 28, 45)
 
-#### 3. 작업 지침
-1. 현재 수정 내역(`git diff Assets/Editor/Tests/FontFallbackTests.cs`)이 공개 API `importer.fontReferences`를 사용하는지 확인합니다.
-2. `dotnet build Assembly-CSharp-Editor.csproj /p:WarningLevel=5`를 실행하여 컴파일 오류 및 경고 0개를 확인합니다.
-3. 확인 후 해당 파일만 깔끔하게 커밋합니다 (`git add Assets/Editor/Tests/FontFallbackTests.cs`, 커밋 메시지: `fix(test): use public fontReferences API in FontFallbackTests`).
-
-#### 4. 검증 절차
-```powershell
-dotnet build Assembly-CSharp-Editor.csproj /p:WarningLevel=5
-```
-- **성공 기준**: 컴파일 오류 0개, 경고 0개.
+#### 3. 완료 근거
+1. `Assets/Editor/Tests/FontFallbackTests.cs:28`과 45행이 공개 API `importer.fontReferences`를 사용합니다.
+2. 워킹 트리에 미커밋 변경이 없습니다(이미 커밋됨).
+3. 2026-09-20 EditMode 전체 실행에서 `FontFallbackTests` 3/3 통과했습니다.
 
 ---
 
@@ -524,24 +521,39 @@ Assets/Scripts/
 
 ---
 
-### [LOAD-01] 런타임 스크립트 6개의 에디터 전용 에셋 로딩이 플레이어 빌드에서 null 반환
+### [LOAD-01] 런타임 스크립트 5개의 에디터 전용 에셋 로딩이 플레이어 빌드에서 null 반환 — `DONE`
+
+**완료: 2026-09-20.** 2026-09-20 필터 실행(`Tessera.Editor.Tests`, 총 333개, 통과 333, 실패 0, 스킵 0, 패키지 테스트 혼입 0건)으로 검증됐습니다.
 
 #### 1. 배경 및 목적
-아래 6개 런타임 스크립트가 텍스처·폰트·모델을 `#if UNITY_EDITOR` 블록 안 `AssetDatabase.LoadAssetAtPath`로만 로드합니다. `AssetDatabase`는 에디터 전용 API라 플레이어 빌드에서는 해당 블록 자체가 컴파일되지 않거나 호출부가 null을 반환해, 실제 빌드에서 이 에셋들이 전부 null이 됩니다. 2026-09-19 재편 작업 중 발견됐습니다.
+아래 5개 런타임 스크립트가 텍스처·폰트·모델을 `#if UNITY_EDITOR` 블록 안 `AssetDatabase.LoadAssetAtPath`로만 로드합니다. `AssetDatabase`는 에디터 전용 API라 플레이어 빌드에서는 해당 블록 자체가 컴파일되지 않거나 호출부가 null을 반환해, 실제 빌드에서 이 에셋들이 전부 null이 됩니다. 2026-09-19 재편 작업 중 발견됐습니다.
 
 #### 2. 대상 파일
 - `AugmentCardView.cs`
 - `AugmentedYachtController.cs`
 - `InkwellAndQuill.cs`
 - `ParchmentScoreSheet.cs`
-- `TabletopSurfaceBuilder.cs`
 - `YachtHudFactory.cs`
 
+> **`TabletopSurfaceBuilder.cs`는 범위에서 제외(2026-09-20)**: 조사 결과 이 파일은 빌드 결함이 아닙니다.
+> `TabletopSurfaceBuilder.Regenerate()`를 호출하는 곳은 `AugmentedYachtController.RegenerateTableSurfaces()`
+> 하나뿐이고, 그 메서드는 `[ContextMenu]` + `if (Application.isPlaying) return;` 가드가 걸린 에디터 전용
+> 베이크 도구입니다. 런타임에 호출되지 않으므로 나뭇결 텍스처가 빌드에서 사라지는 일이 없고, 결과물은
+> 미리 구운 프리팹으로 배치됩니다.
+
 #### 3. 작업 지침
-직렬화 필드(`[SerializeField]`)로 에셋 참조를 노출하거나, `Resources.Load` 등 빌드에 포함되는 다른 로딩 경로로 전환이 필요합니다. 6개 파일 각각의 현재 로딩 지점과 대체 방식은 착수 시 개별 조사가 필요합니다 (미확인).
+직렬화 필드(`[SerializeField]`)로 에셋 참조를 노출하거나, `Resources.Load` 등 빌드에 포함되는 다른 로딩 경로로 전환이 필요합니다.
 
 #### 4. 검증 절차
 - 플레이어 빌드(또는 빌드에 준하는 환경)에서 해당 에셋들이 null이 아닌지 확인.
+
+#### 5. 해결 진행 상황
+- `Assets/Scripts/Core/RuntimeAssetLibrary.cs`(신규, `Tessera.Core`): `Assets/Resources/RuntimeAssetLibrary.asset` `ScriptableObject` 카탈로그를 통해 폰트 3종·양피지 텍스처 3종·족보 아이콘 12개를 런타임에 제공합니다. 에셋 파일은 `Assets/Art/` 자리에 그대로 두고 카탈로그가 참조하므로 빌드에 포함됩니다. `Resources/` 표면이 파일 하나로 끝나 `ARCH-03`(Resources 축소) 방향과 어긋나지 않습니다.
+- 선택 이유: 폰트를 쓰는 세 곳 중 `YachtHudFactory`는 static 유틸리티, `AugmentCardView`는 런타임 `AddComponent` 생성이라 `[SerializeField]` 경로가 원천적으로 막혀 있습니다. 에셋 2.83MB를 `Resources/`로 옮기는 안은 디렉터리 규칙을 되돌리게 되어 채택하지 않았습니다.
+- `Assets/Editor/Tools/RuntimeAssetLibraryBaker.cs`(신규): `Tools/Tessera/Bake Runtime Asset Library` 메뉴로 카탈로그를 굽습니다.
+- 수정: `AugmentCardView.cs`, `YachtHudFactory.cs`, `ParchmentScoreSheet.cs`. 폰트 폴백 순서와 최종 빌트인 폴백(`LegacyRuntime.ttf`)은 그대로 유지했습니다.
+- 함께 고친 별건: 씬 `Dice Graphics PoC`의 `AugmentedYachtController.octahedronDieModel`·`sevensDieModel`이 `{fileID: 0}`으로 비어 있었습니다. 에디터에서는 코드가 매번 다시 로드해 가려졌지만 빌드에서는 null이었습니다. 두 프리팹을 할당하고 씬을 저장했습니다.
+- 남은 것: `ParchmentScoreSheet`의 `scoreSheetFont` 직렬화 필드는 여전히 비어 있습니다. 이제 카탈로그 폴백이 받아 주므로 결함은 아니며 할당하지 않았습니다.
 
 ---
 
@@ -561,6 +573,19 @@ Assets/Scripts/
 dotnet build Assembly-CSharp.csproj /p:WarningLevel=5
 ```
 - **성공 기준**: 컴파일 오류 0개.
+
+---
+
+### [LOAD-03] `AugmentCardView.LoadProgressFont`의 정적 TMP 아틀라스 캐시가 파괴된 텍스처를 걸러내지 못함
+
+#### 1. 배경 및 목적
+`Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs` 613-636행의 `static TMP_FontAsset progressFont`는 `TMP_FontAsset.CreateFontAsset` 산출물을 `HideFlags.DontSave`로 캐시합니다. 재사용 가드가 `if (progressFont != null)` 하나뿐이라, 폰트 에셋 자체는 살아 있고 그 동적 아틀라스 `Texture2D`만 파괴된 상태를 걸러내지 못해 `MissingReferenceException`이 발생합니다. 2026-09-20 필터 없는 EditMode 전체 실행에서 `AugmentCardViewTests` 63개 중 36개가 이 예외로 실패해 실증됐습니다. 플레이어에서도 씬 언로드 시 같은 상태가 될 수 있습니다.
+
+#### 2. 대상 파일
+- [AugmentCardView.cs](../../Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs) (Line 613-636)
+
+#### 3. 착수 조건
+즉시 착수 가능하나 필터 실행 기준으로는 증상이 드러나지 않아 긴급도는 낮습니다. 수정 방향은 가드를 아틀라스 텍스처 유효성까지 검사하도록 넓히는 것입니다.
 
 ---
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using TMPro;
+using Tessera.Core;
 using Tessera.Games.Yacht;
 using UnityEngine;
 using UnityEngine.Events;
@@ -725,13 +726,10 @@ namespace Tessera.Games.AugmentedYacht
 
         private static Font LoadFont()
         {
-            Font font = null;
-#if UNITY_EDITOR
-            font = UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Art/ThirdParty/Fonts/Mulmaru.ttf")
-                ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Art/ThirdParty/Fonts/alagard.ttf")
-                ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Art/ThirdParty/Fonts/m6x11.ttf");
-#endif
-            return font ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            Font font = RuntimeAssetLibrary.KoreanPixelFont;
+            if (font == null) font = RuntimeAssetLibrary.LatinPixelFont;
+            if (font == null) font = RuntimeAssetLibrary.LatinPixelFontAlt;
+            return font != null ? font : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         }
 
         private static string Compact(string description)

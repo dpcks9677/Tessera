@@ -491,15 +491,9 @@ namespace Tessera.Games.AugmentedYacht
 
             Shader litShader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
 
-            Texture2D baseTex = null;
-            Texture2D burntTex = null;
-            Texture2D warmTex = null;
-
-#if UNITY_EDITOR
-            baseTex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Generated/Parchment/parchment_base.png");
-            burntTex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Generated/Parchment/parchment_burnt_edge.png");
-            warmTex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/Generated/Parchment/parchment_warm_sand.png");
-#endif
+            Texture2D baseTex = RuntimeAssetLibrary.ParchmentBase;
+            Texture2D burntTex = RuntimeAssetLibrary.ParchmentBurntEdge;
+            Texture2D warmTex = RuntimeAssetLibrary.ParchmentWarmSand;
 
             // Layer 1 (Bottom): -5.2° 회전 / 짙은 에크루 톤 / 그을린 모서리 (테이블 바닥 밀착)
             CreateParchmentLayer("Layer 1 - Bottom Burnt Parchment", -5.2f, new Vector3(-0.08f, 0.000f, -0.05f), 1.14f, 1.12f,
@@ -667,13 +661,8 @@ namespace Tessera.Games.AugmentedYacht
 
             // 폰트 로드 (Alagard)
             Font fontMain = scoreSheetFont;
-#if UNITY_EDITOR
-            if (fontMain == null)
-            {
-                fontMain = UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Art/ThirdParty/Fonts/alagard.ttf")
-                    ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Art/ThirdParty/Fonts/m6x11.ttf");
-            }
-#endif
+            if (fontMain == null) fontMain = RuntimeAssetLibrary.LatinPixelFont;
+            if (fontMain == null) fontMain = RuntimeAssetLibrary.LatinPixelFontAlt;
             if (fontMain == null) fontMain = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             Font fontHeader = fontMain;
 
@@ -1075,10 +1064,8 @@ namespace Tessera.Games.AugmentedYacht
             rect.sizeDelta = new Vector2(size, size);
 
             Image img = obj.GetComponent<Image>();
-#if UNITY_EDITOR
-            Sprite sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"Assets/Art/Generated/Parchment/Icons/{iconName}.png");
+            Sprite sp = RuntimeAssetLibrary.FindScoreIcon(iconName);
             if (sp != null) img.sprite = sp;
-#endif
             img.color = tint ?? Color.white;
             img.raycastTarget = false;
             return img;

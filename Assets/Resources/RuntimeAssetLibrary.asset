@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae0ee598a1c041e45ad66adcfbba21c9, type: 3}
+  m_Name: RuntimeAssetLibrary
+  m_EditorClassIdentifier: Assembly-CSharp::Tessera.Core.RuntimeAssetLibrary
+  koreanPixelFont: {fileID: 12800000, guid: 6174a0648b66445d8696e2e3f8043237, type: 3}
+  latinPixelFont: {fileID: 12800000, guid: e252a28b97694323b6d8f7bf8de1c77a, type: 3}
+  latinPixelFontAlt: {fileID: 12800000, guid: ad23d79754dc4636b1b4e12de0aa55bf, type: 3}
+  parchmentBase: {fileID: 2800000, guid: 932ea0b037ed6b44b8ba573ac3f0973f, type: 3}
+  parchmentBurntEdge: {fileID: 2800000, guid: 80a35297937ce304abb25b801ad2137e, type: 3}
+  parchmentWarmSand: {fileID: 2800000, guid: f46848ebaf23486489a42a120aa7daf9, type: 3}
+  scoreIcons:
+  - {fileID: 21300000, guid: 30e359d6512a87649941121eba0ecb01, type: 3}
+  - {fileID: 21300000, guid: c464d3ebcc9d1774d8c4a66c42662dfc, type: 3}
+  - {fileID: 21300000, guid: b82671c863f2d5d4091da4a219fe231c, type: 3}
+  - {fileID: 21300000, guid: f0d20e626def223409a991030c2e60b2, type: 3}
+  - {fileID: 21300000, guid: 011d8f6176652e643adfd688e106e415, type: 3}
+  - {fileID: 21300000, guid: 6a823ba493314a64e86f597fcefd9428, type: 3}
+  - {fileID: 21300000, guid: cfdb984fad4de4149b84c7725bdb20f2, type: 3}
+  - {fileID: 21300000, guid: e48a86533c0617d4e83bc58a2c844fdc, type: 3}
+  - {fileID: 21300000, guid: 04eb578a9b83d0a4da3d69342739a221, type: 3}
+  - {fileID: 21300000, guid: 681c08072ad9c5a42946f2746e60379b, type: 3}
+  - {fileID: 21300000, guid: 18399c25287a1f747829a201ff7f3ed1, type: 3}
+  - {fileID: 21300000, guid: 1d9877db59182aa43b3cd1b6e0c59882, type: 3}

@@ -1,3 +1,4 @@
+using Tessera.Core;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -71,13 +72,10 @@ namespace Tessera.Games.AugmentedYacht
             }
 
             Text text = textObject.GetComponent<Text>();
-            Font font = null;
-#if UNITY_EDITOR
-            font = UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Art/ThirdParty/Fonts/Mulmaru.ttf")
-                ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Art/ThirdParty/Fonts/alagard.ttf")
-                ?? UnityEditor.AssetDatabase.LoadAssetAtPath<Font>("Assets/Art/ThirdParty/Fonts/m6x11.ttf");
-#endif
-            text.font = font ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            Font font = RuntimeAssetLibrary.KoreanPixelFont;
+            if (font == null) font = RuntimeAssetLibrary.LatinPixelFont;
+            if (font == null) font = RuntimeAssetLibrary.LatinPixelFontAlt;
+            text.font = font != null ? font : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             if (text.font != null && text.font.material != null && text.font.material.mainTexture != null)
             {
                 text.font.material.mainTexture.filterMode = FilterMode.Point;
