@@ -142,6 +142,14 @@ Rules:
 - 이 스킬의 원본은 <https://github.com/Besty0728/Unity-Skills> 입니다. 갱신·재설치 시 이 저장소를 기준으로 합니다.
 - 개념 질문만이고 Editor 상태를 건드리지 않으면 스킬 없이 `skills/` 하위 해당 문서만 읽습니다.
 
+### `unity-agent-plugin` 과의 역할 분담
+
+Unity Technologies 공식 플러그인 `unity@unity-agent-plugin` 이 설치돼 있습니다(사용자 범위, 스킬 31개, `unity:` 접두사). 명령어·에이전트·훅·MCP 서버는 없고 스킬만 제공합니다.
+
+- **Editor 조작 통로는 `unity-skills` REST 하나로 유지합니다.** 씬·프리팹·에셋·머티리얼 변경과 테스트 실행은 전부 기존 경로로 합니다. `unity:unity-cli` 는 같은 Editor를 다른 방식으로 건드리므로 쓰지 않습니다. 에디터 설치·라이선스·패키지 관리처럼 REST로 할 수 없는 일이 생기면 그때 사용자에게 먼저 알립니다.
+- **`unity:` 스킬은 지식·점검용으로 씁니다.** 해당 영역을 실제로 만지기 직전에 한 개만 읽습니다. 이 프로젝트에서 값이 큰 것은 `unity:optimize-text-mesh-pro`(TMP 동적 아틀라스·한글 폴백), `unity:urp-postprocessing` 과 `unity:validate-urp-render-graph-renderer-feature`(픽셀 엣지 Renderer Feature), `unity:optimize-audio`(`Assets/Audio` 임포트 설정), `unity:physics-3d-collision`(주사위 프리셋 베이킹) 입니다.
+- 플러그인 스킬 문서는 영어입니다. 그래도 답변은 §0 규칙대로 한국어 존댓말로 씁니다.
+
 ## 오케스트레이션
 
 설계 판단은 Opus high가 하고, 실행은 Sonnet medium 서브에이전트가 맡습니다. 무거운 파일 읽기·빌드 로그·테스트 출력은 서브에이전트 컨텍스트에서 소비되고, 설계자에게는 요약만 올라옵니다.
