@@ -739,6 +739,44 @@ namespace Tessera.Editor.Tests
                 Is.EqualTo(YachtCommandErrorCode.AugmentAlreadyUsed));
         }
 
+        /// <summary>
+        /// 갬빗은 발동 턴에 주사위를 4개로 줄이고, 다음 턴에 6개로 늘리고, 그 뒤에는 기본 5개로 돌아간다.
+        ///
+        /// YachtManualActionAugmentTests의 갬빗 테스트는 런타임의 GetDiceCount 반환값만 확인한다.
+        /// 여기서는 두 플레이어의 턴을 실제로 돌려 권위 상태의 주사위 배열 자체가 그 수로 다시
+        /// 만들어지는지 본다. 개수 전이는 점수 확정 시점(AfterScoreCommit)에 일어나지만 배열에
+        /// 반영되는 것은 다음 턴 시작(BeginTurn)이라 두 시점이 어긋날 수 있다.
+        /// </summary>
+        [Test]
+        public void Gambit_AuthorityDiceArrayShrinksToFourThenGrowsToSixThenReturnsToFive()
+        {
+            LocalGameAuthority authority = CreateAugmentedAuthority(new SequenceRandomSource(2, 3, 4, 5, 0));
+            Execute(authority, YachtCommandType.StartGame, "start");
+            YachtGameState state = authority.CurrentState;
+            SkipDraft(state);
+            state.AugmentPlayers[0].OwnedIds = new[] { YachtAugmentRuntime.GambitId };
+            Assert.That(state.Dice, Has.Length.EqualTo(5), "발동 전에는 기본 개수다.");
+
+            Assert.That(Execute(authority, YachtCommandType.UseAugmentAction, "gambit",
+                augmentId: YachtAugmentRuntime.GambitId).Accepted, Is.True);
+            Assert.That(state.AugmentPlayers[0].GambitState, Is.EqualTo(1));
+            Assert.That(state.Dice, Has.Length.EqualTo(4), "발동 턴은 4개로 굴린다.");
+
+            FinishTurn(authority, ScoreCategory.Aces);
+            Assert.That(state.AugmentPlayers[0].GambitState, Is.EqualTo(2), "점수 확정이 다음 턴 몫으로 승격시킨다.");
+            FinishTurn(authority, ScoreCategory.Aces);
+
+            Assert.That(state.CurrentPlayerIndex, Is.Zero);
+            Assert.That(state.Dice, Has.Length.EqualTo(6), "다음 턴은 6개로 굴린다.");
+
+            FinishTurn(authority, ScoreCategory.Deuces);
+            Assert.That(state.AugmentPlayers[0].GambitState, Is.EqualTo(3), "두 번째 확정으로 소진된다.");
+            FinishTurn(authority, ScoreCategory.Deuces);
+
+            Assert.That(state.CurrentPlayerIndex, Is.Zero);
+            Assert.That(state.Dice, Has.Length.EqualTo(5), "소진 후에는 기본 개수로 돌아온다.");
+        }
+
         [Test]
         public void M6_QuestAndRoundRewardsUseBaseScoreAndPerPlayerProgress()
         {
@@ -800,6 +838,28 @@ namespace Tessera.Editor.Tests
                 Mode = YachtGameMode.Augmented,
                 PresetClipCount = 20
             }, random);
+        }
+
+        /// <summary>현재 플레이어의 턴을 굴림부터 턴 넘김까지 끝낸다. 명령 ID는 중복이면 거부되므로 턴마다 다르게 짓는다.</summary>
+        private static void FinishTurn(LocalGameAuthority authority, ScoreCategory category)
+        {
+            YachtGameState state = authority.CurrentState;
+            string turnId = $"r{state.CurrentRound}p{state.CurrentPlayerIndex}";
+            Assert.That(Execute(authority, YachtCommandType.RollDice, $"roll-{turnId}").Accepted, Is.True);
+            Assert.That(Execute(authority, YachtCommandType.CommitScore, $"commit-{turnId}", category: category).Accepted, Is.True);
+            Assert.That(Execute(authority, YachtCommandType.AdvanceTurn, $"advance-{turnId}").Accepted, Is.True);
+            SkipDraft(authority.CurrentState);
+        }
+
+        /// <summary>
+        /// 드래프트가 열려 있으면 닫고 턴 단계로 되돌린다. 증강 선택은 주사위 구성을 바꿀 수 있어
+        /// 개수 전이만 보려는 테스트의 관심사를 흐린다.
+        /// </summary>
+        private static void SkipDraft(YachtGameState state)
+        {
+            if (!state.Draft.IsActive && state.Phase != YachtGamePhase.Draft) return;
+            state.Draft.IsActive = false;
+            state.Phase = YachtGamePhase.TurnReady;
         }
 
         private static YachtGameSession CreateSession()

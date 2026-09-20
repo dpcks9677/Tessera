@@ -311,7 +311,7 @@ for (int i = 0; i < result.Length; i++)
 **핵심 파일**: [YachtAugmentCatalog.cs](../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/YachtAugmentCatalog.cs)
 
 리플렉션 런타임 검색은 Unity IL2CPP / AOT 빌드에서 코드 스트리핑과 성능 저하를 부릅니다.
-그래서 45개 핸들러를 **정적 배열에 손으로 등록**합니다. 등록 순서가 곧 드래프트 후보와 정의 목록의
+그래서 46개 핸들러를 **정적 배열에 손으로 등록**합니다. 등록 순서가 곧 드래프트 후보와 정의 목록의
 노출 순서이며, 디스패처 정렬의 2차 기준이기도 합니다.
 
 ```csharp
@@ -325,7 +325,7 @@ public static class YachtAugmentCatalog
         new PerfectSquares(),
         new Gambler(),
         new ThreeOfAKind(),
-        // ... 강화 11종, 퀘스트 11종, 수동 행동 5종이 이어집니다 (합계 45개)
+        // ... 강화 11종, 퀘스트 11종, 수동 행동 6종이 이어집니다 (합계 46개)
     };
 
     public static IReadOnlyList<IAugmentHandler> All => Handlers;
@@ -768,7 +768,7 @@ private static int RequiredDiceSlots(string augmentId)
 | **16** | `odds` | 오즈 | `SmallStraight` | 모든 주사위가 홀수(1, 3, 5, 7)이면 20점 | `IBeforeScorePreview` | `Odds` | `DONE` |
 | **17** | `double-large-straight` | 더블 라지 스트레이트 | `SmallStraight` | 스몰 스트레이트를 라지 스트레이트(30점)로 치환, 상단 보너스 기준을 60으로 완화 | `IBeforeScorePreview`<br/>`IOnAugmentSelected` | `DoubleLargeStraight` | `DONE` |
 | **18** | `prime-collection` | 프라임 컬렉션 | `LargeStraight` | 모든 눈이 소수(2,3,5,7)이고 2,3,5가 모두 포함되면 35점 | `IBeforeScorePreview` | `PrimeCollection` | `DONE` |
-| **19** | `duplex-house` | 땅콩주택 | `FullHouse` | 차이가 정확히 1인 두 숫자로 풀하우스 달성 시 35점 (예: 222-33) | `IBeforeScorePreview` | `DuplexHouse` | `DONE` |
+| **19** | `duplex-house` | 땅콩주택 | `LargeStraight` | 차이가 정확히 1인 두 숫자로 풀하우스 달성 시 35점 (예: 222-33) | `IBeforeScorePreview` | `DuplexHouse` | `DONE` |
 | **20** | `mountain` | 마운틴 | `LargeStraight` | 정확히 2, 3, 4, 5, 6 조합이면 40점 | `IBeforeScorePreview` | `Mountain` | `DONE` |
 | **21** | `high-dice` | 하이 다이스 | `LargeStraight` | 모든 눈이 4, 5, 6, 7이고 합계가 26 이상이면 35점 | `IBeforeScorePreview` | `HighDice` | `DONE` |
 | **22** | `2nd-choice` | 두 번째 초이스 | `Yacht` | 요트 칸을 주사위 눈금 합계의 절반(내림)으로 기입 | `IBeforeScorePreview` | `SecondChoice` | `DONE` |

@@ -371,14 +371,34 @@ public sealed class DicePresetBakeRig : IDisposable
         }
     }
 
+    /// <summary>
+    /// 발사 줄이 차지하는 X 간격. 기본은 주사위 한 변의 1.6배다.
+    ///
+    /// 주사위가 여섯 개면 기본 간격으로 벌어진 바깥 두 개의 시작 X가 플레이 영역(±3.0)은 물론
+    /// 바닥 콜라이더(±3.5) 밖으로 나간다. 그러면 스폰 직후 아래로 빠져 HasEscaped가 걸리고
+    /// 모든 시도가 안착 실패로 탈락한다. 그래서 바깥 줄이 영역 안에 들어오도록 간격을 좁힌다.
+    /// 다섯 개까지는 기본 간격이 그대로 통과하므로 이미 구운 프리셋의 결과는 바뀌지 않는다.
+    /// </summary>
+    private static float FlipLaneSpacing(int count)
+    {
+        const float startJitter = 0.1f;
+        float preferred = DiceBoardMetrics.DieSize * 1.6f;
+        if (count < 2) return preferred;
+
+        float maxLane = (count - 1) * 0.5f;
+        float limit = (DiceBoardMetrics.PlayBoundsMaxX - DiceBoardMetrics.TrayCenterX - startJitter) / maxLane;
+        return Mathf.Min(preferred, limit);
+    }
+
     /// <summary>판 뒤집기. 바닥에서 수직으로 크게 튀어오른다.</summary>
     private void LaunchFlip(System.Random random)
     {
+        float spacing = FlipLaneSpacing(bodies.Length);
         for (int index = 0; index < bodies.Length; index++)
         {
             float lane = bodies.Length == 1 ? 0f : index - (bodies.Length - 1) * 0.5f;
             Vector3 start = new(
-                lane * DiceBoardMetrics.DieSize * 1.6f + Range(random, -0.1f, 0.1f),
+                lane * spacing + Range(random, -0.1f, 0.1f),
                 RestHeight(index) + 0.4f,
                 DiceBoardMetrics.TrayCenterZ + Range(random, -0.5f, 0.5f));
 

@@ -58,7 +58,7 @@ namespace Tessera.Games.Yacht
             new Doubling(),
             new Nozdormu(),
 
-            // 수동 행동 5종
+            // 수동 행동 6종
             new TableFlip(),
             new EquivalentExchange(),
             new Gambit(),

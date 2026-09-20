@@ -610,7 +610,7 @@
 | `.../Presentation/DiceSmokePuffVfx.cs` | 신규 |
 | `.../Presentation/YachtTurnFlowPresenter.cs` | 굴림 없음 분기를 지연 코루틴으로 |
 | `Assets/Editor/DiceSmokeSpriteBaker.cs` | 신규 (일회성 PNG 생성). 커밋 `2497bfc`에서 외부 에셋팩 프리팹 교체로 삭제됨 |
-| `Assets/Resources/Vfx/DiceSmokePuff.png` | 신규 에셋 |
+| `Assets/Resources/Vfx/DiceSmokeBurst.prefab` · `.mat` · `DiceSmokeBurstTexture.png` | 신규 에셋. 절차적 `DiceSmokePuff.png` 계획을 대체해 커밋 `2497bfc`에서 외부 에셋팩 기반 프리팹으로 확정됨 |
 | `Assets/Editor/Tests/Yacht/AugmentVfxPlannerTests.cs` | 케이스 추가 |
 
 ### 9.7 작업 분해

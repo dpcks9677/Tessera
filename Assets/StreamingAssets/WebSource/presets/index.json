@@ -88,6 +88,14 @@
     "clipCount": 20
   },
   {
+    "file": "dice_presets_flip_6.json",
+    "label": "판 뒤집기 6개 (확장)",
+    "diceCount": 6,
+    "octaCount": 0,
+    "mode": "flip",
+    "clipCount": 20
+  },
+  {
     "file": "dice_presets_mixed_0normal_1octa.json",
     "label": "8면체 1개",
     "diceCount": 1,

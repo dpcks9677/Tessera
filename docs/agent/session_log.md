@@ -9,6 +9,24 @@
 
 ---
 
+### 2026-09-20 — Claude (`M17-T7` 무작위 전체 게임 완주 테스트, 문서 정정, 증강 밸런스 분석)
+
+- 작업 ID: `M17-T7`. 문서 정정 3건과 밸런스 분석·설계 백로그는 태스크 ID 없이 같은 세션에서 수행
+- 변경 ①(`M17-T7`): `Assets/Editor/Tests/Yacht/YachtRandomFullGamePlaythroughTests.cs` 신규. 시드 고정 난수원으로 증강 요트 한 판을 끝까지 자동 진행하는 하네스를 만들고 테스트 2개를 둔다. 하나는 시드 0~59로 60판을 완주시켜 예외 없이 끝나는지 보는 것이고, 다른 하나는 시드 0~19로 20판을 돌려 서로 다른 증강 ID가 10종 이상 발동하고 수동 행동이 최소 한 번 발동하는지 보는 것이다. 무한 루프 방지로 2000회 반복 상한을 둔다
+- 검증(`M17-T7`): EditMode 전체 369/369 통과(기존 367 + 신규 2), 실패·스킵 0, 컴파일 에러·경고 0건. 신규 2건 단독 실행 시 합산 7초, 전체 실행 시간은 기존 대비 약 +10초
+- 문서 정정 ①: `docs/agent/m17_vfx_spec.md` §9.6 파일 표의 절차적 에셋 `Assets/Resources/Vfx/DiceSmokePuff.png`를 실제 사용 중인 `Assets/Resources/Vfx/DiceSmokeBurst.prefab`·`.mat`·`DiceSmokeBurstTexture.png`로 교체. 근거는 `DiceSmokePuffVfx.cs:15`의 `PrefabResourcePath = "Vfx/DiceSmokeBurst"`이며, 커밋 `2497bfc`에서 외부 에셋팩 기반 프리팹으로 확정된 것
+- 문서 정정 ②: `docs/reference/augments_specification_and_status.md` 19번 `duplex-house`의 대상 칸을 `FullHouse`에서 실제 코드값인 `LargeStraight`(`DuplexHouse.cs:10`)로 정정. `mountain`·`high-dice`·`prime-collection`과 경합하는 구조가 문서에도 드러남
+- 문서 정정 ③: 같은 문서 2장 5절의 핸들러 개수 "45개"·수동 행동 "5종"을 실제값 46개·6종으로 정정. 오기의 출처였던 `YachtAugmentCatalog.cs`의 주석 `// 수동 행동 5종`도 `// 수동 행동 6종`으로 고쳤다. 같은 문서 5장의 "46종 DONE" 집계는 원래 옳았고 2장 서술만 어긋나 있었다
+- 신규 문서 ①: `docs/reference/augment_balance_analysis.md`. GEV(한 판 전체 기대 추가 총점)를 기준으로 삼고, 상단 칸 증강은 `ΔE[슬롯 점수] + 35 × ΔP(상단 합 ≥ 63)`으로 계산해 F~S 6등급을 정의. 정확 DP(정렬 상태 252가지, 리롤 2회 역방향 최적화)로 기본 족보 기대값과 상단 보너스 확률을 구했고 검산값은 `Choice` 23.33, `P(상단 합 ≥ 63)` = 4.36%. 족보 변형 18종 전부 측정한 결과 목표 대역(+6~+12)에 든 것은 4종뿐이고 절반이 D 이하. `gambler`(−5.72)와 `double-large-straight`(−0.26)는 얻으면 손해, `mountain`(+0.04)은 효과가 사실상 없음. 최대값은 `reverse-choice`(+16.03). 변형 이외 37종은 모델로 풀리지 않아 정성 추정으로 다루고, 발동 횟수 차이(변형 1회 대 주사위 강화 12회)가 보정되지 않는 구조적 문제와 `random-box`가 기댓값상 항상 이득이라는 문제를 지적
+- 신규 문서 ②: `docs/agent/augment_design_backlog.md`. 전부 미검토 기획안이며 구현된 것은 없다. 삭제된 안티 계열 6종의 빈자리를 메울 상단 칸(`Aces`~`Sixes`) 변형 후보 52종을 정확 DP로 달성 확률을 구하고 GEV +7.0에 맞춰 점수를 이분법으로 역산했다. `Fours` 이상 칸은 가치 대부분이 상단 보너스 기여에서 나오고, `Sixes` 대상 후보는 슬롯 기대값이 0 이하여도 GEV가 +6.5 이상임을 확인. 콰르텟 계열 6종(달성률 10.4%)은 제외 권고, 하우스 계열 6종은 축소 권고, 우선 채택 12종을 칸별로 제시. 신규 증강 34종(주사위 변형 7·강화 7·퀘스트 9·수동 행동 7·하단 족보 변형 4)도 함께 기획
+- 지식 그래프: `PYTHONHASHSEED=0 graphify update .` 실행. 4589 노드, 9481 엣지, 268 커뮤니티. 커뮤니티 수가 저장된 라벨 266개와 달라져 81개가 허브 이름으로 자동 개명됨. LLM 재라벨링(`graphify label`)은 API 비용이 들어 실행하지 않았고, 이름 복구는 별도 실행 필요
+- 코드 감사에서 나온 지적(고치지 않음): `StepByStep`의 보너스 값 55가 `StepByStep.cs:38`, `YachtGameCore.cs:134`, `StepByStep.cs:95` 세 곳에 중복. `CoinToss`의 값도 중복 정의 있음. `StepByStep.cs:87`에 상단 칸 개수 6이 리터럴로 박혀 있음
+- 보강(사용자 지적): 최초 GEV 모델은 변형 증강을 "처음부터 그 칸의 규칙이 바뀐 상태"로만 계산했고, 이미 점수가 기입된 칸을 변형해 그 칸을 초기화하고 추가 턴을 얻는 경로를 평가하지 않았다. 해당 규칙은 `Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs`의 `ResetFilledTarget`(1020-1048행)에 있고 변형 분류 전체에 적용됨(995-998행). 소비는 `Assets/Scripts/Games/Yacht/LocalGameAuthority.cs` 399-453행의 `IsExtraTurnPhase`. 추가 턴은 공짜 득점 기회가 아니라 재도전이며, 12칸을 13굴림으로 채우고 한 칸을 두 번 굴리는 구조다. 이득은 `E[변형 점수] − 지운 점수 + 35 × Δ상단보너스`로 계산되고, 스크래치(0점) 칸을 되살리는 경우 `gambler`는 빈 칸 기준 −5.72에서 +17.61로 뒤집힌다. `evens`/`odds` +1.03 → +10.26, `duplex-house` +0.93 → +8.77, `mountain` +0.04 → +7.87, `double-large-straight` −0.26 → +7.83. 즉 §5의 F·D 등급이 이 경로에서는 뒤집히며, 원 족보를 이기지 못하도록 설계한 변형일수록 이미 버린 칸에는 제 점수를 통째로 준다. `PhaseOneOnly`인 변형 4종(`reverse-choice`, `2nd-choice`, `blackjack-21`, `fibonacci-numbers`)은 라운드 1에만 얻을 수 있어 이 경로를 쓸 수 없다. 분석 결과는 `docs/reference/augment_balance_analysis.md` §8 「이미 채워진 칸을 변형할 때 — 재도전 옵션」으로 추가했고, `docs/agent/augment_design_backlog.md` §1.1·§1.8에도 "52종 가격은 빈 칸 기준" 경고를 넣었다
+- 남은 일: 밸런스 문서 §7.1의 재설계 후보(`gambler`, `mountain`, `double-large-straight`, D 등급 4종)를 실제로 손댈지, 설계 백로그의 상단 변형 12종과 신규 증강 34종 중 무엇을 살릴지는 사용자 판단 대기. 측정값은 전부 단일 슬롯 가정의 상한이라 실측 GEV를 얻으려면 `M17-T7`의 하네스를 전체 게임 시뮬레이터로 확장해야 함. 라운드 6·9 시점에 대상 칸이 이미 차 있을 확률도 아직 측정하지 못했다. 플레이어의 칸 배분 정책에 의존하므로 전체 게임 시뮬레이터가 필요함
+- 시각 확인 생략, 사유: 코드·문서·수치 검증만 있고 시각 결과물 없음
+- 커밋하지 않았다. 사용자 허가 대기 중
+- 다음 작업: 미지정
+
 ### 2026-09-20 — Claude (`M17-T10` 점수표 증강 표시)
 
 - 작업 ID: `M17-T10`. 사용자가 확정한 범위는 "문서 확정분만"

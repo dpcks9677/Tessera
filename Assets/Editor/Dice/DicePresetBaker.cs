@@ -48,6 +48,8 @@ public static class DicePresetBaker
         new("dice_presets_flip_3.json", "flip", 3, 0, "판 뒤집기 3개"),
         new("dice_presets_flip_4.json", "flip", 4, 0, "판 뒤집기 4개"),
         new("dice_presets_flip_5.json", "flip", 5, 0, "판 뒤집기 5개"),
+        // 갬빗은 다음 턴 주사위를 6개로 늘리고 판 뒤집기와 충돌하지 않으므로 6개 뒤집기도 나온다.
+        new("dice_presets_flip_6.json", "flip", 6, 0, "판 뒤집기 6개 (확장)"),
 
         new("dice_presets_mixed_0normal_1octa.json", "octahedron", 1, 1, "8면체 1개"),
         new("dice_presets_mixed_0normal_2octa.json", "octahedron", 2, 2, "8면체 2개"),
@@ -86,6 +88,62 @@ public static class DicePresetBaker
 
         AssetDatabase.Refresh();
         Debug.Log($"[DicePresetBaker] 시나리오 {Scenarios.Length}종 베이킹 완료.");
+    }
+
+    /// <summary>
+    /// 아직 파일이 없는 시나리오만 굽는다. 시나리오마다 파일 이름으로 난수 시드를 잡으므로
+    /// 이미 있는 것을 건너뛰어도 새로 굽는 쪽의 결과는 전체 베이킹과 같다.
+    /// 건너뛴 시나리오의 clipCount는 ClipsPerFile로 적는다. 지금 커밋된 프리셋은 모두 그 값이다.
+    /// </summary>
+    [MenuItem("Tessera/Bake/Dice Presets (없는 것만)")]
+    public static void BakeMissing()
+    {
+        Directory.CreateDirectory(OutputFolder);
+        List<int> clipCounts = new();
+        List<string> baked = new();
+        List<string> failed = new();
+        try
+        {
+            for (int index = 0; index < Scenarios.Length; index++)
+            {
+                DicePresetScenario scenario = Scenarios[index];
+                if (File.Exists(Path.Combine(OutputFolder, scenario.File)))
+                {
+                    clipCounts.Add(DicePresetScoring.ClipsPerFile);
+                    continue;
+                }
+
+                EditorUtility.DisplayProgressBar(
+                    "없는 주사위 프리셋 베이킹",
+                    $"{scenario.Label} ({index + 1}/{Scenarios.Length})",
+                    index / (float)Scenarios.Length);
+                int clips = BakeScenario(scenario);
+                clipCounts.Add(clips);
+                if (clips < DicePresetScoring.ClipsPerFile) failed.Add(scenario.File);
+                else baked.Add(scenario.File);
+            }
+
+            // 실패한 시나리오는 파일이 없다. 그대로 인덱스를 쓰면 없는 파일을 가리키는 항목이 남아
+            // 런타임이 폴백조차 못 한다. 하나라도 실패하면 기존 인덱스를 그대로 둔다.
+            if (failed.Count == 0)
+            {
+                File.WriteAllText(Path.Combine(OutputFolder, "index.json"), DicePresetWriter.BuildIndex(Scenarios, clipCounts));
+            }
+        }
+        finally
+        {
+            EditorUtility.ClearProgressBar();
+        }
+
+        AssetDatabase.Refresh();
+        if (failed.Count > 0)
+        {
+            Debug.LogError($"[DicePresetBaker] 베이킹 실패 {failed.Count}종: {string.Join(", ", failed)}. index.json은 건드리지 않았습니다.");
+            return;
+        }
+        Debug.Log(baked.Count == 0
+            ? "[DicePresetBaker] 빠진 시나리오가 없습니다. index.json만 다시 썼습니다."
+            : $"[DicePresetBaker] 빠져 있던 시나리오 {baked.Count}종 베이킹 완료: {string.Join(", ", baked)}");
     }
 
     /// <summary>형상이나 발사 값을 손볼 때 한 종만 빠르게 확인하는 경로.</summary>

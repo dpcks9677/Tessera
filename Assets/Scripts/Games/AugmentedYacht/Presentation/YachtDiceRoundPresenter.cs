@@ -109,9 +109,23 @@ namespace Tessera.Games.AugmentedYacht
             SetVisible(Visible);
         }
 
+        /// <summary>
+        /// 권위 주사위 수가 바뀌었으면 화면 주사위를 그 수에 맞춰 다시 만든다.
+        ///
+        /// 갬빗처럼 주사위 개수를 바꾸는 증강이 있어 개수는 턴마다 달라질 수 있다. 화면 사본이
+        /// 옛 개수로 남으면 남는 주사위가 이전 턴의 킵 상태를 그대로 들고 굴림에서 빠진다.
+        /// </summary>
+        private void EnsureDiceCount(int count)
+        {
+            if (count <= 0 || count == diceCount) return;
+            diceCount = count;
+            EnsureDiceState();
+        }
+
         /// <summary>새 턴을 위해 킵 슬롯을 비우고 주사위를 처음 자리로 되돌린다.</summary>
         public void ResetForTurn(IReadOnlyList<IReadOnlyYachtDieState> authorityDice)
         {
+            if (authorityDice != null) EnsureDiceCount(authorityDice.Count);
             SyncFromAuthority(authorityDice);
             for (int i = 0; i < keptSlotIndices.Count; i++) keptSlotIndices[i] = -1;
             HoveredIndex = -1;
