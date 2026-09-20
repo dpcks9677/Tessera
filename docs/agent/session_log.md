@@ -9,6 +9,31 @@
 
 ---
 
+### 2026-09-20 — Claude (코인 토스 앞면 1개 효과 변경 및 스핀별 효과음)
+
+- 작업 ID: 없음. 직전 "코인 토스 푸터 정정 및 동전 효과음" 항목의 연장선. 사용자 요청에 따른 추가 조정이며 마일스톤·태스크로 기록하지 않는다
+- 변경 ①: 코인 토스 앞면 1개 효과를 "최저 주사위 6 고정"에서 **보너스 +3점 획득**으로 변경. `CoinToss.BonusScore = 3` 추가, 고아가 된 `ApplyLowestDieToSix` 삭제. 최종 효과표: 0개 -5점 / 1개 보너스 +3점 / 2개 리롤 +1 / 3개 상단 보너스 기준 min(현재,57)
+- 변경 ②: 카드 푸터의 취소선(`<s>`)과 "퀘스트: " 접두를 제거. 퀘스트 증강 카드만 기존 표기를 유지하고, 비퀘스트 카드(코인 토스 포함)는 얻은 효과 문구만 그대로 출력. `AugmentCardView.BindRow`에 `showStatusHeader` 인자 추가
+- 변경 ③: 코인 효과음을 시퀀스 시작 1회 재생에서 동전 3개 각각의 스핀 시작 시점에 1회씩(총 3회) 재생으로 변경. `CoinTossVfx.Play`에 `onCoinSpinStarted` 콜백 인자 추가, `YachtTurnFlowPresenter.RunCoinTossSequence`가 이 콜백에 `YachtAudioService.PlayCoinToss`를 연결. 클립은 직전 항목에서 확인한 `coin_flip.mp3` 그대로 사용
+- 검증: EditMode 필터 실행(`filter=Tessera.Editor.Tests`) 356개 전부 통과, 실패 0. 기존 테스트 1개 교체, 신규 테스트 1개 추가
+- 변경 파일: `Assets/Editor/Tests/Yacht/AugmentCardViewTests.cs`, `Assets/Editor/Tests/Yacht/YachtManualActionAugmentTests.cs`, `Assets/Scenes/Augmented Dice.unity`, `Assets/Scripts/Dice/CoinTossVfx.cs`, `Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Enhance/CoinToss.cs`, `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs`, `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtAudioService.cs`, `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtTurnFlowPresenter.cs`, `docs/agent/m17_coin_mesh_plan.md`, `docs/agent/work_plan.md`, `docs/reference/augments_specification_and_status.md`, `docs/agent/m17_vfx_spec.md`, 이 문서
+- 다음 작업: 미지정
+
+### 2026-09-20 — Claude (코인 토스 푸터 정정 및 동전 효과음)
+
+- 작업 ID: 없음. 사용자 요청에 따른 코인 토스 증강 수정이며 마일스톤·태스크로 기록하지 않는다. 같은 요청에서 `M17-T23-7`은 사용자 육안 확인으로 완료 판정
+- 문제 ①: 코인 토스 카드 푸터에 퀘스트 증강용 상태 배지("퀘스트 진행 중" / "퀘스트 성공")가 떴다. 코인 토스는 `YachtAugmentKind.Enhance`이고 퀘스트가 아니다. 원인은 푸터가 켜지는 조건이 상태 객체의 `IAugmentProgressText` 구현 여부뿐이고, `AugmentCardView.StatusLabelText()`가 outcome 3값을 전부 "퀘스트 ○○"로 하드코딩한 것. 이 인터페이스 구현체 12개 중 비퀘스트는 `CoinTossState` 하나
+- 문제 ②: 동전을 굴릴 때 효과음이 없었다. 사용자가 지목한 `coin_toss.mp3`는 존재하지 않고 실제 파일은 `Assets/Audio/Sfx/Coin/coin_flip.mp3`였다
+- 구현 ①: `AugmentCardView.SetProgressBlock`이 `showStatusHeader` 인자를 받아 상태 라벨과 점선 줄의 GameObject를 켜고 끈다. `Bind()`가 `definition.Kind == YachtAugmentKind.Quest`를 넘긴다. 헤더가 꺼지면 행 시작 위치가 `RowGapAboveDash`만 남는다. 카드 인스턴스는 재사용되므로 양방향 모두 처리한다
+- 구현 ②: `CoinTossState.DescribeProgress`가 미사용 시 줄 없는 진행 정보를 반환해 푸터 자체를 끈다(기존 "사용 가능" 문구 제거). 사용 후에는 `앞면 N개 · 효과` 한 줄만 남기고, outcome을 앞면 0개(-5점)일 때 `Failed`, 그 외 `Succeeded`로 바꿔 불이익이 성공 색으로 표시되던 것을 고쳤다
+- 구현 ③: `YachtAudioService`에 `coinTossClip` 직렬화 필드와 `PlayCoinToss()`를 추가했다. 클립이 비어도 조용히 반환한다는 이 클래스의 기존 방침을 따른다. `ClipsReady` 이벤트 시그니처는 주사위 클립 전달 경로이므로 건드리지 않았다. `YachtTurnFlowPresenter.RunCoinTossSequence()`가 `coinTossVfx.Play(...)` 직전에 `GetComponent`로 서비스를 지연 확보해 재생한다. 오디오는 이 프로젝트에서 `Resources`나 `RuntimeAssetLibrary`가 아니라 인스펙터 직렬화 방식이라 그 패턴을 따랐다
+- 씬 작업: `Assets/Scenes/Augmented Dice.unity`의 씬 루트 `Dice Graphics PoC`(`AugmentedYachtController`와 `YachtAudioService`가 같은 오브젝트에 있음)에서 `coinTossClip`에 `coin_flip.mp3`를 할당하고 저장했다. 기존 `rollClips` 4개와 `impactClips` 4개는 손대지 않았다
+- 검증: 컴파일 에러 0. EditMode 필터 실행(`filter=Tessera.Editor.Tests`) 355개 전부 통과, 실패 0, 스킵 0. 신규 테스트 3개는 `CoinTossState_Unused_HasNoProgressLines`, `CoinTossState_Used_ReportsOutcomeByHeadCount`(앞면 0~3개 4케이스), `NonQuestCard_HidesStatusLabelButQuestCard_ShowsIt`. 기대값 352와의 차이 3은 파라미터 테스트가 4개로 세어진 것
+- 남은 것: 비퀘스트 푸터의 실제 레이아웃은 육안 확인을 하지 않았다. 겹침 회귀 테스트(`QuestCard_ReservesBlockHeightWithoutOverlappingBody`)는 퀘스트 경로만 덮는다
+- 시각 확인 생략, 사유: 표시 조건과 활성 상태는 테스트로 판정했고, 푸터 레이아웃 육안 확인은 사용자 요청 시에만 한다
+- 변경 파일: `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs`, `Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Enhance/CoinToss.cs`, `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtAudioService.cs`, `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtTurnFlowPresenter.cs`, `Assets/Editor/Tests/Yacht/YachtManualActionAugmentTests.cs`, `Assets/Editor/Tests/Yacht/AugmentCardViewTests.cs`, `Assets/Scenes/Augmented Dice.unity`, `docs/agent/work_plan.md`, 이 문서
+- 다음 작업: 미지정
+
 ### 2026-09-20 — Claude (훅 Python 이식 잔여 정리)
 
 - 작업 ID: 없음. 커밋 `4aee9db`의 Node → Python 훅 이식에서 검증되지 않은 채 남아 있던 3개 지점을 정리하며, 마일스톤·태스크로 기록하지 않는다

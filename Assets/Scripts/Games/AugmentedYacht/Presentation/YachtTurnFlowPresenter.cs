@@ -66,6 +66,7 @@ namespace Tessera.Games.AugmentedYacht
         private Coroutine smokeRoutine;
         private Coroutine coinTossRoutine;
         private CoinTossVfx coinTossVfx;
+        private YachtAudioService audioService;
 
         /// <summary>연출 시퀀스가 하나라도 도는 중인가. 새 증강 행동·굴림 입력을 막을 때 쓴다.</summary>
         private bool IsAugmentSequenceRunning => smokeRoutine != null || coinTossRoutine != null;
@@ -698,7 +699,8 @@ namespace Tessera.Games.AugmentedYacht
             dice?.SetVisible(false);
 
             coinTossVfx ??= new CoinTossVfx();
-            yield return coinTossVfx.Play(faces, centerSectionX);
+            audioService ??= GetComponent<YachtAudioService>();
+            yield return coinTossVfx.Play(faces, centerSectionX, () => audioService?.PlayCoinToss());
 
             if (gameSession == null || dice == null)
             {

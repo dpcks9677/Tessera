@@ -164,8 +164,9 @@ namespace Tessera.Dice
         /// <summary>
         /// 동전 3개를 던져 정지 자세까지 재생한다. faces는 코인별 앞/뒤 비트마스크(<see cref="IsHeads"/>),
         /// centerSectionX는 배치 기준 X 좌표다. 프리팹이나 프리셋을 못 찾으면 경고만 남기고 종료한다.
+        /// onCoinSpinStarted는 동전이 자기 스태거 지연을 지나 스핀을 시작하는 순간마다(동전당 1회, 총 3회) 호출된다.
         /// </summary>
-        public System.Collections.IEnumerator Play(int faces, float centerSectionX)
+        public System.Collections.IEnumerator Play(int faces, float centerSectionX, Action onCoinSpinStarted = null)
         {
             if (!EnsureResourcesLoaded()) yield break;
 
@@ -194,6 +195,7 @@ namespace Tessera.Dice
                 maxClipEnd = Mathf.Max(maxClipEnd, clipEnds[i]);
             }
 
+            var spinStarted = new bool[coinCount];
             float elapsed = 0f;
             while (elapsed < maxClipEnd)
             {
@@ -202,6 +204,12 @@ namespace Tessera.Dice
                     if (coins[i] == null) continue;
                     float local = elapsed - i * StartStagger;
                     if (local < 0f) continue;
+
+                    if (!spinStarted[i])
+                    {
+                        spinStarted[i] = true;
+                        onCoinSpinStarted?.Invoke();
+                    }
 
                     CoinSpinClip clip = presetClips[presetIndices[i]];
                     Pose pose = Sample(clip, local);

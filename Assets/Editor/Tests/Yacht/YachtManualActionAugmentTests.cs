@@ -251,27 +251,17 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
-        public void CoinToss_OneHead_SetsLowestDieToSixEvenIfKeptAndBreaksTiesByIndex()
+        public void CoinToss_OneHead_GrantsThreePointBonus()
         {
             AcquireAugment(YachtAugmentRuntime.CoinTossId);
             state.HasRolled = true;
 
-            // 슬롯 1, 2가 최저값(1)으로 동점. 슬롯 1은 킵된 상태.
-            state.Dice[0].Value = 3;
-            state.Dice[1].Value = 1;
-            state.Dice[1].IsKept = true;
-            state.Dice[2].Value = 1;
-            state.Dice[3].Value = 5;
-            state.Dice[4].Value = 6;
-
+            int before = state.Players[0].augmentBonusScore;
             Assert.That(runtime.TryUseCoinToss(state, 0, new SequenceRandom(1, 0, 0), out _, out _), Is.True);
+            Assert.That(state.Players[0].augmentBonusScore - before, Is.EqualTo(3));
 
             var coinState = (CoinTossState)state.AugmentPlayers[0].States.Find(YachtAugmentRuntime.CoinTossId);
             Assert.That(coinState.Heads, Is.EqualTo(1));
-
-            // 동점이면 인덱스가 가장 앞선 주사위(슬롯 1)가 6이 된다. 킵 여부와 무관.
-            Assert.That(state.Dice[1].Value, Is.EqualTo(6));
-            Assert.That(state.Dice[2].Value, Is.EqualTo(1));
         }
 
         [Test]
@@ -313,6 +303,26 @@ namespace Tessera.Editor.Tests
             Assert.That(runtime.TryUseCoinToss(state, 0, new SequenceRandom(1, 1, 1), out _, out _), Is.True);
 
             Assert.That(state.Players[0].upperBonusThreshold, Is.EqualTo(55));
+        }
+
+        [Test]
+        public void CoinTossState_Unused_HasNoProgressLines()
+        {
+            var state = new CoinTossState();
+            AugmentProgress progress = state.DescribeProgress(default);
+            Assert.That(progress.Lines.Count, Is.EqualTo(0));
+        }
+
+        [TestCase(0, AugmentProgressOutcome.Failed)]
+        [TestCase(1, AugmentProgressOutcome.Succeeded)]
+        [TestCase(2, AugmentProgressOutcome.Succeeded)]
+        [TestCase(3, AugmentProgressOutcome.Succeeded)]
+        public void CoinTossState_Used_ReportsOutcomeByHeadCount(int heads, AugmentProgressOutcome expected)
+        {
+            var state = new CoinTossState { IsUsed = true, Heads = heads };
+            AugmentProgress progress = state.DescribeProgress(default);
+            Assert.That(progress.Outcome, Is.EqualTo(expected));
+            Assert.That(progress.Lines[0].Text, Does.Contain($"앞면 {heads}개"));
         }
 
         [Test]

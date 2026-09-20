@@ -13,12 +13,14 @@ namespace Tessera.Games.AugmentedYacht
     {
         [SerializeField] private AudioClip[] rollClips = Array.Empty<AudioClip>();
         [SerializeField] private AudioClip[] impactClips = Array.Empty<AudioClip>();
+        [SerializeField] private AudioClip coinTossClip;
 
         private AudioSource source;
 
         public AudioSource Source => source;
         public AudioClip[] RollClips => (AudioClip[])rollClips.Clone();
         public AudioClip[] ImpactClips => (AudioClip[])impactClips.Clone();
+        public AudioClip CoinTossClip => coinTossClip;
 
         /// <summary>적재가 끝나면 알린다. 아직 한 개도 못 읽었을 수 있다.</summary>
         public event Action<AudioSource, AudioClip[], AudioClip[]> ClipsReady;
@@ -41,6 +43,14 @@ namespace Tessera.Games.AugmentedYacht
         {
             EnsureSource();
             ClipsReady?.Invoke(source, RollClips, ImpactClips);
+        }
+
+        /// <summary>코인 토스 효과음을 재생한다. 클립이 비어 있으면 조용히 넘어간다.</summary>
+        public void PlayCoinToss()
+        {
+            EnsureSource();
+            if (coinTossClip == null) return;
+            source.PlayOneShot(coinTossClip);
         }
     }
 }

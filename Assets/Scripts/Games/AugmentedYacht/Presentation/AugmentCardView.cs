@@ -189,7 +189,7 @@ namespace Tessera.Games.AugmentedYacht
                 descriptionText.text = "표시 데이터를 찾을 수 없습니다.";
                 kindText.text = "미확인";
                 targetText.text = string.Empty;
-                SetProgressBlock(null);
+                SetProgressBlock(null, false);
                 icon.sprite = overrideIcon != null ? overrideIcon : AugmentPixelIconFactory.Get(YachtAugmentKind.Enhance);
                 icon.color = overrideIcon != null ? Color.white : IconColor(YachtAugmentKind.Enhance);
                 SetState(AugmentCardDisplayState.Disabled);
@@ -202,7 +202,7 @@ namespace Tessera.Games.AugmentedYacht
             targetText.text = AugmentStickerCatalog.TryGetTargetCategory(definition, out _)
                 ? AugmentStickerCatalog.MarkLabel(definition.Id, definition.DisplayName)
                 : string.Empty;
-            SetProgressBlock(progress);
+            SetProgressBlock(progress, definition.Kind == YachtAugmentKind.Quest);
             Sprite augmentIcon = overrideIcon ?? Resources.Load<Sprite>($"AugmentIcons/{definition.Id}");
             icon.sprite = augmentIcon != null ? augmentIcon : AugmentPixelIconFactory.Get(definition.Kind);
             // 증강 고유 아이콘은 앤틱 잉크색이 구워져 있으므로 틴트하지 않는다.
@@ -211,14 +211,19 @@ namespace Tessera.Games.AugmentedYacht
         }
 
         /// <summary>
-        /// 퀘스트 진행 블록을 켜고 채우거나(progress 있음), 끄고 본문 여백을 되돌린다(progress 없음).
+        /// 진행 블록을 켜고 채우거나(progress 있음), 끄고 본문 여백을 되돌린다(progress 없음).
         /// 행은 재사용만 하고 파괴하지 않는다 — Build에서 미리 만들어 둔 3개 슬롯을 매번 다시 채운다.
         /// 블록 높이는 실제 줄 수만큼만 차지하도록 매번 다시 재고, 본문 아래 여백도 그 높이에 맞춘다.
+        /// <paramref name="showStatusHeader"/>는 상태 라벨 + 점선 줄 표시 여부다. 증강 종류가
+        /// Quest일 때만 켠다 — 비퀘스트 증강에는 "퀘스트 진행 중" 같은 문구가 어울리지 않는다.
         /// </summary>
-        private void SetProgressBlock(AugmentProgress? progress)
+        private void SetProgressBlock(AugmentProgress? progress, bool showStatusHeader)
         {
             bool hasProgress = progress.HasValue && progress.Value.Lines.Count > 0;
             progressBlockRoot.SetActive(hasProgress);
+
+            statusLabel.gameObject.SetActive(showStatusHeader);
+            for (int i = 0; i < dashes.Length; i++) dashes[i].gameObject.SetActive(showStatusHeader);
 
             if (!hasProgress)
             {
@@ -232,8 +237,11 @@ namespace Tessera.Games.AugmentedYacht
             statusLabel.text = StatusLabelText(value.Outcome);
             statusLabel.color = StatusColor(value.Outcome);
 
-            // 행은 실제 시각 줄 높이만큼만 차지하며 라벨·점선 아래에서 위→아래로 쌓인다.
-            float rowsAreaTop = LabelHeight + GapAboveLabel + DashHeight + RowGapAboveDash;
+            // 행은 실제 시각 줄 높이만큼만 차지하며, 헤더(라벨+점선)가 있으면 그 아래에서,
+            // 없으면 블록 위쪽 바로 아래에서 위→아래로 쌓인다.
+            float rowsAreaTop = showStatusHeader
+                ? LabelHeight + GapAboveLabel + DashHeight + RowGapAboveDash
+                : RowGapAboveDash;
             float rowWidth = progressBlockRect.rect.width - 8f; // 좌우 4px 여백
             float runningTop = rowsAreaTop;
             for (int i = 0; i < progressRows.Length; i++)
@@ -243,7 +251,7 @@ namespace Tessera.Games.AugmentedYacht
                     SetRowActive(progressRows[i], false);
                     continue;
                 }
-                runningTop = BindRow(progressRows[i], value.Lines[i], value.Outcome, runningTop, rowWidth);
+                runningTop = BindRow(progressRows[i], value.Lines[i], value.Outcome, runningTop, rowWidth, showStatusHeader);
             }
 
             float blockHeight = runningTop + BlockBottom;
@@ -279,13 +287,13 @@ namespace Tessera.Games.AugmentedYacht
         /// 위쪽 변에서 이 행의 윗변까지 아래로 잰 거리(≥0)다. 반환값은 다음 행이 이어받을 topOffset이다.
         /// 취소선은 별도 막대가 아니라 리치 텍스트 `&lt;s&gt;` 태그로 긋는다.
         /// </summary>
-        private float BindRow(ProgressRow row, AugmentProgressLine line, AugmentProgressOutcome outcome, float topOffset, float rowWidth)
+        private float BindRow(ProgressRow row, AugmentProgressLine line, AugmentProgressOutcome outcome, float topOffset, float rowWidth, bool showStatusHeader)
         {
             row.Rect.gameObject.SetActive(true);
-            bool strike = line.Done || outcome == AugmentProgressOutcome.Failed;
+            bool strike = showStatusHeader && (line.Done || outcome == AugmentProgressOutcome.Failed);
             string content = line.IsTargetNote
                 ? $"└ 현재 타겟: <color=#D4AF37>{line.Text}</color>"
-                : $"<b>퀘스트</b>: {line.Text}";
+                : showStatusHeader ? $"<b>퀘스트</b>: {line.Text}" : line.Text;
             row.Text.text = strike ? $"<s>{content}</s>" : content;
             row.Text.color = Ink;
 

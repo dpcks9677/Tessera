@@ -434,6 +434,66 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
+        public void NonQuestCard_HidesStatusLabelButQuestCard_ShowsIt()
+        {
+            AugmentCardView card = CreateCard(out GameObject canvasObject);
+            try
+            {
+                var lines = new[] { new AugmentProgressLine("앞면 2개 · 리롤 +1", true) };
+                var enhanceDefinition = new YachtAugmentDefinition
+                {
+                    Id = YachtAugmentRuntime.CoinTossId,
+                    DisplayName = "코인 토스",
+                    Description = "동전 3개를 던져 앞면 수에 따라 효과가 갈립니다.",
+                    Kind = YachtAugmentKind.Enhance
+                };
+                card.Bind(enhanceDefinition, AugmentCardDisplayState.Owned,
+                    progress: new AugmentProgress(AugmentProgressOutcome.Succeeded, lines));
+
+                Assert.That(card.StatusLabel.gameObject.activeSelf, Is.False);
+
+                var lines2 = new[] { new AugmentProgressLine("9턴 이후에 Full House 기입", false) };
+                card.Bind(QuestDefinition(), AugmentCardDisplayState.Owned,
+                    progress: new AugmentProgress(AugmentProgressOutcome.InProgress, lines2));
+
+                Assert.That(card.StatusLabel.gameObject.activeSelf, Is.True);
+            }
+            finally
+            {
+                Object.DestroyImmediate(canvasObject);
+            }
+        }
+
+        [Test]
+        public void NonQuestCard_FooterLineHasNoStrikeOrQuestPrefix()
+        {
+            AugmentCardView card = CreateCard(out GameObject canvasObject);
+            try
+            {
+                var lines = new[] { new AugmentProgressLine("앞면 2개 · 리롤 +1", true) };
+                var enhanceDefinition = new YachtAugmentDefinition
+                {
+                    Id = YachtAugmentRuntime.CoinTossId,
+                    DisplayName = "코인 토스",
+                    Description = "동전 3개를 던져 앞면 수에 따라 효과가 갈립니다.",
+                    Kind = YachtAugmentKind.Enhance
+                };
+                card.Bind(enhanceDefinition, AugmentCardDisplayState.Owned,
+                    progress: new AugmentProgress(AugmentProgressOutcome.Succeeded, lines));
+
+                AugmentCardView.ProgressRow row = card.ProgressRows[0];
+                Assert.That(row.Text.text, Does.Not.Contain("<s>"), "비퀘스트 카드 푸터에는 취소선이 없어야 한다.");
+                Assert.That(row.Text.text, Does.Not.Contain("퀘스트"), "비퀘스트 카드 푸터에는 '퀘스트' 접두가 없어야 한다.");
+                Assert.That(row.Text.text, Is.EqualTo("앞면 2개 · 리롤 +1"));
+                Assert.That(row.Group.alpha, Is.EqualTo(1f).Within(.001f));
+            }
+            finally
+            {
+                Object.DestroyImmediate(canvasObject);
+            }
+        }
+
+        [Test]
         public void QuestCard_ReservesBlockHeightWithoutOverlappingBody()
         {
             AugmentCardView card = CreateCard(out GameObject canvasObject);

@@ -16,8 +16,10 @@ namespace Tessera.Games.Yacht
 
         public AugmentProgress DescribeProgress(in AugmentProgressQuery query)
         {
-            string text = IsUsed ? $"앞면 {Heads}개 · {DescribeEffect(Heads)}" : "사용 가능";
-            AugmentProgressOutcome outcome = IsUsed ? AugmentProgressOutcome.Succeeded : AugmentProgressOutcome.InProgress;
+            if (!IsUsed) return new AugmentProgress(AugmentProgressOutcome.InProgress, null);
+
+            string text = $"앞면 {Heads}개 · {DescribeEffect(Heads)}";
+            AugmentProgressOutcome outcome = Heads == 0 ? AugmentProgressOutcome.Failed : AugmentProgressOutcome.Succeeded;
             var lines = new[] { new AugmentProgressLine(text, IsUsed) };
             return new AugmentProgress(outcome, lines);
         }
@@ -25,7 +27,7 @@ namespace Tessera.Games.Yacht
         private static string DescribeEffect(int heads) => heads switch
         {
             0 => "-5점",
-            1 => "최저 주사위 6",
+            1 => "보너스 +3점",
             2 => "리롤 +1",
             3 => "보너스 기준 57",
             _ => ""
@@ -36,6 +38,7 @@ namespace Tessera.Games.Yacht
     public sealed class CoinToss : EnhanceAugment, IManualActionAugment
     {
         public const int PenaltyScore = -5;
+        public const int BonusScore = 3;
         public const int LoweredUpperBonusThreshold = 57;
 
         public override string Id => YachtAugmentRuntime.CoinTossId;
@@ -43,7 +46,7 @@ namespace Tessera.Games.Yacht
         public override string DisplayName => "코인 토스";
 
         public override string Description =>
-            "게임당 한 번, 첫 굴림 후 동전 3개를 던져 앞면 수에 따라 효과가 갈립니다. (0개: -5점 / 1개: 최저 주사위 6 / 2개: 리롤 +1 / 3개: 보너스 기준 57)";
+            "게임당 한 번, 첫 굴림 후 동전 3개를 던져 앞면 수에 따라 효과가 갈립니다. (0개: -5점 / 1개: 보너스 +3점 / 2개: 리롤 +1 / 3개: 보너스 기준 57)";
 
         public YachtGamePhase RequiredPhase => YachtGamePhase.ScoreSelection;
 
@@ -98,7 +101,7 @@ namespace Tessera.Games.Yacht
                     context.AddBonus(PenaltyScore, "코인 토스: 앞면 0개 — 보너스 -5점");
                     break;
                 case 1:
-                    ApplyLowestDieToSix(context);
+                    context.AddBonus(BonusScore, "코인 토스: 앞면 1개 — 보너스 +3점");
                     break;
                 case 2:
                     context.Game.RollsRemaining++;
@@ -112,19 +115,6 @@ namespace Tessera.Games.Yacht
             }
 
             state.IsUsed = true;
-        }
-
-        private static void ApplyLowestDieToSix(AugmentActionContext context)
-        {
-            YachtDieState[] dice = context.Game.Dice;
-            if (dice.Length == 0) return;
-
-            int lowestIndex = 0;
-            for (int i = 1; i < dice.Length; i++)
-            {
-                if (dice[i].Value < dice[lowestIndex].Value) lowestIndex = i;
-            }
-            dice[lowestIndex].Value = 6;
         }
     }
 }
