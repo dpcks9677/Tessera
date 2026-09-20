@@ -58,9 +58,11 @@ curl -s -m 30 -X POST http://127.0.0.1:<port>/skill/test_get_result \
 
 Test Runner는 직렬화돼 있습니다. 진행 중인 실행이 있는데 두 번째 `test_run` 을 시작하지 않습니다.
 
-**테스트 파일을 새로 추가한 직후에는 디스커버리 캐시를 먼저 갱신하십시오.** Test Runner의 디스커버리 결과는 캐시되며 새 컴파일 결과를 바로 반영하지 않습니다. 갱신하지 않으면 `test_run` 이 새 테스트를 뺀 이전 개수만 돌려주어 "신규 테스트가 통째로 누락된" 것처럼 보이고, `test_run_by_name` 으로 새 클래스를 지목하면 `Test filter did not match any cached discovery result` 경고와 함께 `did not leave 'starting' within 90 seconds` 로 타임아웃됩니다. 둘 다 코드 결함이 아니므로 구현을 의심하기 전에 `test_discover_start` 로 디스커버리를 갱신하고 개수가 늘어난 것을 확인한 뒤 다시 실행합니다.
+**테스트 파일을 새로 추가하거나 기존 테스트의 네임스페이스를 바꾼 직후에는 디스커버리 캐시를 먼저 갱신하십시오.** Test Runner의 디스커버리 결과는 캐시되며 새 컴파일 결과를 바로 반영하지 않습니다. 갱신하지 않으면 `test_run` 이 새 테스트를 뺀 이전 개수만 돌려주어 "신규 테스트가 통째로 누락된" 것처럼 보이고, `test_run_by_name` 으로 새 클래스를 지목하면 `Test filter did not match any cached discovery result` 경고와 함께 `did not leave 'starting' within 90 seconds` 로 타임아웃됩니다. 둘 다 코드 결함이 아니므로 구현을 의심하기 전에 디스커버리를 갱신하고 개수가 늘어난 것을 확인한 뒤 다시 실행합니다.
 
-범위가 좁은 검증이면 클래스 단위가 훨씬 빠르고 안전합니다. 예외: `AugmentCardViewTests` 는 단독 실행하면 `QuestCard_*` 5개가 `MissingReferenceException: Texture2D has been destroyed`(TMP 폰트 아틀라스)로 재현성 있게 실패하지만 전체 스위트에서는 통과합니다. 이 클래스는 전체 실행 결과로 판정하십시오.
+**`test_discover_start` 를 다시 부르는 것만으로는 캐시가 갱신되지 않습니다.** 2026-09-20 에 테스트 7개 파일의 네임스페이스를 바꾼 뒤, `test_discover_start` 를 두 번 불러도 `fullName` 이 이전 형태 그대로 95건 잡혔습니다. `asset_refresh` 로 실제 재컴파일을 트리거한 뒤에야 캐시가 갱신됐습니다. 디스커버리 결과가 방금 바꾼 소스와 어긋나면 `asset_refresh` 를 먼저 부르십시오.
+
+범위가 좁은 검증이면 클래스 단위가 훨씬 빠르고 안전합니다. 예외: `AugmentCardViewTests` 는 단독 실행하면 `QuestCard_*` 5개가 `MissingReferenceException: Texture2D has been destroyed`(TMP 폰트 아틀라스)로 재현성 있게 실패합니다. 이 클래스는 전체 실행 결과로 판정하십시오. 다만 전체 실행이 항상 통과를 보장하지는 않습니다. 2026-09-20 필터 실행에서 이 클래스의 폰트 관련 3개(`ProgressFont_StrikethroughSitsInsideHangulGlyphMiddle`, `ProgressRow_UsesMulmaruFontBeforeMeasuringVisualLines`, `QuestCard_WrappedDoneLineStrikesThroughEveryVisualLine`)가 `Unable to load font face` 로 실패했습니다. 단독 실행 때와 메시지가 다릅니다. 원인 미확정이므로 이 클래스의 폰트 관련 실패는 회귀로 단정하지 말고 메시지를 그대로 보고하십시오.
 
 ```bash
 curl -s -m 60 -X POST http://127.0.0.1:<port>/skill/test_run_by_name \
@@ -69,11 +71,23 @@ curl -s -m 60 -X POST http://127.0.0.1:<port>/skill/test_run_by_name \
 
 ### 5. 결과 판정
 
-**이 프로젝트에는 `.asmdef` 가 하나도 없습니다.** 모든 런타임 코드가 `Assembly-CSharp`, 모든 `Assets/Editor` 코드가 `Assembly-CSharp-Editor` 로 들어갑니다. 테스트는 `Assets/Editor/` 에 있으며 2026-09-19 기준 29개 클래스, 328개입니다. 테스트가 계속 추가되므로 이 수치를 기준값으로 인용하지 말고 `test_discover_start` → `test_discover_get_result` 의 `fullName` 을 집계해 실측하십시오. `test_run` 의 `filter` 는 어셈블리명을 받지 않습니다. 넣으면 `Test filter did not match any cached discovery result` 로 0건 매칭된 채 멈춥니다.
+**이 프로젝트에는 `.asmdef` 가 하나도 없습니다.** 모든 런타임 코드가 `Assembly-CSharp`, 모든 `Assets/Editor` 코드가 `Assembly-CSharp-Editor` 로 들어갑니다. 테스트는 `Assets/Editor/Tests/` 에 있으며 2026-09-20 기준 30개 클래스, 333개입니다. 테스트가 계속 추가되므로 이 수치를 기준값으로 인용하지 말고 `test_discover_start` → `test_discover_get_result` 의 `fullName` 을 집계해 실측하십시오.
 
-**전체 EditMode 실행에는 `com.besty.unity-skills` 패키지 테스트 약 860개가 함께 돌아갑니다.** `Packages/manifest.json` 의 `testables` 에서 이 패키지를 지워도 Unity 가 패키지를 다시 해석할 때 스스로 복원합니다. 2026-09-20 에 지우고 커밋했는데 에디터가 곧바로 되돌린 것을 확인했습니다. 지우려 하지 말고 **판정에서 걸러내십시오.**
+**전체 EditMode 실행에는 `com.besty.unity-skills` 패키지 테스트 약 860개가 함께 돌아갑니다.** `Packages/manifest.json` 의 `testables` 에서 이 패키지를 지워도 Unity 가 패키지를 다시 해석할 때 스스로 복원합니다. 2026-09-20 에 지우고 커밋했는데 에디터가 곧바로 되돌린 것을 확인했습니다. 지우려 하지 마십시오. 대신 **필터로 아예 실행에서 빼십시오.**
 
-판정 기준: `UnitySkills.Tests.*` 로 시작하는 결과는 전부 패키지 소속이라 이 저장소 책임이 아닙니다. 타임아웃과 `Assembly-CSharp.csproj` 공유 위반(`IOException: Sharing violation`)이 그쪽에서 상시 나옵니다. **건수와 실패 클래스는 실행마다 달라집니다**(2026-09-19 3건, 2026-09-20 6건). Unity 가 VS 프로젝트를 다시 만드는 타이밍에 좌우되므로, 패키지 실패 건수가 늘었다는 것만으로 회귀로 보지 마십시오. 스킵도 패키지 쪽입니다. **Tessera 소속은 실패 0, 스킵 0 이어야 합니다.** 이 저장소 코드에는 `[Ignore]` 나 `Assert.Ignore` 가 한 건도 없습니다. 실행 시간은 8분 안팎입니다.
+**기본 실행은 네임스페이스 필터를 겁니다.** `Assets/Editor/Tests/` 의 테스트는 30개 파일 전부 `Tessera.Editor.Tests` 네임스페이스입니다(2026-09-20 에 전역 네임스페이스에 남아 있던 7개를 마저 옮겨 통일했습니다). `filter` 에 이 네임스페이스를 주면 패키지 테스트가 한 건도 섞이지 않고 프로젝트 333개만 돕니다. 실측으로 `totalTests:333`, 패키지 혼입 0건을 확인했습니다.
+
+```bash
+curl -s -m 60 -X POST http://127.0.0.1:<port>/skill/test_run \
+  -H 'Content-Type: application/json' \
+  -d '{"testMode":"EditMode","filter":"Tessera.Editor.Tests"}'
+```
+
+`filter` 는 **어셈블리명을 받지 않습니다.** 넣으면 `Test filter did not match any cached discovery result` 로 0건 매칭된 채 멈춥니다. 네임스페이스와 클래스명은 받습니다. 패키지는 `Packages/manifest.json` 의 `testables` 가 살아 있는 한 Test Runner에 계속 등재되지만, 필터를 걸면 실행 대상에서 빠집니다.
+
+필터 실행 소요는 약 3분(2026-09-20 실측 170초)입니다. 이 중 순수 테스트 실행은 6.7초뿐이고 나머지는 컴파일·도메인 리로드·잡 폴링입니다. **테스트가 느린 게 아니므로 실행 시간이 길다고 개별 테스트를 의심하지 마십시오.** 필터 없는 전체 실행은 8분 안팎입니다.
+
+판정 기준: `UnitySkills.Tests.*` 로 시작하는 결과는 전부 패키지 소속이라 이 저장소 책임이 아닙니다. 타임아웃과 `Assembly-CSharp.csproj` 공유 위반(`IOException: Sharing violation`)이 그쪽에서 상시 나옵니다. **건수와 실패 클래스는 실행마다 달라집니다**(2026-09-19 3건, 2026-09-20 6건). Unity 가 VS 프로젝트를 다시 만드는 타이밍에 좌우되므로, 패키지 실패 건수가 늘었다는 것만으로 회귀로 보지 마십시오. 스킵도 패키지 쪽입니다. **Tessera 소속은 실패 0, 스킵 0 이어야 합니다.** 이 저장소 코드에는 `[Ignore]` 나 `Assert.Ignore` 가 한 건도 없습니다.
 
 
 ## 폴백: dotnet build

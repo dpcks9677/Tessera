@@ -3,134 +3,137 @@ using System.Reflection;
 using Tessera.Tabletop;
 using UnityEngine;
 
-public sealed class TurnBalanceIndicatorTests
+namespace Tessera.Editor.Tests
 {
-    private GameObject testRoot;
-    private TurnBalanceIndicator indicator;
-
-    [SetUp]
-    public void SetUp()
+    public sealed class TurnBalanceIndicatorTests
     {
-        testRoot = new GameObject("Turn Balance Test Root");
-        indicator = TurnBalanceIndicator.Create(testRoot.transform);
-    }
+        private GameObject testRoot;
+        private TurnBalanceIndicator indicator;
 
-    [TearDown]
-    public void TearDown()
-    {
-        if (testRoot != null) Object.DestroyImmediate(testRoot);
-    }
-
-    [Test]
-    public void BuildGeometry_RebuildsRequiredPartsWithoutDuplication()
-    {
-        indicator.BuildGeometry();
-        indicator.BuildGeometry();
-
-        Assert.That(indicator.transform.Find("Balance_Beam_Pivot"), Is.Not.Null);
-        Assert.That(indicator.transform.Find("Balance_Beam_Pivot/Balance_Left_Pan"), Is.Not.Null);
-        Assert.That(indicator.transform.Find("Balance_Beam_Pivot/Balance_Right_Pan"), Is.Not.Null);
-        Assert.That(indicator.transform.Find("Turn_Wax_Seal"), Is.Not.Null);
-        Assert.That(CountDirectChildren("Balance_Beam_Pivot"), Is.EqualTo(1));
-        Assert.That(CountDirectChildren("Turn_Wax_Seal"), Is.EqualTo(1));
-        Assert.That(indicator.GetComponentInChildren<Rigidbody>(true), Is.Null);
-    }
-
-    [Test]
-    public void SetActiveSide_MirrorsTiltAndSealPositionForBothSides()
-    {
-        indicator.SetActiveSide(TurnSide.Left, false);
-        float leftAngle = indicator.CurrentBeamAngle;
-        float leftSealX = indicator.Seal.localPosition.x;
-
-        indicator.SetActiveSide(TurnSide.Right, false);
-        float rightAngle = indicator.CurrentBeamAngle;
-        float rightSealX = indicator.Seal.localPosition.x;
-
-        Assert.That(indicator.CurrentSide, Is.EqualTo(TurnSide.Right));
-        Assert.That(leftAngle, Is.EqualTo(9f).Within(0.01f));
-        Assert.That(rightAngle, Is.EqualTo(-9f).Within(0.01f));
-        Assert.That(leftSealX, Is.LessThan(0f));
-        Assert.That(rightSealX, Is.GreaterThan(0f));
-        Assert.That(Mathf.Abs(leftSealX), Is.EqualTo(Mathf.Abs(rightSealX)).Within(0.01f));
-    }
-
-    [Test]
-    public void SetActiveSide_NoneRestoresScaleAndSealToCenter()
-    {
-        indicator.SetActiveSide(TurnSide.Left, false);
-        indicator.SetActiveSide(TurnSide.None, false);
-
-        Assert.That(indicator.CurrentSide, Is.EqualTo(TurnSide.None));
-        Assert.That(indicator.CurrentBeamAngle, Is.EqualTo(0f).Within(0.01f));
-        Assert.That(indicator.Seal.localPosition.x, Is.EqualTo(0f).Within(0.01f));
-    }
-
-    [Test]
-    public void Create_UsesDecorLayerAndAntiqueSilverWaxMaterial()
-    {
-        Assert.That(indicator.gameObject.layer, Is.EqualTo(11));
-        Assert.That(indicator.transform.localEulerAngles.y, Is.EqualTo(50f).Within(0.01f));
-
-        Renderer[] renderers = indicator.GetComponentsInChildren<Renderer>(true);
-        Assert.That(System.Array.Exists(renderers,
-            renderer => renderer.sharedMaterial != null && renderer.sharedMaterial.name.Contains("AntiqueSilver")), Is.True);
-        Assert.That(System.Array.Exists(renderers,
-            renderer => renderer.sharedMaterial != null && renderer.sharedMaterial.name.Contains("CrimsonWax")), Is.True);
-    }
-
-    [Test]
-    public void BuildGeometry_CreatesFantasyPlinthCurvedBeamLinkChainAndConcavePan()
-    {
-        Assert.That(indicator.transform.Find("Balance_Ornate_Base_Lower"), Is.Not.Null);
-        Assert.That(indicator.transform.Find("Balance_Turned_Column"), Is.Not.Null);
-        Assert.That(indicator.transform.Find("Balance_Beam_Pivot/Balance_Center_Shield"), Is.Not.Null);
-
-        Transform chain = indicator.transform.Find("Balance_Beam_Pivot/Balance_Left_Chain_Inner");
-        Assert.That(chain, Is.Not.Null);
-        Assert.That(chain.childCount, Is.EqualTo(5));
-
-        MeshFilter bowl = indicator.transform
-            .Find("Balance_Beam_Pivot/Balance_Left_Pan/Balance_Left_Pan_Bowl")
-            .GetComponent<MeshFilter>();
-        Assert.That(bowl.sharedMesh.name, Does.Contain("Bowl"));
-        Assert.That(bowl.sharedMesh.vertexCount, Is.GreaterThan(100));
-    }
-
-    [Test]
-    public void SealTravelPathPassesExactEndpointsAlongSingleSmoothArc()
-    {
-        MethodInfo evaluateArc = typeof(TurnBalanceIndicator).GetMethod(
-            "EvaluateTransferArc", BindingFlags.Static | BindingFlags.NonPublic);
-        Assert.That(evaluateArc, Is.Not.Null);
-
-        Vector3 start = new(-1f, 0.5f, -0.4f);
-        Vector3 end = new(1f, 0.5f, -0.4f);
-        Vector3 previous = start;
-        for (int i = 0; i <= 20; i++)
+        [SetUp]
+        public void SetUp()
         {
-            float t = i / 20f;
-            Vector3 point = (Vector3)evaluateArc.Invoke(null, new object[] { start, end, t });
-            if (i > 0) Assert.That(point.x, Is.GreaterThan(previous.x));
-            Assert.That(point.z, Is.EqualTo(start.z).Within(0.0001f));
-            previous = point;
+            testRoot = new GameObject("Turn Balance Test Root");
+            indicator = TurnBalanceIndicator.Create(testRoot.transform);
         }
 
-        Vector3 first = (Vector3)evaluateArc.Invoke(null, new object[] { start, end, 0f });
-        Vector3 apex = (Vector3)evaluateArc.Invoke(null, new object[] { start, end, 0.5f });
-        Vector3 last = (Vector3)evaluateArc.Invoke(null, new object[] { start, end, 1f });
-        Assert.That(first, Is.EqualTo(start));
-        Assert.That(last, Is.EqualTo(end));
-        Assert.That(apex.y, Is.GreaterThan(start.y));
-    }
-
-    private int CountDirectChildren(string name)
-    {
-        int count = 0;
-        for (int i = 0; i < indicator.transform.childCount; i++)
+        [TearDown]
+        public void TearDown()
         {
-            if (indicator.transform.GetChild(i).name == name) count++;
+            if (testRoot != null) Object.DestroyImmediate(testRoot);
         }
-        return count;
+
+        [Test]
+        public void BuildGeometry_RebuildsRequiredPartsWithoutDuplication()
+        {
+            indicator.BuildGeometry();
+            indicator.BuildGeometry();
+
+            Assert.That(indicator.transform.Find("Balance_Beam_Pivot"), Is.Not.Null);
+            Assert.That(indicator.transform.Find("Balance_Beam_Pivot/Balance_Left_Pan"), Is.Not.Null);
+            Assert.That(indicator.transform.Find("Balance_Beam_Pivot/Balance_Right_Pan"), Is.Not.Null);
+            Assert.That(indicator.transform.Find("Turn_Wax_Seal"), Is.Not.Null);
+            Assert.That(CountDirectChildren("Balance_Beam_Pivot"), Is.EqualTo(1));
+            Assert.That(CountDirectChildren("Turn_Wax_Seal"), Is.EqualTo(1));
+            Assert.That(indicator.GetComponentInChildren<Rigidbody>(true), Is.Null);
+        }
+
+        [Test]
+        public void SetActiveSide_MirrorsTiltAndSealPositionForBothSides()
+        {
+            indicator.SetActiveSide(TurnSide.Left, false);
+            float leftAngle = indicator.CurrentBeamAngle;
+            float leftSealX = indicator.Seal.localPosition.x;
+
+            indicator.SetActiveSide(TurnSide.Right, false);
+            float rightAngle = indicator.CurrentBeamAngle;
+            float rightSealX = indicator.Seal.localPosition.x;
+
+            Assert.That(indicator.CurrentSide, Is.EqualTo(TurnSide.Right));
+            Assert.That(leftAngle, Is.EqualTo(9f).Within(0.01f));
+            Assert.That(rightAngle, Is.EqualTo(-9f).Within(0.01f));
+            Assert.That(leftSealX, Is.LessThan(0f));
+            Assert.That(rightSealX, Is.GreaterThan(0f));
+            Assert.That(Mathf.Abs(leftSealX), Is.EqualTo(Mathf.Abs(rightSealX)).Within(0.01f));
+        }
+
+        [Test]
+        public void SetActiveSide_NoneRestoresScaleAndSealToCenter()
+        {
+            indicator.SetActiveSide(TurnSide.Left, false);
+            indicator.SetActiveSide(TurnSide.None, false);
+
+            Assert.That(indicator.CurrentSide, Is.EqualTo(TurnSide.None));
+            Assert.That(indicator.CurrentBeamAngle, Is.EqualTo(0f).Within(0.01f));
+            Assert.That(indicator.Seal.localPosition.x, Is.EqualTo(0f).Within(0.01f));
+        }
+
+        [Test]
+        public void Create_UsesDecorLayerAndAntiqueSilverWaxMaterial()
+        {
+            Assert.That(indicator.gameObject.layer, Is.EqualTo(11));
+            Assert.That(indicator.transform.localEulerAngles.y, Is.EqualTo(50f).Within(0.01f));
+
+            Renderer[] renderers = indicator.GetComponentsInChildren<Renderer>(true);
+            Assert.That(System.Array.Exists(renderers,
+                renderer => renderer.sharedMaterial != null && renderer.sharedMaterial.name.Contains("AntiqueSilver")), Is.True);
+            Assert.That(System.Array.Exists(renderers,
+                renderer => renderer.sharedMaterial != null && renderer.sharedMaterial.name.Contains("CrimsonWax")), Is.True);
+        }
+
+        [Test]
+        public void BuildGeometry_CreatesFantasyPlinthCurvedBeamLinkChainAndConcavePan()
+        {
+            Assert.That(indicator.transform.Find("Balance_Ornate_Base_Lower"), Is.Not.Null);
+            Assert.That(indicator.transform.Find("Balance_Turned_Column"), Is.Not.Null);
+            Assert.That(indicator.transform.Find("Balance_Beam_Pivot/Balance_Center_Shield"), Is.Not.Null);
+
+            Transform chain = indicator.transform.Find("Balance_Beam_Pivot/Balance_Left_Chain_Inner");
+            Assert.That(chain, Is.Not.Null);
+            Assert.That(chain.childCount, Is.EqualTo(5));
+
+            MeshFilter bowl = indicator.transform
+                .Find("Balance_Beam_Pivot/Balance_Left_Pan/Balance_Left_Pan_Bowl")
+                .GetComponent<MeshFilter>();
+            Assert.That(bowl.sharedMesh.name, Does.Contain("Bowl"));
+            Assert.That(bowl.sharedMesh.vertexCount, Is.GreaterThan(100));
+        }
+
+        [Test]
+        public void SealTravelPathPassesExactEndpointsAlongSingleSmoothArc()
+        {
+            MethodInfo evaluateArc = typeof(TurnBalanceIndicator).GetMethod(
+                "EvaluateTransferArc", BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.That(evaluateArc, Is.Not.Null);
+
+            Vector3 start = new(-1f, 0.5f, -0.4f);
+            Vector3 end = new(1f, 0.5f, -0.4f);
+            Vector3 previous = start;
+            for (int i = 0; i <= 20; i++)
+            {
+                float t = i / 20f;
+                Vector3 point = (Vector3)evaluateArc.Invoke(null, new object[] { start, end, t });
+                if (i > 0) Assert.That(point.x, Is.GreaterThan(previous.x));
+                Assert.That(point.z, Is.EqualTo(start.z).Within(0.0001f));
+                previous = point;
+            }
+
+            Vector3 first = (Vector3)evaluateArc.Invoke(null, new object[] { start, end, 0f });
+            Vector3 apex = (Vector3)evaluateArc.Invoke(null, new object[] { start, end, 0.5f });
+            Vector3 last = (Vector3)evaluateArc.Invoke(null, new object[] { start, end, 1f });
+            Assert.That(first, Is.EqualTo(start));
+            Assert.That(last, Is.EqualTo(end));
+            Assert.That(apex.y, Is.GreaterThan(start.y));
+        }
+
+        private int CountDirectChildren(string name)
+        {
+            int count = 0;
+            for (int i = 0; i < indicator.transform.childCount; i++)
+            {
+                if (indicator.transform.GetChild(i).name == name) count++;
+            }
+            return count;
+        }
     }
 }
