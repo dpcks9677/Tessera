@@ -171,3 +171,12 @@ yarn-error.log*
 # docs PDF (docs/reference/build_pdf.py 가 언제든 재생성한다)
 # md 한 줄만 고쳐도 1MB 짜리 바이너리 blob 이 통째로 새로 쌓이므로 산출물은 추적하지 않는다.
 docs/**/*.pdf
+
+# TMP 동적 폰트 폴백 에셋 (LiberationSans SDF - Fallback)
+# Atlas Population Mode 가 Dynamic 이라 런타임이 실제로 그린 글리프와 아틀라스 텍스처를
+# 에셋에 도로 구워 넣는다. 그래서 게임을 한 번 돌릴 때마다 글리프 테이블과 256KB 짜리
+# 텍스처 blob 이 diff 로 잡히고, 내용은 그때 화면에 뜬 문자에 따라 매번 달라진다.
+# 프로젝트가 실제로 쓰는 한글 폴백은 alagard/m6x11 에 물린 Mulmaru 체인이고
+# (Assets/Editor/Tools/FontFallbackSetup.cs) 이 에셋은 TMP 기본 리소스라 재생성 가능하다.
+/Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Fallback.asset
+/Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Fallback.asset.meta
