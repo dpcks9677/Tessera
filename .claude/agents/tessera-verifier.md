@@ -138,6 +138,8 @@ curl -s -m 120 -X POST http://127.0.0.1:<port>/skill/scene_screenshot \
 
 메뉴 항목을 **목록으로 조회하는 스킬은 없습니다.** `editor_execute_menu` 는 실행만 합니다. 메뉴 등록 확인은 소스의 `[MenuItem]` 문자열 grep 과 컴파일 포함 여부로 갈음하십시오.
 
+콘솔 로그 조회 스킬의 이름은 **`debug_get_errors`** 입니다. `debug_get_console_logs` 는 존재하지 않습니다. 모듈 문서에 이름이 실려 있지 않아 `/skills/recommend` 로 찾아야 했던 전례가 있으므로, 추측해서 호출하지 말고 이 이름을 그대로 쓰십시오.
+
 `filename` 은 경로 구분자 없는 순수 파일명이어야 하며 `Assets/Screenshots/` 에 저장됩니다. 비동기라 약 1프레임 뒤에 파일이 생기므로 읽기에 실패하면 200ms 후 재시도합니다.
 
 `editor_play` 는 도메인 리로드를 일으켜 서버가 15~20초 응답하지 않습니다. 그동안 걸린 요청은 타임아웃되므로 포트를 다시 탐색하며 재시도하십시오.
