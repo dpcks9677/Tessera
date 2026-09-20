@@ -69,6 +69,10 @@ GET  http://127.0.0.1:<port>/jobs/{id}                       # 비동기 잡 폴
 
 **`asset_move` / `asset_delete` 는 폴더 경로를 받으면 재귀로 처리합니다.** 폴더째 옮길 때 파일을 하나씩 나열할 필요가 없습니다. GUID 는 보존됩니다.
 
+**`.cs` 파일을 옮기거나 지우면 도메인 리로드가 따라옵니다.** 응답에 `serverAvailability: {isCompiling:true, mayDisconnect:true}` 가 붙습니다. 다음 배치나 `asset_refresh` 를 부르기 전에 `GET /health` 의 `isCompiling:false` 를 확인하십시오. 확인 없이 이어 부르면 요청이 큐에 쌓이거나 드물게 연결이 끊깁니다.
+
+**서버가 사라졌다고 크래시로 단정하지 마십시오.** unity-skills REST 서버는 Unity 재시작 시 꺼지고, 사용자가 Unity Skills 창에서 수동으로 켜야 다시 뜹니다. 재시작하면 포트도 바뀝니다(2026-09-20 에 8091 → 8090). 포트를 다시 훑고, 그래도 없으면 사용자에게 서버 재기동을 요청하십시오.
+
 **`asset_create_folder` 는 부모가 없으면 실패합니다.** 여러 단계 폴더를 만들 때는 깊이 순서대로 배치를 나누십시오. 한 배치에 깊이를 섞으면 부모 없음 에러가 납니다.
 
 **배열 필드는 크기부터 정합니다.** `component_set_serialized_property` 로 배열을 채울 때 먼저 `"<field>.Array.size"` 를 설정하고, 그다음 `"<field>.Array.data[i]"` 에 `assetPath` 로 원소를 넣습니다. 크기를 건너뛰면 인덱스가 없어 실패합니다.

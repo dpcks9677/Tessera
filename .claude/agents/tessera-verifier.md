@@ -71,9 +71,10 @@ curl -s -m 60 -X POST http://127.0.0.1:<port>/skill/test_run_by_name \
 
 **이 프로젝트에는 `.asmdef` 가 하나도 없습니다.** 모든 런타임 코드가 `Assembly-CSharp`, 모든 `Assets/Editor` 코드가 `Assembly-CSharp-Editor` 로 들어갑니다. 테스트는 `Assets/Editor/` 에 있으며 2026-09-19 기준 29개 클래스, 328개입니다. 테스트가 계속 추가되므로 이 수치를 기준값으로 인용하지 말고 `test_discover_start` → `test_discover_get_result` 의 `fullName` 을 집계해 실측하십시오. `test_run` 의 `filter` 는 어셈블리명을 받지 않습니다. 넣으면 `Test filter did not match any cached discovery result` 로 0건 매칭된 채 멈춥니다.
 
-전체 EditMode 실행은 이 저장소 테스트뿐입니다. `Packages/manifest.json` 에서 `testables` 항목을 제거했기 때문에 `com.besty.unity-skills` 패키지 자체 테스트(약 626개)는 실행되지 않습니다. 따라서 **걸러낼 대상이 없고, 실패는 전부 이 저장소 책임입니다.** 스킵도 0건이어야 합니다. Tessera 코드에는 `[Ignore]` 나 `Assert.Ignore` 가 한 건도 없습니다.
+**전체 EditMode 실행에는 `com.besty.unity-skills` 패키지 테스트 약 860개가 함께 돌아갑니다.** `Packages/manifest.json` 의 `testables` 에서 이 패키지를 지워도 Unity 가 패키지를 다시 해석할 때 스스로 복원합니다. 2026-09-20 에 지우고 커밋했는데 에디터가 곧바로 되돌린 것을 확인했습니다. 지우려 하지 말고 **판정에서 걸러내십시오.**
 
-결과에 `UnitySkills.Tests.Core` 가 나타나면 패키지 재설치나 버전 갱신으로 `manifest.json` 의 `testables` 가 되살아난 것입니다. 그 사실을 보고하십시오.
+판정 기준: `UnitySkills.Tests.*` 로 시작하는 결과는 전부 패키지 소속이라 이 저장소 책임이 아닙니다. 타임아웃과 `Assembly-CSharp.csproj` 공유 위반(`IOException: Sharing violation`)이 그쪽에서 상시 나옵니다. **건수와 실패 클래스는 실행마다 달라집니다**(2026-09-19 3건, 2026-09-20 6건). Unity 가 VS 프로젝트를 다시 만드는 타이밍에 좌우되므로, 패키지 실패 건수가 늘었다는 것만으로 회귀로 보지 마십시오. 스킵도 패키지 쪽입니다. **Tessera 소속은 실패 0, 스킵 0 이어야 합니다.** 이 저장소 코드에는 `[Ignore]` 나 `Assert.Ignore` 가 한 건도 없습니다. 실행 시간은 8분 안팎입니다.
+
 
 ## 폴백: dotnet build
 
@@ -100,6 +101,8 @@ curl -s -m 120 -X POST http://127.0.0.1:<port>/skill/scene_screenshot \
   -H 'Content-Type: application/json' \
   -d '{"filename":"verify.png","width":960,"height":540}'
 ```
+
+메뉴 항목을 **목록으로 조회하는 스킬은 없습니다.** `editor_execute_menu` 는 실행만 합니다. 메뉴 등록 확인은 소스의 `[MenuItem]` 문자열 grep 과 컴파일 포함 여부로 갈음하십시오.
 
 `filename` 은 경로 구분자 없는 순수 파일명이어야 하며 `Assets/Screenshots/` 에 저장됩니다. 비동기라 약 1프레임 뒤에 파일이 생기므로 읽기에 실패하면 200ms 후 재시도합니다.
 
