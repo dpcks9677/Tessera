@@ -3,11 +3,24 @@ using System;
 namespace Tessera.Games.Yacht
 {
     [Serializable]
-    public sealed class GambitState : IAugmentState
+    public sealed class GambitState : IAugmentState, IAugmentProgressText
     {
         public int State;
 
         public IAugmentState Clone() => new GambitState { State = State };
+
+        public AugmentProgress DescribeProgress(in AugmentProgressQuery query)
+        {
+            string text = State switch
+            {
+                0 => "사용 가능",
+                1 => "사용함 · 이번 턴 주사위 4개",
+                2 => "사용함 · 다음 턴 주사위 6개",
+                _ => "사용함"
+            };
+            var lines = new[] { new AugmentProgressLine(text, State != 0) };
+            return new AugmentProgress(State != 0 ? AugmentProgressOutcome.Succeeded : AugmentProgressOutcome.InProgress, lines);
+        }
     }
 
     /// <summary>첫 굴림 전에 한 번 사용할 수 있습니다. 이번 턴 주사위를 4개로 굴리고, 다음 턴 주사위를 6개로 굴립니다.</summary>

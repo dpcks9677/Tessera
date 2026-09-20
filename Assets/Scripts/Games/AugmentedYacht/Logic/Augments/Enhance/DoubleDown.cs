@@ -3,7 +3,7 @@ using System;
 namespace Tessera.Games.Yacht
 {
     [Serializable]
-    public sealed class DoubleDownState : IAugmentState
+    public sealed class DoubleDownState : IAugmentState, IAugmentProgressText
     {
         public bool IsUsed;
         public bool IsActive;
@@ -13,6 +13,17 @@ namespace Tessera.Games.Yacht
             IsUsed = IsUsed,
             IsActive = IsActive
         };
+
+        public AugmentProgress DescribeProgress(in AugmentProgressQuery query)
+        {
+            string text;
+            if (IsUsed)
+                text = IsActive ? "사용함 · 배율 적용 중" : "사용함";
+            else
+                text = query.Player.TurnsTaken >= DoubleDown.MinTurnsTaken ? "사용 가능" : "9턴부터 사용 가능";
+            var lines = new[] { new AugmentProgressLine(text, IsUsed) };
+            return new AugmentProgress(IsUsed ? AugmentProgressOutcome.Succeeded : AugmentProgressOutcome.InProgress, lines);
+        }
     }
 
     /// <summary>9번째 내 턴부터 한 번 기본 점수를 1.5배, 추진력과 함께면 2배로 강화합니다.</summary>

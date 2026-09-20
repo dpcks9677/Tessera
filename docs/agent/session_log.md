@@ -9,6 +9,29 @@
 
 ---
 
+### 2026-09-20 — Claude (`M17-T10` 점수표 증강 표시)
+
+- 작업 ID: `M17-T10`. 사용자가 확정한 범위는 "문서 확정분만"
+- 변경 ①: 보너스 라벨 버그 수정. 화면 표시가 항상 `+35`로 고정돼 있었으나 `step-by-step` 증강 보유 시 실제 지급은 55점이었다. `PlayerScoreData.BonusAward`(`stepBonusGranted ? 55 : 35`)를 추가해 `RecalculateTotal()`과 `ParchmentScoreSheet` 표시가 같은 값을 쓰게 하고 `IReadOnlyPlayerScoreData`에도 노출
+- 변경 ②: bounty-hunter 타깃 칸 상시 표시. `ParchmentScoreSheet`에 `SetTargetMark`/`ClearTargetMark`/`HasTargetSlot`을 추가해 타깃 족보 칸에 골드 테두리+증강 아이콘+남은 횟수를 그린다. 스티커와 달리 원래 족보 아이콘·이름은 가리지 않는다. `YachtTurnFlowPresenter.RefreshAugmentPresentation()`의 기존 동기화 지점에 `SyncBountyHunterTargetMarks()`를 붙여 새 타이밍을 만들지 않았다
+- 완료 조건 수정: 기존 완료 조건의 "잠금" 문구를 삭제했다. 조사 결과 점수표 칸 잠금 기능은 코드에도 기획에도 실존하지 않았다. 사용자가 "문구 삭제 + 근거 기록"으로 결정
+- 조사 시점에 이미 구현돼 있던 항목: "교체된 족보 표시"와 "보너스 기준 표시"는 `M17-T10` 착수 이전부터 동작 중이었다
+- 신규 테스트: `AugmentBountyHunterTargetMarkTests.cs`(3개), `YachtGameRulesTests.PlayerScoreData_BonusAward_MatchesStepBonusGrantedAndFeedsTotal`
+- 검증: EditMode `filter=Tessera.Editor.Tests` 367/367 통과(기준선 363 + 신규 4). 실패·스킵 0
+- 시각 확인 생략, 사유: 점수표 UI는 Play Mode에 코드로 생성되므로 bounty-hunter 타깃 표시의 실제 렌더 결과는 EditMode 테스트로 판정 불가. 해당 상태 재현에 실제 플레이가 필요
+- 다음 작업: 미지정
+
+### 2026-09-20 — Claude (`M17-T4` 증강 수동 행동 UI, `M17-T12` 수동 증강 행동 피드백)
+
+- 작업 ID: `M17-T4`, `M17-T12`. 계획서가 "함께"로 묶은 쌍이라 한 단위로 진행
+- 변경 ①: 버튼 활성 판정을 실제 규칙으로 통일. 기존 `AugmentTrayPresenter.CanUseManualAugment`는 `TableFlip`만 검사하고 나머지 5종은 무조건 `true`를 반환해, 이미 사용한 증강도 버튼이 활성으로 보이다가 클릭해야 거부됐다. `LocalGameAuthority`의 판정부를 `TryResolveManualAction`으로 추출해 `UseAugmentAction`과 공유하고, 상태를 바꾸지 않는 조회 메서드 `CanUseAugmentAction(playerIndex, augmentId, out YachtCommandErrorCode code, out string message)`를 추가했다. `YachtGameSession`에 래퍼를 두고 트레이가 이 경로를 쓴다
+- 변경 ②: 남은 횟수·사용 조건을 카드 푸터에 표시. 수동 행동 6종 중 `CoinTossState`만 있던 `IAugmentProgressText` 구현을 나머지 5종 상태(`TableFlipState`·`DiceAlchemyState`·`EquivalentExchangeState`·`GambitState`·`DoubleDownState`)에 추가. 문구: 판 뒤집기·주사위 연금술은 "사용 가능"/"사용함", 등가교환은 "남은 사용 {N}/3"/"모두 사용함", 더블 다운은 "9턴부터 사용 가능"/"사용 가능"/"사용함 · 배율 적용 중"/"사용함", 갬빗은 단계별 "사용 가능"/"사용함 · 이번 턴 주사위 4개"/"사용함 · 다음 턴 주사위 6개"/"사용함"
+- 변경 ③: 발동 성공 메시지의 표시명 정정. `table-flip`·`equivalent-exchange`·`gambit`·`double-down` 4종이 원시 augmentId 슬러그를 찍던 것(`"table-flip 사용"`)을 `LocalGameAuthority`의 메시지 생성부가 `DisplayName`을 쓰도록 고쳐 `"판 뒤집기 발동"` 형태로 정정
+- 고아 심볼 제거: `YachtGameSession.CanUseTableFlip`, `LocalGameAuthority.ContainsOwnedAugment`
+- 범위 밖으로 남긴 것: 월드 발동 VFX·카메라 셰이크는 `M17-T9`, 증강 효과음은 `M17-T13`(`DEFERRED`)
+- 검증: EditMode `filter=Tessera.Editor.Tests` 363/363 통과(직전 356 + 신규 7). 신규 테스트 파일 2개: `AugmentManualActionQueryTests.cs`(조회가 상태를 바꾸지 않음 + 사용 후 거부 2건), `AugmentManualActionProgressTextTests.cs`(5종 푸터 문구, 등가교환은 0/1/3회 포함)
+- 다음 작업: 미지정
+
 ### 2026-09-20 — Claude (코인 토스 앞면 1개 효과 변경 및 스핀별 효과음)
 
 - 작업 ID: 없음. 직전 "코인 토스 푸터 정정 및 동전 효과음" 항목의 연장선. 사용자 요청에 따른 추가 조정이며 마일스톤·태스크로 기록하지 않는다

@@ -23,6 +23,9 @@ namespace Tessera.Games.AugmentedYacht
         /// <summary>버건디 스티커 위에 올리는 글자·아이콘 색이다. 양피지 크림톤이라 대비가 산다.</summary>
         private static readonly Color StickerInk = new(0.97f, 0.94f, 0.87f, 1f);
 
+        /// <summary>bounty-hunter 타깃 테두리 색이다(M17-T10). 카드 아웃라인과 같은 앤틱 골드를 쓴다.</summary>
+        private static readonly Color TargetFrameColor = AugmentCardView.AntiqueGold;
+
         /// <summary>종이 표면과 캔버스 사이 z-fighting을 피하기 위한 최소 간격.</summary>
         private const float OverlayLift = 0.004f;
 
@@ -67,6 +70,14 @@ namespace Tessera.Games.AugmentedYacht
         /// <summary>원래 칸의 족보 아이콘과 이름이다. 스티커가 덮으면 감춘다.</summary>
         private readonly Image[][] categoryIcons = { new Image[14], new Image[14] };
         private readonly Text[][] categoryLabels = { new Text[14], new Text[14] };
+
+        /// <summary>
+        /// bounty-hunter 타깃 표시(M17-T10)다. 스티커와 달리 칸을 덮지 않는다 — 매 턴 타깃이 바뀌므로
+        /// 원래 족보 아이콘·이름을 계속 읽을 수 있어야 한다. 슬롯 테두리와 남은 횟수 배지만 얹는다.
+        /// </summary>
+        private readonly Image[][] targetFrames = { new Image[14], new Image[14] };
+        private readonly Image[][] targetBadgeIcons = { new Image[14], new Image[14] };
+        private readonly Text[][] targetBadgeLabels = { new Text[14], new Text[14] };
 
         /// <summary>스티커 천이 종이 위로 떠오르는 높이와 두께다. 표보다 살짝 튀어나와야 부피가 읽힌다.</summary>
         private const float StickerLift = 0.004f;
@@ -620,6 +631,9 @@ namespace Tessera.Games.AugmentedYacht
                 Array.Clear(stickerSlots[p], 0, stickerSlots[p].Length);
                 Array.Clear(categoryIcons[p], 0, categoryIcons[p].Length);
                 Array.Clear(categoryLabels[p], 0, categoryLabels[p].Length);
+                Array.Clear(targetFrames[p], 0, targetFrames[p].Length);
+                Array.Clear(targetBadgeIcons[p], 0, targetBadgeIcons[p].Length);
+                Array.Clear(targetBadgeLabels[p], 0, targetBadgeLabels[p].Length);
                 bonusProgressTexts[p] = null;
                 categoryGroups[p] = null;
             }
@@ -775,6 +789,10 @@ namespace Tessera.Games.AugmentedYacht
 
                 for (int p = 0; p < 2; p++)
                 {
+                    // 타깃 테두리(M17-T10)는 슬롯 배경보다 먼저 만든다. 슬롯이 3px 인셋으로 놓이므로
+                    // 뒤에 깔린 이 박스가 테두리처럼 가장자리에 남아 보인다.
+                    targetFrames[p][categoryIndex] = CreateBox(scoreColumns[p], $"P{p + 1}_Target_Frame_{r}", new Vector2(0f, VBottom(r)), new Vector2(1f, VTop(r)), Vector2.zero, Vector2.zero, new Color(0f, 0f, 0f, 0f)).GetComponent<Image>();
+
                     // 점수 슬롯 배경 박스
                     ConfigureScoreSlot(CreateBox(scoreColumns[p], $"P{p + 1}_Slot_Box_{r}", new Vector2(0f, VBottom(r)), new Vector2(1f, VTop(r)), new Vector2(3f, 3f), new Vector2(-3f, -3f), slotInsetColor), p, category);
 
@@ -782,6 +800,13 @@ namespace Tessera.Games.AugmentedYacht
                     categoryLabels[p][categoryIndex] = CreateLabel(nameColumns[p], $"Label_{category}", fontMain, displayName, new Vector2(0f, VBottom(r)), new Vector2(1f, VTop(r)), new Vector2(8f, 0f), new Vector2(-8f, 0f), 24, FontStyle.Normal, inkMain, NameAlignment(p));
 
                     scoreLabels[p][labelIndex] = CreateLabel(scoreColumns[p], $"P{p + 1}_Score_Label_{labelIndex}", fontHeader, "-", new Vector2(0f, VBottom(r)), new Vector2(1f, VTop(r)), Vector2.zero, Vector2.zero, 28, FontStyle.Normal, inkMain, TextAnchor.MiddleCenter);
+
+                    // 타깃 배지(아이콘 + 남은 횟수)는 칸 오른쪽 위 모서리에 작게 얹는다. 값 숫자는
+                    // 가운데 정렬이라 겹치지 않는다. 기본은 꺼둔다.
+                    targetBadgeIcons[p][categoryIndex] = CreateTargetBadgeIcon(scoreColumns[p], $"P{p + 1}_Target_Icon_{r}", VBottom(r), VTop(r));
+                    targetBadgeLabels[p][categoryIndex] = CreateLabel(scoreColumns[p], $"P{p + 1}_Target_Count_{r}", fontMain, string.Empty, new Vector2(0f, VBottom(r)), new Vector2(1f, VTop(r)), new Vector2(0f, 0f), new Vector2(-20f, -2f), 14, FontStyle.Bold, AugmentCardView.AntiqueGold, TextAnchor.UpperRight);
+                    targetBadgeIcons[p][categoryIndex].enabled = false;
+                    targetBadgeLabels[p][categoryIndex].enabled = false;
 
                     // 스티커는 그 행의 표기를 덮는 것이므로 같은 열에서 뒤에 만든다.
                     stickerSlots[p][categoryIndex] = CreateStickerSlot(
@@ -1072,6 +1097,28 @@ namespace Tessera.Games.AugmentedYacht
         }
 
         /// <summary>
+        /// bounty-hunter 타깃 배지(M17-T10) 아이콘이다. 점수 칸 오른쪽 위 모서리에 작게 얹는다.
+        /// 가운데 정렬인 점수 숫자와 겹치지 않도록 좁게 둔다. 기본은 꺼져 있다.
+        /// </summary>
+        private static Image CreateTargetBadgeIcon(Transform parent, string name, float vBottom, float vTop)
+        {
+            GameObject obj = new(name, typeof(RectTransform), typeof(Image));
+            obj.transform.SetParent(parent, false);
+
+            RectTransform rect = obj.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(1f, vTop);
+            rect.anchorMax = new Vector2(1f, vTop);
+            rect.pivot = new Vector2(1f, 1f);
+            rect.anchoredPosition = new Vector2(-2f, -2f);
+            rect.sizeDelta = new Vector2(14f, 14f);
+
+            Image img = obj.GetComponent<Image>();
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            return img;
+        }
+
+        /// <summary>
         /// 변형 증강 스티커 자리를 만든다. 천은 월드 오브젝트로, 아이콘과 이름은 CrispUI로 나눈다.
         /// 아이콘은 아이콘 섹터에, 이름은 이름 열에 들어가므로 이름 열이 접히면 아이콘만 남는다.
         /// </summary>
@@ -1251,6 +1298,69 @@ namespace Tessera.Games.AugmentedYacht
             ResetStickerTransform(slot);
             SetStickerActive(slot, false);
             SetCategoryRowVisible(playerIndex, category, true);
+        }
+
+        /// <summary>그 칸에 타깃 표시 자리가 준비돼 있는지 봅니다.</summary>
+        public bool HasTargetSlot(int playerIndex, ScoreCategory category) => TargetFrame(playerIndex, category) != null;
+
+        /// <summary>
+        /// bounty-hunter처럼 매 턴 타깃이 바뀌는 퀘스트 증강의 표시다(M17-T10). 변형 스티커와 달리
+        /// 칸을 덮지 않는다 — 슬롯 테두리를 골드로 밝히고 남은 횟수 배지만 오른쪽 위 모서리에 얹는다.
+        /// 원래 족보 아이콘·이름은 그대로 읽힌다.
+        /// </summary>
+        public void SetTargetMark(int playerIndex, ScoreCategory category, Sprite icon, string countLabel)
+        {
+            Image frame = TargetFrame(playerIndex, category);
+            if (frame != null) frame.color = TargetFrameColor;
+
+            Image badgeIcon = TargetBadgeIcon(playerIndex, category);
+            if (badgeIcon != null)
+            {
+                badgeIcon.sprite = icon;
+                badgeIcon.color = icon != null ? Color.white : new Color(1f, 1f, 1f, 0f);
+                badgeIcon.enabled = icon != null;
+            }
+
+            Text badgeLabel = TargetBadgeLabel(playerIndex, category);
+            if (badgeLabel != null)
+            {
+                badgeLabel.text = countLabel ?? string.Empty;
+                badgeLabel.enabled = !string.IsNullOrEmpty(countLabel);
+            }
+        }
+
+        /// <summary>타깃 표시를 뗍니다. 보유자가 아니거나 퀘스트가 끝나면 부른다.</summary>
+        public void ClearTargetMark(int playerIndex, ScoreCategory category)
+        {
+            Image frame = TargetFrame(playerIndex, category);
+            if (frame != null) frame.color = new Color(0f, 0f, 0f, 0f);
+
+            Image badgeIcon = TargetBadgeIcon(playerIndex, category);
+            if (badgeIcon != null) badgeIcon.enabled = false;
+
+            Text badgeLabel = TargetBadgeLabel(playerIndex, category);
+            if (badgeLabel != null) badgeLabel.enabled = false;
+        }
+
+        private Image TargetFrame(int playerIndex, ScoreCategory category)
+        {
+            if (playerIndex < 0 || playerIndex > 1) return null;
+            int index = (int)category;
+            return index >= 0 && index < targetFrames[playerIndex].Length ? targetFrames[playerIndex][index] : null;
+        }
+
+        private Image TargetBadgeIcon(int playerIndex, ScoreCategory category)
+        {
+            if (playerIndex < 0 || playerIndex > 1) return null;
+            int index = (int)category;
+            return index >= 0 && index < targetBadgeIcons[playerIndex].Length ? targetBadgeIcons[playerIndex][index] : null;
+        }
+
+        private Text TargetBadgeLabel(int playerIndex, ScoreCategory category)
+        {
+            if (playerIndex < 0 || playerIndex > 1) return null;
+            int index = (int)category;
+            return index >= 0 && index < targetBadgeLabels[playerIndex].Length ? targetBadgeLabels[playerIndex][index] : null;
         }
 
         /// <summary>표를 다시 만들 때 이전 천 조각을 걷어낸다. 오버레이와 달리 종이 레이어의 자식이다.</summary>
@@ -1601,7 +1711,7 @@ namespace Tessera.Games.AugmentedYacht
             }
             if (labels[6] != null)
             {
-                labels[6].text = "+35";
+                labels[6].text = $"+{data.BonusAward}";
                 SetLabelColor(labels[6], data.HasBonus ? bonusScoreGold : new Color32(140, 115, 95, 200));
             }
 

@@ -130,12 +130,15 @@ namespace Tessera.Games.Yacht
             return sum;
         }
 
+        /// <summary>보너스 달성 시 지급되는 점수. step-by-step 퀘스트 달성 여부에 따라 갈린다.</summary>
+        public int BonusAward => stepBonusGranted ? 55 : 35;
+
         public void RecalculateTotal()
         {
             EnsureArrays();
             int upperSum = CalculateUpperSum();
             hasBonus = stepBonusGranted || upperSum >= upperBonusThreshold;
-            bonusScore = hasBonus ? (stepBonusGranted ? 55 : 35) : 0;
+            bonusScore = hasBonus ? BonusAward : 0;
             int sum = upperSum + bonusScore + augmentBonusScore;
             for (int i = 0; i < 6; i++)
             {
@@ -171,6 +174,7 @@ namespace Tessera.Games.Yacht
         int IReadOnlyPlayerScoreData.BonusScore => bonusScore;
         int IReadOnlyPlayerScoreData.TotalScore => totalScore;
         int IReadOnlyPlayerScoreData.UpperBonusThreshold => upperBonusThreshold;
+        int IReadOnlyPlayerScoreData.BonusAward => BonusAward;
 
         bool IReadOnlyPlayerScoreData.IsFilled(ScoreCategory category)
         {

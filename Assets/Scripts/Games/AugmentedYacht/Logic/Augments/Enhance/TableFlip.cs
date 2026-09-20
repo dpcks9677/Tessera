@@ -3,11 +3,18 @@ using System;
 namespace Tessera.Games.Yacht
 {
     [Serializable]
-    public sealed class TableFlipState : IAugmentState
+    public sealed class TableFlipState : IAugmentState, IAugmentProgressText
     {
         public bool IsUsed;
 
         public IAugmentState Clone() => new TableFlipState { IsUsed = IsUsed };
+
+        public AugmentProgress DescribeProgress(in AugmentProgressQuery query)
+        {
+            string text = IsUsed ? "사용함" : "사용 가능";
+            var lines = new[] { new AugmentProgressLine(text, IsUsed) };
+            return new AugmentProgress(IsUsed ? AugmentProgressOutcome.Succeeded : AugmentProgressOutcome.InProgress, lines);
+        }
     }
 
     /// <summary>첫 굴림 후 한 번 사용할 수 있습니다. 주사위를 다시 굴립니다. 8면 주사위와 충돌합니다.</summary>

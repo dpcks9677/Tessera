@@ -38,6 +38,22 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
+        public void PlayerScoreData_BonusAward_MatchesStepBonusGrantedAndFeedsTotal()
+        {
+            var normal = new PlayerScoreData { upperScores = new[] { 3, 6, 9, 12, 15, 18 } };
+            Assert.That(normal.BonusAward, Is.EqualTo(35));
+            normal.RecalculateTotal();
+            Assert.That(normal.bonusScore, Is.EqualTo(35));
+            Assert.That(normal.totalScore, Is.EqualTo(98));
+
+            var stepBonus = new PlayerScoreData { upperScores = new[] { 3, 6, 9, 12, 15, 18 }, stepBonusGranted = true };
+            Assert.That(stepBonus.BonusAward, Is.EqualTo(55));
+            stepBonus.RecalculateTotal();
+            Assert.That(stepBonus.bonusScore, Is.EqualTo(55));
+            Assert.That(stepBonus.totalScore, Is.EqualTo(118));
+        }
+
+        [Test]
         public void Options_NormalTurnTimeLimitIsSixtySeconds()
         {
             var options = new YachtGameOptions();

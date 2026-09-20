@@ -65,7 +65,8 @@ namespace Tessera.Games.AugmentedYacht
         private static readonly Color Parchment = new(0.97f, 0.95f, 0.91f, 1f);
         private static readonly Color Ink = new(0.16f, 0.10f, 0.07f, 1f);
         private static readonly Color Crimson = new(0.53f, 0.18f, 0.13f, 1f);
-        private static readonly Color AntiqueGold = new(0.90f, 0.66f, 0.24f, 1f);
+        // internal: ParchmentScoreSheet가 bounty-hunter 타깃 표시(M17-T10)에서 같은 골드를 재사용한다.
+        internal static readonly Color AntiqueGold = new(0.90f, 0.66f, 0.24f, 1f);
         private static readonly Color Indigo = new(0.21f, 0.29f, 0.43f, 1f);
 
         // RollCosmicCube의 nearHaloColor(0.02,1.80,3.60)·outerHaloColor(0.00,0.45,2.40)는 HDR이라

@@ -37,6 +37,9 @@ namespace Tessera.Games.AugmentedYacht
         private readonly List<ScoreCategory> attachedStickers = new();
         private readonly List<ScoreCategory> removedStickers = new();
 
+        /// <summary>bounty-hunter 타깃 표시(M17-T10)가 지금 붙어 있는 칸이다. 없으면 -1이다.</summary>
+        private readonly int[] shownBountyTargetCategory = { -1, -1 };
+
         /// <summary>이미 연출로 소비한 명령의 리비전이다. 같은 이벤트를 두 번 재생하지 않는다.</summary>
         private long lastVfxRevision = -1;
         private AugmentTrayPresenter augmentTray;
@@ -797,6 +800,7 @@ namespace Tessera.Games.AugmentedYacht
             TrayRebindRequested?.Invoke();
             augmentTray?.Refresh(gameSession, Phase.IsInteractive(), message);
             SyncAugmentStickers();
+            SyncBountyHunterTargetMarks();
         }
 
         /// <summary>
@@ -866,6 +870,42 @@ namespace Tessera.Games.AugmentedYacht
 
             shown.Clear();
             foreach (KeyValuePair<ScoreCategory, string> next in nextStickers) shown[next.Key] = next.Value;
+        }
+
+        /// <summary>
+        /// bounty-hunter가 지정한 현재 타깃 칸을 점수표 위에 상시 표시한다(M17-T10).
+        ///
+        /// 변형 스티커와 달리 칸을 덮지 않는다 — 타깃이 매 턴 바뀌므로 원래 족보 아이콘·이름을
+        /// 계속 읽을 수 있어야 한다. 카드 푸터 진행 표시(<see cref="AugmentProgressLine.IsTargetNote"/>)와
+        /// 같은 데이터 출처(<see cref="BountyHunterState"/>)를 읽는다.
+        /// 시각 경계는 <c>docs/agent/m17_vfx_spec.md</c> 2026-09-08 확정: 번쩍임·폭발 연출은
+        /// <c>M17-T9</c>이고, 여기서는 테두리·배지만 다룬다.
+        /// </summary>
+        private void SyncBountyHunterTargetMarks()
+        {
+            if (scoreSheet == null || gameSession == null) return;
+            if (gameSession.IsDrafting) return;
+
+            for (int playerIndex = 0; playerIndex < 2; playerIndex++) SyncBountyHunterTargetMark(playerIndex);
+        }
+
+        private void SyncBountyHunterTargetMark(int playerIndex)
+        {
+            IReadOnlyYachtAugmentPlayerState playerState = gameSession.State.AugmentPlayers[playerIndex];
+            BountyHunterState state = playerState.FindState(YachtAugmentRuntime.BountyHunterId) as BountyHunterState;
+
+            int targetCategory = state != null && !state.Rewarded ? state.TargetCategory : -1;
+            int previous = shownBountyTargetCategory[playerIndex];
+
+            if (previous >= 0 && previous != targetCategory) scoreSheet.ClearTargetMark(playerIndex, (ScoreCategory)previous);
+
+            if (targetCategory >= 0 && scoreSheet.HasTargetSlot(playerIndex, (ScoreCategory)targetCategory))
+            {
+                int remaining = Math.Max(0, BountyHunter.RequiredSuccesses - state.Successes);
+                scoreSheet.SetTargetMark(playerIndex, (ScoreCategory)targetCategory, ResolveStickerIcon(YachtAugmentRuntime.BountyHunterId), remaining.ToString());
+            }
+
+            shownBountyTargetCategory[playerIndex] = targetCategory;
         }
 
         /// <summary>마지막 명령의 이벤트에서 낙인 연출을 뽑는다. 리비전이 같으면 이미 처리한 것이다.</summary>

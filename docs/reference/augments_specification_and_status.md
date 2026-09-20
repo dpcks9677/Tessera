@@ -19,7 +19,7 @@
    - [5.1 족보 변형(Modification) 18종 (DONE)](#51-족보-변형modification-18종-done)
    - [5.2 시스템 강화(Enhance) 11종 (DONE)](#52-시스템-강화enhance-11종-done)
    - [5.3 퀘스트/진행형(Quest) 11종 (DONE)](#53-퀘스트진행형quest-11종-done)
-   - [5.4 수동 행동(Manual Action) 5종 (DONE)](#54-수동-행동manual-action-5종-done)
+   - [5.4 수동 행동(Manual Action) 6종 (DONE)](#54-수동-행동manual-action-6종-done)
    - [5.5 의도적 미구현/보류(HOLD) 4종](#55-의도적-미구현보류hold-4종)
    - [5.6 영구 삭제(CUT) 6종](#56-영구-삭제cut-6종)
 6. [런타임 상태 관리 (`AugmentStateStore`) 및 동기화](#6-런타임-상태-관리-augmentstatestore-및-동기화)
@@ -816,9 +816,14 @@ private static int RequiredDiceSlots(string augmentId)
 | **48** | `bounty-hunter` | 현상금 사냥꾼 | 매 턴 무작위로 지정되는 빈 족보 타깃을 3회 기입 | 최대 15점 (스크래치당 -3점 감산) | `BountyHunter` | `BountyHunterState` | `DONE` |
 | **52** | `prophet` | 예지자 | 3턴 동안 제시된 숫자 3개(1~30) 중 하나와 일치하는 점수 기입 | 일치할 때마다 +7점 | `Prophet` | `ProphetState` | `DONE` |
 
+`bounty-hunter`는 점수표 UI에도 별도 표시가 있습니다. `ParchmentScoreSheet.SetTargetMark`/`ClearTargetMark`가
+타깃 족보 칸에 골드 테두리·증강 아이콘·남은 횟수를 상시로 그리며(원래 족보 아이콘·이름은 가리지 않음),
+`YachtTurnFlowPresenter.RefreshAugmentPresentation()`의 기존 동기화 지점에서 `SyncBountyHunterTargetMarks()`가
+갱신합니다(`M17-T10`, 2026-09-20).
+
 ---
 
-### 5.4 수동 행동(Manual Action) 6종 (5 DONE + 1 DOING)
+### 5.4 수동 행동(Manual Action) 6종 (DONE)
 플레이어가 주사위를 굴리는 도중 직접 버튼을 눌러 개입하는 액티브 스킬 증강입니다.
 
 | No | ID | 이름 | 사용 타이밍 | 효과 설명 | C# 구현 클래스 | 상태 |
@@ -956,6 +961,11 @@ public void AfterScoreCommit(AugmentCommitContext context)
 하위 목표 줄을 낼 수 있습니다. 진행도 개념이 없는 상태는 구현하지 않아도 되는 **선택적** 계약입니다.
 2장의 8대 디자인 패턴과 별도로 다루는 이유는, 이것이 패턴이 아니라 상태 클래스가 선택적으로 얹는
 표시용 계약이기 때문입니다.
+
+퀘스트 11종 외에 수동 발동(`IManualActionAugment`) 계열도 이 계약을 씁니다. `CoinTossState`에 이어
+`TableFlipState`·`DiceAlchemyState`·`EquivalentExchangeState`·`GambitState`·`DoubleDownState` 5종에
+`IAugmentProgressText`를 구현해, 카드 푸터에 사용 가능/사용함/남은 횟수/발동 조건 문구를 표시합니다
+(`M17-T4`·`M17-T12`, 2026-09-20).
 
 계약은 다섯 타입으로 나뉩니다.
 

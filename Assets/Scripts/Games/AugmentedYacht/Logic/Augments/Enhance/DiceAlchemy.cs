@@ -3,11 +3,18 @@ using System;
 namespace Tessera.Games.Yacht
 {
     [Serializable]
-    public sealed class DiceAlchemyState : IAugmentState
+    public sealed class DiceAlchemyState : IAugmentState, IAugmentProgressText
     {
         public bool IsUsed;
 
         public IAugmentState Clone() => new DiceAlchemyState { IsUsed = IsUsed };
+
+        public AugmentProgress DescribeProgress(in AugmentProgressQuery query)
+        {
+            string text = IsUsed ? "사용함" : "사용 가능";
+            var lines = new[] { new AugmentProgressLine(text, IsUsed) };
+            return new AugmentProgress(IsUsed ? AugmentProgressOutcome.Succeeded : AugmentProgressOutcome.InProgress, lines);
+        }
     }
 
     /// <summary>첫 굴림 후 한 번 킵되지 않은 주사위의 눈금을 1씩 감소시킵니다. (최소 1)</summary>

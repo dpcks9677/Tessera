@@ -199,37 +199,75 @@ namespace Tessera.Games.Yacht
                     Type = YachtGameEventType.AugmentActionUsed,
                     PlayerIndex = command.PlayerIndex,
                     AugmentId = freeRollAugmentId,
-                    Message = $"{freeRollAugmentId} 사용"
+                    Message = $"{augmentRuntime.FindDefinition(freeRollAugmentId)?.DisplayName ?? freeRollAugmentId} 발동"
                 }
                 : new YachtGameEvent { Type = YachtGameEventType.DiceRolled, PlayerIndex = command.PlayerIndex };
             return Accept(gameEvent, presentation);
         }
 
-        private YachtGameCommandResult UseAugmentAction(YachtGameCommand command)
+        /// <summary>
+        /// 수동 행동 증강 하나를 지금 발동할 수 있는지 상태를 바꾸지 않고 조회한다.
+        /// <see cref="UseAugmentAction"/>과 판정을 공유해 규칙이 두 군데로 갈라지지 않게 한다.
+        /// </summary>
+        private bool TryResolveManualAction(
+            int playerIndex,
+            string augmentId,
+            out IManualActionAugment action,
+            out AugmentActionContext actionContext,
+            out YachtCommandErrorCode code,
+            out string message)
         {
-            YachtGameCommandResult turnError = ValidateCurrentPlayer(command);
-            if (turnError != null) return turnError;
-            if (YachtAugmentCatalog.Find(command.AugmentId) is not IManualActionAugment action)
-                return Reject(YachtCommandErrorCode.AugmentUnavailable, "지원하지 않는 증강 행동입니다.");
+            actionContext = null;
+            action = YachtAugmentCatalog.Find(augmentId) as IManualActionAugment;
+            if (action == null)
+            {
+                code = YachtCommandErrorCode.AugmentUnavailable;
+                message = "지원하지 않는 증강 행동입니다.";
+                return false;
+            }
 
             if (state.Phase != action.RequiredPhase)
             {
                 string phaseMessage = action.RequiredPhase == YachtGamePhase.TurnReady
                     ? "첫 굴림 전에만 사용할 수 있습니다."
                     : "현재 단계에서는 사용할 수 없습니다.";
-                if (string.Equals(command.AugmentId, YachtAugmentRuntime.TableFlipId, StringComparison.Ordinal))
+                if (string.Equals(augmentId, YachtAugmentRuntime.TableFlipId, StringComparison.Ordinal))
                     phaseMessage = "현재 단계에서는 판 뒤집기를 사용할 수 없습니다.";
-                else if (string.Equals(command.AugmentId, YachtAugmentRuntime.EquivalentExchangeId, StringComparison.Ordinal))
+                else if (string.Equals(augmentId, YachtAugmentRuntime.EquivalentExchangeId, StringComparison.Ordinal))
                     phaseMessage = "현재 단계에서는 등가교환을 사용할 수 없습니다.";
-                else if (string.Equals(command.AugmentId, YachtAugmentRuntime.DiceAlchemyId, StringComparison.Ordinal))
+                else if (string.Equals(augmentId, YachtAugmentRuntime.DiceAlchemyId, StringComparison.Ordinal))
                     phaseMessage = "첫 굴림 후 주사위 연금술을 사용할 수 있습니다.";
 
-                return Reject(YachtCommandErrorCode.InvalidPhase, phaseMessage);
+                code = YachtCommandErrorCode.InvalidPhase;
+                message = phaseMessage;
+                return false;
             }
 
-            var actionContext = new AugmentActionContext(state, command.PlayerIndex, random, null);
-            actionContext.BindAugment(command.AugmentId);
-            if (!action.CanUse(actionContext, out YachtCommandErrorCode code, out string message))
+            actionContext = new AugmentActionContext(state, playerIndex, random, null);
+            actionContext.BindAugment(augmentId);
+            return action.CanUse(actionContext, out code, out message);
+        }
+
+        /// <summary>
+        /// 화면 HUD가 버튼 활성 여부를 그리는 데 쓰는 조회 전용 통로다. 실행하지 않고
+        /// <see cref="UseAugmentAction"/>과 같은 판정만 본다.
+        /// </summary>
+        public bool CanUseAugmentAction(int playerIndex, string augmentId, out YachtCommandErrorCode code, out string message)
+        {
+            if (playerIndex != state.CurrentPlayerIndex)
+            {
+                code = YachtCommandErrorCode.NotCurrentPlayer;
+                message = "현재 플레이어의 명령이 아닙니다.";
+                return false;
+            }
+            return TryResolveManualAction(playerIndex, augmentId, out _, out _, out code, out message);
+        }
+
+        private YachtGameCommandResult UseAugmentAction(YachtGameCommand command)
+        {
+            YachtGameCommandResult turnError = ValidateCurrentPlayer(command);
+            if (turnError != null) return turnError;
+            if (!TryResolveManualAction(command.PlayerIndex, command.AugmentId, out IManualActionAugment action, out AugmentActionContext actionContext, out YachtCommandErrorCode code, out string message))
                 return Reject(code, message);
 
             if (action.RerollsDice)
@@ -261,7 +299,7 @@ namespace Tessera.Games.Yacht
             }
             else
             {
-                actionMessage = $"{command.AugmentId} 발동";
+                actionMessage = $"{augmentRuntime.FindDefinition(command.AugmentId)?.DisplayName ?? command.AugmentId} 발동";
             }
 
             return Accept(new YachtGameEvent
@@ -730,12 +768,6 @@ namespace Tessera.Games.Yacht
         public YachtGameCommandResult LastCommandResult { get; private set; }
         public bool CanRoll => (Phase == YachtGamePhase.TurnReady || Phase == YachtGamePhase.ScoreSelection) && RollsRemaining > 0;
         public bool CanKeepDice => Phase == YachtGamePhase.ScoreSelection && HasRolled;
-        public bool CanUseTableFlip => Phase == YachtGamePhase.ScoreSelection
-            && AuthorityState.AugmentPlayers != null
-            && CurrentPlayerIndex < AuthorityState.AugmentPlayers.Length
-            && !AuthorityState.AugmentPlayers[CurrentPlayerIndex].TableFlipUsed
-            && ContainsOwnedAugment(CurrentPlayerIndex, YachtAugmentRuntime.TableFlipId);
-
         /// <summary>
         /// 현재 플레이어가 등가교환을 지금 발동할 수 있는가. 규칙은 증강 런타임이 소유한다.
         ///
@@ -773,6 +805,10 @@ namespace Tessera.Games.Yacht
             result = LastCommandResult = Execute(YachtCommandType.UseAugmentAction, CurrentPlayerIndex, augmentId: augmentId);
             return result.Accepted;
         }
+
+        /// <summary>현재 플레이어가 수동 행동 증강을 지금 발동할 수 있는지 조회한다. 상태를 바꾸지 않는다.</summary>
+        public bool CanUseAugmentAction(string augmentId, out YachtCommandErrorCode code, out string message) =>
+            authority.CanUseAugmentAction(CurrentPlayerIndex, augmentId, out code, out message);
         public bool TrySetDieKept(int dieIndex, bool kept)
         {
             if (dieIndex < 0 || dieIndex >= AuthorityState.Dice.Length) return false;
@@ -833,14 +869,6 @@ namespace Tessera.Games.Yacht
                 Category = category,
                 AugmentId = augmentId
             });
-        }
-
-        private bool ContainsOwnedAugment(int playerIndex, string augmentId)
-        {
-            string[] owned = AuthorityState.AugmentPlayers[playerIndex].OwnedIds;
-            for (int i = 0; i < owned.Length; i++)
-                if (string.Equals(owned[i], augmentId, StringComparison.Ordinal)) return true;
-            return false;
         }
 
         private static YachtTurnResult CreateTurnResult(YachtGameCommandResult result, int playerIndex, ScoreCategory fallback)

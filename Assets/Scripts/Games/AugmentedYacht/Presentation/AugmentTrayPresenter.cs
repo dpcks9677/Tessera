@@ -327,11 +327,11 @@ namespace Tessera.Games.AugmentedYacht
         }
 
         /// <summary>
-        /// 화면 HUD 버튼에 있던 활성 규칙을 그대로 옮긴 것이다. 판 뒤집기만 단계 조건이 세션에 노출돼 있고,
-        /// 나머지는 실제 사용 시점에 규칙(IManualActionAugment.CanUse)이 거른다.
+        /// 권위 계층의 조회 전용 판정(<see cref="YachtGameSession.CanUseAugmentAction"/>)을 그대로 쓴다.
+        /// 실제 발동 시점(<c>UseAugmentAction</c>)과 같은 규칙을 보므로 버튼 활성과 발동 가능 여부가 어긋나지 않는다.
         /// </summary>
         private static bool CanUseManualAugment(YachtGameSession session, string augmentId) =>
-            !string.Equals(augmentId, YachtAugmentRuntime.TableFlipId, StringComparison.Ordinal) || session.CanUseTableFlip;
+            session.CanUseAugmentAction(augmentId, out _, out _);
 
         /// <summary>
         /// 보유 증강의 진행 상태를 카드에 찍을 줄 목록으로 바꾼다. 진행도 개념이 없는 증강이면

@@ -3,11 +3,19 @@ using System;
 namespace Tessera.Games.Yacht
 {
     [Serializable]
-    public sealed class EquivalentExchangeState : IAugmentState
+    public sealed class EquivalentExchangeState : IAugmentState, IAugmentProgressText
     {
         public int Uses;
 
         public IAugmentState Clone() => new EquivalentExchangeState { Uses = Uses };
+
+        public AugmentProgress DescribeProgress(in AugmentProgressQuery query)
+        {
+            bool exhausted = Uses >= EquivalentExchange.MaxUses;
+            string text = exhausted ? "모두 사용함" : $"남은 사용 {EquivalentExchange.MaxUses - Uses}/{EquivalentExchange.MaxUses}";
+            var lines = new[] { new AugmentProgressLine(text, exhausted) };
+            return new AugmentProgress(exhausted ? AugmentProgressOutcome.Succeeded : AugmentProgressOutcome.InProgress, lines);
+        }
     }
 
     /// <summary>기본 굴림을 모두 사용한 뒤 5점을 지불하고 주사위를 다시 굴립니다. 최대 3번 사용할 수 있습니다.</summary>
