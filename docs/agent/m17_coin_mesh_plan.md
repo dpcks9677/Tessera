@@ -142,16 +142,16 @@ Coin.prefab (root, layer Decoration=11, localScale = WorldDiameter / SourceDiame
 |---|---|
 | `Assets/Art/Source/Coin/coin.glb` | 메시 소스 복사본. Unity는 DefaultAsset으로 두고 베이커가 `File.ReadAllBytes`로 읽음 |
 | `Assets/Art/Source/Coin/coin_head_source.png`, `coin_tail_source.png` | 사용자 선화 원본(`Downloads/head.png`, `tail.png`) |
-| `Assets/Editor/CoinGlbReader.cs` | glb → 축 변환된 프리미티브 배열. 순수 함수 |
-| `Assets/Editor/CoinFaceTextureConverter.cs` | 선화 → 면 앨비도 픽셀. 순수 함수 |
-| `Assets/Editor/CoinMeshBaker.cs` | 메뉴 `Tessera/Bake/Coin Model`. 분할·재투영(순수 static) + mesh/mat/png/prefab 저장. 자동 호출 안 함 |
+| `Assets/Editor/Dice/CoinGlbReader.cs` | glb → 축 변환된 프리미티브 배열. 순수 함수 |
+| `Assets/Editor/Dice/CoinFaceTextureConverter.cs` | 선화 → 면 앨비도 픽셀. 순수 함수 |
+| `Assets/Editor/Dice/CoinMeshBaker.cs` | 메뉴 `Tessera/Bake/Coin Model`. 분할·재투영(순수 static) + mesh/mat/png/prefab 저장. 자동 호출 안 함 |
 | `Assets/Art/Generated/Coin/{Meshes,Materials,Textures}/` | 산출물 |
 | `Assets/Prefabs/Coin/Coin.prefab` | 산출물 |
-| `Assets/Editor/CoinGlbReaderTests.cs`, `CoinFaceTextureConverterTests.cs`, `CoinMeshBakerTests.cs` | EditMode 테스트 (메서드명 영문) |
+| `Assets/Editor/Tests/Dice/CoinGlbReaderTests.cs`, `CoinFaceTextureConverterTests.cs`, `CoinMeshBakerTests.cs` | EditMode 테스트 (메서드명 영문) |
 
 위 파일은 `M17-T23-1` 작성 시점에는 전부 계획 항목이었다. `M17-T23-2`~`M17-T23-6` 완료(2026-09-14)로 전부 실재하며, §6에 검증 결과가 있다.
 
-재사용: `DiceShapeBaker.SaveMesh`/`SavePrefab` 패턴(`Assets/Editor/DiceShapeBaker.cs:468,484`), `AugmentScrollAssetGenerator.CreateOrReplaceLitMaterial`(`Assets/Editor/AugmentScrollAssetGenerator.cs:101-122`), 임포터 설정(`Assets/Editor/WoodPlankTextureGenerator.cs:327-336`), 순수 픽셀 함수 + 테스트 관례(`AugmentStickerTexture.CreatePixels` ↔ `AugmentStickerTextureTests`).
+재사용: `DiceShapeBaker.SaveMesh`/`SavePrefab` 패턴(`Assets/Editor/Dice/DiceShapeBaker.cs:468,484`), `AugmentScrollAssetGenerator.CreateOrReplaceLitMaterial`(`Assets/Editor/Yacht/AugmentScrollAssetGenerator.cs:101-122`), 임포터 설정(`Assets/Editor/Tabletop/WoodPlankTextureGenerator.cs:327-336`), 순수 픽셀 함수 + 테스트 관례(`AugmentStickerTexture.CreatePixels` ↔ `AugmentStickerTextureTests`).
 
 ---
 

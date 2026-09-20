@@ -37,13 +37,19 @@
 | 작업 ID | 우선순위 | 작업명 | 주요 대상 파일 | 예상 영향도 | 상태 |
 |:---:|:---:|---|---|:---:|:---:|
 | **BUILD-01** | **P1** | `PixelEdgeRendererFeature.cs` 컴파일 경고 해소 (CS0672, CS0618) | `Assets/Scripts/Rendering/PixelEdgeRendererFeature.cs` | 최하 (안전) | `TODO` |
-| **TEST-01** | **P1** | `FontFallbackTests.cs` 직렬화 API 버그 픽스 검증 및 커밋 | `Assets/Editor/FontFallbackTests.cs` | 최하 (테스트) | `TODO` |
+| **TEST-01** | **P1** | `FontFallbackTests.cs` 직렬화 API 버그 픽스 검증 및 커밋 | `Assets/Editor/Tests/FontFallbackTests.cs` | 최하 (테스트) | `TODO` |
 | **DOC-01** | **P2** | 기술 문서 정합성 동기화 (`RollOrb` 폐기 반영 및 클린업 완료 기록) | `docs/agent/solid_refactoring_work_plan.md`, `docs/archive/plans/dead_code_cleanup_proposal.md` | 최하 (문서) | `DONE` |
 | **SOLID-T05**| **P2** | `IYachtRuleSet` ISP 분리 (`SelectPresetFile` 뷰 결합 추출) | `Assets/Scripts/Games/Yacht/YachtGameCore.cs`, `LocalGameAuthority.cs` | 낮음 (구조) | `TODO` |
 | **AUG-01** | **P3** | 증강 핸들러 내 불필요한 과도기 `GetOrSync` 동기화 헬퍼 정리 | `Assets/Scripts/Games/AugmentedYacht/Logic/Augments/...` (12개 파일) | 낮음 (단순화) | `TODO` |
 | **PERF-01** | **P3** | `AugmentCardView` 증강 아이콘 로딩 캐시 및 GC 할당 완화 (`RES-2`) | `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs` | 낮음 (성능) | `TODO` |
 | **SOLID-T07**| **P4** | `YachtScoreCalculator` 가변 주사위 및 범위 방어적 처리 | `Assets/Scripts/Games/Yacht/YachtGameCore.cs` | 낮음 (안정성) | `TODO` |
-| **ARCH-01** | **P5** | Pure C# 게임 규칙 계층 독립 어셈블리 정의(`.asmdef`) 도입 가이드 | `Assets/Scripts/Games/Yacht/`, `AugmentedYacht/Logic/` | 중간 (구조) | `TODO` |
+| **ARCH-01** | **P5** | Pure C# 게임 규칙 계층 독립 어셈블리 정의(`.asmdef`) 도입 가이드 | `Assets/Scripts/Games/Yacht/`, `AugmentedYacht/Logic/` | 중간 (구조) | `VOID` |
+| **ARCH-02** | **P5** | 런타임 에셋을 기능 경계 기준으로 재편 (`Assets/GameContent/...`) | `Assets/Prefabs/`, `Assets/Resources/`, `Assets/Art/Generated/` | 중간 (구조) | `TODO` |
+| **ARCH-03** | **P5** | `Resources/` 사용 축소와 Addressables 전환 검토 | `Assets/Resources/` | 중간 (구조) | `TODO` |
+| **ARCH-04** | **P5** | `DicePresetCatalog`의 StreamingAssets 로드를 `UnityWebRequest` 대응으로 전환 | `Assets/Scripts/Dice/DicePresetCatalog.cs` | 낮음 (이식성) | `TODO` |
+| **ARCH-05** | **P5** | asmdef 도입 (`Tessera.Core` → `Dice`/`Tabletop`/`Rendering` → `Games.Yacht` → `Games.AugmentedYacht`) | `Assets/Scripts/` 전체 | 중간 (구조) | `TODO` |
+| **LOAD-01** | **P2** | 런타임 스크립트 6개의 에디터 전용 에셋 로딩(`#if UNITY_EDITOR` + `AssetDatabase.LoadAssetAtPath`)이 플레이어 빌드에서 null 반환 | `AugmentCardView.cs`, `AugmentedYachtController.cs`, `InkwellAndQuill.cs`, `ParchmentScoreSheet.cs`, `TabletopSurfaceBuilder.cs`, `YachtHudFactory.cs` | 높음 (빌드 결함) | `TODO` |
+| **LOAD-02** | **P3** | `AugmentScrollModel.cs`의 죽은 `Resources.Load` 폴백 경로 정리 | `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentScrollModel.cs` | 낮음 (단순화) | `TODO` |
 
 ---
 
@@ -135,12 +141,12 @@ dotnet build Assembly-CSharp.csproj /p:WarningLevel=5
 기존 `FontFallbackTests.cs`는 `TrueTypeFontImporter`의 내부 직렬화 프로퍼티 `fallbackFontReferences`를 `SerializedObject`로 탐색했으나, Unity 버전 변경으로 해당 직렬화 프로퍼티명이 내부에서 달라져 항상 null을 반환하여 2건의 테스트가 실패하고 있었습니다. 현재 워킹 트리에 공개 API인 `importer.fontReferences`를 사용하도록 정교하게 수정되어 있습니다.
 
 #### 2. 대상 파일
-- [FontFallbackTests.cs](../../Assets/Editor/FontFallbackTests.cs) (Line 23 ~ Line 50)
+- [FontFallbackTests.cs](../../Assets/Editor/Tests/FontFallbackTests.cs) (Line 23 ~ Line 50)
 
 #### 3. 작업 지침
-1. 현재 수정 내역(`git diff Assets/Editor/FontFallbackTests.cs`)이 공개 API `importer.fontReferences`를 사용하는지 확인합니다.
+1. 현재 수정 내역(`git diff Assets/Editor/Tests/FontFallbackTests.cs`)이 공개 API `importer.fontReferences`를 사용하는지 확인합니다.
 2. `dotnet build Assembly-CSharp-Editor.csproj /p:WarningLevel=5`를 실행하여 컴파일 오류 및 경고 0개를 확인합니다.
-3. 확인 후 해당 파일만 깔끔하게 커밋합니다 (`git add Assets/Editor/FontFallbackTests.cs`, 커밋 메시지: `fix(test): use public fontReferences API in FontFallbackTests`).
+3. 확인 후 해당 파일만 깔끔하게 커밋합니다 (`git add Assets/Editor/Tests/FontFallbackTests.cs`, 커밋 메시지: `fix(test): use public fontReferences API in FontFallbackTests`).
 
 #### 4. 검증 절차
 ```powershell
@@ -403,15 +409,17 @@ dotnet build Assembly-CSharp.csproj /p:WarningLevel=5
 
 ---
 
-### [ARCH-01] Pure C# 게임 규칙 계층 어셈블리 정의(`.asmdef`) 도입 가이드
+### [ARCH-01] Pure C# 게임 규칙 계층 어셈블리 정의(`.asmdef`) 도입 가이드 — `VOID`
 
-#### 1. 배경 및 목적
+**무효화: 2026-09-20.** asmdef 부분 도입을 전제로 한 항목이라 `ARCH-05`(프로젝트 전체 어셈블리 그래프 설계)로 흡수됨.
+
+#### 1. 배경 및 목적 (원 명세, 참고용)
 현재 `Tessera`는 모든 스크립트가 모놀리식 `Assembly-CSharp.dll`에 들어있어:
 - 스크립트 하나 수정 시 전체 프로젝트가 재컴파일됩니다.
 - 순수 C# 계층(`Tessera.Games.Yacht`)에 실수로 Unity API(`MonoBehaviour`, `Time` 등)가 침투하는 것을 컴파일 타임에 막을 수 없습니다.
 - 800+개의 순수 규칙 유닛 테스트를 Unity 에디터 구동 없이 `dotnet test`로 즉시 돌리는 혜택을 누리지 못하고 있습니다.
 
-#### 2. 권장 분리 구조
+#### 2. 권장 분리 구조 (원 명세, 참고용)
 ```text
 Assets/Scripts/
 ├── Games/Yacht/                       -> [Tessera.Games.Yacht.Core.asmdef] (Unity 의존성 0)
@@ -422,11 +430,137 @@ Assets/Scripts/
 └── Rendering/                         -> [Tessera.Rendering.asmdef]
 ```
 
-#### 3. 단계별 도입 절차
+#### 3. 단계별 도입 절차 (원 명세, 참고용)
 1. `Assets/Scripts/Games/Yacht/` 경로에 순수 C# 어셈블리 정의 생성:
    - `autoReferenced: true`, `noEngineReferences: true` 설정.
 2. 컴파일을 수행하여 순수 규칙 계층에 엔진 참조가 실제로 0개인지 확인.
 3. 테스트 어셈블리(`Assets/Editor/YachtTests.asmdef`)에서 해당 어셈블리만 참조하도록 구성.
+
+---
+
+### [ARCH-02] 런타임 에셋을 기능 경계 기준으로 재편
+
+#### 1. 배경 및 목적
+2026-09-19 아트·오디오 디렉터리 재편(커밋 `a2acacb`)과 2026-09-20 에디터 스크립트 기능별 폴더 분리에 이어지는 후속 후보입니다. 현재 `Assets/Prefabs`, `Assets/Resources`, `Assets/Art/Generated`는 타입(프리팹/리소스/생성물) 기준으로 나뉘어 있어, 특정 기능(예: 증강 요트)에 속한 에셋을 한눈에 찾기 어렵습니다.
+
+#### 2. 목표 구조
+```text
+Assets/GameContent/
+├── AugmentedYacht/
+│   ├── Prefabs/
+│   ├── Icons/
+│   ├── Vfx/
+│   └── Materials/
+└── Shared/
+    ├── Dice/
+    └── Tabletop/
+```
+
+#### 3. 착수 조건
+한 번에 옮기지 않습니다. 해당 기능을 수정할 때 그 기능의 에셋만 함께 옮기는 점진적 정리로 진행합니다. 번들링이나 Addressables 도입을 검토할 때(→ `ARCH-03`) 본격화합니다.
+
+#### 4. 현재 상태
+`Assets/Prefabs`, `Assets/Resources`, `Assets/Art/Generated`가 타입 기준으로 나뉘어 있습니다.
+
+---
+
+### [ARCH-03] `Resources/` 사용 축소와 Addressables 전환 검토
+
+#### 1. 배경 및 목적
+`Resources/`에 넣은 모든 에셋과 그 의존성은 실제 참조 여부와 무관하게 빌드에 포함되고, 문자열 경로 오탈자나 경로 누락은 컴파일 타임에 드러나지 않고 런타임에만 드러납니다.
+
+#### 2. 착수 조건
+현재는 아이콘 45개와 VFX 3개 규모로 허용 범위 안에 있습니다. 대형 프리팹이나 씬별 전용 에셋이 `Resources/`에 들어가기 시작하면 착수합니다.
+
+#### 3. 대상 경로
+- `Assets/Resources/`
+
+---
+
+### [ARCH-04] `DicePresetCatalog`의 StreamingAssets 로드를 `UnityWebRequest` 대응으로 전환
+
+#### 1. 배경 및 목적
+[DicePresetCatalog.cs](../../Assets/Scripts/Dice/DicePresetCatalog.cs)는 `Path.Combine(Application.streamingAssetsPath, "WebSource", "presets", ...)` 경로를 일반 파일 IO(`File.ReadAllText` 등)로 직접 읽습니다. Android와 WebGL에서는 StreamingAssets가 일반 파일 API로 읽을 수 없는 경로(APK 내부 압축, 웹 서버 경로)라 이 방식이 실패합니다.
+
+#### 2. 착수 조건
+Android나 WebGL을 목표 플랫폼에 넣을 때 착수합니다.
+
+#### 3. 참고
+효과음(Sfx)은 2026-09-19 재편에서 StreamingAssets 밖으로 이동해 이 문제에서 벗어났습니다. `DicePresetCatalog`의 프리셋 JSON만 남은 대상입니다.
+
+---
+
+### [ARCH-05] asmdef 도입
+
+#### 1. 배경 및 목적
+프로젝트에 `.asmdef`가 하나도 없어 런타임 스크립트 전부가 `Assembly-CSharp`, `Assets/Editor` 전부가 `Assembly-CSharp-Editor`로 컴파일됩니다.
+- 스크립트 하나 수정 시 전체 프로젝트가 재컴파일됩니다.
+- 순수 C# 계층(`Tessera.Games.Yacht`)에 실수로 Unity API(`MonoBehaviour`, `Time` 등)가 침투하는 것을 컴파일 타임에 막을 수 없습니다.
+- 800+개의 순수 규칙 유닛 테스트를 Unity 에디터 구동 없이 `dotnet test`로 즉시 돌리는 혜택을 누리지 못하고 있습니다.
+
+`ARCH-01`(게임 규칙 계층 한 겹만 다루는 asmdef 도입 가이드)을 이 태스크로 흡수했습니다. asmdef는 부분 도입하면 참조 방향이 꼬이기 쉬워, 프로젝트 전체 어셈블리 그래프를 한 번에 설계하는 것이 평가 권고입니다.
+
+#### 2. 목표 의존 순서
+```text
+Tessera.Core → Dice / Tabletop / Rendering → Games.Yacht → Games.AugmentedYacht
+```
+
+`ARCH-01`이 제시했던 게임 규칙 계층 내부 분리 구조는 위 순서 중 `Games.Yacht` / `Games.AugmentedYacht` 계층의 세부안으로 다음과 같이 참고합니다:
+```text
+Assets/Scripts/
+├── Games/Yacht/                       -> [Tessera.Games.Yacht.Core.asmdef] (Unity 의존성 0)
+│   ├── Logic/                         -> [Tessera.Games.AugmentedYacht.Logic.asmdef]
+│   │   └── Augments/                  -> (Core만 참조, UnityEngine 미참조)
+├── Tabletop/                          -> [Tessera.Tabletop.asmdef] (Core, Logic, URP 참조)
+├── Presentation/                      -> [Tessera.Presentation.asmdef]
+└── Rendering/                         -> [Tessera.Rendering.asmdef]
+```
+
+#### 3. 착수 조건
+컴파일 대기가 체감되거나 참여 인원이 늘 때 착수합니다. 부분 도입하지 않고 테스트·에디터 어셈블리까지 한 번에 설계합니다.
+
+#### 4. 현재 상태
+프로젝트에 `.asmdef`가 하나도 없고, 런타임 스크립트 전부가 `Assembly-CSharp`, `Assets/Editor` 전부가 `Assembly-CSharp-Editor`입니다.
+
+---
+
+### [LOAD-01] 런타임 스크립트 6개의 에디터 전용 에셋 로딩이 플레이어 빌드에서 null 반환
+
+#### 1. 배경 및 목적
+아래 6개 런타임 스크립트가 텍스처·폰트·모델을 `#if UNITY_EDITOR` 블록 안 `AssetDatabase.LoadAssetAtPath`로만 로드합니다. `AssetDatabase`는 에디터 전용 API라 플레이어 빌드에서는 해당 블록 자체가 컴파일되지 않거나 호출부가 null을 반환해, 실제 빌드에서 이 에셋들이 전부 null이 됩니다. 2026-09-19 재편 작업 중 발견됐습니다.
+
+#### 2. 대상 파일
+- `AugmentCardView.cs`
+- `AugmentedYachtController.cs`
+- `InkwellAndQuill.cs`
+- `ParchmentScoreSheet.cs`
+- `TabletopSurfaceBuilder.cs`
+- `YachtHudFactory.cs`
+
+#### 3. 작업 지침
+직렬화 필드(`[SerializeField]`)로 에셋 참조를 노출하거나, `Resources.Load` 등 빌드에 포함되는 다른 로딩 경로로 전환이 필요합니다. 6개 파일 각각의 현재 로딩 지점과 대체 방식은 착수 시 개별 조사가 필요합니다 (미확인).
+
+#### 4. 검증 절차
+- 플레이어 빌드(또는 빌드에 준하는 환경)에서 해당 에셋들이 null이 아닌지 확인.
+
+---
+
+### [LOAD-02] `AugmentScrollModel.cs`의 죽은 `Resources.Load` 폴백 경로 정리
+
+#### 1. 배경 및 목적
+`Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentScrollModel.cs:438`의 `Resources.Load<Texture2D>("Parchment/parchment_base")` 폴백은 해당 경로가 `Resources/` 밑에 존재하지 않아 항상 null을 반환하는 죽은 코드입니다.
+
+#### 2. 대상 파일
+- [AugmentScrollModel.cs](../../Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentScrollModel.cs) (Line 438)
+
+#### 3. 작업 지침
+폴백 경로를 제거하거나, 의도한 실제 에셋 경로로 교정합니다. 어느 쪽이 맞는지는 착수 시 확인 필요(미확인).
+
+#### 4. 검증 절차
+```powershell
+dotnet build Assembly-CSharp.csproj /p:WarningLevel=5
+```
+- **성공 기준**: 컴파일 오류 0개.
 
 ---
 

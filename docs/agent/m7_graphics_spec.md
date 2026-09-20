@@ -148,7 +148,7 @@ M5에서는 규칙 검증을 위한 최소 표시와 임시 리소스만 사용�
 - 상태: `중단`
 - 사용자 요청/결정: 8면 주사위 구현 도중 작업을 멈추고, 픽셀 필터 개선(`M12`)을 먼저 진행한다. 중단 사실을 문서에 남기고 백업 커밋을 만든다.
 - 진행된 내용: `feature/yacht-dice-migration` 브랜치에서 팔면체 형상 베이킹과 면 값 매핑을 작업하던 중이다.
-  - `Assets/Editor/DiceShapeBaker.cs` — 팔면체 몸체·홈 메시 베이커
+  - `Assets/Editor/Dice/DiceShapeBaker.cs` — 팔면체 몸체·홈 메시 베이커
   - `Assets/Scripts/Dice/DiceFaceValues.cs` — 주사위 종류별 면 값 표
   - `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtDieVisuals.cs` — 주사위 비주얼 분리
   - `Assets/Art/Generated/Dice/`, `Assets/Prefabs/Dice/` — 구운 메시와 프리팹
@@ -195,7 +195,7 @@ M5에서는 규칙 검증을 위한 최소 표시와 임시 리소스만 사용�
 - 사용자 요청/결정: 2D 이미지 방식 대신 제공된 레퍼런스를 바탕으로 일부가 말린 채 펼쳐진 3D 스크롤 오브젝트를 제작하고, 말린 부분 중앙에 밀랍 인장을 배치하며 종이 질감을 강화함
 - 완료 내용: 가로형 슬롯에 맞춘 펼쳐진 양면 본체, 탑다운에서 단면이 보이는 2중 나선 롤, 중앙 밀랍 인장·밴드·리본, 오버레이 안전 영역을 구현함. 종이 Base Color와 URP Lit 재질을 제작하고 정적 메시·재질·프리팹 5종을 생성해 보유 카드 런타임에 연결함
 - 계획 문서: 이 문서 부록 C
-- 변경 파일: `Assets/Scripts/Games/AugmentedYacht/AugmentScrollModel.cs`, `Assets/Editor/AugmentScrollAssetGenerator.cs`, `Assets/Art/Generated/AugmentScrolls/Resources/AugmentScrolls`, `Assets/Scripts/Games/AugmentedYacht/AugmentTrayCardView.cs`, 카드 전용 EditMode 테스트
+- 변경 파일: `Assets/Scripts/Games/AugmentedYacht/AugmentScrollModel.cs`, `Assets/Editor/Yacht/AugmentScrollAssetGenerator.cs`, `Assets/Art/Generated/AugmentScrolls/Resources/AugmentScrolls`, `Assets/Scripts/Games/AugmentedYacht/AugmentTrayCardView.cs`, 카드 전용 EditMode 테스트
 - 실행한 검증: 격리된 Unity 프로젝트 스크립트 컴파일, 정적 프리팹 5종 생성, 메시·UV·노멀·탄젠트 및 인장·오버레이 앵커 테스트 추가, 변경 파일 정적 검사
 - 검증 결과: Unity 컴파일 오류 0개, 프리팹 5종과 구성 메시 25개 생성 성공. 재검증에서 카드·양피지 전용 EditMode 23/23, 전체 EditMode 59/59 통과. Play Mode에서 프리셋 0·2·4의 보유 카드 3장, 카드당 메시 5개, 중앙 인장, 오버레이 활성 및 일반 모드 비활성을 확인함
 - 검증 캡처: `Assets/Screenshots/m7_t4_3d_scroll_validation.png`
@@ -207,7 +207,7 @@ M5에서는 규칙 검증을 위한 최소 표시와 임시 리소스만 사용�
 - 상태: `DONE`
 - 사용자 요청/결정: 왼쪽 말림이 원통을 붙인 것처럼 보이고 3D 카드가 평면으로 눌려 보이는 문제를 수정하며, 하단 말림도 현재 탑다운 카메라에서 읽히도록 보강
 - 완료 내용: 왼쪽 가장자리를 본체와 접선으로 이어지는 1.28~1.42회 절차형 나선 단면으로 교체하고 메시 분할을 25×17로 높임. 하단은 왼쪽 모서리를 중심으로 크게, 오른쪽 모서리를 보조적으로 들어 올리는 비대칭 말림을 추가함. 높이를 카메라 방향으로 과장하고 앞면과 어두운 뒷면·측면을 별도 재질로 분리함. 보유 카드 오버레이의 양피지 배경과 외곽선을 제거하고 말리지 않는 중앙 안전 영역만 투영하도록 변경함
-- 변경 파일: `Assets/Scripts/Games/AugmentedYacht/AugmentParchmentVisuals.cs`, `Assets/Scripts/Games/AugmentedYacht/AugmentCardView.cs`, `Assets/Scripts/Games/AugmentedYacht/AugmentTrayCardView.cs`, `Assets/Editor/AugmentCardViewTests.cs`
+- 변경 파일: `Assets/Scripts/Games/AugmentedYacht/AugmentParchmentVisuals.cs`, `Assets/Scripts/Games/AugmentedYacht/AugmentCardView.cs`, `Assets/Scripts/Games/AugmentedYacht/AugmentTrayCardView.cs`, `Assets/Editor/Tests/Yacht/AugmentCardViewTests.cs`
 - 실행한 검증: Unity 스크립트 재컴파일, 카드·양피지 상태 전용 EditMode 테스트, 전체 EditMode 회귀 테스트, Play Mode 드래프트 및 보유 카드 캡처 확인, Unity Console 확인
 - 검증 결과: 컴파일 오류 0개, 전용 테스트 18/18 통과, 전체 EditMode 54/54 통과. 보유 카드에서 왼쪽 나선 외곽과 하단의 어두운 뒷면이 구분되고 화면 정보가 곡면을 덮지 않는 것을 확인함
 - 남은 문제/차단 요소: 없음
@@ -243,7 +243,7 @@ M5에서는 규칙 검증을 위한 최소 표시와 임시 리소스만 사용�
 - 상태: `DONE`
 - 사용자 요청/결정: `M7-T4` 작업 진행
 - 완료 내용: 현재 차례 또는 드래프트 대상 플레이어의 보유 카드 최대 3장을 트레이 슬롯에 맞춘 월드 공간 카드로 표시함. 렌더 텍스처 화면 좌표를 월드 레이로 변환해 호버 시 카드를 들어 올리고 상세 설명을 별도 하단 영역에 표시하며, 클릭 시 선택 상태를 토글함. 기존 보유 증강 텍스트 목록은 카드와 겹치므로 제거함
-- 변경 파일: `Assets/Scripts/Games/AugmentedYacht/AugmentTrayCardView.cs`, `Assets/Scripts/Games/AugmentedYacht/AugmentedYachtController.cs`, `Assets/Scripts/Tabletop/AugmentCardTray.cs`, `Assets/Editor/AugmentCardViewTests.cs`, `docs/augmented_yacht_m7_graphics_plan.md`
+- 변경 파일: `Assets/Scripts/Games/AugmentedYacht/AugmentTrayCardView.cs`, `Assets/Scripts/Games/AugmentedYacht/AugmentedYachtController.cs`, `Assets/Scripts/Tabletop/AugmentCardTray.cs`, `Assets/Editor/Tests/Yacht/AugmentCardViewTests.cs`, `docs/augmented_yacht_m7_graphics_plan.md`
 - 실행한 검증: 스크립트 정적 검증, Unity 컴파일, 카드·트레이 전용 EditMode 테스트, 전체 EditMode 회귀 테스트, Play Mode 런타임 오브젝트·카메라 배치 확인, Unity Console 확인
 - 검증 결과: 컴파일 오류 0개, 카드·트레이 전용 테스트 12/12 통과, 전체 EditMode 48/48 통과. 런타임 카드 3개가 상·중·하 슬롯 앵커에 각각 생성되고 상단 카드가 점수표·주사위 영역을 침범하지 않는 것을 확인함. 최종 Console 오류·경고 0개
 - 남은 문제/차단 요소: 없음. 카드 사용 완료·실패 행동 피드백은 계획대로 `M7-T9`, 랜덤 박스 교체 연출은 `M7-T6` 범위
@@ -265,7 +265,7 @@ M5에서는 규칙 검증을 위한 최소 표시와 임시 리소스만 사용�
 - 상태: `DONE`
 - 사용자 요청/결정: 선택 가능·선택됨·보유 중·충돌·사용 완료·비활성 상태를 명확히 구분하고 완료 후 다음 단계 대화 준비
 - 완료 내용: 여섯 상태에 서로 다른 배경·상태 색 띠·헤더·테두리·상태 문구를 적용함. 선택됨과 충돌은 굵은 테두리로 강조하고 선택 가능 상태만 입력을 허용함. Unity Button의 공통 비활성 틴트가 상태 색상을 덮지 않도록 수정함
-- 변경 파일: `Assets/Scripts/Games/AugmentedYacht/AugmentCardView.cs`, `Assets/Editor/AugmentCardViewTests.cs`, `docs/augmented_yacht_m7_graphics_plan.md`
+- 변경 파일: `Assets/Scripts/Games/AugmentedYacht/AugmentCardView.cs`, `Assets/Editor/Tests/Yacht/AugmentCardViewTests.cs`, `docs/augmented_yacht_m7_graphics_plan.md`
 - 실행한 검증: 스크립트 정적 검증, Unity 컴파일, 카드 전용 EditMode 테스트, 전체 EditMode 회귀 테스트, Play Mode 기본 화면 스모크 확인, Unity Console 확인
 - 검증 결과: 컴파일 오류 0개, 전용 테스트 9/9 통과, 전체 EditMode 45/45 통과, 기본 게임 화면 레이아웃 회귀 없음. 테스트 러너 자체의 결과 저장·성능 테스트 설정/정리 메시지만 확인됨
 - 남은 문제/차단 요소: 없음. 보유 카드를 3D 트레이에 실제 배치하고 포인터 입력을 연결하는 작업은 계획대로 `M7-T4` 범위
@@ -287,7 +287,7 @@ M5에서는 규칙 검증을 위한 최소 표시와 임시 리소스만 사용�
 - 상태: `DONE`
 - 사용자 요청/결정: `M7-T2` 과정 진행 후 카드 규격을 스톤 트레이에 들어가는 가로형으로 변경. 웹 레퍼런스에서는 디자인이 아닌 종류→아이콘→이름→구분선→설명 배치만 참고
 - 완료 내용: 기존 세로형 텍스트 버튼 3개를 스톤 트레이 내부 슬롯(약 4.58×2.58, 1.774:1)과 같은 비율의 공통 양피지 카드 3장으로 교체함. 웹 레퍼런스에서는 디자인을 복제하지 않고 상단 종류/상태→중앙 아이콘→이름→구분선→한 줄 효과→하단 대상의 정보 순서만 반영함. 64×64 Point 임시 픽셀 문양과 `Resources/AugmentIcons/{augmentId}` 최종 보정 아이콘 자동 교체 경로를 유지하고, 선택 모달을 최상위 형제로 올려 점수표가 카드를 가리지 않도록 함
-- 변경 파일: `Assets/Scripts/Tabletop/AugmentCardTray.cs`, `Assets/Scripts/Games/AugmentedYacht/AugmentCardView.cs`, `Assets/Scripts/Games/AugmentedYacht/AugmentedYachtController.cs`, `Assets/Editor/AugmentCardViewTests.cs`, `Assets/Screenshots/m7_t2_landscape_augment_cards.png`, `docs/augmented_yacht_m7_graphics_plan.md`, `docs/augmented_yacht_m7_asset_inventory.md`
+- 변경 파일: `Assets/Scripts/Tabletop/AugmentCardTray.cs`, `Assets/Scripts/Games/AugmentedYacht/AugmentCardView.cs`, `Assets/Scripts/Games/AugmentedYacht/AugmentedYachtController.cs`, `Assets/Editor/Tests/Yacht/AugmentCardViewTests.cs`, `Assets/Screenshots/m7_t2_landscape_augment_cards.png`, `docs/augmented_yacht_m7_graphics_plan.md`, `docs/augmented_yacht_m7_asset_inventory.md`
 - 실행한 검증: 새 스크립트 3개 정적 검증, Unity 컴파일·콘솔 확인, 공통 카드 전용 EditMode 테스트 2개, 전체 EditMode 회귀 테스트, 실제 증강 드래프트 1024×576 캡처 확인
 - 검증 결과: 컴파일 오류 0개, 전용 테스트 2/2 통과, 최종 전체 EditMode 38/38 통과, 카드 3장 간 겹침 및 점수표 가림 없음, 460×약 259 기준 가로형 비율과 정보 순서·Point 픽셀 문양 표시 확인
 - 남은 문제/차단 요소: 없음

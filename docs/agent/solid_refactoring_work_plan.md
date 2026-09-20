@@ -27,7 +27,7 @@ AI 클라이언트가 작업을 수행할 때는 다음 원칙을 반드시 준�
    - `MonoBehaviour` 컴포넌트의 `[SerializeField]` 필드명이나 타입을 변경하면 Unity 씬 및 프리팹 데이터가 유실된다.
    - 소품 분리(Phase 4) 시 기존 MonoBehaviour의 직렬화 필드는 그대로 유지하고, 내부 연산 로직(Mesh 생성 등)만 헬퍼/빌더 클래스로 분리 위임해야 한다.
 4. **회귀 방지 및 단위 테스트 필수 통과**:
-   - 수정 후 반드시 관련 NUnit 테스트(`Assets/Editor/Yacht*.cs`)가 손상되지 않는지 확인한다.
+   - 수정 후 반드시 관련 NUnit 테스트(`Assets/Editor/Tests/Yacht/Yacht*.cs`)가 손상되지 않는지 확인한다.
    - 룰셋이나 점수 계산 변경 시 `YachtGameRulesTests.cs`, 증강 변경 시 `Yacht*AugmentTests.cs`를 기준으로 일치성을 검증한다.
 5. **언어 규약**:
    - 주석, 요약, 문서는 모두 **한국어**로 작성한다.
@@ -216,7 +216,7 @@ classDiagram
   4. 변형 계열의 `ResetFilledTarget`은 공통 규칙이므로 `definition?.Kind == YachtAugmentKind.Modification` 분기로 유지한다. `ModificationAugment`의 XML 주석이 "카테고리 전체 규칙이라 `YachtAugmentRuntime`이 담당"이라고 설계 의도를 명시하고 있어, 변형 핸들러 공통 베이스로 위임하는 대안은 채택하지 않았다.
 - **Unity 직렬화 영향도**: 없음 (순수 C# 로직).
 - **검증 방법**:
-  - `Assets/Editor/YachtQuestAugmentTests.cs`, `YachtEnhanceAugmentTests.cs`, `YachtManualActionAugmentTests.cs` 실행.
+  - `Assets/Editor/Tests/Yacht/YachtQuestAugmentTests.cs`, `YachtEnhanceAugmentTests.cs`, `YachtManualActionAugmentTests.cs` 실행.
 
 ---
 
@@ -245,7 +245,7 @@ classDiagram
 - **Unity 직렬화 영향도**: 없음.
 - **검증 방법**:
   - `YachtGameRulesTests.cs`, `AugmentRuntime_SeparatesStaticDefinitionFromPlayerState()` 실행, 드래프트 카드 툴팁 설명이 정상 출력되는지 검증.
-  실제로 확인해 보니 계획서가 인용한 `AugmentMigrationTests`는 존재하지 않았다. 45개 증강 무결성 검증은 `Assets/Editor/YachtGameRulesTests.cs`의 `AugmentRuntime_SeparatesStaticDefinitionFromPlayerState()`가 담당하며, 정의 45개·첫 항목이 `LuckySevensId`(카탈로그 순서 의존)·`StepByStep`의 `PhaseOneOnly`·`LuckySevens`의 `DisplayName`을 단정한다. 설명 텍스트 내용 자체는 검사하지 않는다.
+  실제로 확인해 보니 계획서가 인용한 `AugmentMigrationTests`는 존재하지 않았다. 45개 증강 무결성 검증은 `Assets/Editor/Tests/Yacht/YachtGameRulesTests.cs`의 `AugmentRuntime_SeparatesStaticDefinitionFromPlayerState()`가 담당하며, 정의 45개·첫 항목이 `LuckySevensId`(카탈로그 순서 의존)·`StepByStep`의 `PhaseOneOnly`·`LuckySevens`의 `DisplayName`을 단정한다. 설명 텍스트 내용 자체는 검사하지 않는다.
 - **실제 수행한 변경** (`YachtAugmentRuntime.cs` 단일 파일, 순증감 +2 -105줄):
   레거시 `Definitions` 정적 배열, `Describe(string id)` switch 메서드, `Definitions` 생성 전용 private static 헬퍼 4개(`Quest`, `Dice`, `Action`, `Enhance`)를 삭제했다. 넷 다 `private static`이라 외부 호출이 구조적으로 불가능했고 파일 내 호출처도 삭제 대상뿐이었다. `BuildAllDefinitions()`에서는 레거시 순회를 제거하고 `YachtAugmentCatalog.All` 순회만 남겼으며, 카탈로그 등록 순서와 `GetDefinitions()`/`Lookup`의 `Clone()` 호출은 그대로 보존했다. 45개 증강 ID 상수는 모든 핸들러가 참조하므로 유지했고, 이 때문에 핸들러들의 `YachtAugmentRuntime` 의존은 T02 이후에도 남는다. 레거시 `Describe()` 텍스트 중 일부는 핸들러 값과 내용이 달랐다(예: `WeightedDice`). 실사용은 핸들러 값이었으므로 stale 텍스트가 사라지는 것이 올바른 방향이었다.
 - **검증 결과**: 컴파일 통과, 새 경고 없음. EditMode 전체 884개 중 통과 874, 실패 5, 스킵 5. 핵심 회귀 테스트 `AugmentRuntime_SeparatesStaticDefinitionFromPlayerState()` 통과. 실패 중 `UnitySkills.Tests.Core` 2건은 저장소 무관 상시 실패로 제외. 나머지 3건(`FontFallbackTests` 2건, `YachtGameRulesTests.LuckySevens_MidGameAcquisitionResetsOnlyOwnerAcesAndGrantsExtraTurn` 1건)은 이번 변경과 무관함을 확인했다.
@@ -273,7 +273,7 @@ classDiagram
       if (Contains(player.OwnedIds, YachtAugmentRuntime.CoupleDiceId)) { ... }
   }
   ```
-  실제로 확인해 보니 `CalculateDiceBonus`는 `GoldenDieId`/`CoupleDiceId` 같은 증강 ID 문자열을 전혀 비교하지 않았다. 실제로는 `YachtDieState.Type`의 enum 값(`YachtDieType.Golden`, `YachtDieType.Couple`)을 직접 검사하는 방식이었다. 또한 계획서가 가정한 시그니처 `CalculateDiceBonus(YachtGameState state, int playerIndex, IReadOnlyList<YachtDieState> dice)`와 달리, 실제 메서드는 주사위 목록 하나만 받는 `CalculateDiceBonus(IReadOnlyList<YachtDieState> dice)`였다. 디스패처로 수집하려면 게임 상태와 플레이어 인덱스가 필요해 시그니처 변경이 불가피했다. 계획서가 적은 핸들러 경로 `Augments/Handlers/GoldenDieHandler.cs`, `CoupleDiceHandler.cs`도 존재하지 않았다. 실제 파일은 `Augments/Enhance/GoldenDie.cs`, `Augments/Enhance/CoupleDice.cs`이며 클래스명도 `Handler` 접미사가 없다. 계획서 대상 파일 목록에는 없었지만 `Assets/Editor/YachtEnhanceAugmentTests.cs`의 테스트 두 건이 `CalculateDiceBonus`를 직접 호출하고 있어 시그니처 변경에 따라 호출부 수정이 필요했다. 사용자 확인을 거쳐 엔진 메서드를 유지하고 테스트 호출부를 고치는 범위로 진행했다.
+  실제로 확인해 보니 `CalculateDiceBonus`는 `GoldenDieId`/`CoupleDiceId` 같은 증강 ID 문자열을 전혀 비교하지 않았다. 실제로는 `YachtDieState.Type`의 enum 값(`YachtDieType.Golden`, `YachtDieType.Couple`)을 직접 검사하는 방식이었다. 또한 계획서가 가정한 시그니처 `CalculateDiceBonus(YachtGameState state, int playerIndex, IReadOnlyList<YachtDieState> dice)`와 달리, 실제 메서드는 주사위 목록 하나만 받는 `CalculateDiceBonus(IReadOnlyList<YachtDieState> dice)`였다. 디스패처로 수집하려면 게임 상태와 플레이어 인덱스가 필요해 시그니처 변경이 불가피했다. 계획서가 적은 핸들러 경로 `Augments/Handlers/GoldenDieHandler.cs`, `CoupleDiceHandler.cs`도 존재하지 않았다. 실제 파일은 `Augments/Enhance/GoldenDie.cs`, `Augments/Enhance/CoupleDice.cs`이며 클래스명도 `Handler` 접미사가 없다. 계획서 대상 파일 목록에는 없었지만 `Assets/Editor/Tests/Yacht/YachtEnhanceAugmentTests.cs`의 테스트 두 건이 `CalculateDiceBonus`를 직접 호출하고 있어 시그니처 변경에 따라 호출부 수정이 필요했다. 사용자 확인을 거쳐 엔진 메서드를 유지하고 테스트 호출부를 고치는 범위로 진행했다.
 - **개선 설계 (After)**:
   `IDiceBonusProvider` 인터페이스를 선언하고, `YachtAugmentDispatcher.Collect<IDiceBonusProvider>`를 통해 주사위 보너스를 동적으로 합산하도록 변경.
   ```csharp
@@ -319,7 +319,7 @@ classDiagram
   - `Augments/Enhance/CoupleDice.cs`: `IDiceBonusProvider` 구현 추가. `YachtDieType.Couple`이 정확히 2개이고 눈이 모두 같을 때만 3점.
   - `YachtAugmentScoreEngine.cs`: `CalculateDiceBonus` 시그니처를 `(YachtGameState, int, IReadOnlyList<YachtDieState>)`로 바꾸고 본문을 `YachtAugmentDispatcher.Collect<IDiceBonusProvider>` 수집·합산으로 교체. Golden/Couple 하드코딩 분기와 지역 변수 삭제.
   - `YachtAugmentRuntime.cs` (`CreateScoreCandidates` 내부): 호출부에 `state`, `playerIndex` 인자 추가.
-  - `Assets/Editor/YachtEnhanceAugmentTests.cs`: 호출 4곳의 인자만 새 시그니처에 맞춤. 기대 점수 값(2, 0, 3, 0)과 테스트 구조는 그대로 유지해 리팩토링 전후 동작 동일성을 검증했다.
+  - `Assets/Editor/Tests/Yacht/YachtEnhanceAugmentTests.cs`: 호출 4곳의 인자만 새 시그니처에 맞춤. 기대 점수 값(2, 0, 3, 0)과 테스트 구조는 그대로 유지해 리팩토링 전후 동작 동일성을 검증했다.
 - **설계 근거**: 이 저장소에는 `Collect<T>`로 여러 구현체 결과를 합산하는 선례가 이미 있었다. `YachtAugmentRuntime.CreateScoreCandidates` 안의 `IScoreEnhancementModifier` 수집 코드와 `IBeforeScorePreview` 수집 코드다. 새 패턴을 만들지 않고 그 형태(컨텍스트 생성 → `Collect<T>` → for 순회 → `BindAugment` → 개별 호출)를 그대로 따랐다. `YachtAugmentDispatcher.Collect<T>`는 `Order` 우선, 동률이면 카탈로그 등록 순으로 정렬해 반환하므로 합산 순서가 결정적이다.
 - **검증 결과**: 컴파일 통과, 새 경고 없음. EditMode 전체 884개 실행. 핵심 회귀 3건 모두 통과: `GoldenDice_AssignsOneSlotToGoldenAndGivesTwoPointBonusOnOneToThree()`, `CoupleDice_AssignsTwoSlotsAndGivesThreePointBonusOnMatch()`, `M6_AppliesEnhanceMultiplierThenDiceBonusAndScratchStaysZero()`. Tessera 관련 실패는 `SOLID-T02` 시점에 확인된 기존 3건 그대로이며 새로 생긴 회귀는 없다.
 - **후속 과제**: `GoldenDie`와 `CoupleDice` 클래스의 기존 XML 주석이 실제 점수와 달랐다. 주석은 각각 "6으로 득점 시 +3점", "같으면 +5점"이라 적혀 있었으나 실제 로직과 테스트는 눈 1~3일 때 +2점, 커플 일치 시 +3점이다. 사용자 확인 결과 **코드 쪽 점수(+2점, +3점)가 의도한 사양**으로 확정되어, 두 클래스의 XML 주석과 게임 내 표시용 `Description` 문자열을 실제 로직에 맞게 정정했다. `Description` 텍스트를 단정하는 테스트는 없어 회귀 영향 없음.
@@ -361,8 +361,8 @@ classDiagram
 - **실제 수행한 변경** (4개 파일):
   - 신규 `Assets/Scripts/Games/AugmentedYacht/Logic/YachtDieFaces.cs`: `TryGetFaces(YachtDieType type, out int[] faces)` 하나만 공개하는 정적 클래스. 내부는 `Dictionary<YachtDieType, int[]>`이며 `Heavy`, `Octahedron`, `Sevens` 세 항목만 담는다. 클래스 주석에 이 표가 굴림 결과 생성용이며 `DiceFaceValues`의 시각용 매핑과 별개 체계임을 명시했다.
   - `YachtAugmentRuntime.RollValue`: switch 식을 제거하고 승급 분기를 맨 앞으로 옮긴 뒤 나머지를 테이블 조회로 대체. 시그니처와 동작은 불변이며, 표에 없는 타입(`Normal`, `Golden`, `Weird`, `Couple`)이 `baseRoll()`로 떨어지는 것도 그대로다.
-  - `Assets/Editor/DiceFaceValueTests.cs`: `RuleValuesOf` 헬퍼의 하드코딩 미러 테이블을 새 테이블 조회로 교체하고 폴백만 남겼다. 승급 주사위는 표에 없어 폴백 경로를 타므로 기존과 같은 기본 눈금을 반환한다. 이 헬퍼를 쓰는 테스트의 단정과 기대값은 바꾸지 않았다.
-  - `Assets/Editor/YachtEnhanceAugmentTests.cs`: 검증 공백을 메우는 테스트 두 건 추가. 팔면체 주사위의 굴림값이 면 배열 안에서만 나오는지, 승급 주사위가 난수와 무관하게 승급 레벨을 그대로 돌려주는지 단정한다. 기존 테스트는 수정하지 않았다.
+  - `Assets/Editor/Tests/Dice/DiceFaceValueTests.cs`: `RuleValuesOf` 헬퍼의 하드코딩 미러 테이블을 새 테이블 조회로 교체하고 폴백만 남겼다. 승급 주사위는 표에 없어 폴백 경로를 타므로 기존과 같은 기본 눈금을 반환한다. 이 헬퍼를 쓰는 테스트의 단정과 기대값은 바꾸지 않았다.
+  - `Assets/Editor/Tests/Yacht/YachtEnhanceAugmentTests.cs`: 검증 공백을 메우는 테스트 두 건 추가. 팔면체 주사위의 굴림값이 면 배열 안에서만 나오는지, 승급 주사위가 난수와 무관하게 승급 레벨을 그대로 돌려주는지 단정한다. 기존 테스트는 수정하지 않았다.
 - **검증 결과**: 컴파일 통과, 새 경고 없음. 신규 파일의 `.meta`는 Unity 에셋 갱신으로 생성됐다. EditMode 전체 886개 실행(신규 2건 반영). 핵심 테스트 전부 통과: 무거운 주사위·세븐스 주사위 기존 굴림 테스트 2건, 신규 팔면체·승급 주사위 테스트 2건, `DiceFaceValueTests` 전체. Tessera 관련 실패는 `SOLID-T02` 시점에 확인된 기존 3건 그대로이며 새로 생긴 회귀는 없다.
 
 Phase 1(증강 시스템 OCP/SRP 해소)의 `SOLID-T01`~`SOLID-T04` 네 태스크가 모두 완료됐다. 다음은 Phase 2(룰셋 및 규칙 계층 LSP/ISP 정상화), 첫 작업은 `SOLID-T05`다.

@@ -139,6 +139,32 @@ Assets/Art/
   `Resources` 폴더를 중첩합니다. `Resources.Load` 호출 경로 자체는 `<이름>/...`로 폴더 이동과 무관하게 유지됩니다.
 - 오디오는 `Assets/Audio/Sfx/<도메인>/<종류>/`에 둡니다. 도메인 폴더는 쓰는 소리가 실제로 늘어날 때만 추가합니다.
 
+### 3.2 `Assets/Editor/` 디렉터리 구조 (2026-09-20 재편)
+
+`Assets/Editor/` 아래 55개 에디터 스크립트는 기능별 하위 폴더로 나뉩니다.
+
+```
+Assets/Editor/
+├── Tests/
+│   ├── Yacht/       # 요트·증강 도메인 EditMode 테스트
+│   ├── Dice/        # 주사위·동전 도메인 EditMode 테스트
+│   ├── Tabletop/    # 테이블탑 소품 도메인 EditMode 테스트
+│   ├── Rendering/   # 렌더링 도메인 EditMode 테스트
+│   └── (루트)       # 도메인에 속하지 않는 횡단 테스트 (예: FontFallbackTests, RuntimeAssetGuardTests)
+├── Yacht/           # 요트·증강 도메인 베이커/에디터 도구
+├── Dice/            # 주사위·동전 도메인 베이커/에디터 도구
+├── Tabletop/        # 테이블탑 소품 도메인 베이커/에디터 도구
+├── Rendering/       # 렌더링 도메인 베이커/에디터 도구
+└── Tools/           # 도메인에 묶이지 않는 프로젝트 전역 도구
+```
+
+분류 기준:
+- `Tests/` — 테스트 전용입니다. 하위는 검증 대상 도메인을 따라 프로덕션 코드 폴더와 대칭을 이룹니다. 도메인에 속하지 않는 횡단 테스트만 `Tests/` 루트에 둡니다.
+- 도메인 폴더(`Yacht`, `Dice`, `Tabletop`, `Rendering`) — 그 도메인의 에셋을 굽거나(Baker), 씬을 조작하거나, 그 도메인을 검증하는 에디터 코드가 들어갑니다.
+- `Tools/` — 도메인에 묶이지 않는 프로젝트 전역 도구가 들어갑니다.
+- 동전 관련 에디터 코드는 `Dice/`에 둡니다. 굴려서 면이 결정되고, 메시 베이크 → 면 텍스처 → 프리팹으로 이어지는 파이프라인이 주사위와 같은 구조이기 때문입니다.
+- 프로젝트에 `.asmdef`가 없어 `Assets/Editor` 하위 어느 깊이에 있든 전부 `Assembly-CSharp-Editor`로 컴파일됩니다. `[MenuItem]` 메뉴 경로는 파일의 폴더 위치와 무관하며, 어트리뷰트 문자열이 그대로 메뉴 경로가 됩니다.
+
 ---
 
 ## 4. 씬(Scene) 계층 구조 및 런타임 수명 주기
@@ -360,12 +386,12 @@ Tessera는 외부 툴(Blender, Photoshop) 의존도를 낮추고 일관된 아�
 
 | 제너레이터 도구 | 소스 코드 위치 | 생성 에셋 및 산출물 | 실행 메뉴 경로 |
 |---|---|---|---|
-| **원목 판자 텍스처** | [WoodPlankTextureGenerator.cs](../../Assets/Editor/WoodPlankTextureGenerator.cs) | 원목 테이블 상판 알베도/노멀 텍스처 | `Tools/Tessera/Generate Wood Plank Textures` |
-| **양피지 텍스처** | [ParchmentTextureGenerator.cs](../../Assets/Editor/ParchmentTextureGenerator.cs) | 점수판 양피지 섬유질 노이즈 텍스처 | `Tools/Tessera/Generate Parchment & Score Sheet Assets` |
-| **주사위 궤적 베이커** | [DicePresetBaker.cs](../../Assets/Editor/DicePresetBaker.cs) | 3D 주사위 낙하 물리 시뮬레이션 클립 베이킹 | `Tessera/Bake/Dice Presets` |
-| **특수 주사위 메시** | [DiceShapeBaker.cs](../../Assets/Editor/DiceShapeBaker.cs) | 옥타헤드론(8면체) 등 절차적 주사위 메시 | `Tessera/Bake/Dice Shapes` |
-| **증강 아이콘 갤러리** | [AugmentIconGalleryWindow.cs](../../Assets/Editor/AugmentIconGalleryWindow.cs) | 전체 45종 증강 카드 렌더링 검수 윈도우 | `Tessera/증강 아이콘 갤러리` |
-| **픽셀 필터 프리뷰** | [PixelFilterPreview.cs](../../Assets/Editor/PixelFilterPreview.cs) | 픽셀 외곽선 검출 셰이더 실시간 조정 창 | `Tools/Tessera/Sync Pixel Filter Preview` |
+| **원목 판자 텍스처** | [WoodPlankTextureGenerator.cs](../../Assets/Editor/Tabletop/WoodPlankTextureGenerator.cs) | 원목 테이블 상판 알베도/노멀 텍스처 | `Tools/Tessera/Generate Wood Plank Textures` |
+| **양피지 텍스처** | [ParchmentTextureGenerator.cs](../../Assets/Editor/Tabletop/ParchmentTextureGenerator.cs) | 점수판 양피지 섬유질 노이즈 텍스처 | `Tools/Tessera/Generate Parchment & Score Sheet Assets` |
+| **주사위 궤적 베이커** | [DicePresetBaker.cs](../../Assets/Editor/Dice/DicePresetBaker.cs) | 3D 주사위 낙하 물리 시뮬레이션 클립 베이킹 | `Tessera/Bake/Dice Presets` |
+| **특수 주사위 메시** | [DiceShapeBaker.cs](../../Assets/Editor/Dice/DiceShapeBaker.cs) | 옥타헤드론(8면체) 등 절차적 주사위 메시 | `Tessera/Bake/Dice Shapes` |
+| **증강 아이콘 갤러리** | [AugmentIconGalleryWindow.cs](../../Assets/Editor/Yacht/AugmentIconGalleryWindow.cs) | 전체 45종 증강 카드 렌더링 검수 윈도우 | `Tessera/증강 아이콘 갤러리` |
+| **픽셀 필터 프리뷰** | [PixelFilterPreview.cs](../../Assets/Editor/Rendering/PixelFilterPreview.cs) | 픽셀 외곽선 검출 셰이더 실시간 조정 창 | `Tools/Tessera/Sync Pixel Filter Preview` |
 
 ---
 
@@ -456,7 +482,7 @@ Tessera는 외부 툴(Blender, Photoshop) 의존도를 낮추고 일관된 아�
 4. **카탈로그에 등록**: `YachtAugmentCatalog.Handlers` 배열에 `new LuckySeven()`을 추가합니다.
    리플렉션 자동 수집을 쓰지 않고 명시적으로 등록합니다 (IL2CPP에서 안전하고, 등록 순서가 곧 노출 순서입니다).
    여기 등록하지 않으면 드래프트 후보에 나오지 않습니다.
-5. **단위 테스트 작성**: `Assets/Editor/YachtEnhanceAugmentTests.cs`에 득점 계산 검증을 추가하고
+5. **단위 테스트 작성**: `Assets/Editor/Tests/Yacht/YachtEnhanceAugmentTests.cs`에 득점 계산 검증을 추가하고
    `Tessera/Validation/Run All EditMode Tests`로 확인합니다. 테스트 메서드 이름은 영문으로 짓습니다.
 
 ### 레시피 2: EditMode 단위 테스트 실행 및 회귀 검증

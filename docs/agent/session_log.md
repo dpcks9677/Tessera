@@ -9,6 +9,22 @@
 
 ---
 
+### 2026-09-20 — Claude (에디터 스크립트 기능별 폴더 분리, 디렉터리 정리 2단계)
+
+- 작업 ID: 없음. 어제 아트·오디오 재편(커밋 `a2acacb`)에 이어지는 작업이며 마일스톤·태스크로 기록하지 않고 세션 로그로만 남긴다
+- 동기: 외부 구조 평가에서 "코드 구조는 목적 중심인데 에셋·에디터 구조는 타입 중심"이라는 지적을 받음. `Assets/Editor` 루트에 테스트·베이커·생성기·검증 도구 55개가 평면으로 섞여 있었음
+- 결과 구조: `Tests/{Yacht 13, Dice 8, Tabletop 4, Rendering 3}` + `Tests/` 루트 2개(`FontFallbackTests`, `RuntimeAssetGuardTests`), `Yacht/` 3개, `Dice/` 11개, `Tabletop/` 4개, `Rendering/` 4개, `Tools/` 2개. 총 54개 이동
+- 분류 기준: 테스트는 검증 대상 도메인을 따라 프로덕션 폴더와 대칭을 이룬다. 도메인 폴더는 그 도메인의 에셋을 굽거나 씬을 조작하거나 검증하는 코드가 들어간다. `Tools/`는 도메인에 묶이지 않는 전역 도구. 동전은 굴려서 면이 결정되고 메시 베이크 → 면 텍스처 → 프리팹 파이프라인이 주사위와 같아 `Dice/`에 둠
+- 삭제 1건: `ProcessRunnerTexture.cs`. 입출력 png를 어제 삭제했고 원본 jpg가 저장소 밖 개인 경로라 다른 환경에서 실행 불가
+- 이동이 안전했던 근거: 프로젝트에 asmdef가 없어 `Assets/Editor` 하위 어느 깊이든 `Assembly-CSharp-Editor`로 컴파일된다. `[MenuItem]` 메뉴 경로는 파일 위치와 무관하다. 에디터 스크립트를 경로 문자열로 여는 코드는 없다
+- 검증: GUID 54개 전부 보존, 컴파일 에러 0. 디스커버리 캐시 갱신 후 Tessera 테스트 328개(29개 클래스)로 이동 전과 클래스별 개수까지 일치. EditMode 전체에서 Tessera 328/328 통과, 실패·스킵 0. 패키지 `UnitySkills.Tests.*` 860개 중 실패 6·스킵 6은 패키지 소속(csproj 공유 위반·타임아웃, 실행마다 건수 변동). 메뉴는 조회 엔드포인트가 없어 `[MenuItem]` 문자열과 컴파일 포함으로 갈음. 시각 확인 생략, 사유: 에디터 스크립트 이동이라 화면 결과물 없음
+- 문서: `docs/reference`·`docs/agent` 활성 문서 12개의 `Assets/Editor` 경로를 갱신하고 `architecture_overview.md` §3.2를 신설. `m17_vfx_spec.md`의 `DiceSmokeSpriteBaker.cs`가 커밋 `2497bfc`에서 이미 삭제된 파일을 현재형으로 가리키던 서술을 교정
+- 후속 등재: `improvement_tasks_spec.md`에 `ARCH-02`(기능 경계 에셋 재편)·`ARCH-03`(`Resources` 축소·Addressables 검토)·`ARCH-04`(`DicePresetCatalog` StreamingAssets → `UnityWebRequest` 대응)·`ARCH-05`(asmdef 전체 설계)·`LOAD-01`(런타임 6개 스크립트 에디터 전용 로딩 결함)·`LOAD-02`(죽은 `Resources.Load` 폴백) 추가. `ARCH-01`은 asmdef 부분 도입을 전제한 항목이라 `ARCH-05`에 흡수하고 `VOID` 표기
+- 알게 된 것: `Packages/manifest.json`의 `testables`는 지워도 Unity가 패키지 재해석 때 스스로 복원한다. 어제 제거해 커밋했으나 즉시 되돌아온 것을 확인했다. 제거 대신 `UnitySkills.Tests.*`를 판정에서 걸러내는 방침으로 전환하고 `.claude/agents/tessera-verifier.md`에 기록
+- unity-skills REST 서버는 Unity 재시작 시 꺼지고 사용자가 창에서 수동으로 켜야 한다. 이번 세션에서 실제로 중단됐고 포트도 8091에서 8090으로 바뀌었다
+- 변경 파일: 이동된 에디터 스크립트 54개(및 `.meta`), 삭제된 `ProcessRunnerTexture.cs`, `docs/reference/architecture_overview.md`, `docs/reference/augments_specification_and_status.md`, `docs/reference/art/cel_shading_pixel_plan.md`, `docs/reference/art/pixel_edge_filter_plan.md`, `docs/agent/work_plan.md`, `docs/agent/improvement_tasks_spec.md`, `docs/agent/m17_coin_mesh_plan.md`, `docs/agent/m17_vfx_spec.md`, `docs/agent/m7_graphics_spec.md`, `docs/agent/m17_quill_hover_animation.md`, `docs/agent/solid_refactoring_work_plan.md`, `docs/agent/session_log.md`
+- 다음 작업: 미지정
+
 ### 2026-09-19 — Claude (아트·오디오 디렉터리 재편 및 미사용 에셋 정리)
 
 - 작업 ID: 없음. 마일스톤·태스크로 기록하지 않고 세션 로그로만 남긴다(사용자 결정)

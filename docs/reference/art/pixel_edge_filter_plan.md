@@ -141,8 +141,8 @@ F1/F2 해상도 전환이 자동으로 반영된다.
 | 표시 부착, 해상도 전달, 켜고 끄기 | `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtCameraRig.cs` |
 | `F3` 입력 | `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtInputRouter.cs` |
 | 토글 버튼과 문구 | `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtSceneAssembler.cs` |
-| 렌더러 에셋 등록 (일회성 메뉴) | `Assets/Editor/RegisterPixelEdgeFeature.cs` |
-| 계약 테스트 | `Assets/Editor/PixelEdgeFilterTests.cs` |
+| 렌더러 에셋 등록 (일회성 메뉴) | `Assets/Editor/Rendering/RegisterPixelEdgeFeature.cs` |
+| 계약 테스트 | `Assets/Editor/Tests/Rendering/PixelEdgeFilterTests.cs` |
 | 등록 대상 | `Assets/Settings/PC_Renderer.asset`, `Assets/Settings/Mobile_Renderer.asset` |
 
 `PixelEdgeCamera`가 붙은 카메라에서만 패스가 돈다. 렌더러 피처는 렌더러 에셋 단위라
@@ -399,7 +399,7 @@ Bayer 4×4 임계 행렬을 **가상 격자 좌표**(`floor(uv * _VirtualResolut
 
 값의 출처를 `Tessera.Rendering.PixelFilterSettings` 하나로 모았다. 프리셋 두 개, 시작 해상도, 시작 양자화 모드, 시작 연출 방식이 여기 있다. 위 네 곳 중 코드 세 곳은 이 값을 참조한다.
 
-씬 쪽은 `Assets/Editor/PixelFilterPreview.cs`가 맞춘다.
+씬 쪽은 `Assets/Editor/Rendering/PixelFilterPreview.cs`가 맞춘다.
 
 - 씬을 열 때와 도메인 리로드 직후 자동 실행되고, `Tools/Tessera/Sync Pixel Filter Preview` 메뉴로도 부를 수 있다.
 - 업스케일 재질의 `_VirtualResolution`·`_Quantize`를 시작값으로, 팔레트 배열을 채운다.

@@ -113,7 +113,7 @@ EOS 또는 Steam 기반 호스트 온라인 연결
 |---|---|---|
 | 기본 2인 요트 점수 계산 | 구현됨 | `Assets/Scripts/Games/AugmentedYacht/YachtGameRules.cs` |
 | 12라운드 턴 진행 | 구현됨 | `YachtGameSession` |
-| 기본 규칙 EditMode 테스트 | 일부 구현됨 | `Assets/Editor/YachtGameRulesTests.cs` |
+| 기본 규칙 EditMode 테스트 | 일부 구현됨 | `Assets/Editor/Tests/Yacht/YachtGameRulesTests.cs` |
 | 베이킹 프리셋 로딩/재생 | 구현됨 | `DicePresetCatalog`, `BakedDiceController` |
 | 주사위 값 결정 | 컨트롤러에 결합됨 | `AugmentedYachtController`가 `UnityEngine.Random` 사용 |
 | 베이킹 프리셋 선택 | 컨트롤러에 결합됨 | 일반 5주사위 프리셋을 직접 선택 |
@@ -339,7 +339,7 @@ ManualAction
 | ID | 작업 | 상태 | 완료 조건 |
 |---|---|---|---|
 | `M17-T1` | 플레이어 교대 가림 화면 | `DROPPED` | 상대의 비공개 선택지를 바로 볼 수 없음. 사용자 판단으로 범위에서 제외(2026-09-13). 상세 사유 미확인 |
-| `M17-T2` | 플레이어별 드래프트 UI | `DONE` | 게이팅은 이미 이중으로 존재. `LocalGameAuthority.TrySelectAugment`는 `playerIndex` 인자를 받지 않고 내부에서 `Draft.PlayerIndex`를 직접 읽어 UI 경로 사칭이 불가능하고, `YachtAugmentRuntime.TrySelectAugment`는 `Draft.PlayerIndex != playerIndex`이면 `YachtCommandErrorCode.NotDrafting`으로 거부. 차례 표시도 이미 있음: `AugmentTrayPresenter`가 `P{n} 증강 선택 · {라운드}라운드` 타이틀을 그리고, 점수표 활성 열이 드래프트 차례를 따라감. 이번 산출물은 그 게이팅을 고정하는 회귀 테스트 `OnlyCurrentDraftPlayerCanSelectAugment`(`Assets/Editor/YachtDraftOrderTests.cs`) 추가. 프로덕션 코드 미수정. EditMode 전체 242/242 통과(2026-09-13) |
+| `M17-T2` | 플레이어별 드래프트 UI | `DONE` | 게이팅은 이미 이중으로 존재. `LocalGameAuthority.TrySelectAugment`는 `playerIndex` 인자를 받지 않고 내부에서 `Draft.PlayerIndex`를 직접 읽어 UI 경로 사칭이 불가능하고, `YachtAugmentRuntime.TrySelectAugment`는 `Draft.PlayerIndex != playerIndex`이면 `YachtCommandErrorCode.NotDrafting`으로 거부. 차례 표시도 이미 있음: `AugmentTrayPresenter`가 `P{n} 증강 선택 · {라운드}라운드` 타이틀을 그리고, 점수표 활성 열이 드래프트 차례를 따라감. 이번 산출물은 그 게이팅을 고정하는 회귀 테스트 `OnlyCurrentDraftPlayerCanSelectAugment`(`Assets/Editor/Tests/Yacht/YachtDraftOrderTests.cs`) 추가. 프로덕션 코드 미수정. EditMode 전체 242/242 통과(2026-09-13) |
 | `M17-T3` | 보유 증강 표시 | `DONE` | 대상 족보와 진행 상태를 확인 가능함. 사용자 결정으로 `M17-T11`(진행형 증강 상태 표시)을 흡수함. 화면 확인에서 퀘스트 진행 배지가 획득 직후 비는 문제 발견. 원인은 `CautiousStraight`·`Copycat`·`Doubling`·`EveryLittleCounts`·`Holdout` 5종이 `IOnAugmentSelected`를 구현하지 않아 첫 점수 기입 전까지 상태 객체가 없었던 것. 표시층 폴백 대신 5종에 `IOnAugmentSelected`를 붙여 획득 시점에 상태를 생성하도록 수정(기본값이 곧 시작 진행도라 값 대입 없음). 이후 사용자 화면 확인에서 진행도를 원본 웹 프로젝트(`augmented-dice` `gameRuntime.js` `getQuestProgressText`) 형식으로 출력해야 한다는 지적을 받아, 짧은 배지 한 줄 방식을 폐기하고 카드 자체에 상태 라벨(퀘스트 진행 중/성공/실패) + 점선 + "퀘스트: …" 하위 목표 줄 목록을 출력하도록 재구현. 달성 줄은 취소선 + 투명도 0.7, 실패 시 미달성 줄도 취소선 + 0.6. 진행 줄만 `TextMeshProUGUI`로 전환하고 취소선은 리치 텍스트 `<s>` 태그로 그림(사용자 결정, 2026-09-14). Mulmaru.ttf로 런타임 동적 TMP 폰트 에셋을 생성하며, 픽셀 폰트에 취소선 메트릭이 없어 한글 '가' 글리프 세로 중앙으로 `strikethroughOffset`을 보정. "퀘스트" 밑줄은 역할이 없어 제거(사용자 결정). 진행 블록은 고정 3줄 예약 대신 실측 높이의 가변 블록으로 카드 하단(푸터)에 붙이고, 콘텐츠 세이프 영역 아래 여백을 `FooterBleed`(10px)만큼 사용. `Assets/TextMesh Pro/`(TMP Essential Resources) 추가. 로직: `AugmentProgress`를 `Outcome` + 줄 목록(`AugmentProgressLine`) 구조로 변경, `DescribeProgress(in AugmentProgressQuery)`로 턴 수·점수표를 받아 판정. `IReadOnlyPlayerScoreData.IsFilled` 추가. 족보 표시명을 `ScoreCategoryNames`로 올려 점수표와 공유. 퀘스트 11종 문구는 웹 원문을 따르되 Copycat·EveryLittleCounts 두 개는 사용자 결정으로 Tessera 규칙에 맞춰 수정. 호버 상세의 "진행:" 줄 제거. 검증: EditMode 267/267 통과(2026-09-13); `AugmentCardViewTests` 56/56, `AugmentProgressTextTests` 14/14, `YachtQuestAugmentTests` 14/14 통과(2026-09-14, EditMode 전체 재실행은 이번엔 하지 않음). 취소선 오프셋이 한글 글리프 중앙 범위인지와 줄 수에 따른 블록 높이 가변을 단언. 화면 확인 완료(2026-09-14) |
 | `M17-T4` | 증강 수동 행동 UI | `TODO` | 사용 가능 조건과 남은 횟수가 표시됨 |
 | `M17-T5` | 시간 관련 증강과 타이머 | `TODO` | 로컬 규칙 기준으로 일관되게 처리됨 |

@@ -25,7 +25,7 @@
 **AI 에이전트로 작업한다면**
 - [`agent/work_plan.md`](agent/work_plan.md)부터 읽습니다. §2 진행 포인터가 지금 무엇을 하는 중인지 말해 줍니다
 - [`agent/decisions.md`](agent/decisions.md)와 [`agent/session_log.md`](agent/session_log.md)는 **필요할 때만** 엽니다. 과거 기록이라 컨텍스트를 크게 먹습니다
-- 태스크 ID로 문서를 찾습니다: `Mnn-Tnn` → `agent/work_plan.md`, `SOLID-Tnn` → `agent/solid_refactoring_work_plan.md`, `BUILD-nn`·`TEST-nn`·`AUG-nn`·`PERF-nn`·`ARCH-nn`·`DOC-nn` → `agent/improvement_tasks_spec.md`
+- 태스크 ID로 문서를 찾습니다: `Mnn-Tnn` → `agent/work_plan.md`, `SOLID-Tnn` → `agent/solid_refactoring_work_plan.md`, `BUILD-nn`·`TEST-nn`·`AUG-nn`·`PERF-nn`·`ARCH-nn`·`DOC-nn`·`LOAD-nn` → `agent/improvement_tasks_spec.md`
 
 ---
 

@@ -1015,12 +1015,12 @@ namespace Tessera.Games.Yacht
 
 증강 로직의 정합성은 다음 EditMode 테스트들이 검증합니다.
 
-- [YachtGameRulesTests.cs](../../Assets/Editor/YachtGameRulesTests.cs): 기본 요트 규칙과 점수 계산 전반.
-- [YachtModificationAugmentTests.cs](../../Assets/Editor/YachtModificationAugmentTests.cs): 18종 변형 족보(`evens`, `odds`, `tiny-house` 등)의 수학적 판정 검증.
-- [YachtEnhanceAugmentTests.cs](../../Assets/Editor/YachtEnhanceAugmentTests.cs): 강화 증강(`momentum`, `golden-die`, `yacht-bank` 등)의 배율 및 보너스 합산 검증.
-- [YachtQuestAugmentTests.cs](../../Assets/Editor/YachtQuestAugmentTests.cs): 11종 퀘스트의 라운드 기한, 연속 성공 조건, 실패 조건 전이 검증.
-- [YachtManualActionAugmentTests.cs](../../Assets/Editor/YachtManualActionAugmentTests.cs): 수동 행동(`table-flip`, `equivalent-exchange`, `gambit`)의 발동 제한 및 턴 소비 검증.
-- [YachtDraftOrderTests.cs](../../Assets/Editor/YachtDraftOrderTests.cs): 드래프트 라운드 판정과 후보 제시 순서 검증.
+- [YachtGameRulesTests.cs](../../Assets/Editor/Tests/Yacht/YachtGameRulesTests.cs): 기본 요트 규칙과 점수 계산 전반.
+- [YachtModificationAugmentTests.cs](../../Assets/Editor/Tests/Yacht/YachtModificationAugmentTests.cs): 18종 변형 족보(`evens`, `odds`, `tiny-house` 등)의 수학적 판정 검증.
+- [YachtEnhanceAugmentTests.cs](../../Assets/Editor/Tests/Yacht/YachtEnhanceAugmentTests.cs): 강화 증강(`momentum`, `golden-die`, `yacht-bank` 등)의 배율 및 보너스 합산 검증.
+- [YachtQuestAugmentTests.cs](../../Assets/Editor/Tests/Yacht/YachtQuestAugmentTests.cs): 11종 퀘스트의 라운드 기한, 연속 성공 조건, 실패 조건 전이 검증.
+- [YachtManualActionAugmentTests.cs](../../Assets/Editor/Tests/Yacht/YachtManualActionAugmentTests.cs): 수동 행동(`table-flip`, `equivalent-exchange`, `gambit`)의 발동 제한 및 턴 소비 검증.
+- [YachtDraftOrderTests.cs](../../Assets/Editor/Tests/Yacht/YachtDraftOrderTests.cs): 드래프트 라운드 판정과 후보 제시 순서 검증.
 
 전체 실행은 `Tessera/Validation/Run All EditMode Tests` 메뉴로 합니다.
 

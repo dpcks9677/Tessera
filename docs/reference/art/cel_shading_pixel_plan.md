@@ -183,9 +183,9 @@ M13이 쓴 "고유 색 수"는 616 → 30까지 줄고도 3D로 읽혔으므로 
 | `Assets/Scripts/Rendering/CelMaterialFactory.cs` | 셀 재질을 만드는 유일한 지점 |
 | `Assets/Scripts/Rendering/CelStyleSwitcher.cs` | 씬 재질 교체와 복구 |
 | `Assets/Scripts/Rendering/PixelReadabilityMetrics.cs` | 지표 순수 함수 |
-| `Assets/Editor/RunPixelReadabilityValidation.cs` | Baseline/Cel 동시 측정 도구 |
-| `Assets/Editor/CelSurfaceTests.cs` | 셰이더·재질·Forward 계약 |
-| `Assets/Editor/PixelReadabilityMetricsTests.cs` | 지표 검증 |
+| `Assets/Editor/Rendering/RunPixelReadabilityValidation.cs` | Baseline/Cel 동시 측정 도구 |
+| `Assets/Editor/Tests/Rendering/CelSurfaceTests.cs` | 셰이더·재질·Forward 계약 |
+| `Assets/Editor/Tests/Rendering/PixelReadabilityMetricsTests.cs` | 지표 검증 |
 
 ## 9. 조작법
 

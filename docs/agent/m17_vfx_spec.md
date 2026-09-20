@@ -386,7 +386,7 @@
 2. **테이블 주도로 만든다.** `switch (augmentId)`로 45갈래를 치면 §3 표와 코드가 갈라진다. §3의 `구현 사양` 열을 그대로 `ScriptableObject` 또는 정적 테이블(`id → 프리셋·앵커·색·세기`)로 옮기고, 디스패처는 테이블을 조회만 하게 한다. 미기입 증강은 테이블에 없으니 자동으로 "연출 없음"이 되고, 이게 §1의 "빈 셀 = 미정" 규칙과 그대로 맞는다.
 3. **지속형(`C`)은 이벤트가 아니라 상태로 건다.** 36 `nozdormu`·48 `bounty-hunter`는 발동 순간이 아니라 조건이 유지되는 동안 켜져 있어야 한다. 25 `yacht-bank`의 칸 하이라이트도 증강을 가진 3턴 내내 켜져 있어야 하므로 같은 부류다(칸 위치는 고정이라 재계산은 필요 없고, 칸에 주사위가 들어왔는지만 본다). 이 셋은 이벤트 큐가 아니라 **매 상태 갱신 시 `State`를 보고 on/off를 맞추는 별도 경로**로 처리한다.
 
-**검증 방법.** 디스패처는 `MonoBehaviour` 없이 순수 클래스로 두면 EditMode 테스트로 "이벤트 배열 → 재생 요청 목록" 매핑을 검사할 수 있다. 기존 `Assets/Editor/AugmentCardViewTests.cs` 패턴을 따른다.
+**검증 방법.** 디스패처는 `MonoBehaviour` 없이 순수 클래스로 두면 EditMode 테스트로 "이벤트 배열 → 재생 요청 목록" 매핑을 검사할 수 있다. 기존 `Assets/Editor/Tests/Yacht/AugmentCardViewTests.cs` 패턴을 따른다.
 
 ### 3.5 신규 에셋 목록 (기입분 기준)
 
@@ -544,7 +544,7 @@
 - **값 변경 지점**: `Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Enhance/DiceAlchemy.cs:68`. `RerollsDice => false`, `RequiredPhase => ScoreSelection`. 로직은 그대로 두고 표시만 늦춘다.
 - **발동 경로**: `AugmentedYachtController.cs:346`의 `augmentTray.ActionRequested` → `YachtTurnFlowPresenter.cs:503 UseAugmentAction` → `gameSession.TryUseAugmentAction`. 이벤트는 `LocalGameAuthority.cs:241`에서 `AugmentActionUsed`로 나온다.
 - **눈 표시를 실제로 바꾸는 코드**: `BakedDiceController.cs:206 ApplyTargetValues`. `private static`이고 `Play` 안에서만 불린다. `landingFrame`이 `null`이면 각 주사위의 현재 `localRotation`을 기준 회전으로 쓰는 분기가 이미 있으므로(`:219-221`), 굴림 없는 제자리 갱신에 그대로 재사용할 수 있다. 새 회전 수학은 필요 없다.
-- **기존 이벤트 → VFX 경로**: `AugmentVfxPlanner.Plan`(순수 클래스, `Assets/Editor/AugmentVfxPlannerTests.cs`로 검증 중) → `YachtTurnFlowPresenter.cs:717 PlayPendingStickerStamps`가 `State.Revision`으로 중복 재생을 막는다. `AugmentActionUsed`는 planner의 `switch`(`AugmentVfxPlanner.cs:58-72`)에 아직 없다.
+- **기존 이벤트 → VFX 경로**: `AugmentVfxPlanner.Plan`(순수 클래스, `Assets/Editor/Tests/Yacht/AugmentVfxPlannerTests.cs`로 검증 중) → `YachtTurnFlowPresenter.cs:717 PlayPendingStickerStamps`가 `State.Revision`으로 중복 재생을 막는다. `AugmentActionUsed`는 planner의 `switch`(`AugmentVfxPlanner.cs:58-72`)에 아직 없다.
 - **파티클 선례**: 현재 프로젝트에 남은 `ParticleSystem` 사용처는 `Tabletop/RollCosmicCube.cs` 하나다. 이쪽은 파티클을 코드로 만들지 않고 **프리팹에 이미 들어 있는 것을 `GetComponentsInChildren<ParticleSystem>(true)`로 수집해(`:209`) `Emit(8)`로 터뜨린다(`:364`)**. 프로젝트에 오브젝트 풀도 공용 이펙트 재생 유틸도 없다.
   > 이 문서가 앞서 참고 구현으로 지목했던 `RollOrb.cs:971 CreateMagicParticles`(코드로 `AddComponent<ParticleSystem>()` 후 모듈 설정)는 **더 이상 존재하지 않는다.** `RollOrb`는 커밋 `53fc78e`로 삭제됐다. 절차적 구성 방식을 쓰려면 선례 없이 새로 작성해야 한다.
 - **주의 — 8면체 숫자**: `DiceVisualPool.cs:179 PromoteOctaDigitsToCrispUi`가 8면체 면 숫자를 `TesseraLayers.CrispUI`로 올린다. Crisp 카메라는 월드 위에 합성되므로 월드 레이어의 연기는 이 숫자를 가리지 못한다.
@@ -595,6 +595,7 @@
 - 씬 배치는 `YachtDiceRoundPresenter`가 필요 시점에 지연 생성한다. `YachtTurnFlowPresenter.BindProps`가 이미 인자 11개이고 연기는 주사위 비주얼 소관이라 `AugmentedYachtController`를 경유하지 않는다. 인스펙터 배선을 새로 만들지 않는다.
 
 **연기 스프라이트 PNG.** 산출물은 `Assets/Resources/Vfx/DiceSmokePuff.png`다. 32×32 회색조, 가장자리 알파가 4스텝 계단(255 / 192 / 128 / 64 / 0)으로 떨어지는 둥근 퍼프다. 색은 파티클 `startColor`가 입힌다. 손으로 그리지 않고 `Assets/Editor/DiceSmokeSpriteBaker.cs`(`DicePresetBakeRig.cs` 선례)로 한 번 구워 결과 PNG를 커밋한다. 임포트 설정은 `Sprite (2D and UI)` · `Filter Mode = Point` · `Compression = None` · `Max Size = 32`다.
+> **후일담**: 이 절차적 스프라이트 방식은 이후 외부 에셋팩 프리팹으로 교체되며 `DiceSmokeSpriteBaker.cs`는 커밋 `2497bfc`("feat(vfx): dice-alchemy 연기를 외부 에셋팩 프리팹으로 교체 (M17-T9-1)")에서 삭제됐다. 현재 이 파일은 저장소에 없다.
 
 **프레젠터 배선.** `YachtTurnFlowPresenter.cs:513-534`의 "굴림 없음" 분기 안에서 끝난다. 해당 명령의 VFX 요청에 `DiceSmokeSwap`이 있으면 즉시 반영 대신 §9.4 타임라인 코루틴을 띄우고, 없으면 지금 동작 그대로다. `ClearCandidateScores`와 `dice.SetVisible(true)`는 `t=0`에 그대로 두고, `SyncFromAuthority`·`ApplyValuesToVisuals`·`ShowCandidateScores`·`RefreshAugmentPresentation`·`UpdateStatusText`를 `t=0.25`로 옮긴다. `RefreshRollBudgetState`는 종료 시점에 부른다. 중복 실행 방지는 기존 `lastVfxRevision` 리비전 가드를 그대로 쓴다. 주사위 개수가 바뀐 경우의 `ResetDiceForTurn` 경로는 손대지 않는다(`dice-alchemy`는 개수를 바꾸지 않는다).
 
@@ -607,9 +608,9 @@
 | `.../Presentation/AugmentVfxPlanner.cs` | `DiceSmokeSwap` 큐 + `AugmentActionUsed` 케이스 |
 | `.../Presentation/DiceSmokePuffVfx.cs` | 신규 |
 | `.../Presentation/YachtTurnFlowPresenter.cs` | 굴림 없음 분기를 지연 코루틴으로 |
-| `Assets/Editor/DiceSmokeSpriteBaker.cs` | 신규 (일회성 PNG 생성) |
+| `Assets/Editor/DiceSmokeSpriteBaker.cs` | 신규 (일회성 PNG 생성). 커밋 `2497bfc`에서 외부 에셋팩 프리팹 교체로 삭제됨 |
 | `Assets/Resources/Vfx/DiceSmokePuff.png` | 신규 에셋 |
-| `Assets/Editor/AugmentVfxPlannerTests.cs` | 케이스 추가 |
+| `Assets/Editor/Tests/Yacht/AugmentVfxPlannerTests.cs` | 케이스 추가 |
 
 ### 9.7 작업 분해
 
