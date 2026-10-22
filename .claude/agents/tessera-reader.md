@@ -20,7 +20,7 @@ color: blue
 ## 읽는 방법
 
 - graphify는 쓰지 않습니다. 문서는 Read/Grep/Glob로 직접 읽습니다.
-- 큰 문서는 먼저 Grep으로 헤딩(`^#`)과 ID 위치를 찾고, 필요한 구간만 `offset`/`limit`으로 읽습니다.
+- 큰 문서는 먼저 `python .claude/scripts/tessera_query.py sections <파일>` 로 헤딩 줄 번호를, `task <ID>` 로 태스크 행 위치를 찾고, 필요한 구간만 `offset`/`limit`으로 읽습니다.
 - 개수 집계는 Grep의 `count` 모드나 셸 집계를 써서 정확히 셉니다. 눈대중으로 세지 않습니다.
 
 ## 반환 형식

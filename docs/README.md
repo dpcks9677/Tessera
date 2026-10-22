@@ -20,6 +20,7 @@
 **코드를 고치기 전에**
 - [`reference/coding_conventions.md`](reference/coding_conventions.md) — C# 규약과 Unity 직렬화 예외
 - [`reference/architecture_decisions.md`](reference/architecture_decisions.md) — 구조 판단의 ADR
+- [`reference/control_manifest.md`](reference/control_manifest.md) — 레이어별 해야 할 것·하지 말 것
 - [`reference/art_style_guide.md`](reference/art_style_guide.md) — 색·조명·톤앤매너
 
 **AI 에이전트로 작업한다면**
@@ -81,7 +82,8 @@
 | [architecture_overview.md](reference/architecture_overview.md) | 신입 온보딩. 디렉터리·씬 계층·데이터 흐름·화면↔스크립트 치트시트·함정 5선 |
 | [augments_specification_and_status.md](reference/augments_specification_and_status.md) | 증강 시스템 8대 디자인 패턴(코드 포함), 턴 훅 8단계, 점수 파이프라인, 55종 분류 현황 |
 | [augment_balance_analysis.md](reference/augment_balance_analysis.md) | 증강 밸런스 평가 기준(GEV 모델)과 현행 55종 진단 |
-| [architecture_decisions.md](reference/architecture_decisions.md) | 구조 판단 ADR |
+| [architecture_decisions.md](reference/architecture_decisions.md) | 구조 판단 ADR, ADR 양식과 상태 수명주기 |
+| [control_manifest.md](reference/control_manifest.md) | 레이어별 해야 할 것·하지 말 것. 구현 지시서에 절 단위로 싣는 원본 |
 | [coding_conventions.md](reference/coding_conventions.md) | C# 규약, Unity 직렬화 예외, 식별자 영문 규칙 |
 | [art_style_guide.md](reference/art_style_guide.md) | 아트 톤앤매너, 조명, 팔레트, 외부 에셋 출처 |
 | [art/pixel_edge_filter_plan.md](reference/art/pixel_edge_filter_plan.md) | `M12` 엣지 검출 셰이더 기술 레퍼런스 |
@@ -104,6 +106,10 @@
 | [plan/augment_design_backlog.md](plan/augment_design_backlog.md) | 미검토 증강 기획안 (상단 칸 변형 52종, 신규 34종) |
 
 세션 로그는 각 마일스톤·트랙 폴더의 `log.md`에, 작업 ID가 없는 항목은 [`plan/log.md`](plan/log.md)에 있습니다. `agent/`에는 옛 경로를 찾아온 독자를 위한 안내문만 남아 있습니다.
+
+### `qa/` — QA 기록
+
+버그(`BUG-nnnn`), 플레이테스트, 밸런스 점검 기록입니다. 폴더·번호·상태·심각도 규칙은 [`qa/README.md`](qa/README.md)에 있습니다.
 
 ### `archive/` — 보관
 

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using Tessera.Core;
-using Tessera.Games.AugmentedYacht;
 using UnityEngine;
 using UnityEngine.Rendering;
 

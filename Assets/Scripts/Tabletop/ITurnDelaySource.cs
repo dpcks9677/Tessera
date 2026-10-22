@@ -1,6 +1,6 @@
 using System;
 
-namespace Tessera.Games.AugmentedYacht
+namespace Tessera.Tabletop
 {
     /// <summary>
     /// 턴 제한 시간을 재고, 턴을 넘겨도 되는 시점을 알리는 쪽(M10-T6b).

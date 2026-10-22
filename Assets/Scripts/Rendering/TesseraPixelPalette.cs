@@ -5,7 +5,7 @@ namespace Tessera.Rendering
     /// <summary>
     /// 픽셀 필터의 색 양자화가 쓸 팔레트를 만든다(M10.6-T2).
     ///
-    /// 색은 <c>docs/art_style_guide.md</c> §4의 컬러 토큰을 단일 출처로 삼는다.
+    /// 색은 <c>docs/reference/art_style_guide.md</c> §4의 컬러 토큰을 단일 출처로 삼는다.
     /// 토큰마다 명암 램프를 만들어 팔레트를 채우므로, 아트 방향이 바뀌어 토큰 값을 고치면
     /// 화면 팔레트도 함께 따라간다.
     ///

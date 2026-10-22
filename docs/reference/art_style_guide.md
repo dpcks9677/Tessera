@@ -1,7 +1,7 @@
 # Cozy Fantasy Hearth & Tabletop Art Style Guide
 
 > **문서 종류**: 기준 문서 (사람 대상)
-> **코드 대조 기준**: 2026-09-14 · 커밋 `0a2f770`
+> **코드 대조 기준**: 2026-10-22 · 커밋 `f949af9`
 > 이 문서는 위 시점의 코드에서 확인된 것만 기술합니다. 계획 항목은 상태 표기로 구분합니다.
 > 작성 원칙은 [`docs/README.md`](../README.md)를 보십시오.
 
@@ -13,23 +13,27 @@
 
 ```mermaid
 graph LR
-    A[Warm Golden Amber<br>벽난로 & 촛불 키 라이트] --> C((중세 판타지 코지 무드))
-    B[Cool Midnight Indigo<br>창가 달빛 림 라이트] --> C
+    A[웜 키 라이트<br>+ 같은 색 필 라이트] --> C((중세 판타지 코지 무드))
+    B[딥 차콜 배경<br>+ 웜 주변광] --> C
     C --> D[테이블탑 & 주사위 집중도 극대화]
 ```
 
 - **전체 무드**: 아늑하고 따뜻한 중세 판타지 학자의 서재 / 벽난로 선술집 (Cozy Fantasy Study & Hearth).
-- **시그니처 조명 보색 대비 (Warm vs Cool Contrast)**:
-  - **Key Light (주광)**: 벽난로와 촛불에서 방출되는 풍부하고 따뜻한 **골든 앰버 / 웜 오렌지 (`#ff9e3b`, 2800K~3000K, 강도 1.4~1.6)**.
-  - **Rim / Fill Light (보조광)**: 창문을 통해 은은하게 스며드는 **쿨 미드나이트 인디고 / 블루 (`#364b6e`, 강도 0.35~0.5)**로 테이블 외곽 및 모서리에 고급스러운 보색 림 라이트 형성.
-  - **Shadows (그림자)**: 붉은 기 없이 자연스럽게 가라앉는 **딥 에보니 브라운 (`#140f0c`)**.
+- **조명 리그**: `YachtLightingRig`(`Assets/Scripts/Games/AugmentedYacht/Presentation/YachtLightingRig.cs`)가 런타임에 Directional 키·필 라이트의 색과 강도를 프리셋 값으로 덮어쓴다. 씬에 직렬화된 라이트 값은 실효값이 아니므로, 조명 값의 원본은 이 파일의 `presets` 다.
+  - **프리셋**: 기본은 `Soft Neutral`(`#ffe0bd`, 총 강도 1.35). 전환 순서로 `Warm Amber`(`#ff9e3b`, 1.50), `Pure White`, `Cool Moon`, `Cozy Candle` 이 있다.
+  - **키/필 분배**: 총 강도의 75%를 키 라이트(pitch 60°, yaw -35°, Soft 그림자)가, 25%를 필 라이트(yaw 반대, 그림자 없음)가 쓴다. 필 라이트는 키와 **같은 색**이며 별도의 쿨 계열 림 라이트는 없다.
+  - **색온도**: 쓰지 않는다(`useColorTemperature` 꺼짐). 색은 RGB로만 지정한다.
+  - **주변광**: Flat `#291f17`.
+- **촛불**: `CozyCandleStand` 의 Point 라이트 `#ff9933`, 기준 강도 1.35에 깜빡임을 더하고 범위 6.5. 프리셋 리그와 별개로 동작한다.
+- **카메라 배경**: 월드 카메라 `#0f0b0a`, 프레젠테이션 카메라 `#0f0d12`(`YachtCameraRig.DarkCharcoalBackground`).
+- **그림자 언더레이**: 테이블 틈새 아래 언더레이 머티리얼 `#140f0c`(`color-shadow-underlay`).
 
 ---
 
 ## 2. 테이블 디자인 (Tabletop Specification)
 
 - **형태 (Geometry)**: 날카롭거나 얇은 면을 배제하고, 두께감 있고 모서리가 둥글려진 **두툼한 챔퍼(Chunky Beveled Edges)** 형태.
-- **색감 (Wood Tone)**: 촛불과 모닥불 빛을 머금은 부드럽고 따뜻한 **웜 허니 브라운 / 토피 월넛 (`#633e26` ~ `#7d4d2e`)**.
+- **색감 (Wood Tone)**: 촛불과 모닥불 빛을 머금은 부드럽고 따뜻한 **웜 허니 브라운 / 토피 월넛 (`color-table-wood-main` `#6e432a`, `color-table-wood-tint` `#825033`)**. 판자 4장이 같은 램프를 쓰고, 판자별 차이는 결·옹이 패턴뿐이다.
 - **표면 질감 (Texture & Shading)**:
   - 자잘한 실사 사진 노이즈를 배제한 **굵직한 스타일라이즈드 나뭇결**. 결·옹이·균열의 색 경계는
     보간하지 않고 계단으로 끊는다. 색은 §4의 `color-table-wood-main`·`color-table-wood-tint` 두
@@ -39,7 +43,7 @@ graph LR
     `Point` + 밉맵 off + 무압축이어야 한다. Baseline 연출은 1920×1080으로 렌더한 뒤 격자에
     스냅하므로, Bilinear나 밉맵이 켜지면 텍셀 경계가 번져 블록마다 중간색 줄이 생긴다.
   - 텍스처는 `Tools/Tessera/Generate Wood Plank Textures` 로 굽는다(`WoodPlankTextureGenerator`).
-  - `Smoothness: 0.18 ~ 0.22` (자연스러운 무광 원목 질감), `Metallic: 0.0`.
+  - `Smoothness: 0.20` (자연스러운 무광 원목 질감), `Metallic: 0.0`.
   - 판자 머티리얼의 베이스 색은 **흰색**이다. 색은 텍스처가 통째로 들고 있으므로 곱하면 이중 착색이 된다.
 
 ---
@@ -47,11 +51,12 @@ graph LR
 ## 3. 러너 디자인 (Runner & Accent Trim)
 
 - **원단 베이스 (Fabric Body)**:
-  - 차가운 원색 빨강이 아닌, 따뜻하고 묵직한 **딥 크림슨 / 테라코타 버건디 (`#7c2b20` ~ `#8e3326`)**.
-  - `Smoothness: 0.12 ~ 0.15` (매트한 두터운 직물감), `Metallic: 0.0`.
+  - 차가운 원색 빨강이 아닌, 따뜻하고 묵직한 **딥 크림슨 / 테라코타 버건디 (`color-runner-crimson` `#882d22`)**.
+  - `Smoothness: 0.12` (매트한 두터운 직물감), `Metallic: 0.0`.
 - **골드 패턴 액센트 (Gold Trim & Pattern)**:
-  - 러너 중앙 및 테두리에 **골든 옐로우 / 앤틱 머스터드 골드 (`#e5a93c` ~ `#f2b749`)** 톤의 **기하학적 켈틱 놋워크(Celtic Knotwork) / 노르딕 패턴** 적용.
-  - `Smoothness: 0.70 ~ 0.80`, `Metallic: 0.85 ~ 0.90` (은은하게 빛을 반사하는 메탈릭 골드).
+  - 러너 중앙 및 테두리에 **골든 옐로우 / 앤틱 머스터드 골드 (`color-runner-gold` `#e5a93c`)** 톤의 **기하학적 켈틱 놋워크(Celtic Knotwork) / 노르딕 패턴** 적용.
+  - `Smoothness: 0.78`, `Metallic: 0.88` (은은하게 빛을 반사하는 메탈릭 골드).
+- 러너와 트림 값은 `TabletopSurfaceBuilder` 가 머티리얼을 만들 때 쓰는 값이다.
 
 > **Cel 모드 단서 (M16).** 위 `Smoothness`/`Metallic` 값은 `RenderStyle.Baseline` 기준이다.
 > `RenderStyle.Cel`에서는 스페큘러와 환경 반사를 쓰지 않으므로 두 값이 화면에 나타나지 않는다.
@@ -64,16 +69,18 @@ graph LR
 
 ## 4. 디자인 시스템 컬러 팔레트 (Design Tokens)
 
+`TesseraPixelPalette`(`Assets/Scripts/Rendering/TesseraPixelPalette.cs`)가 코드로 가진 토큰이며, 픽셀 필터의 팔레트 양자화와 목재 램프의 기준색으로 쓰인다. 조명·카메라 토큰 세 개는 실제 라이트·카메라 값과 다르다. 실효값은 §1을 본다.
+
 | 토큰 명칭 | Hex Code | RGB (0~255) | 적용 대상 및 역할 |
 | :--- | :--- | :--- | :--- |
-| `color-light-warm-key` | `#ff9e3b` | `(255, 158, 59)` | 메인 촛불/벽난로 웜 앰버 조명 |
-| `color-light-cool-rim` | `#364b6e` | `(54, 75, 110)` | 창가 달빛 쿨 인디고 림/필 라이트 |
+| `color-light-warm-key` | `#ff9e3b` | `(255, 158, 59)` | 웜 앰버 팔레트 색. `Warm Amber` 조명 프리셋과 같음 |
+| `color-light-cool-rim` | `#364b6e` | `(54, 75, 110)` | 쿨 인디고 팔레트 색. 대응하는 조명은 없음 |
 | `color-table-wood-main` | `#6e432a` | `(110, 67, 42)` | 메인 원목 판자 테이블 색상 |
 | `color-table-wood-tint` | `#825033` | `(130, 80, 51)` | 하이라이트/톤 변화 판자 색상 |
 | `color-runner-crimson` | `#882d22` | `(136, 45, 34)` | 러너 패브릭 딥 크림슨 본체 |
 | `color-runner-gold` | `#e5a93c` | `(229, 169, 60)` | 러너 골드 켈틱 트림/패턴 |
 | `color-shadow-underlay` | `#140f0c` | `(20, 15, 12)` | 테이블 틈새 및 깊은 음영 언더레이어 |
-| `color-scene-background` | `#0f0c10` | `(15, 12, 16)` | 카메라 기본 배경색 (딥 챠콜) |
+| `color-scene-background` | `#0f0c10` | `(15, 12, 16)` | 딥 챠콜 팔레트 색. 카메라 배경은 §1 값을 씀 |
 
 ---
 
@@ -82,7 +89,7 @@ graph LR
 차후 본 프로젝트의 비주얼, 씬 구성, 셰이더, UI를 작업하는 모든 AI는 다음 규칙을 준수해야 합니다:
 
 1. **포토릴리스틱 노이즈 금지**: 실사 텍스처 노이즈나 복잡한 사인파 굴곡을 사용하지 말고, 단정하고 스타일라이즈드된 면과 색감으로 구현할 것.
-2. **조명 보색 유지**: 단일 백색 조명 대신 반드시 **웜 앰버(Key) + 쿨 블루(Rim)**의 2중 조명 밸런스를 유지할 것.
+2. **조명은 리그에서 조정**: 조명 색·강도는 `YachtLightingRig` 의 프리셋에서 바꿀 것. 씬의 라이트 값은 런타임에 덮어써지므로 씬에서 고쳐도 반영되지 않는다.
 3. **일관된 컬러 토큰 사용**: 테이블과 러너 작업 시 본 문서의 4번 팔레트 토큰을 기본값으로 참조할 것.
 
 ---

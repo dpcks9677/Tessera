@@ -91,11 +91,11 @@ curl -s -m 60 -X POST http://127.0.0.1:<port>/skill/test_run_by_name \
 
 ### 5. 결과 판정
 
-**이 프로젝트에는 `.asmdef` 가 하나도 없습니다.** 모든 런타임 코드가 `Assembly-CSharp`, 모든 `Assets/Editor` 코드가 `Assembly-CSharp-Editor` 로 들어갑니다. 테스트는 `Assets/Editor/Tests/` 에 있으며 2026-09-20 기준 30개 클래스, 333개입니다. 테스트가 계속 추가되므로 이 수치를 기준값으로 인용하지 말고 `test_discover_start` → `test_discover_get_result` 의 `fullName` 을 집계해 실측하십시오.
+**`.asmdef` 가 없으므로**(`docs/reference/control_manifest.md` 머리말) 모든 런타임 코드가 `Assembly-CSharp`, 모든 `Assets/Editor` 코드가 `Assembly-CSharp-Editor` 로 들어갑니다. 테스트는 `Assets/Editor/Tests/` 에 있습니다. 테스트가 계속 추가되므로 개수를 기준값으로 적지 말고 `test_discover_start` → `test_discover_get_result` 의 `fullName` 을 집계해 실측하십시오.
 
-**전체 EditMode 실행에는 `com.besty.unity-skills` 패키지 테스트 약 860개가 함께 돌아갑니다.** `Packages/manifest.json` 의 `testables` 에서 이 패키지를 지워도 Unity 가 패키지를 다시 해석할 때 스스로 복원합니다. 2026-09-20 에 지우고 커밋했는데 에디터가 곧바로 되돌린 것을 확인했습니다. 지우려 하지 마십시오. 대신 **필터로 아예 실행에서 빼십시오.**
+**전체 EditMode 실행에는 `com.besty.unity-skills` 패키지 테스트 수백 개가 함께 돌아갑니다.** `Packages/manifest.json` 의 `testables` 에서 이 패키지를 지워도 Unity 가 패키지를 다시 해석할 때 스스로 복원합니다. 2026-09-20 에 지우고 커밋했는데 에디터가 곧바로 되돌린 것을 확인했습니다. 지우려 하지 마십시오. 대신 **필터로 아예 실행에서 빼십시오.**
 
-**기본 실행은 네임스페이스 필터를 겁니다.** `Assets/Editor/Tests/` 의 테스트는 30개 파일 전부 `Tessera.Editor.Tests` 네임스페이스입니다(2026-09-20 에 전역 네임스페이스에 남아 있던 7개를 마저 옮겨 통일했습니다). `filter` 에 이 네임스페이스를 주면 패키지 테스트가 한 건도 섞이지 않고 프로젝트 333개만 돕니다. 실측으로 `totalTests:333`, 패키지 혼입 0건을 확인했습니다.
+**기본 실행은 네임스페이스 필터를 겁니다.** `Assets/Editor/Tests/` 의 테스트는 전부 `Tessera.Editor.Tests` 네임스페이스입니다(2026-09-20 에 전역 네임스페이스에 남아 있던 7개를 마저 옮겨 통일했습니다). `filter` 에 이 네임스페이스를 주면 패키지 테스트가 한 건도 섞이지 않고 프로젝트 테스트만 돕니다. 2026-09-20 실측에서 패키지 혼입 0건을 확인했습니다.
 
 ```bash
 curl -s -m 60 -X POST http://127.0.0.1:<port>/skill/test_run \

@@ -189,8 +189,8 @@ namespace Tessera.EditorTools
         /// </summary>
         private static int[] BuildBandPattern(int plankIndex, int ladderLength, System.Random random)
         {
-            // 같은 값을 여러 번 넣어 가중치를 준다. 램프 양 끝은 아트 가이드 §2의 나무 톤
-            // (#633e26~#7d4d2e) 밖이라, 균등하게 뽑으면 밝은 판자에서 최상단이 결의 3분의 1을 덮는다.
+            // 같은 값을 여러 번 넣어 가중치를 준다. 램프 양 끝(×0.35, ×1.45 단)은 아트 가이드 §2의 나무 톤
+            // (#6e432a, #825033)에서 멀어서, 균등하게 뽑으면 밝은 판자에서 최상단이 결의 3분의 1을 덮는다.
             int[] grainShades = { 2, 3, 3, 4, 4, 5 };
             int toneShift = plankIndex % 2 == 0 ? 0 : 1; // 판자마다 전체 밝기를 한 단 어긋나게 둔다.
 

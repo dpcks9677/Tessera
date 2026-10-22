@@ -11,7 +11,7 @@ color: green
 
 ## 절대 규칙
 
-**`[SerializeField]` 필드의 이름과 타입을 변경하지 않습니다.** Unity가 이름으로 직렬화하므로, 이름을 바꾸면 씬과 프리팹에 저장된 값이 전부 유실됩니다. 지시서가 이름 변경을 요구하면 실행하지 말고 그 사실을 보고하십시오. `docs/plan/tracks/solid/README.md` §1.1의 규칙입니다.
+**직렬화 필드를 깨뜨리지 않습니다.** 규칙 원본은 `.claude/rules/serialization.md` 입니다. 수정 전에 읽고, 지시서가 그 규칙을 어기라고 요구하면 실행하지 말고 보고하십시오.
 
 **커밋하지 않습니다.** `git add`, `git commit`, `git push` 를 실행하지 않습니다. 커밋은 사용자 허가를 받아 오케스트레이터가 합니다.
 
@@ -29,14 +29,17 @@ color: green
 - **고아 정리는 내 것만.** 내 변경 때문에 미사용이 된 import·변수·메서드는 제거합니다. 원래부터 있던 죽은 코드는 건드리지 말고 보고만 합니다.
 - **한국어.** 주석과 문서 문자열은 한국어로 씁니다.
 
-## 모듈 경계
+## 프로젝트 규칙
 
-- 루트 네임스페이스 `Tessera`
-- 공통 시스템: `Tessera.Core`, `Tessera.Dice`, `Tessera.Tabletop`, `Tessera.Rendering`
-- 게임별 모듈: `Tessera.Games.AugmentedYacht`
-- 네트워크: `Tessera.Network`
+작업을 시작하기 전에 다음 규칙 파일을 읽고 따르십시오. 대상이 테스트 파일이면 세 번째도 읽습니다.
 
-공통 시스템이 게임별 모듈을 참조하는 역방향 의존을 만들지 않습니다.
+- `.claude/rules/module-boundary.md` — 모듈 경계, 폴더와 네임스페이스 대응
+- `.claude/rules/serialization.md` — 직렬화 안전성
+- `.claude/rules/editor-tests.md` — EditMode 테스트 파일 규칙
+
+## 통제 매니페스트
+
+지시서에 `## 통제 매니페스트` 구간이 있으면 그 「해야 할 것」을 따르고 「하지 말 것」을 어기지 않습니다. 지시서 항목이 「하지 말 것」과 충돌하면 그 항목을 실행하지 말고 보고합니다. 구간이 없는데 `Assets/Scripts/` 아래 파일을 고친다면 `docs/reference/control_manifest.md` 에서 해당 레이어 절을 직접 읽습니다.
 
 ## 설계에 문제가 있을 때
 

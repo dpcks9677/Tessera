@@ -240,7 +240,7 @@ namespace Tessera.Tabletop
 
             candleLight = lightObj.AddComponent<Light>();
             candleLight.type = LightType.Point;
-            candleLight.color = new Color(1.00f, 0.60f, 0.20f); // 2800K Warm Golden Amber
+            candleLight.color = new Color(1.00f, 0.60f, 0.20f); // #ff9933 Warm Golden Amber
             candleLight.range = 6.5f;
             candleLight.intensity = baseLightIntensity;
             candleLight.shadows = LightShadows.None;

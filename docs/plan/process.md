@@ -23,6 +23,7 @@ docs/
     tracks/
       solid/             SOLID 리팩터링 트랙 (README.md, log.md)
       improvement/       BUILD·TEST·AUG·PERF·ARCH·DOC·LOAD 트랙
+      orch/              오케스트레이션 스킬 재구성 트랙
   archive/milestones/    게이트를 통과한 마일스톤 폴더
 ```
 
@@ -63,7 +64,7 @@ ID 하나의 상태는 정확히 한 곳에만 적습니다. 같은 상태를 �
 | 마일스톤 | `Mnn` | 소수점 번호는 쓰지 않습니다 (`D-035`) |
 | 태스크 | `Mnn-Tnn` | 마일스톤 안에서 연번 |
 | 하위 작업 | `Mnn-Tnn-n` | 태스크 문서 안에서만 씁니다 |
-| 트랙 태스크 | `SOLID-Tnn`, `BUILD-nn`, `LOAD-nn` 등 | 기존 ID를 유지합니다 |
+| 트랙 태스크 | `SOLID-Tnn`, `ORCH-Tnn`, `BUILD-nn`, `LOAD-nn` 등 | 기존 ID를 유지합니다 |
 | 결정 / 미결정 | `D-nnn` / `Q-nnn` | `decisions.md`에서 연번. 번호를 재사용하지 않습니다 |
 | 구조 결정 | `ADR-nnn` | `docs/reference/architecture_decisions.md` |
 
@@ -172,8 +173,7 @@ ID 하나의 상태는 정확히 한 곳에만 적습니다. 같은 상태를 �
 - 관련 EditMode 테스트가 통과한다.
 - 플레이 모드에서 주요 흐름을 직접 확인했다.
 - Unity Console에 새 컴파일 오류와 예외가 없다.
-- 게임 코어에 `UnityEngine.Random`, `MonoBehaviour`, 씬 참조가 추가되지 않았다.
-- UI와 애니메이션이 게임 규칙 상태를 임의로 변경하지 않는다.
+- 수정한 파일이 [`control_manifest.md`](../reference/control_manifest.md)의 해당 레이어 「하지 말 것」을 어기지 않는다.
 - 결과 재생 후 화면과 상태 스냅샷의 값이 일치한다.
 - 변경 파일과 검증 결과를 작업 세션 로그에 남겼다.
 - 다음 작업 포인터를 갱신했다.
