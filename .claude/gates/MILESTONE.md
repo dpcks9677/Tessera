@@ -8,7 +8,7 @@
 
 ## 점검 항목
 
-1. **태스크 상태** — `docs/plan/process.md` §8 1항대로 모든 행이 `DONE`, `DEFERRED`, `DROPPED`, `VOID` 중 하나입니다. `DEFERRED`·`DROPPED` 에는 사유가 있습니다.
+1. **태스크 상태** — `docs/plan/process.md` §8 1항대로 카테고리 절의 모든 표, 모든 행이 `DONE`, `DEFERRED`, `DROPPED`, `VOID` 중 하나입니다. `DEFERRED`·`DROPPED` 에는 사유가 있습니다.
 2. **완료 게이트** — README 완료 게이트의 항목을 하나씩 대조하고 증거를 붙입니다.
 3. **기록** — `DONE` 태스크마다 세션 로그 항목이 있고, 기록된 `NOT ASSESSED` 가 해소됐거나 사용자가 수락했습니다.
 4. **계획과 코드의 일치** — 태스크 표의 상태와 실제 코드·커밋이 맞습니다. 어긋남이 의심되면 `/tessera-plan-sync` 로 확인합니다.

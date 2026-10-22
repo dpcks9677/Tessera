@@ -14,7 +14,7 @@ effort: high
 
 ## 인자
 
-- 태스크 ID. 비어 있으면 `docs/STATUS.md` 의 진행 중 태스크.
+- 태스크 ID. 비어 있으면 `docs/STATUS.md` 의 진행 중 태스크. 여럿이면 어느 것인지 사용자에게 묻습니다.
 - `--review solo|lean|full`: 이번 호출의 `review_mode`. 없으면 `.claude/gates/README.md` 의 기본값.
 - `--check`: 0단계와 5단계 게이트만 읽기 전용으로 돌려 판정만 보고합니다. 서브에이전트에 수정·Unity 작업을 맡기지 않고, 파일을 바꾸지 않습니다. 5단계 증거는 세션 로그에 기록된 것을 씁니다. `DONE` 태스크에도 쓸 수 있습니다.
 
