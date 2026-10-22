@@ -55,7 +55,7 @@ Unity REST를 부르기 전에 `docs/reference/unity-rest.md` 를 읽으십시�
 
 **배열 필드는 크기부터 정합니다.** `component_set_serialized_property` 로 배열을 채울 때 먼저 `"<field>.Array.size"` 를 설정하고, 그다음 `"<field>.Array.data[i]"` 에 `assetPath` 로 원소를 넣습니다. 크기를 건너뛰면 인덱스가 없어 실패합니다.
 
-**`python3` 를 쓰지 마십시오.** 이 환경의 `python3` 는 Windows Store 스텁이라 exit code 49 로 항상 실패합니다. JSON 은 PowerShell `Invoke-RestMethod` / `ConvertFrom-Json` 으로 다룹니다. Python 이 꼭 필요하면 `C:\Users\dpcks\AppData\Local\Programs\Python\Python312\python.exe` 를 직접 부르십시오.
+**`python3` 를 쓰지 마십시오.** 이 환경의 `python3` 는 Windows Store 스텁이라 exit code 49 로 항상 실패합니다. JSON 은 PowerShell `Invoke-RestMethod` / `ConvertFrom-Json` 으로 다룹니다. Python 이 꼭 필요하면 `python` 을 쓰십시오(2026-10-22 확인: Bash 에서 3.12 로 동작. `python3` 만 스텁입니다).
 
 **GUID 대조는 인덱스를 한 번만 만드십시오.** `Library/PackageCache` 재귀 검색은 Windows 에서 수 분 걸립니다. 참조 guid 마다 검색하지 말고 `Assets/**/*.meta`·`Library/PackageCache/**/*.meta`·`Packages/**/*.meta` 의 guid 전체를 한 번 모아 대조하십시오.
 
