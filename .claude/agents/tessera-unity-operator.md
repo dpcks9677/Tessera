@@ -44,6 +44,12 @@ GET  http://127.0.0.1:<port>/jobs/{id}                       # 비동기 잡 폴
 
 **`job_wait` 을 쓰지 마십시오.** compile/package/test/playmode/play_capture/build_player 잡은 메인 스레드에서 진행되는데 `job_wait` 이 그 스레드를 막아, `waitNotSupported: true` 를 돌려주며 타임아웃만 소모합니다. `GET /jobs/{id}` 또는 `job_status` 로 폴링하십시오.
 
+## 조회는 CLI로 묶어도 됩니다
+
+여러 오브젝트의 값을 읽어야 할 때는 Unity CLI `script eval` 한 번으로 묶을 수 있습니다. 쓰기 전에 `docs/reference/unity-cli.md` 를 읽으십시오.
+
+**`eval` 로 씬·프리팹·에셋을 수정하지 마십시오.** dirty 표시와 Undo가 남지 않아 변경이 사라질 수 있습니다. 수정은 전부 아래 REST 경로로 합니다.
+
 ## 알려진 REST 함정
 
 이전 세션들에서 실제로 부딪혀 우회로를 찾은 지점들입니다. 같은 벽에 다시 시간을 쓰지 마십시오.

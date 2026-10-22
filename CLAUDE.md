@@ -146,7 +146,11 @@ Rules:
 
 Unity Technologies 공식 플러그인 `unity@unity-agent-plugin` 이 설치돼 있습니다(사용자 범위, 스킬 31개, `unity:` 접두사). 명령어·에이전트·훅·MCP 서버는 없고 스킬만 제공합니다.
 
-- **Editor 조작 통로는 `unity-skills` REST 하나로 유지합니다.** 씬·프리팹·에셋·머티리얼 변경과 테스트 실행은 전부 기존 경로로 합니다. `unity:unity-cli` 는 같은 Editor를 다른 방식으로 건드리므로 쓰지 않습니다. 에디터 설치·라이선스·패키지 관리처럼 REST로 할 수 없는 일이 생기면 그때 사용자에게 먼저 알립니다.
+- **Editor 통로는 작업 종류로 나눕니다.** 2026-10-22 실측 비교로 정했습니다. 요령과 근거는 `docs/reference/unity-cli.md` 에 있습니다.
+  - 씬·프리팹·에셋·머티리얼 **수정**은 `unity-skills` REST 로만 합니다. CLI `script eval` 로 바꾼 씬은 dirty 표시와 Undo가 남지 않아 변경이 사라질 수 있습니다.
+  - EditMode **테스트 실행**은 Unity CLI `unity command test run` 을 먼저 씁니다. 동기 실행이라 잡 폴링이 없습니다.
+  - Editor 상태 **조회**는 CLI `unity command script eval` 로 여러 항목을 한 번에 묶어도 됩니다.
+  - 에디터 설치·라이선스처럼 두 경로 모두로 할 수 없는 일이 생기면 그때 사용자에게 먼저 알립니다.
 - **`unity:` 스킬은 지식·점검용으로 씁니다.** 해당 영역을 실제로 만지기 직전에 한 개만 읽습니다. 이 프로젝트에서 값이 큰 것은 `unity:optimize-text-mesh-pro`(TMP 동적 아틀라스·한글 폴백), `unity:urp-postprocessing` 과 `unity:validate-urp-render-graph-renderer-feature`(픽셀 엣지 Renderer Feature), `unity:optimize-audio`(`Assets/Audio` 임포트 설정), `unity:physics-3d-collision`(주사위 프리셋 베이킹) 입니다.
 - 플러그인 스킬 문서는 영어입니다. 그래도 답변은 §0 규칙대로 한국어 존댓말로 씁니다.
 
@@ -199,7 +203,7 @@ Unity Technologies 공식 플러그인 `unity@unity-agent-plugin` 이 설치돼 
 
 - 태스크 하나가 끝나면 `/clear` 로 새로 시작합니다. 이어서 할 맥락은 계획서와 세션 로그에 있습니다.
 - `settings.json` 의 `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` 이 자동 압축 기준을 200k로 낮춥니다. 1M 창에서는 자동 압축이 사실상 일어나지 않습니다.
-- 주 세션은 Unity REST `curl` 을 직접 치지 않습니다. 컴파일 대기·폴링·테스트는 `tessera-verifier`, 씬 조작은 `tessera-unity-operator` 가 합니다.
+- 주 세션은 Unity REST `curl` 과 `unity command` 를 직접 치지 않습니다. 컴파일 대기·폴링·테스트는 `tessera-verifier`, 씬 조작은 `tessera-unity-operator` 가 합니다.
 - 주 세션은 셸 `grep`/`find`/`cat`/`sed` 로 탐색하지 않습니다. 조사는 `tessera-scout` 에 넘기고, 특정 줄 확인만 `Read`(offset/limit)로 합니다.
 - 내장 `Explore`·`Plan` 대신 `tessera-scout` 를 씁니다. 여러 Explore가 같은 파일을 각자 통째로 읽은 사례가 있습니다.
 - 설계 판단이 거의 없는 세션(반복 수정, Unity 조작 위주)은 `/model sonnet` 으로 전환합니다.

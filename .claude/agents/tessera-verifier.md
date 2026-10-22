@@ -64,6 +64,14 @@ Unity 가 로드해 둔 에셋을 `git stash` 등으로 디스크에서 없애�
 
 ### 4. 테스트 실행
 
+**Unity CLI를 먼저 씁니다.** 시작하기 전에 `docs/reference/unity-cli.md` 를 읽으십시오. 실행 위치, 연결 확인, 출력 형식의 함정이 거기 있습니다. CLI는 동기 실행이라 아래 REST의 잡 폴링과 `job_wait` 함정이 해당하지 않습니다. 필터와 판정 기준(아래 「5. 결과 판정」)은 그대로 적용합니다.
+
+```bash
+cd "C:/Users/dpcks/문서/Tessera" && unity command test run --mode editor --filter Tessera.Editor.Tests --format json --no-banner
+```
+
+`unity status` 에 Tessera가 `ready` 로 안 나오거나, CLI 결과의 테스트 개수가 디스커버리 실측과 어긋나면 아래 REST 경로로 실행합니다.
+
 ```bash
 # 시작 - jobId 반환
 curl -s -m 60 -X POST http://127.0.0.1:<port>/skill/test_run \
@@ -91,7 +99,7 @@ curl -s -m 60 -X POST http://127.0.0.1:<port>/skill/test_run_by_name \
 
 ### 5. 결과 판정
 
-**`.asmdef` 가 없으므로**(`docs/reference/control_manifest.md` 머리말) 모든 런타임 코드가 `Assembly-CSharp`, 모든 `Assets/Editor` 코드가 `Assembly-CSharp-Editor` 로 들어갑니다. 테스트는 `Assets/Editor/Tests/` 에 있습니다. 테스트가 계속 추가되므로 개수를 기준값으로 적지 말고 `test_discover_start` → `test_discover_get_result` 의 `fullName` 을 집계해 실측하십시오.
+**`.asmdef` 가 없으므로**(`docs/reference/control_manifest.md` 머리말) 모든 런타임 코드가 `Assembly-CSharp`, 모든 `Assets/Editor` 코드가 `Assembly-CSharp-Editor` 로 들어갑니다. 테스트는 `Assets/Editor/Tests/` 에 있습니다. 테스트가 계속 추가되므로 개수를 기준값으로 적지 말고 `test_discover_start` → `test_discover_get_result` 의 `fullName` 을 집계해 실측하십시오. `test_discover_get_result` 는 기본 100건만 돌려주고 `truncated:true` 를 붙이므로 `{"jobId":"…","limit":5000}` 으로 부르십시오. 받는 인자는 `jobId` 와 `limit` 뿐이라 `filter` 를 넣으면 `UNKNOWN_PARAM` 입니다. 접두사 집계는 받은 `fullName` 으로 직접 합니다.
 
 **전체 EditMode 실행에는 `com.besty.unity-skills` 패키지 테스트 수백 개가 함께 돌아갑니다.** `Packages/manifest.json` 의 `testables` 에서 이 패키지를 지워도 Unity 가 패키지를 다시 해석할 때 스스로 복원합니다. 2026-09-20 에 지우고 커밋했는데 에디터가 곧바로 되돌린 것을 확인했습니다. 지우려 하지 마십시오. 대신 **필터로 아예 실행에서 빼십시오.**
 
