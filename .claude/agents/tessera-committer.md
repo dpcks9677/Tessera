@@ -1,7 +1,7 @@
 ---
 name: tessera-committer
 description: 사용자가 이미 허가한 범위를 이 저장소의 커밋 메시지 규칙에 맞춰 커밋하고 푸시하는 에이전트. 허가 판단과 범위 결정은 하지 않는다.
-model: sonnet
+model: haiku
 effort: low
 tools: Bash, PowerShell, Read, Glob, Grep
 color: green

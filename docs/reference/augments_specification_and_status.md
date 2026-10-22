@@ -20,7 +20,7 @@
    - [5.2 시스템 강화(Enhance) 11종 (DONE)](#52-시스템-강화enhance-11종-done)
    - [5.3 퀘스트/진행형(Quest) 11종 (DONE)](#53-퀘스트진행형quest-11종-done)
    - [5.4 수동 행동(Manual Action) 6종 (DONE)](#54-수동-행동manual-action-6종-done)
-   - [5.5 의도적 미구현/보류(HOLD) 4종](#55-의도적-미구현보류hold-4종)
+   - [5.5 의도적 미구현/보류(HOLD) 3종](#55-의도적-미구현보류hold-3종)
    - [5.6 영구 삭제(CUT) 6종](#56-영구-삭제cut-6종)
 6. [런타임 상태 관리 (`AugmentStateStore`) 및 동기화](#6-런타임-상태-관리-augmentstatestore-및-동기화)
 7. [검증 체계: 단위 테스트 및 샌드박스 디버그 패널](#7-검증-체계-단위-테스트-및-샌드박스-디버그-패널)
@@ -348,7 +348,7 @@ public static class YachtAugmentCatalog
 ```
 
 > `Handlers`는 `private`입니다. 외부에서 쓰는 창구는 `All`, `Find(string)`, `IndexOf` 셋입니다.
-> **여기에 등록하지 않은 증강은 존재하지 않는 것과 같습니다.** 보류(HOLD) 4종과 삭제(CUT) 6종을
+> **여기에 등록하지 않은 증강은 존재하지 않는 것과 같습니다.** 보류(HOLD) 3종과 삭제(CUT) 6종을
 > 배제하는 별도 블랙리스트가 없는 이유가 이것입니다. 카탈로그에 인스턴스가 없으면 자동으로 빠집니다.
 
 ### 6) 컨텍스트 파사드 (Context Object)
@@ -534,7 +534,7 @@ public sealed class NoTimeToWasteState : IAugmentState, IAugmentProgressText
 }
 ```
 
-**ScriptableObject 기반 데이터 주도 설계는 쓰지 않습니다.** 증강 45종은 전부 C# 코드로 정의돼 있고,
+**ScriptableObject 기반 데이터 주도 설계는 쓰지 않습니다.** 증강 46종은 전부 C# 코드로 정의돼 있고,
 증강용 `.asset` 파일은 하나도 없습니다. 원본 기획 데이터 55개 항목을 담고 있던
 `Assets/StreamingAssets/WebSource/data/augments.json`은 런타임 코드가 읽지 않는 웹 잔재였고
 2026-09-19 디렉터리 재편에서 삭제됐습니다.

@@ -30,7 +30,7 @@
 ### 1.1 게임 콘셉트: "Cozy Fantasy Hearth & Tabletop"
 Tessera는 **벽난로 불꽃과 촛불이 은은하게 타오르는 중세 판타지 여관/서재 원목 테이블 위에서 즐기는 3D 스타일라이즈드 주사위 보드게임 플랫폼**입니다.
 - **주요 게임 1 (현재 구현)**: **증강 요트 다이스 (Augmented Yacht Dice)**
-  - 고전 요트 다이스(Yacht Dice)의 족보 규칙에 **45종의 고유 특수 능력(증강 / Augments)** 카드를 결합한 2인 대전 전략 보드게임 (현재 로컬 2인 핫시트 지원).
+  - 고전 요트 다이스(Yacht Dice)의 족보 규칙에 **46종의 고유 특수 능력(증강 / Augments)** 카드를 결합한 2인 대전 전략 보드게임 (현재 로컬 2인 핫시트 지원).
 - **주요 게임 2 (로드맵 예정)**: **다이스 어드벤처 (Dice Adventure)**
   - 주사위 덱빌딩 로그라이트 싱글 플레이 모드.
 
@@ -84,7 +84,7 @@ Assets/Scripts/
 ├── Games/                  # 게임 모드 도메인
 │   ├── Yacht/              # 순수 요트 다이스 권위/명령/코어 룰 (Tessera.Games.Yacht)
 │   └── AugmentedYacht/     # 증강 요트 다이스 전용 시스템
-│       ├── Logic/          # 증강 런타임, 점수 엔진, 45종 증강 핸들러 (Tessera.Games.Yacht)
+│       ├── Logic/          # 증강 런타임, 점수 엔진, 46종 증강 핸들러 (Tessera.Games.Yacht)
 │       └── Presentation/   # 점수판, UI 뷰, 턴 연출, 카메라/조명 리그, 컨트롤러
 │                           #   (Tessera.Games.AugmentedYacht)
 └── Network/                # 빈 폴더. 온라인 통신 계층 자리만 잡아 둠 (파일 0개)
@@ -298,10 +298,10 @@ flowchart LR
   2. 사전 베이크 라이브러리([DicePresetCatalog.cs](../../Assets/Scripts/Dice/DicePresetCatalog.cs))에서 해당 눈금 조합으로 자연스럽게 떨어지는 3D 회전/낙하 궤적 애니메이션 클립을 조회합니다.
   3. [BakedDiceController.cs](../../Assets/Scripts/Dice/BakedDiceController.cs)가 클립을 재생하여 100% 결정론적이면서도 물리적으로 완벽한 주사위 굴림을 연출합니다.
 
-### 6.2 45종 증강(Augments) 확장 시스템 (OCP 준수)
+### 6.2 46종 증강(Augments) 확장 시스템 (OCP 준수)
 모든 증강은 [IAugmentHandler.cs](../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/IAugmentHandler.cs) 인터페이스를 구현하며, `YachtAugmentRuntime`에 if-else 사다리를 추가하지 않고 독립 클래스로 존재합니다.
 
-> 📖 **45종 증강 전수 목록, 8단계 턴 훅 오케스트레이션 및 점수 계산 파이프라인**에 대한 상세 기술 문서는 [`augments_specification_and_status.md`](augments_specification_and_status.md)를 참고하세요.
+> 📖 **46종 증강 전수 목록, 8단계 턴 훅 오케스트레이션 및 점수 계산 파이프라인**에 대한 상세 기술 문서는 [`augments_specification_and_status.md`](augments_specification_and_status.md)를 참고하세요.
 
 ```mermaid
 classDiagram
@@ -390,7 +390,7 @@ Tessera는 외부 툴(Blender, Photoshop) 의존도를 낮추고 일관된 아�
 | **양피지 텍스처** | [ParchmentTextureGenerator.cs](../../Assets/Editor/Tabletop/ParchmentTextureGenerator.cs) | 점수판 양피지 섬유질 노이즈 텍스처 | `Tools/Tessera/Generate Parchment & Score Sheet Assets` |
 | **주사위 궤적 베이커** | [DicePresetBaker.cs](../../Assets/Editor/Dice/DicePresetBaker.cs) | 3D 주사위 낙하 물리 시뮬레이션 클립 베이킹 | `Tessera/Bake/Dice Presets` |
 | **특수 주사위 메시** | [DiceShapeBaker.cs](../../Assets/Editor/Dice/DiceShapeBaker.cs) | 옥타헤드론(8면체) 등 절차적 주사위 메시 | `Tessera/Bake/Dice Shapes` |
-| **증강 아이콘 갤러리** | [AugmentIconGalleryWindow.cs](../../Assets/Editor/Yacht/AugmentIconGalleryWindow.cs) | 전체 45종 증강 카드 렌더링 검수 윈도우 | `Tessera/증강 아이콘 갤러리` |
+| **증강 아이콘 갤러리** | [AugmentIconGalleryWindow.cs](../../Assets/Editor/Yacht/AugmentIconGalleryWindow.cs) | 전체 46종 증강 카드 렌더링 검수 윈도우 | `Tessera/증강 아이콘 갤러리` |
 | **픽셀 필터 프리뷰** | [PixelFilterPreview.cs](../../Assets/Editor/Rendering/PixelFilterPreview.cs) | 픽셀 외곽선 검출 셰이더 실시간 조정 창 | `Tools/Tessera/Sync Pixel Filter Preview` |
 
 ---
@@ -517,5 +517,5 @@ Tessera는 수시로 테스트를 돌려 회귀 버그를 방지합니다.
   - 프로젝트 루트의 `graphify-out/`에 전체 코드베이스의 AST 기반 지식 그래프가 빌드되어 있습니다.
   - 새 기능이나 클래스의 호출 관계, 영향 범위를 파악할 때 불필요한 전체 grep 대신 `graphify query` 또는 `GRAPH_REPORT.md`의 God Node 관계도를 먼저 확인합니다.
 - **마일스톤 작업 계획서**:
-  - [work_plan.md](../agent/work_plan.md)와 [solid_refactoring_work_plan.md](../agent/solid_refactoring_work_plan.md)에서 현재 진행 중인 태스크(`DOING`)와 다음 목표(`TODO`)를 추적합니다. 결정 기록은 [decisions.md](../agent/decisions.md), 과거 세션 기록은 [session_log.md](../agent/session_log.md)에 있습니다.
+  - 지금 진행 중인 것과 다음 행동은 [STATUS.md](../STATUS.md)에 있습니다. 마일스톤·트랙별 태스크 표는 [plan/](../plan/roadmap.md) 아래에, 결정 기록은 [decisions.md](../decisions.md)에 있습니다. 세션 로그는 각 마일스톤·트랙 폴더의 `log.md`에 있습니다.
 

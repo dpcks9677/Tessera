@@ -38,7 +38,7 @@ effort: high
 
 ### 렌즈 A — SOLID 준수
 
-`docs/agent/solid_refactoring_work_plan.md` 가 목표 구조를 정의합니다. 증강 시스템은 `IAugmentHandler` 와 발동 시점 인터페이스(`IOnAugmentSelected`, `IOnTurnStarted`, `IAfterScoreCommit`, `IOnTurnEnded`, `IBeforeScorePreview`, `IDiceCountModifier`, `IDiceLayoutProvider`, `IScoringDiceFilter`, `IScoreEnhancementModifier`, `ITurnDurationModifier`, `IManualActionAugment`)로 확장하게 돼 있습니다.
+`docs/plan/tracks/solid/README.md` 가 목표 구조를 정의합니다. 증강 시스템은 `IAugmentHandler` 와 발동 시점 인터페이스(`IOnAugmentSelected`, `IOnTurnStarted`, `IAfterScoreCommit`, `IOnTurnEnded`, `IBeforeScorePreview`, `IDiceCountModifier`, `IDiceLayoutProvider`, `IScoringDiceFilter`, `IScoreEnhancementModifier`, `ITurnDurationModifier`, `IManualActionAugment`)로 확장하게 돼 있습니다.
 
 찾을 것: 증강 ID를 하드코딩한 `if`/`switch` 사다리, 신규 증강 추가 시 핸들러 밖 파일까지 고쳐야 하는 구조, 핸들러가 아닌 곳에 흩어진 증강별 분기, 단일 클래스가 규칙·표현·상태를 함께 들고 있는 지점.
 

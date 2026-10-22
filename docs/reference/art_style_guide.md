@@ -119,7 +119,7 @@ graph LR
 > 그대로 적용됩니다.
 
 > **`coin.glb`·`coin_head_source.png`·`coin_tail_source.png`는 아직 프로젝트에 반입되지 않았습니다.**
-> `M17-T23`(코인 메시 반입과 앞뒷면 구분, 상세는 [`docs/agent/m17_coin_mesh_plan.md`](../agent/m17_coin_mesh_plan.md))의
+> `M17-T23`(코인 메시 반입과 앞뒷면 구분, 상세는 [`docs/plan/m17/T23-coin-mesh.md`](../plan/m17/T23-coin-mesh.md))의
 > 산출물로 들어올 예정이며, 위 행은 실제 임포트 전 출처 기록입니다. 출처·라이선스는 사용자 확인이
 > 필요한 열린 항목이고, 반입 시점에 이 경고와 라이선스 칸을 갱신합니다.
 

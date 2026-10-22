@@ -7,7 +7,7 @@
 >
 > `M16` 셀 셰이딩의 기술 레퍼런스입니다. **채택은 보류(`DEFERRED`)됐고 인프라만 유지합니다** (`D-037`).
 
-이 문서는 `docs/agent/work_plan.md`의 `M16` 마일스톤을 뒷받침하는 기술 상세다.
+이 문서는 `M16` 마일스톤(완료 기록은 `docs/archive/milestones/completed.md`)을 뒷받침하는 기술 상세다.
 
 ## 1. 배경
 

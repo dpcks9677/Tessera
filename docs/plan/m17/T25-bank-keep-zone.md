@@ -3,11 +3,11 @@
 > **문서 종류**: 작업 지시서 (AI 대상)
 > **코드 대조 기준**: 2026-09-15 · 커밋 `ab8300d`
 > 이 문서는 위 시점의 코드에서 확인된 것만 기술합니다. 계획 항목은 상태 표기로 구분합니다.
-> 작성 원칙은 [`docs/README.md`](../README.md)를 보십시오.
+> 작성 원칙은 [`docs/README.md`](../../README.md)를 보십시오.
 >
 > `M17-T25` 25 `yacht-bank` 증강의 킵 존 하이라이트·반짝이 연출과 슬롯 0 로직 정합화 계획입니다.
 
-작성일: 2026-09-15 · 상태: `TODO` (구현 착수 전) · 요약은 [`docs/agent/work_plan.md`](work_plan.md) §7 `M17` 표에 있다.
+작성일: 2026-09-15 · 상태는 [마일스톤 README](README.md) 태스크 표에 있다.
 
 ---
 
@@ -16,11 +16,11 @@
 25 `yacht-bank`는 로직만 `DONE`이고(`docs/reference/augments_specification_and_status.md:785`) 화면에는 효과가 드러나지 않는다. 보유자는 3턴 동안 어느 칸의 주사위가 저축되는지 알 수 없다.
 
 연출 방향은 사양서가 이미 확정했다.
-- [`m17_vfx_spec.md`](m17_vfx_spec.md) §3 25번 행: "첫 번째 주사위 킵 칸이 금색으로 빛남(골드 파티클 및 네온 글로우)". 구현 사양 `P3`+`P5` / `DICE(킵 0번 칸)` / `#e5a93c` / `M` / `누적`. 대상은 가장 왼쪽 킵 칸 하나로 고정.
+- [`m17_vfx_spec.md`](T09-vfx.md) §3 25번 행: "첫 번째 주사위 킵 칸이 금색으로 빛남(골드 파티클 및 네온 글로우)". 구현 사양 `P3`+`P5` / `DICE(킵 0번 칸)` / `#e5a93c` / `M` / `누적`. 대상은 가장 왼쪽 킵 칸 하나로 고정.
 - 같은 문서 §3.4 핵심 설계 3: 지속형(`C`)은 이벤트 큐가 아니라 **매 상태 갱신 시 `State`를 보고 on/off를 맞추는 별도 경로**로 처리한다. 25번 칸 하이라이트가 명시적으로 이 부류다.
 - 같은 문서 §3.5 신규 에셋 `I3` 킵 슬롯 하이라이트 쿼드: "킵 칸은 좌표(`DiceBoardMetrics.GetKeepPosition`)일 뿐 오브젝트가 아님. 슬롯에 무언가를 붙이려면 실체가 필요".
 - 같은 문서 §7 결정 로그(2026-09-08) 두 건과 §8 미결 질문(해결): 강조 대상은 슬롯 0 고정. 로직도 `lowestSlot` 탐색 대신 `KeepSlotIndex == 0` 주사위를 읽도록 정합화 확정.
-- 구 명세 [`docs/archive/augment_migration_matrix.md`](../archive/augment_migration_matrix.md) §4.4 "킵 존 연출"은 오른쪽 은행 구역·빛 이동·`+눈금` 표기 등을 적었으나, 현행 사양서(슬롯 0 고정)가 이를 대체한다. 참고용.
+- 구 명세 [`docs/archive/augment_migration_matrix.md`](../../archive/augment_migration_matrix.md) §4.4 "킵 존 연출"은 오른쪽 은행 구역·빛 이동·`+눈금` 표기 등을 적었으나, 현행 사양서(슬롯 0 고정)가 이를 대체한다. 참고용.
 
 ---
 
@@ -94,7 +94,7 @@
 ### 3.7 아트·모듈 규칙
 
 - `AGENTS.md`: 식별자는 영문, 한국어는 주석·문서만. 로직 `Tessera.Games.Yacht`는 프레젠테이션을 참조하지 않는다. 뷰는 `Tessera.Games.AugmentedYacht` 프레젠테이션 쪽.
-- 색: 러너 골드 `#e5a93c`(사양서 공통 강조색). 팔레트 원천 [`docs/reference/art_style_guide.md`](../reference/art_style_guide.md).
+- 색: 러너 골드 `#e5a93c`(사양서 공통 강조색). 팔레트 원천 [`docs/reference/art_style_guide.md`](../../reference/art_style_guide.md).
 - 사양서 25번 행 주의: 알파 페이드가 픽셀 필터를 통과하면 디더링으로 깨지므로 4~5스텝 계단식 처리.
 
 ---
@@ -156,10 +156,10 @@ ShouldShowYachtBankHighlight(YachtGameState state, bool isDrafting)
 | `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtTurnFlowPresenter.cs` | 판정 static, `SyncYachtBankHighlight`, 필드 1개 | `TODO` |
 | `Assets/Editor/YachtEnhanceAugmentTests.cs` | 슬롯 0 규칙 테스트 추가 | `TODO` |
 | `Assets/Editor/YachtBankHighlightTests.cs` | 신규. 판정 함수 테스트 | `TODO` |
-| `docs/agent/work_plan.md` | `M17-T25` 상태 갱신 | `TODO` 등록 완료 |
-| `docs/agent/m17_vfx_spec.md` | 25번 행에 "주사위 금색 변환·투명화는 후속 분리" 표기 | `TODO` |
+| `docs/plan/m17/README.md` | `M17-T25` 상태 갱신 | `TODO` 등록 완료 |
+| `docs/plan/m17/T09-vfx.md` | 25번 행에 "주사위 금색 변환·투명화는 후속 분리" 표기 | `TODO` |
 | `docs/reference/augments_specification_and_status.md` | 25번 규칙 문구 정정 | `TODO` |
-| `docs/agent/session_log.md` | 세션 기록 | `TODO` |
+| `docs/plan/m17/log.md` | 세션 기록 | `TODO` |
 
 ---
 

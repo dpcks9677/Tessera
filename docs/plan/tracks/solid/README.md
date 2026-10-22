@@ -3,7 +3,7 @@
 > **문서 종류**: 작업 지시서 (AI 대상)
 > **코드 대조 기준**: 2026-09-13 · 커밋 `8cc0273`
 > 이 문서는 위 시점의 코드에서 확인된 것만 기술합니다. 계획 항목은 상태 표기로 구분합니다.
-> 작성 원칙은 [`docs/README.md`](../README.md)를 보십시오.
+> 작성 원칙은 [`docs/README.md`](../../../README.md)를 보십시오.
 
 ## 1. 문서 목적 및 AI 클라이언트 작업 프로토콜
 
@@ -22,7 +22,7 @@ AI 클라이언트가 작업을 수행할 때는 다음 원칙을 반드시 준�
    - 작업 시작 전 `2. 현재 진행 포인터`의 해당 태스크 상태를 `DOING`으로 변경하고, 작업 완료 및 테스트 통과 후에만 `DONE`으로 갱신한다.
 2. **정밀 수정 (Surgical Changes)**:
    - 지정된 파일과 관련된 인터페이스/클래스만 정확히 수정한다. 연관 없는 파일의 포맷을 바꾸거나 임의 리팩토링을 수행하지 않는다.
-   - Microsoft C#/.NET 규약과 [`docs/reference/coding_conventions.md`](../reference/coding_conventions.md)를 준수한다.
+   - Microsoft C#/.NET 규약과 [`docs/reference/coding_conventions.md`](../../../reference/coding_conventions.md)를 준수한다.
 3. **Unity 직렬화 및 씬 무결성 절대 보존 (Zero Scene Breakage)**:
    - `MonoBehaviour` 컴포넌트의 `[SerializeField]` 필드명이나 타입을 변경하면 Unity 씬 및 프리팹 데이터가 유실된다.
    - 소품 분리(Phase 4) 시 기존 MonoBehaviour의 직렬화 필드는 그대로 유지하고, 내부 연산 로직(Mesh 생성 등)만 헬퍼/빌더 클래스로 분리 위임해야 한다.
@@ -38,7 +38,7 @@ AI 클라이언트가 작업을 수행할 때는 다음 원칙을 반드시 준�
 
 | 항목 | 현재 값 |
 |---|---|
-| 전체 상태 | Phase 1 완료, Phase 2 진행 중 (`SOLID-T01`~`SOLID-T04` 완료, 8/12 남음) |
+| 전체 상태 | Phase 1 완료, Phase 2 진행 중 (`SOLID-T01`~`SOLID-T04` 완료, `SOLID-T12` `VOID`, 남은 7개) |
 | 현재 마일스톤 | Phase 2: 룰셋 및 규칙 계층 LSP/ISP 정상화 |
 | 현재 작업 | `SOLID-T05` 대기 중 |
 | 다음 행동 | `SOLID-T05` 작업 착수 (`IYachtRuleSet` ISP 분리, `SelectPresetFile` 추출) |

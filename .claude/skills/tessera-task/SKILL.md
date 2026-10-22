@@ -25,14 +25,15 @@ effort: high
 
 ID 접두사로 계획서를 고릅니다.
 
-- `SOLID-Tnn` → `docs/agent/solid_refactoring_work_plan.md`
-- `Mnn-Tnn` → `docs/agent/work_plan.md` §7 (완료 마일스톤은 `docs/agent/milestones/completed.md`)
+- `Mnn-Tnn` → `docs/plan/mNN/README.md` 태스크 표 (완료 마일스톤은 `docs/archive/milestones/`)
+- `SOLID-Tnn` → `docs/plan/tracks/solid/README.md`
+- `BUILD`·`TEST`·`AUG`·`PERF`·`ARCH`·`DOC`·`LOAD` → `docs/plan/tracks/improvement/README.md`
 
-`Grep` 으로 ID를 찾아 해당 행과 상세 섹션만 읽습니다. 계획서 전체를 읽지 마십시오. 하위 계획서(예: `quill_hover_writing_animation_plan.md`)가 걸려 있으면 그것도 확인합니다.
+`Grep` 으로 ID를 찾아 해당 행과 상세 섹션만 읽습니다. 계획서 전체를 읽지 마십시오. 태스크 표의 「문서」 칸에 태스크 문서(예: `docs/plan/m17/T25-bank-keep-zone.md`)가 걸려 있으면 그것도 확인합니다.
 
 상태가 이미 `DONE` 이면 중단하고 사용자에게 알립니다. `DEFERRED` 면 왜 미뤄졌는지 확인하고 진행 여부를 묻습니다.
 
-인자가 비어 있으면 §2 현재 진행 포인터의 "현재 작업"을 대상으로 삼고, 그 사실을 사용자에게 알린 뒤 진행합니다.
+인자가 비어 있으면 `docs/STATUS.md`의 "진행 중 태스크"를 대상으로 삼고, 그 사실을 사용자에게 알린 뒤 진행합니다.
 
 ### 2. 조사
 
@@ -82,7 +83,7 @@ ID 접두사로 계획서를 고릅니다.
 검증 통과 후:
 
 1. `graphify update .` 를 실행해 지식 그래프를 최신화합니다. AST 전용이라 API 비용이 없습니다.
-2. `tessera-scribe` 로 계획서를 갱신합니다. 프롬프트에 담을 것: 태스크 ID, 새 상태(`DONE`), 실제 변경 내용, 검증 결과, 오늘 날짜, 다음 작업.
+2. `tessera-scribe` 로 계획서를 갱신합니다. 프롬프트에 담을 것: 태스크 ID, 새 상태(`DONE`), 실제 변경 내용, 검증 결과, 오늘 날짜, 다음 작업. 기록 위치(태스크 표·완료 기록·`STATUS.md`·`log.md`)는 scribe가 `docs/plan/process.md` 규칙대로 정합니다.
 
 ### 7. 보고
 

@@ -152,21 +152,24 @@ Unity Technologies 공식 플러그인 `unity@unity-agent-plugin` 이 설치돼 
 
 ## 오케스트레이션
 
-설계 판단은 Opus high가 하고, 실행은 Sonnet medium 서브에이전트가 맡습니다. 무거운 파일 읽기·빌드 로그·테스트 출력은 서브에이전트 컨텍스트에서 소비되고, 설계자에게는 요약만 올라옵니다.
+설계 판단은 Opus high가 하고, 실행은 Sonnet medium 서브에이전트가, 대량 문서 읽기와 양식이 정해진 기록·커밋은 Haiku low 서브에이전트가 맡습니다. 무거운 파일 읽기·빌드 로그·테스트 출력은 서브에이전트 컨텍스트에서 소비되고, 설계자에게는 요약만 올라옵니다.
 
 ### 구성
 
-에이전트는 `.claude/agents/` 에 있습니다. 전부 `model: sonnet`, `effort: medium` 입니다.
+에이전트는 `.claude/agents/` 에 있습니다. 모델은 아래 표의 티어를 따릅니다.
 
-| 에이전트 | 역할 | Unity 접근 |
-|---|---|---|
-| `tessera-scout` | graphify 기반 조사. 읽기 전용 | 없음 |
-| `tessera-implementer` | 확정된 설계대로 C# 수정 | 없음 |
-| `tessera-verifier` | 컴파일·EditMode 테스트 실행과 판정 | 있음 |
-| `tessera-scribe` | 계획서 상태표·세션 로그 갱신. `docs/` 한정 | 없음 |
-| `tessera-reviewer` | 지정된 렌즈 하나로 감사. 읽기 전용 | 없음 |
-| `tessera-unity-operator` | 씬·프리팹·머티리얼·에셋 조작 | 있음 |
-| `tessera-committer` | 허가받은 범위 커밋·푸시. `model: sonnet`, `effort: low` | 없음 |
+| 에이전트 | 역할 | 모델 · effort | Unity 접근 |
+|---|---|---|---|
+| `tessera-scout` | graphify 기반 코드 조사. 읽기 전용 | sonnet · medium | 없음 |
+| `tessera-reader` | 문서 대량 읽기·요약, 링크·ID·수치 정합성 점검. 읽기 전용 | haiku · low | 없음 |
+| `tessera-implementer` | 확정된 설계대로 C# 수정 | sonnet · medium | 없음 |
+| `tessera-verifier` | 컴파일·EditMode 테스트 실행과 판정 | sonnet · medium | 있음 |
+| `tessera-scribe` | 태스크 표·`STATUS.md`·세션 로그·결정 기록 갱신. `docs/` 한정 | haiku · low | 없음 |
+| `tessera-reviewer` | 지정된 렌즈 하나로 감사. 읽기 전용 | sonnet · medium | 없음 |
+| `tessera-unity-operator` | 씬·프리팹·머티리얼·에셋 조작 | sonnet · medium | 있음 |
+| `tessera-committer` | 허가받은 범위 커밋·푸시 | haiku · low | 없음 |
+
+티어 기준: 판단이 필요 없고 양식이 정해진 일(문서 대조, 기록, 커밋)은 haiku, 코드를 읽고 판단하거나 고치는 일은 sonnet, 설계는 주 세션(opus)이 맡습니다. 계획 문서의 구조와 양식은 `docs/plan/process.md` 에 있습니다.
 
 스킬은 `.claude/skills/tessera-*` 에 있습니다. 전부 `model: opus`, `effort: high` 입니다.
 
@@ -180,13 +183,13 @@ Unity Technologies 공식 플러그인 `unity@unity-agent-plugin` 이 설치돼 
 ### 규칙
 
 - 사용자가 태스크 ID(`Mnn-Tnn`, `SOLID-Tnn`)를 지목해 작업을 요청하면 `/tessera-task` 흐름을 탑니다.
-- 코드 위치·호출 관계·영향 범위 조사는 직접 grep하지 말고 `tessera-scout` 에 위임합니다.
-- **Unity 접근 에이전트(`tessera-verifier`, `tessera-unity-operator`)는 동시에 둘 이상 실행하지 않습니다.** Unity Editor는 REST 서버 하나에 붙은 단일 인스턴스라 동시 조작 시 씬이 깨집니다. 나머지 네 에이전트는 Unity 도구를 갖지 않아 구조적으로 충돌하지 않습니다.
+- 코드 위치·호출 관계·영향 범위 조사는 직접 grep하지 말고 `tessera-scout` 에 위임합니다. 문서 여러 개를 읽고 대조하는 일은 `tessera-reader` 에 위임합니다.
+- **Unity 접근 에이전트(`tessera-verifier`, `tessera-unity-operator`)는 동시에 둘 이상 실행하지 않습니다.** Unity Editor는 REST 서버 하나에 붙은 단일 인스턴스라 동시 조작 시 씬이 깨집니다. 나머지 에이전트는 Unity 도구를 갖지 않아 구조적으로 충돌하지 않습니다.
 - 파일 작업(조사·구현·문서)은 대상 파일 집합이 겹치지 않을 때만 병렬로 최대 3개까지 돌립니다.
 - **작업마다 새로 띄우지 말고, 같은 역할의 살아 있는 에이전트를 먼저 이어 씁니다.** 새로 띄운 에이전트는 이전 호출이 알아낸 것을 처음부터 다시 알아냅니다. 실제로 한 세션에서 `tessera-unity-operator` 를 네 번 따로 띄워 약 255k 토큰을 썼고, 네 번 모두 REST 포트 탐색·모듈 문서 재독·`prefab_set_property` 우회로를 되풀이했습니다. 역할별 방침은 아래 표를 따릅니다.
 - 이 규칙은 "역할당 인스턴스 하나"가 아닙니다. 위의 병렬 3개 규칙은 그대로 두고, 새로 띄우기 전에 살아 있는 것을 먼저 쓰는 순서만 바꿉니다.
 - 새로 띄운 서브에이전트는 대화 이력을 물려받지 않습니다. 필요한 맥락을 매 호출 프롬프트에 전부 실어야 합니다. 이어 쓰는 에이전트는 자기 컨텍스트를 유지하므로 달라진 부분만 전하면 됩니다. `CLAUDE.md`, `AGENTS.md`, PreToolUse 훅은 두 경우 모두 상속됩니다.
-- **커밋·푸시 실행은 `tessera-committer`(`model: sonnet`, `effort: low`)에 위임합니다.** 오케스트레이터가 직접 `git commit`·`git push`를 실행하지 않습니다. 커밋은 메시지 작성과 `git` 호출뿐이라 설계 판단이 없고, 범위와 메시지 방향은 이미 정해져 위임 프롬프트에 실립니다. 이 위임은 허가 규칙을 대체하지 않습니다. 위 「커밋 & 푸시」대로 매번 사용자 허가를 먼저 받고, 실행만 넘깁니다.
+- **커밋·푸시 실행은 `tessera-committer`(`model: haiku`, `effort: low`)에 위임합니다.** 오케스트레이터가 직접 `git commit`·`git push`를 실행하지 않습니다. 커밋은 메시지 작성과 `git` 호출뿐이라 설계 판단이 없고, 범위와 메시지 방향은 이미 정해져 위임 프롬프트에 실립니다. 이 위임은 허가 규칙을 대체하지 않습니다. 위 「커밋 & 푸시」대로 매번 사용자 허가를 먼저 받고, 실행만 넘깁니다.
 - 다른 서브에이전트는 커밋하지 않습니다.
 - 계획서와 실제 코드가 어긋나면 임의로 판단해 진행하지 말고 사용자에게 확인합니다. 실제로 어긋난 사례가 있습니다(`D-041`).
 
@@ -210,8 +213,8 @@ Unity Technologies 공식 플러그인 `unity@unity-agent-plugin` 이 설치돼 
 | `tessera-unity-operator` | 세션 내 재사용 | REST 포트·엔드포인트 함정·씬 계층 경로가 누적됨. Unity 단일 인스턴스라 어차피 직렬이어서 잃을 병렬성이 없음 |
 | `tessera-verifier` | 세션 내 재사용 | 포트 탐색과 "어떤 실패가 패키지 소속 잡음인지"의 판정 기준이 누적됨 |
 | `tessera-implementer` | 같은 마일스톤 안에서는 재사용, 마일스톤이 바뀌면 새로 | 같은 파일군을 계속 다루는 동안은 맥락이 값이 되고, 범위가 바뀌면 부담이 됨 |
-| `tessera-scout` · `tessera-reviewer` | 매번 새로 | 한 번 결론 낸 감사자는 그 결론을 재주장하는 쪽으로 기울어 독립 판정이라는 존재 이유가 깎임. 쌓이는 컨텍스트가 읽은 파일 본문이라 다음 작업에 재사용 가치가 없음 |
-| `tessera-committer` | 무관 | 상태가 없음 |
+| `tessera-scout` · `tessera-reader` · `tessera-reviewer` | 매번 새로 | 한 번 결론 낸 감사자는 그 결론을 재주장하는 쪽으로 기울어 독립 판정이라는 존재 이유가 깎임. 쌓이는 컨텍스트가 읽은 파일 본문이라 다음 작업에 재사용 가치가 없음 |
+| `tessera-scribe` · `tessera-committer` | 무관 | 상태가 없음 |
 
 에이전트가 알아낸 **영구 지식**은 재사용으로 해결하지 않습니다. 재사용은 이번 세션만 절약하고 다음 세션에서 같은 비용을 다시 치릅니다. 도구의 함정이나 우회로처럼 다음에도 유효한 발견은 해당 에이전트 정의 파일(`.claude/agents/*.md`)에 적어, 새로 띄운 에이전트도 알고 시작하게 합니다.
 

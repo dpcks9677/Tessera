@@ -16,19 +16,23 @@ effort: high
 
 ## 대상 문서
 
-- `docs/agent/work_plan.md` — 마스터. §2 진행 포인터, §6 마일스톤 요약, §7 진행 중·미착수 마일스톤 작업표(`Mnn-Tnn`).
-- `docs/agent/decisions.md` — 결정(`D-nnn`)과 미결정(`Q-00n`). 원래 마스터의 §11·§12였습니다.
-- `docs/agent/session_log.md` — 세션 로그(역순). 원래 마스터의 §13이었습니다.
-- `docs/agent/milestones/completed.md` — 완료된 `M0`~`M16`의 작업표와 실행 기록.
-- `docs/agent/solid_refactoring_work_plan.md` — §2 진행 포인터와 작업 상태 요약표(`SOLID-Tnn`).
-- 하위 계획서 — `quill_hover_writing_animation_plan.md`, `pixel_edge_filter_plan.md`, `cel_shading_pixel_plan.md` 등. 각각 제목에 작업 ID가 있고 상단 메타 줄에 상태가 있습니다.
+구조와 상태 규칙은 `docs/plan/process.md`에 있습니다. 상태는 ID마다 한 곳에만 적습니다.
+
+- `docs/STATUS.md` — 진행 포인터. 상태의 원본이 아닙니다.
+- `docs/plan/roadmap.md` — 마일스톤 상태의 원본.
+- `docs/plan/mNN/README.md` — 태스크(`Mnn-Tnn`) 상태·수락 기준·완료 기록의 원본.
+- `docs/plan/mNN/T*.md` — 태스크 문서. 하위 작업(`Mnn-Tnn-n`) 상태의 원본. 머리말에 상태 줄이 있으면 그 자체가 규칙 위반입니다.
+- `docs/plan/tracks/solid/README.md`, `docs/plan/tracks/improvement/README.md` — 트랙 태스크 상태의 원본.
+- `docs/decisions.md` — 결정(`D-nnn`)과 미결정(`Q-nnn`).
+- 세션 로그 — `docs/plan/mNN/log.md`, `docs/plan/tracks/*/log.md`, `docs/plan/log.md`. 모두 역순.
+- `docs/archive/milestones/` — 보관된 마일스톤. 고치지 않습니다.
 
 ## 1. 기준선 잡기
 
 먼저 마지막으로 기록된 지점을 찾습니다.
 
-- `docs/agent/session_log.md`의 **최상단 항목 날짜**. 역순이므로 이게 마지막 기록입니다.
-- 각 계획서 §2 진행 포인터의 **마지막 갱신일**.
+- 각 `log.md`의 **최상단 항목 날짜**. 역순이므로 이게 마지막 기록입니다.
+- `docs/STATUS.md`의 **마지막 갱신일**.
 
 그다음 실제 진행을 봅니다.
 
@@ -52,13 +56,13 @@ git status --short
 `DONE` 인데 코드에 흔적이 없는 경우. 되돌려진 작업이거나 잘못 기록된 것입니다. 함부로 `TODO` 로 내리지 말고 커밋 이력을 확인해 어느 쪽인지 판단하십시오.
 
 ### 진행 포인터가 낡음
-§2의 "현재 작업"이 이미 끝난 태스크를 가리키거나, "다음 행동"이 실제 다음 순서와 다른 경우.
+`STATUS.md`의 "진행 중 태스크"가 이미 끝난 태스크를 가리키거나, "다음 행동"이 실제 다음 순서와 다른 경우.
 
 ### 세션 로그 공백
-커밋은 있는데 §13에 대응 항목이 없는 경우. 커밋 메시지에 작업 ID가 들어 있으니 그걸로 대조하십시오.
+커밋은 있는데 해당 `log.md`에 대응 항목이 없는 경우. 커밋 메시지에 작업 ID가 들어 있으니 그걸로 대조하십시오.
 
-### 하위 계획서와 마스터의 불일치
-하위 계획서 상태 헤더가 `TODO` 인데 마스터 작업표는 `DONE` 인 경우, 또는 그 반대.
+### 상태 중복 기재
+태스크 문서 머리말이나 본문에 상태가 따로 적혀 있어 README 태스크 표와 어긋나는 경우. 어느 쪽이 맞는지 확인한 뒤 README 표를 고치고, 태스크 문서의 중복 상태 줄은 지웁니다.
 
 ### 결정과 코드의 불일치
 `D-nnn` 결정이 실제 코드와 다른 경우. 이건 문서만 고칠 문제가 아닐 수 있으니 **고치지 말고 보고**하십시오.
@@ -84,7 +88,7 @@ git status --short
 
 ## 5. 수정
 
-`tessera-scribe` 에 확정된 목록을 넘깁니다. 프롬프트에 담을 것: 문서 경로, 절 번호, 항목 ID, 현재 값, 새 값, 오늘 날짜.
+`tessera-scribe` 에 확정된 목록을 넘깁니다. 프롬프트에 담을 것: 문서 경로, 항목 ID, 현재 값, 새 값, 오늘 날짜.
 
 기록 에이전트는 `docs/` 밖을 수정하지 않고 기존 표 형식을 그대로 따릅니다. 문서 여러 개를 동시에 고쳐야 하면 파일이 겹치지 않을 때만 병렬로 돌리십시오.
 

@@ -5,7 +5,7 @@
 | 디렉터리 | 독자 | 성격 |
 |---|---|---|
 | [`reference/`](reference/) | 사람 | 프로젝트의 현재 모습을 설명하는 기준 문서. 코드가 바뀌면 함께 고칩니다. |
-| [`agent/`](agent/) | AI 에이전트 | 무엇을 다음에 할지 지시하는 작업 계획서. 상태 표기로 진행을 추적합니다. |
+| [`plan/`](plan/) | AI 에이전트 | 무엇을 다음에 할지 지시하는 작업 계획서. 상태 표기로 진행을 추적합니다. 지금 위치는 [`STATUS.md`](STATUS.md), 결정 기록은 [`decisions.md`](decisions.md)에 있습니다. |
 | [`archive/`](archive/) | 참고 | 끝났거나 폐기된 것. 이력 보존용이며 실행 지침으로 쓰지 않습니다. |
 
 ---
@@ -23,9 +23,9 @@
 - [`reference/art_style_guide.md`](reference/art_style_guide.md) — 색·조명·톤앤매너
 
 **AI 에이전트로 작업한다면**
-- [`agent/work_plan.md`](agent/work_plan.md)부터 읽습니다. §2 진행 포인터가 지금 무엇을 하는 중인지 말해 줍니다
-- [`agent/decisions.md`](agent/decisions.md)와 [`agent/session_log.md`](agent/session_log.md)는 **필요할 때만** 엽니다. 과거 기록이라 컨텍스트를 크게 먹습니다
-- 태스크 ID로 문서를 찾습니다: `Mnn-Tnn` → `agent/work_plan.md`, `SOLID-Tnn` → `agent/solid_refactoring_work_plan.md`, `BUILD-nn`·`TEST-nn`·`AUG-nn`·`PERF-nn`·`ARCH-nn`·`DOC-nn`·`LOAD-nn` → `agent/improvement_tasks_spec.md`
+- [`STATUS.md`](STATUS.md)부터 읽습니다. 지금 무엇을 하는 중이고 다음 행동이 무엇인지 말해 줍니다
+- [`decisions.md`](decisions.md)와 각 폴더의 `log.md`는 **필요할 때만** 엽니다. 과거 기록이라 컨텍스트를 크게 먹습니다
+- 태스크 ID로 문서를 찾습니다: `Mnn-Tnn` → `plan/mNN/README.md`, `SOLID-Tnn` → `plan/tracks/solid/README.md`, `BUILD-nn`·`TEST-nn`·`AUG-nn`·`PERF-nn`·`ARCH-nn`·`DOC-nn`·`LOAD-nn` → `plan/tracks/improvement/README.md`
 
 ---
 
@@ -38,18 +38,20 @@
 
 1. **실재를 확인한 뒤에 적습니다.** 문서에 쓰는 클래스명, 메서드 시그니처, 파일 경로, 에셋 경로, 메뉴
    경로, 수치는 코드에서 직접 확인한 것만 적습니다. 기억이나 추론으로 채우지 않습니다. 확인하지 못한
-   것은 그럴듯하게 적는 대신 `미확인`으로 남깁니다.
+   것은 그럴듯하게 적는 대신 `미확인`으로 남기고 그 사실을 보고합니다.
 2. **계획과 구현을 구분합니다.** 아직 없는 것을 현재형으로 서술하지 않습니다. 계획 항목에는 상태
    표기(`TODO` / `DOING` / `DONE` / `DEFERRED` / `DROPPED` / `VOID`)를 붙이고, 계획서의 "신규 파일"은
    그 파일이 아직 없다는 뜻임을 문장으로 드러냅니다.
 3. **무효가 된 항목은 지우지 않고 표기합니다.** 전제가 사라진 계획 항목은 조용히 삭제하지 말고
    `VOID`와 사유·날짜를 남깁니다. 왜 없어졌는지 추적할 수 있어야 합니다.
-4. **시점 기록은 고치지 않습니다.** 감사 보고서와 코드 리뷰는 작성 당시의 사실입니다. 본문을 현재
-   코드에 맞춰 고치는 대신 헤더에 기준 시점을 밝혀 현재 상태와 혼동되지 않게 합니다.
+4. **시점 기록은 고치지 않습니다.** 감사 보고서, 코드 리뷰, 세션 로그는 작성 당시의 사실입니다. 본문을
+   현재 코드에 맞춰 고치는 대신 헤더에 기준 시점을 밝혀 현재 상태와 혼동되지 않게 합니다.
+
+계획 문서의 구조, 상태 어휘, ID 규칙, 양식은 [`plan/process.md`](plan/process.md)에 있습니다.
 
 ### 문서 헤더 표준 양식
 
-`reference/`와 `agent/`의 모든 문서는 제목 바로 아래에 다음을 답니다.
+`reference/`와 `plan/`의 모든 문서는 제목 바로 아래에 다음을 답니다.
 
 ```markdown
 > **문서 종류**: 기준 문서 (사람 대상)
@@ -78,6 +80,7 @@
 |---|---|
 | [architecture_overview.md](reference/architecture_overview.md) | 신입 온보딩. 디렉터리·씬 계층·데이터 흐름·화면↔스크립트 치트시트·함정 5선 |
 | [augments_specification_and_status.md](reference/augments_specification_and_status.md) | 증강 시스템 8대 디자인 패턴(코드 포함), 턴 훅 8단계, 점수 파이프라인, 55종 분류 현황 |
+| [augment_balance_analysis.md](reference/augment_balance_analysis.md) | 증강 밸런스 평가 기준(GEV 모델)과 현행 55종 진단 |
 | [architecture_decisions.md](reference/architecture_decisions.md) | 구조 판단 ADR |
 | [coding_conventions.md](reference/coding_conventions.md) | C# 규약, Unity 직렬화 예외, 식별자 영문 규칙 |
 | [art_style_guide.md](reference/art_style_guide.md) | 아트 톤앤매너, 조명, 팔레트, 외부 에셋 출처 |
@@ -85,23 +88,26 @@
 | [art/cel_shading_pixel_plan.md](reference/art/cel_shading_pixel_plan.md) | `M16` 셀 셰이딩 기술 레퍼런스 (채택 보류, 인프라만 유지) |
 | [build_pdf.py](reference/build_pdf.py) | 위 두 가이드를 PDF로 굽는 스크립트. PDF 자체는 git 추적하지 않습니다 |
 
-### `agent/` — 작업 지시서
+### `plan/` — 작업 지시서
 
 | 문서 | 내용 |
 |---|---|
-| [work_plan.md](agent/work_plan.md) | **마스터 계획서.** 진행 포인터, 마일스톤 요약, 진행 중·미착수 마일스톤 상세 |
-| [milestones/completed.md](agent/milestones/completed.md) | 완료된 `M0`~`M16`의 태스크표와 실행 기록 |
-| [decisions.md](agent/decisions.md) | 결정 기록 `D-nnn`과 미결정 사항 `Q-nnn` |
-| [session_log.md](agent/session_log.md) | 작업 세션 로그 (역순) |
-| [solid_refactoring_work_plan.md](agent/solid_refactoring_work_plan.md) | SOLID 위반 리팩토링 `SOLID-Tnn` |
-| [m17_vfx_spec.md](agent/m17_vfx_spec.md) | `M17-T9` 증강 발동 VFX 사양서 |
-| [m17_quill_hover_animation.md](agent/m17_quill_hover_animation.md) | `M17-T18` 깃펜 호버 필기 연출 |
-| [m7_graphics_spec.md](agent/m7_graphics_spec.md) | 구 `M7` 그래픽 계획. 현재는 `M17`의 시각 사양 참조집 |
-| [improvement_tasks_spec.md](agent/improvement_tasks_spec.md) | 컴파일 경고·테스트·성능 등 개별 개선 태스크 (`BUILD-01`, `TEST-01`, `AUG-01` 등) |
+| [STATUS.md](STATUS.md) | **진행 포인터.** 현재 마일스톤, 진행 중 태스크, 다음 행동 |
+| [decisions.md](decisions.md) | 결정 기록 `D-nnn`과 미결정 사항 `Q-nnn` |
+| [plan/process.md](plan/process.md) | 계획 문서 구조, 상태 어휘, ID 규칙, 양식, 공통 완료 기준, 작업 재개 절차 |
+| [plan/roadmap.md](plan/roadmap.md) | 마일스톤 상태표와 재번호 이력 |
+| [plan/direction.md](plan/direction.md) | 확정된 방향, 기준선, 목표 아키텍처, 위험 요소 |
+| [plan/m17/](plan/m17/README.md) | `M17` 증강 요트 로컬 핫시트 완성. 태스크 문서 `T09`·`T18`·`T23`·`T25` 포함 |
+| [plan/m18/](plan/m18/README.md) ~ [m20/](plan/m20/README.md) | 미착수 마일스톤 |
+| [plan/tracks/solid/](plan/tracks/solid/README.md) | SOLID 위반 리팩토링 `SOLID-Tnn` |
+| [plan/tracks/improvement/](plan/tracks/improvement/README.md) | 컴파일 경고·테스트·성능 등 개별 개선 태스크 (`BUILD-01`, `TEST-01`, `AUG-01` 등) |
+| [plan/augment_design_backlog.md](plan/augment_design_backlog.md) | 미검토 증강 기획안 (상단 칸 변형 52종, 신규 34종) |
+
+세션 로그는 각 마일스톤·트랙 폴더의 `log.md`에, 작업 ID가 없는 항목은 [`plan/log.md`](plan/log.md)에 있습니다. `agent/`에는 옛 경로를 찾아온 독자를 위한 안내문만 남아 있습니다.
 
 ### `archive/` — 보관
 
-보관 사유는 [`archive/README.md`](archive/README.md)에 문서별로 적혀 있습니다.
+보관 사유는 [`archive/README.md`](archive/README.md)에 문서별로 적혀 있습니다. 게이트를 통과한 마일스톤은 [`archive/milestones/`](archive/milestones/)에 있습니다(`M0`~`M16` 완료 기록, 구 `M7` 그래픽 사양, 그 시기 세션 로그).
 
 ---
 

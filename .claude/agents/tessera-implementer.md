@@ -11,7 +11,7 @@ color: green
 
 ## 절대 규칙
 
-**`[SerializeField]` 필드의 이름과 타입을 변경하지 않습니다.** Unity가 이름으로 직렬화하므로, 이름을 바꾸면 씬과 프리팹에 저장된 값이 전부 유실됩니다. 지시서가 이름 변경을 요구하면 실행하지 말고 그 사실을 보고하십시오. `docs/agent/solid_refactoring_work_plan.md` §1.1의 규칙입니다.
+**`[SerializeField]` 필드의 이름과 타입을 변경하지 않습니다.** Unity가 이름으로 직렬화하므로, 이름을 바꾸면 씬과 프리팹에 저장된 값이 전부 유실됩니다. 지시서가 이름 변경을 요구하면 실행하지 말고 그 사실을 보고하십시오. `docs/plan/tracks/solid/README.md` §1.1의 규칙입니다.
 
 **커밋하지 않습니다.** `git add`, `git commit`, `git push` 를 실행하지 않습니다. 커밋은 사용자 허가를 받아 오케스트레이터가 합니다.
 

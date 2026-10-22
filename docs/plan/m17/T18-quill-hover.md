@@ -3,11 +3,11 @@
 > **문서 종류**: 작업 지시서 (AI 대상)
 > **코드 대조 기준**: 2026-09-13 · 커밋 `8cc0273`
 > 이 문서는 위 시점의 코드에서 확인된 것만 기술합니다. 계획 항목은 상태 표기로 구분합니다.
-> 작성 원칙은 [`docs/README.md`](../README.md)를 보십시오.
+> 작성 원칙은 [`docs/README.md`](../../README.md)를 보십시오.
 >
 > `M17-T18` 깃펜 호버 필기 연출 계획입니다.
 
-작성일: 2026-09-09 · 개정: 2026-09-09 (씬 스케일 실측 반영 §2.1·§2.3·§5.3 / 필기 자세를 꽂힘 자세 + 세로축 시계방향 15°로 확정, 좌우반전 폐기 §3.2·§5.2 / 가림을 깊이 마스크로 해결 §5.1 / 복귀 판정을 칸에서 점수 열로 올림 §3.1) · 상태: `DOING` (`M17-T18-1`~`M17-T18-4` 구현 완료 · `M17-T18-5` 화면 확인 남음) · 요약은 [`docs/agent/work_plan.md`](work_plan.md) §7 `M17` 표에 있다.
+작성일: 2026-09-09 · 개정: 2026-09-09 (씬 스케일 실측 반영 §2.1·§2.3·§5.3 / 필기 자세를 꽂힘 자세 + 세로축 시계방향 15°로 확정, 좌우반전 폐기 §3.2·§5.2 / 가림을 깊이 마스크로 해결 §5.1 / 복귀 판정을 칸에서 점수 열로 올림 §3.1) · 상태는 [마일스톤 README](README.md) 태스크 표에 있다.
 
 ---
 
@@ -156,7 +156,7 @@ ResolveWritingPose(cellWorld, dockedRotation, sheetUp, yawDegrees) -> (position,
 | `QuillHoverAnimator` | `Assets/Scripts/Tabletop/QuillHoverAnimator.cs` (신규) | 월드 좌표 하나를 받아 깃펜을 움직인다. 점수표도 게임 상태도 모른다 |
 | `AugmentedYachtController` (수정) | 기존 파일 | 둘을 잇는다 |
 
-`InkwellAndQuill.cs`의 애니메이션 책임은 늘리지 않는다. 기하 생성 클래스가 이미 638줄이고 소품 클래스가 크다는 지적이 [`docs/archive/reports/code_review_20260906.md`](../archive/reports/code_review_20260906.md)에 있다. 애니메이션은 같은 게임 오브젝트에 붙는 별도 컴포넌트로 둔다.
+`InkwellAndQuill.cs`의 애니메이션 책임은 늘리지 않는다. 기하 생성 클래스가 이미 638줄이고 소품 클래스가 크다는 지적이 [`docs/archive/reports/code_review_20260906.md`](../../archive/reports/code_review_20260906.md)에 있다. 애니메이션은 같은 게임 오브젝트에 붙는 별도 컴포넌트로 둔다.
 
 ### 4.2 점수표에 추가할 API
 
