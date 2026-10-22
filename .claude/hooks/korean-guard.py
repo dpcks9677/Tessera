@@ -1,9 +1,9 @@
 # UserPromptSubmit hook: pins the assistant's output language.
 #
-# The caveman plugin re-injects its ruleset every turn through this same event,
-# while the Korean rule in CLAUDE.md sits in project memory and can be dropped
-# when the context is compacted. That asymmetry is why replies drift out of
-# Korean in long sessions. This hook restores the balance.
+# The Korean rule in CLAUDE.md sits in project memory, so it can fade in long
+# sessions and be dropped when the context is compacted, and replies then drift
+# out of Korean. This hook re-injects the rule every turn through
+# UserPromptSubmit to prevent that.
 #
 # The global unity-skills skill carries a large amount of Simplified Chinese in
 # its module docs, so reading one pulls Chinese instructions straight into the

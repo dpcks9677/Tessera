@@ -86,6 +86,8 @@
 | [control_manifest.md](reference/control_manifest.md) | 레이어별 해야 할 것·하지 말 것. 구현 지시서에 절 단위로 싣는 원본 |
 | [coding_conventions.md](reference/coding_conventions.md) | C# 규약, Unity 직렬화 예외, 식별자 영문 규칙 |
 | [art_style_guide.md](reference/art_style_guide.md) | 아트 톤앤매너, 조명, 팔레트, 외부 에셋 출처 |
+| [unity-rest.md](reference/unity-rest.md) | unity-skills REST 공통 요령·함정. 서버 탐색, 호출 형태, `job_wait` 금지, 스크린샷, Play Mode 진입 |
+| [orchestration.md](reference/orchestration.md) | `CLAUDE.md` 오케스트레이션·Unity 자동화 규칙의 근거와 사례 |
 | [art/pixel_edge_filter_plan.md](reference/art/pixel_edge_filter_plan.md) | `M12` 엣지 검출 셰이더 기술 레퍼런스 |
 | [art/cel_shading_pixel_plan.md](reference/art/cel_shading_pixel_plan.md) | `M16` 셀 셰이딩 기술 레퍼런스 (채택 보류, 인프라만 유지) |
 | [build_pdf.py](reference/build_pdf.py) | 위 두 가이드를 PDF로 굽는 스크립트. PDF 자체는 git 추적하지 않습니다 |

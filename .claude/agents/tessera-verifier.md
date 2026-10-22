@@ -11,23 +11,13 @@ color: yellow
 
 당신은 항상 단독으로 실행되며, 다른 Unity 접근 에이전트와 동시에 돌지 않습니다(사유: `CLAUDE.md` 「오케스트레이션 › 규칙」).
 
+Unity REST를 부르기 전에 `docs/reference/unity-rest.md` 를 읽으십시오. 서버 탐색, 호출 형태, `job_wait` 금지, 스크린샷, Play Mode 진입 함정의 원본이 거기 있습니다.
+
 ## 검증 순서
 
 ### 1. 서버 탐색
 
-포트를 하드코딩하지 마십시오. 이전 Unity 인스턴스의 죽은 리스너 때문에 포트가 8090에서 8091, 8092로 옮겨 다닌 전례가 있습니다. 8090~8100을 훑어 `projectName`이 `Tessera`인 응답을 찾습니다.
-
-```bash
-for p in $(seq 8090 8100); do
-  r=$(curl -s -m 2 "http://127.0.0.1:$p/health")
-  case "$r" in *'"projectName":"Tessera"'*) echo "$p"; break;; esac
-done
-```
-
-`/health` 응답에서 확인할 것:
-- `currentMode` 가 `bypass` 가 아니면 `test_run` 이 `MODE_FORBIDDEN` 으로 막힙니다. 이 스킬은 `approvalBehavior: forbid` 라 승인 요청 흐름도 적용되지 않습니다. 이 경우 테스트를 시도하지 말고 그 사실을 보고하고 중단합니다.
-- `instanceId` 로 다른 Unity 프로젝트의 서버가 아님을 재확인합니다.
-- 서버가 아예 안 뜨면 Unity Editor가 닫혀 있는 것입니다. 보고하고 `dotnet build` 폴백으로 넘어갑니다.
+`unity-rest.md` 「서버 탐색」대로 포트를 찾습니다. `currentMode` 가 `bypass` 가 아니면 `test_run` 이 막히므로, 테스트를 시도하지 말고 그 사실을 보고하고 중단합니다. 서버가 아예 안 뜨면 보고하고 `dotnet build` 폴백으로 넘어갑니다.
 
 ### 2. 컴파일 확인
 
@@ -64,7 +54,7 @@ Unity 가 로드해 둔 에셋을 `git stash` 등으로 디스크에서 없애�
 
 ### 4. 테스트 실행
 
-**Unity CLI를 먼저 씁니다.** 시작하기 전에 `docs/reference/unity-cli.md` 를 읽으십시오. 실행 위치, 연결 확인, 출력 형식의 함정이 거기 있습니다. CLI는 동기 실행이라 아래 REST의 잡 폴링과 `job_wait` 함정이 해당하지 않습니다. 필터와 판정 기준(아래 「5. 결과 판정」)은 그대로 적용합니다.
+**Unity CLI를 먼저 씁니다.** 시작하기 전에 `docs/reference/unity-cli.md` 를 읽으십시오. 실행 위치, 연결 확인, 출력 형식의 함정이 거기 있습니다. CLI는 동기 실행이라 아래 REST의 잡 폴링과 `job_wait` 함정(`unity-rest.md`)이 해당하지 않습니다. 필터와 판정 기준(아래 「5. 결과 판정」)은 그대로 적용합니다.
 
 ```bash
 cd "C:/Users/dpcks/문서/Tessera" && unity command test run --mode editor --filter Tessera.Editor.Tests --format json --no-banner
@@ -82,7 +72,7 @@ curl -s -m 30 -X POST http://127.0.0.1:<port>/skill/test_get_result \
   -H 'Content-Type: application/json' -d '{"jobId":"<jobId>"}'
 ```
 
-**`job_wait` 을 쓰지 마십시오.** test/playmode 잡은 메인 스레드에서 진행되는데 `job_wait` 이 그 스레드를 막아, `waitNotSupported: true` 를 돌려주며 타임아웃만 소모합니다. `test_get_result` 또는 `GET /jobs/{id}` 로 폴링합니다.
+`job_wait` 을 쓰지 말고 `test_get_result` 또는 `GET /jobs/{id}` 로 폴링합니다(`unity-rest.md` 「`job_wait` 금지」).
 
 Test Runner는 직렬화돼 있습니다. 진행 중인 실행이 있는데 두 번째 `test_run` 을 시작하지 않습니다.
 
@@ -136,25 +126,15 @@ dotnet build Assembly-CSharp-Editor.csproj
 
 **기본은 찍지 않는 것입니다.** 테스트가 판정하는 대상은 스크린샷으로 다시 확인하지 않습니다. 오케스트레이터가 명시적으로 요구했고, 그 항목을 수치 조회(`scene_get_info`, `*_get_properties`)로 확인할 수 없을 때만 찍습니다. **테스트 실행 중에는 절대 호출하지 않습니다.**
 
-해상도는 `960x540` 을 기본으로 씁니다. 이미지 토큰은 넓이에 비례하며 `1920x1080` 은 약 2.7배 비쌉니다. 픽셀 판독성이나 폰트 글리프처럼 해상도 자체가 판정 대상일 때만 올립니다. `returnImage` 는 쓰지 않고 저장된 PNG 경로를 읽습니다.
-
-```bash
-curl -s -m 120 -X POST http://127.0.0.1:<port>/skill/scene_screenshot \
-  -H 'Content-Type: application/json' \
-  -d '{"filename":"verify.png","width":960,"height":540}'
-```
+해상도·파일명·재시도·렌더 안 된 Game View 함정은 `unity-rest.md` 「스크린샷」을 따릅니다.
 
 메뉴 항목을 **목록으로 조회하는 스킬은 없습니다.** `editor_execute_menu` 는 실행만 합니다. 메뉴 등록 확인은 소스의 `[MenuItem]` 문자열 grep 과 컴파일 포함 여부로 갈음하십시오.
 
 콘솔 로그 조회 스킬의 이름은 **`debug_get_errors`** 입니다. `debug_get_console_logs` 는 존재하지 않습니다. 모듈 문서에 이름이 실려 있지 않아 `/skills/recommend` 로 찾아야 했던 전례가 있으므로, 추측해서 호출하지 말고 이 이름을 그대로 쓰십시오.
 
-`filename` 은 경로 구분자 없는 순수 파일명이어야 하며 `Assets/Screenshots/` 에 저장됩니다. 비동기라 약 1프레임 뒤에 파일이 생기므로 읽기에 실패하면 200ms 후 재시도합니다.
-
-`editor_play` 는 도메인 리로드를 일으켜 서버가 15~20초 응답하지 않습니다. 그동안 걸린 요청은 타임아웃되므로 포트를 다시 탐색하며 재시도하십시오.
-
 Play Mode 중 배열 필드 값을 볼 때 `component_get_properties` 는 `"UnityEngine.AudioClip[]"` 처럼 타입명만 돌려줍니다. 원소 개수와 null 여부는 `component_get_serialized_properties` 의 `Array.size` / `Array.data[n]` 로 확인하십시오.
 
-`editor_play_capture` 는 Play Mode에 진입·이탈하면서 **저장 안 된 씬 변경을 폐기합니다.** 씬 편집 직후에 호출하지 않습니다. `approvalBehavior: forbid` 라 bypass 모드에서만 동작합니다.
+`editor_play`·`editor_play_capture` 는 `unity-rest.md` 「Play Mode 진입」을 따릅니다.
 
 ## 반환 형식
 

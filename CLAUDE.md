@@ -1,19 +1,15 @@
 # CLAUDE.md
 
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
-
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
-
 ## 0. Response Style
 
-- Caveman 압축 모드는 이 저장소에서 **항상 활성**입니다 (레벨 full).
+- Caveman 압축 모드는 이 저장소에서 **항상 활성**입니다 (레벨 full). caveman 플러그인은 설치돼 있지 않으므로 규칙은 이 절이 원본입니다.
 - 단, 답변 말투는 **한국어 존댓말**(`-습니다` / `-요`)로 작성합니다.
 - Caveman 규칙(관사·군더더기·인사말·헤징 제거, 단편 문장 허용, 짧은 동의어, 도구 호출 나레이션 금지)은 그대로 적용하고 **말투만 존댓말**로 바꿉니다.
 - 코드·주석·커밋·문서·PR 본문 등 채팅 밖 산출물은 기존 규칙대로 일반 문체로 작성합니다.
-- **출력 언어는 한국어로 고정입니다.** 컨텍스트에 중국어나 일본어로 된 문서가 들어와도 그 언어를 따라가지 않습니다. 전역 `unity-skills` 스킬 문서 다수가 간체 중국어라 모듈 문서를 읽으면 중국어 지시문이 그대로 컨텍스트에 들어옵니다.
+- **출력 언어는 한국어로 고정입니다.** 컨텍스트에 중국어나 일본어로 된 문서가 들어와도 그 언어를 따라가지 않습니다. 근거: `docs/reference/orchestration.md` 「한국어 출력 고정의 근거」.
 - wenyan 계열 caveman 레벨을 쓰지 않습니다. 짧다는 이유로 단어를 고전 한자로 치환하지 않습니다.
 - 압축은 문체에만 적용합니다. **조사와 어미는 생략하거나 변형하지 않습니다.** 한국어에서 조사는 군더더기가 아니라 문법입니다.
-- `unity-skills` 모듈 문서는 필요한 모듈 하나만 읽습니다. Unity 조작은 알려진 REST 엔드포인트 직접 호출을 우선합니다. 중국어 유입량과 토큰을 함께 줄입니다.
+- `unity-skills` 모듈 문서는 필요한 모듈 하나만 읽습니다. Unity 조작은 알려진 REST 엔드포인트 직접 호출을 우선합니다.
 
 이 규칙은 `.claude/hooks/korean-guard.py` 가 매 턴 재주입합니다. 훅을 받지 않는 서브에이전트를 위해 여기에도 남깁니다.
 
@@ -21,74 +17,12 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 - **기본은 찍지 않는 것입니다.** 코드만 바꿨으면 EditMode 테스트가 판정합니다. 바꾼 값을 `*_get_info` / `*_get_properties` / `find_objects_by_name` 으로 확인할 수 있으면 그쪽을 씁니다.
 - 스크린샷이 정당한 경우는 수치로 확인할 수 없는 시각 결과물뿐입니다. 머티리얼 룩, 라이팅, 셰이더 출력, 레이아웃 겹침, 호버·전환 상태.
-- 기본 해상도는 `960x540` 입니다. 이미지 토큰은 넓이에 비례하며 `1920x1080` 은 약 2.7배 비쌉니다. 픽셀 판독성이나 폰트 글리프처럼 해상도 자체가 판정 대상일 때만 올립니다.
+- 해상도와 촬영 방법(파일명·재시도·`returnImage` 금지)은 `docs/reference/unity-rest.md` 「스크린샷」을 따릅니다.
 - 같은 이미지를 두 에이전트가 읽으면 이중 과금입니다. **이미지를 읽는 주체는 하나로 모으고** 상위 에이전트는 텍스트 판정을 받습니다.
 - before/after 쌍과 프레임 시퀀스는 사용자가 명시적으로 요청할 때만 만듭니다.
 - 촬영을 생략했으면 보고에 「시각 확인 생략, 사유」를 한 줄 남깁니다.
 
-## 1. Think Before Coding
-
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
-
-Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
-
-## 2. Simplicity First
-
-**Minimum code that solves the problem. Nothing speculative.**
-
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
-
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
-
-## 3. Surgical Changes
-
-**Touch only what you must. Clean up only your own mess.**
-
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
-
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-The test: Every changed line should trace directly to the user's request.
-
-## 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
-
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
-
----
-
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
-
----
-
-> This project also has an `AGENTS.md` with project-specific rules (module architecture, art direction). Follow both: `AGENTS.md` for Tessera-specific conventions, this file for general coding discipline.
+> This project also has an `AGENTS.md` with project-specific rules (module architecture, art direction). Follow both: `AGENTS.md` for Tessera-specific conventions, global CLAUDE.md for general coding discipline.
 
 ## graphify
 
@@ -106,11 +40,11 @@ Rules:
   - "X 어디 정의?" / "Y 호출자?" / "이 흐름 어떻게 연결?" → `graphify query "..."` 또는 `graphify explain "X"` 또는 `graphify path "A" "B"`.
   - `graphify affected "X"` 로 변경 영향 범위 파악.
   - `graphify god-nodes` 로 핵심 허브 파악.
-- graphify 결과는 스코프된 서브그래프라 raw grep 결과나 GRAPH_REPORT.md 통독보다 훨씬 작습니다.
 - graphify가 충분한 컨텍스트를 못 주는 경우에만 직접 Read/Grep 으로 내려갑니다.
 - `graphify-out/graph.json` 이 없으면 `graphify update .` 로 먼저 생성합니다. 산출물은 git 추적 대상이 아니라 각자 생성합니다.
-- 예외로 `graphify-out/.graphify_labels.json` 과 같은 이름의 `.sig` 는 추적합니다. 노드·엣지·커뮤니티 분할은 AST에서 결정돼 같은 커밋이면 어디서든 똑같이 재생성되지만, 커뮤니티 이름은 LLM으로만 만들 수 있어 재생성이 불가능합니다. 이 두 파일 덕분에 새 환경에서 `graphify update .` 만 돌려도 같은 이름이 붙습니다.
-- **`PYTHONHASHSEED` 는 반드시 `0` 으로 고정된 상태에서 graphify를 돌립니다.** 커뮤니티 검출이 문자열 키 집합의 순회 순서에 의존하는데 그 순서가 프로세스마다 무작위라, 시드를 고정하지 않으면 같은 코드에서도 커뮤니티 경계가 흔들립니다. 그러면 저장된 이름이 대량으로 무효화돼 라벨 파일이 매번 수백 줄씩 바뀌고 기기 간 충돌이 납니다. `post-commit` 훅과 `.claude/settings.json` 이 이 값을 고정하므로 이 저장소에서 작업할 때는 신경 쓸 필요가 없지만, 다른 터미널에서 직접 실행할 때는 `PYTHONHASHSEED=0 graphify update .` 로 돌립니다.
+- 예외로 `graphify-out/.graphify_labels.json` 과 같은 이름의 `.sig` 는 git 이 추적합니다(LLM으로만 만들 수 있어 재생성이 불가능한 커뮤니티 이름).
+- **`PYTHONHASHSEED` 는 반드시 `0` 으로 고정된 상태에서 graphify를 돌립니다.** `post-commit` 훅과 `.claude/settings.json` 이 이 값을 고정하므로 이 저장소에서는 신경 쓸 필요가 없고, 다른 터미널에서 직접 실행할 때는 `PYTHONHASHSEED=0 graphify update .` 로 돌립니다.
+- 두 규칙의 근거: `docs/reference/orchestration.md` 「graphify 운영 근거」.
 
 ## 커밋 & 푸시
 
@@ -140,19 +74,19 @@ Rules:
 
 - Unity Editor 조작(스크립트·씬·프리팹·에셋·머티리얼·테스트 실행 등)은 **`unity-skills` 스킬**로 수행합니다.
 - 이 스킬의 원본은 <https://github.com/Besty0728/Unity-Skills> 입니다. 갱신·재설치 시 이 저장소를 기준으로 합니다.
+- 전역 `unity-mcp-skill`(MCP for Unity)은 이 저장소에서 쓰지 않습니다. MCP 서버가 연결돼 있지 않고, `.claude/settings.json` 의 `deny` 규칙이 호출을 막습니다.
 - 개념 질문만이고 Editor 상태를 건드리지 않으면 스킬 없이 `skills/` 하위 해당 문서만 읽습니다.
 
 ### `unity-agent-plugin` 과의 역할 분담
 
-Unity Technologies 공식 플러그인 `unity@unity-agent-plugin` 이 설치돼 있습니다(사용자 범위, 스킬 31개, `unity:` 접두사). 명령어·에이전트·훅·MCP 서버는 없고 스킬만 제공합니다.
-
-- **Editor 통로는 작업 종류로 나눕니다.** 2026-10-22 실측 비교로 정했습니다. 요령과 근거는 `docs/reference/unity-cli.md` 에 있습니다.
-  - 씬·프리팹·에셋·머티리얼 **수정**은 `unity-skills` REST 로만 합니다. CLI `script eval` 로 바꾼 씬은 dirty 표시와 Undo가 남지 않아 변경이 사라질 수 있습니다.
+- **Editor 통로는 작업 종류로 나눕니다.** 요령과 근거: `docs/reference/unity-cli.md`
+  - 씬·프리팹·에셋·머티리얼 **수정**은 `unity-skills` REST 로만 합니다.
   - EditMode **테스트 실행**은 Unity CLI `unity command test run` 을 먼저 씁니다. 동기 실행이라 잡 폴링이 없습니다.
   - Editor 상태 **조회**는 CLI `unity command script eval` 로 여러 항목을 한 번에 묶어도 됩니다.
   - 에디터 설치·라이선스처럼 두 경로 모두로 할 수 없는 일이 생기면 그때 사용자에게 먼저 알립니다.
-- **`unity:` 스킬은 지식·점검용으로 씁니다.** 해당 영역을 실제로 만지기 직전에 한 개만 읽습니다. 이 프로젝트에서 값이 큰 것은 `unity:optimize-text-mesh-pro`(TMP 동적 아틀라스·한글 폴백), `unity:urp-postprocessing` 과 `unity:validate-urp-render-graph-renderer-feature`(픽셀 엣지 Renderer Feature), `unity:optimize-audio`(`Assets/Audio` 임포트 설정), `unity:physics-3d-collision`(주사위 프리셋 베이킹) 입니다.
+- **`unity:` 스킬은 지식·점검용으로 씁니다.** 해당 영역을 실제로 만지기 직전에 한 개만 읽습니다.
 - 플러그인 스킬 문서는 영어입니다. 그래도 답변은 §0 규칙대로 한국어 존댓말로 씁니다.
+- 플러그인 구성과 이 프로젝트에서 값이 큰 `unity:` 스킬 목록: `docs/reference/orchestration.md`
 
 ## 오케스트레이션
 
@@ -175,14 +109,7 @@ Unity Technologies 공식 플러그인 `unity@unity-agent-plugin` 이 설치돼 
 
 티어 기준: 판단이 필요 없고 양식이 정해진 일(문서 대조, 기록, 커밋)은 haiku, 코드를 읽고 판단하거나 고치는 일은 sonnet, 설계는 주 세션(opus)이 맡습니다. 계획 문서의 구조와 양식은 `docs/plan/process.md` 에 있습니다.
 
-스킬은 `.claude/skills/tessera-*` 에 있습니다. 전부 `model: opus`, `effort: high` 입니다.
-
-| 스킬 | 용도 |
-|---|---|
-| `/tessera-task <ID>` | 작업계획서 태스크 하나를 조사·설계·구현·검증·기록까지 수행 |
-| `/tessera-audit <대상>` | 프로젝트 고유 규칙 렌즈로 병렬 감사 |
-| `/tessera-unity <작업>` | Unity 씬·프리팹 작업을 조사부터 확인까지 수행 |
-| `/tessera-plan-sync` | 계획서 상태와 실제 코드·커밋의 불일치 교정 |
+스킬은 `.claude/skills/tessera-*` 에 있습니다. 전부 `model: opus`, `effort: high` 이고, 용도는 각 스킬의 `description` 이 원본입니다.
 
 ### 규칙
 
@@ -190,7 +117,7 @@ Unity Technologies 공식 플러그인 `unity@unity-agent-plugin` 이 설치돼 
 - 코드 위치·호출 관계·영향 범위 조사는 직접 grep하지 말고 `tessera-scout` 에 위임합니다. 문서 여러 개를 읽고 대조하는 일은 `tessera-reader` 에 위임합니다.
 - **Unity 접근 에이전트(`tessera-verifier`, `tessera-unity-operator`)는 동시에 둘 이상 실행하지 않습니다.** Unity Editor는 REST 서버 하나에 붙은 단일 인스턴스라 동시 조작 시 씬이 깨집니다. 나머지 에이전트는 Unity 도구를 갖지 않아 구조적으로 충돌하지 않습니다.
 - 파일 작업(조사·구현·문서)은 대상 파일 집합이 겹치지 않을 때만 병렬로 최대 3개까지 돌립니다.
-- **작업마다 새로 띄우지 말고, 같은 역할의 살아 있는 에이전트를 먼저 이어 씁니다.** 새로 띄운 에이전트는 이전 호출이 알아낸 것을 처음부터 다시 알아냅니다. 실제로 한 세션에서 `tessera-unity-operator` 를 네 번 따로 띄워 약 255k 토큰을 썼고, 네 번 모두 REST 포트 탐색·모듈 문서 재독·`prefab_set_property` 우회로를 되풀이했습니다. 역할별 방침은 아래 표를 따릅니다.
+- **작업마다 새로 띄우지 말고, 같은 역할의 살아 있는 에이전트를 먼저 이어 씁니다.** 새로 띄운 에이전트는 이전 호출이 알아낸 것을 처음부터 다시 알아냅니다. 역할별 방침은 아래 표를 따릅니다.
 - 이 규칙은 "역할당 인스턴스 하나"가 아닙니다. 위의 병렬 3개 규칙은 그대로 두고, 새로 띄우기 전에 살아 있는 것을 먼저 쓰는 순서만 바꿉니다.
 - 새로 띄운 서브에이전트는 대화 이력을 물려받지 않습니다. 필요한 맥락을 매 호출 프롬프트에 전부 실어야 합니다. 이어 쓰는 에이전트는 자기 컨텍스트를 유지하므로 달라진 부분만 전하면 됩니다. `CLAUDE.md`, `AGENTS.md`, PreToolUse 훅은 두 경우 모두 상속됩니다.
 - **커밋·푸시 실행은 `tessera-committer`(`model: haiku`, `effort: low`)에 위임합니다.** 오케스트레이터가 직접 `git commit`·`git push`를 실행하지 않습니다. 커밋은 메시지 작성과 `git` 호출뿐이라 설계 판단이 없고, 범위와 메시지 방향은 이미 정해져 위임 프롬프트에 실립니다. 이 위임은 허가 규칙을 대체하지 않습니다. 위 「커밋 & 푸시」대로 매번 사용자 허가를 먼저 받고, 실행만 넘깁니다.
@@ -199,26 +126,28 @@ Unity Technologies 공식 플러그인 `unity@unity-agent-plugin` 이 설치돼 
 
 ### 토큰 예산
 
-주 세션은 매 턴 컨텍스트 전체를 다시 읽습니다. 사용량은 **턴 수 × 컨텍스트 크기**입니다. 2026-09 초 로그에서 주 세션이 전체의 83%를 썼습니다. 세션당 약 400턴, 평균 컨텍스트 250k였고 압축은 한 번도 없었습니다.
+근거: `docs/reference/orchestration.md`
 
 - 태스크 하나가 끝나면 `/clear` 로 새로 시작합니다. 이어서 할 맥락은 계획서와 세션 로그에 있습니다.
-- `settings.json` 의 `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` 이 자동 압축 기준을 200k로 낮춥니다. 1M 창에서는 자동 압축이 사실상 일어나지 않습니다.
+- `settings.json` 의 `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` 이 자동 압축 기준을 200k로 낮춥니다.
 - 주 세션은 Unity REST `curl` 과 `unity command` 를 직접 치지 않습니다. 컴파일 대기·폴링·테스트는 `tessera-verifier`, 씬 조작은 `tessera-unity-operator` 가 합니다.
 - 주 세션은 셸 `grep`/`find`/`cat`/`sed` 로 탐색하지 않습니다. 조사는 `tessera-scout` 에 넘기고, 특정 줄 확인만 `Read`(offset/limit)로 합니다.
-- 내장 `Explore`·`Plan` 대신 `tessera-scout` 를 씁니다. 여러 Explore가 같은 파일을 각자 통째로 읽은 사례가 있습니다.
+- 내장 `Explore`·`Plan` 대신 `tessera-scout` 를 씁니다.
 - 설계 판단이 거의 없는 세션(반복 수정, Unity 조작 위주)은 `/model sonnet` 으로 전환합니다.
 
-`.claude/hooks/main-session-guard.py` 가 주 세션의 Unity `curl`·셸 탐색 호출에 위 규칙을 상기시킵니다. 차단하지는 않으며, 서브에이전트(`agent_id` 가 있는 호출)는 건너뜁니다. 소스 트리 탐색만 대상이라 다른 명령의 출력을 `head`/`tail` 로 자르는 경우와 `docs/`·`.claude/`·`*.md` 를 읽는 경우는 조용히 지나갑니다.
+`.claude/hooks/main-session-guard.py` 가 주 세션의 Unity `curl`·셸 탐색 호출에 위 규칙을 상기시킵니다(차단하지 않음, 서브에이전트는 건너뜀). 동작 범위: `docs/reference/orchestration.md` 「주 세션 가드 훅의 동작 범위」.
 
 ### 역할별 재사용 방침
 
-| 에이전트 | 방침 | 근거 |
-|---|---|---|
-| `tessera-unity-operator` | 세션 내 재사용 | REST 포트·엔드포인트 함정·씬 계층 경로가 누적됨. Unity 단일 인스턴스라 어차피 직렬이어서 잃을 병렬성이 없음 |
-| `tessera-verifier` | 세션 내 재사용 | 포트 탐색과 "어떤 실패가 패키지 소속 잡음인지"의 판정 기준이 누적됨 |
-| `tessera-implementer` | 같은 마일스톤 안에서는 재사용, 마일스톤이 바뀌면 새로 | 같은 파일군을 계속 다루는 동안은 맥락이 값이 되고, 범위가 바뀌면 부담이 됨 |
-| `tessera-scout` · `tessera-reader` · `tessera-reviewer` | 매번 새로 | 한 번 결론 낸 감사자는 그 결론을 재주장하는 쪽으로 기울어 독립 판정이라는 존재 이유가 깎임. 쌓이는 컨텍스트가 읽은 파일 본문이라 다음 작업에 재사용 가치가 없음 |
-| `tessera-scribe` · `tessera-committer` | 무관 | 상태가 없음 |
+| 에이전트 | 방침 |
+|---|---|
+| `tessera-unity-operator` | 세션 내 재사용 |
+| `tessera-verifier` | 세션 내 재사용 |
+| `tessera-implementer` | 같은 마일스톤 안에서는 재사용, 마일스톤이 바뀌면 새로 |
+| `tessera-scout` · `tessera-reader` · `tessera-reviewer` | 매번 새로 |
+| `tessera-scribe` · `tessera-committer` | 무관 |
+
+근거: `docs/reference/orchestration.md`
 
 에이전트가 알아낸 **영구 지식**은 재사용으로 해결하지 않습니다. 재사용은 이번 세션만 절약하고 다음 세션에서 같은 비용을 다시 치릅니다. 도구의 함정이나 우회로처럼 다음에도 유효한 발견은 해당 에이전트 정의 파일(`.claude/agents/*.md`)에 적어, 새로 띄운 에이전트도 알고 시작하게 합니다.
 

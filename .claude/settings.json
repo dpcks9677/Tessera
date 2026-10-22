@@ -1,5 +1,9 @@
 {
   "permissions": {
+    "deny": [
+      "Skill(unity-mcp-skill)",
+      "Skill(unity-mcp-orchestrator)"
+    ],
     "ask": [
       "Bash(git commit *)",
       "Bash(git push *)",

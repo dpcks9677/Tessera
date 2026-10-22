@@ -15,6 +15,24 @@
 
 ---
 
+### 2026-10-22 — Claude Opus (ORCH-T6 CLAUDE.md 다이어트와 Unity REST 함정 단일화)
+
+- 작업 ID: `ORCH-T6`
+- 변경:
+  - M2. 신규 `docs/reference/unity-rest.md`(서버 탐색, 호출 형태, `job_wait` 금지, 스크린샷, Play Mode 진입). `tessera-verifier`·`tessera-unity-operator` 정의에서 중복 본문을 지우고 「먼저 이 파일을 읽는다」 한 줄과 역할 고유 절만 남김. `tessera-unity/SKILL.md` 의 해상도·Play Mode 사유 문장을 포인터로 교체. CLAUDE.md §0.1은 「언제 찍는가」 정책만 유지
+  - M3. CLAUDE.md §1~4(Karpathy, 전역 CLAUDE.md 와 중복) 삭제. 신규 `docs/reference/orchestration.md` 에 역할별 재사용 근거, 토큰 예산 서사, `unity-agent-plugin` 역할 분담, 주 세션 가드 훅 동작 범위, graphify 운영 근거를 옮기고 CLAUDE.md 에는 결론과 포인터만 남김. `docs/README.md` reference 표에 두 문서 행 추가
+  - L1. `korean-guard.py` 주석과 CLAUDE.md §0의 caveman 플러그인 재주입 전제 정정(플러그인 미설치 확인)
+  - 게이트 5단계 `CONCERNS`를 사용자가 수락. CLAUDE.md 15,168바이트로 「10KB 안팎」 목표 미달. 더 줄이려면 집행 규칙 절(에이전트 구성 표, 커밋 메시지 형식, 오케스트레이션 규칙 서술)을 옮겨야 해서 이 상태로 수락
+  - 커밋: 미실행(사용자 허가 대기)
+- 검증:
+  - tessera-reader 대조: 규칙 문장 누락 0건. 지적 4건(깨진 참조 2곳, §0 문구 변질 2곳, operator 어미 1곳) 수정. 수정 후 전체 재대조는 하지 않고 지적 문장만 직접 확인
+  - tessera-verifier: 포트 8090, `unity-rest.md` 「서버 탐색」 절차로 정상 동작. `Tessera.Editor.Tests` EditMode 370건 중 통과 370, 실패 0, 스킵 0. C# 변경 없음
+  - CLAUDE.md 측정 20,666 → 16,428(1차) → 15,168바이트(최종)
+- 다음 작업: 하네스 정비와 `ORCH-T6` 변경의 커밋 허가 대기. 같은 작업 트리에 `.claude/settings.json` 의 `unity-mcp-skill` deny 규칙과 CLAUDE.md 한 줄이 섞여 있음. M17 남은 태스크 지목 대기
+  - 후속(기록만, 미수정): (1) `tessera-verifier.md` 3단계 `editor_playmode_inspect` 의 「`target` 이 필수」 표현 오기. unity-skills 2.9.1 은 `target` 을 `UNKNOWN_PARAM` 으로 거부하고 `name`/`path`/`instanceId` 로 호출해야 정상 응답. (2) `docs/README.md` reference 표에 `unity-cli.md` 행 없음(ORCH-T6 이전부터 누락). (3) `unity-rest.md`·`orchestration.md` 머리의 「문서 종류: 작업 규칙 (AI 대상)」 은 `docs/README.md` 의 reference 정의(사람 대상)와 어긋남. `control_manifest.md` 도 같은 머리라 기존 불일치. (4) verifier 정의가 렌더 안 된 Game View 함정을 `unity-rest.md` 포인터로 알게 됨
+
+---
+
 ### 2026-10-22 — Claude Opus (ORCH 게이트 수락 CONCERNS 후속 수정)
 
 - 작업 ID: ORCH 트랙 종료 게이트 수락 잔여 항목 (a)~(d) (태스크 ID 없음)
