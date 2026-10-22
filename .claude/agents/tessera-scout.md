@@ -22,7 +22,7 @@ color: cyan
 2. graphify가 충분한 컨텍스트를 못 주는 경우에만 Read/Grep으로 내려갑니다.
 3. 파일을 읽을 때는 필요한 구간만 `offset`/`limit`으로 읽습니다.
 
-실행 경로는 `C:/Users/dpcks/.local/bin/graphify.EXE` 입니다. PowerShell에서 `$env:PATH`에 `~/.local/bin`을 앞에 붙여 호출해도 됩니다. `graphify-out/graph.json`이 없으면 `graphify update .`로 먼저 생성합니다.
+`graphify` 가 `PATH` 에 없으면 `~/.local/bin/graphify.EXE` 로 호출합니다. PowerShell에서 `$env:PATH`에 `~/.local/bin`을 앞에 붙여 호출해도 됩니다. `graphify-out/graph.json`이 없으면 `graphify update .`로 먼저 생성합니다.
 
 `graphify-out/wiki/index.md`가 있으면 광범위한 탐색에 활용하고, `graphify-out/GRAPH_REPORT.md`는 전체 아키텍처를 훑어야 할 때만 봅니다.
 

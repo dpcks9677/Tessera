@@ -57,7 +57,7 @@ Unity 가 로드해 둔 에셋을 `git stash` 등으로 디스크에서 없애�
 **Unity CLI를 먼저 씁니다.** 시작하기 전에 `docs/reference/unity-cli.md` 를 읽으십시오. 실행 위치, 연결 확인, 출력 형식의 함정이 거기 있습니다. CLI는 동기 실행이라 아래 REST의 잡 폴링과 `job_wait` 함정(`unity-rest.md`)이 해당하지 않습니다. 필터와 판정 기준(아래 「5. 결과 판정」)은 그대로 적용합니다.
 
 ```bash
-cd "C:/Users/dpcks/문서/Tessera" && unity command test run --mode editor --filter Tessera.Editor.Tests --format json --no-banner
+cd "$(git rev-parse --show-toplevel)" && unity command test run --mode editor --filter Tessera.Editor.Tests --format json --no-banner
 ```
 
 `unity status` 에 Tessera가 `ready` 로 안 나오거나, CLI 결과의 테스트 개수가 디스커버리 실측과 어긋나면 아래 REST 경로로 실행합니다.

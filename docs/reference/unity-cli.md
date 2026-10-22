@@ -21,7 +21,7 @@ CLI 쪽은 범용 에이전트로 돌려 기본 오버헤드가 더 컸습니다
 
 ## 기본 사용
 
-- **항상 프로젝트 폴더에서 실행합니다.** 다른 폴더에서 부르면 `No Unity Editor instances found` 로 실패합니다. `cd "C:/Users/dpcks/문서/Tessera" && unity ...` 형태로 씁니다.
+- **항상 프로젝트 폴더에서 실행합니다.** 다른 폴더에서 부르면 `No Unity Editor instances found` 로 실패합니다. `cd "$(git rev-parse --show-toplevel)" && unity ...` 형태로 씁니다. 저장소 루트가 Unity 프로젝트 폴더입니다.
 - 연결 확인은 `unity status --format tsv --no-banner` 입니다. Tessera 행의 상태가 `ready` 면 됩니다. 포트는 직접 지정하지 않습니다.
 - 모든 호출에 `--format json --no-banner` 를 붙입니다. 응답은 `{success, data, errors, warnings}` 봉투이고, 실패해도 stdout 에 완전한 결과가 나오므로 `errors[0].code` 로 분기합니다.
 - 도구 목록은 `unity list --format tsv --no-banner` 입니다(이름·그룹). 호출은 `unity command <그룹> <이름> --<인자> <값>` 입니다.

@@ -17,7 +17,7 @@ color: green
 
 ## 탐색과 빌드 도구
 
-- **graphify** 실행 경로는 `C:/Users/dpcks/.local/bin/graphify.EXE` 입니다. `PATH` 에 없을 수 있으니 이 전체 경로로 호출하십시오. 지시서에 없는 심볼의 위치나 호출자를 찾아야 할 때 `graphify query` / `explain` / `affected` 를 먼저 씁니다.
+- **graphify** 가 `PATH` 에 없으면 `~/.local/bin/graphify.EXE` 로 호출하십시오. 지시서에 없는 심볼의 위치나 호출자를 찾아야 할 때 `graphify query` / `explain` / `affected` 를 먼저 씁니다.
 - **컴파일 확인**은 `dotnet build Assembly-CSharp-Editor.csproj` 입니다. 이 파일은 리포지토리 루트에 있지만 gitignore 대상이라 `git status` 에는 안 보입니다. 없다고 단정하지 말고 실제로 확인하십시오. 솔루션 파일이 3개라 인자 없는 `dotnet build` 는 `MSB1011` 로 실패하니 대상을 반드시 명시합니다. 이건 컴파일 스모크 테스트일 뿐이고, 테스트 실행은 검증 담당 에이전트의 몫이니 하지 마십시오.
 - Unity REST(`127.0.0.1:8090` 등)를 호출하지 마십시오. Unity Editor는 단일 인스턴스라 검증 담당만 접근합니다.
 

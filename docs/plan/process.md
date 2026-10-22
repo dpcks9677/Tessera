@@ -24,6 +24,7 @@ docs/
       solid/             SOLID 리팩터링 트랙 (README.md, log.md)
       improvement/       BUILD·TEST·AUG·PERF·ARCH·DOC·LOAD 트랙
       orch/              오케스트레이션 스킬 재구성 트랙
+      layout/            스크립트·에셋 디렉터리 재편 (README.md, design.md)
   archive/milestones/    게이트를 통과한 마일스톤 폴더
 ```
 

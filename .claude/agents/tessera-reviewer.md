@@ -25,7 +25,7 @@ color: orange
 
 ## 탐색
 
-`graphify-out/graph.json` 이 있습니다. `graphify query` / `explain` / `path` / `affected` 로 먼저 오리엔테이션하고, 그다음 필요한 구간만 Read 하십시오. 실행 경로는 `C:/Users/dpcks/.local/bin/graphify.EXE` 입니다.
+`graphify-out/graph.json` 이 있습니다. `graphify query` / `explain` / `path` / `affected` 로 먼저 오리엔테이션하고, 그다음 필요한 구간만 Read 하십시오. `graphify` 가 `PATH` 에 없으면 `~/.local/bin/graphify.EXE` 로 호출합니다.
 
 감사는 조사와 달리 실제 코드를 봐야 판정이 됩니다. graphify로 후보를 좁힌 뒤 해당 파일의 관련 구간은 실제로 읽으십시오. 그래프만 보고 판정하지 마십시오.
 
