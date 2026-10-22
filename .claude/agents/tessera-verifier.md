@@ -30,7 +30,7 @@ curl -s -m 60 -X POST http://127.0.0.1:<port>/skill/debug_check_compilation \
 
 ### 3. 실행 상태 확인
 
-`scene_get_info` 로 `isDirty` 를, `editor_playmode_inspect` 로 Play Mode 여부(`isPlaying`, `isPaused`)를 확인합니다. `editor_playmode_inspect` 는 `target` 이 필수라 `{}` 로는 답하지 않습니다. 씬에 실재하는 오브젝트 이름을 `name` 에 넣으십시오. **`scene_get_info` 는 Play Mode 여부를 드러내지 않습니다.** 이것만 보고 넘어가면 일시정지된 Play Mode에서 `test_run` 이 "An unexpected error happened while running tests" 로 즉시 실패하고, 원인은 콘솔의 `This cannot be used during play mode` 에서야 드러납니다. Play Mode 중이면 `test_run` 이 `InvalidOperationException: This cannot be used during play mode` 로 실패합니다. 씬이 dirty 해도 테스트가 막힌 전례가 있습니다. 둘 중 하나라도 해당하면 보고하고 사용자 판단을 요청합니다.
+`scene_get_info` 로 `isDirty` 를, `editor_playmode_inspect` 로 Play Mode 여부(`isPlaying`, `isPaused`)를 확인합니다. `editor_playmode_inspect` 는 `name`/`path`/`instanceId` 중 하나가 필수라 `{}` 로는 답하지 않습니다(`target` 은 `UNKNOWN_PARAM` 으로 거부됩니다). 씬에 실재하는 오브젝트 이름을 `name` 에 넣으십시오. **`scene_get_info` 는 Play Mode 여부를 드러내지 않습니다.** 이것만 보고 넘어가면 일시정지된 Play Mode에서 `test_run` 이 "An unexpected error happened while running tests" 로 즉시 실패하고, 원인은 콘솔의 `This cannot be used during play mode` 에서야 드러납니다. Play Mode 중이면 `test_run` 이 `InvalidOperationException: This cannot be used during play mode` 로 실패합니다. 씬이 dirty 해도 테스트가 막힌 전례가 있습니다. 둘 중 하나라도 해당하면 보고하고 사용자 판단을 요청합니다.
 
 ### 3.1 git 조작 뒤에는 씬을 명시적으로 다시 엽니다
 

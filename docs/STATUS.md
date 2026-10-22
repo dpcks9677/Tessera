@@ -5,8 +5,8 @@
 | 항목 | 값 |
 |---|---|
 | 현재 마일스톤 | `M17` 증강 요트 로컬 핫시트 완성 — [`plan/m17/`](plan/m17/README.md) |
-| 진행 중 태스크 | 없음 (사용자 지목 대기). ORCH 트랙 전 태스크 `DONE`(`ORCH-T6` 2026-10-22 완료, 미커밋) — [`plan/tracks/orch/`](plan/tracks/orch/README.md). M17 남은 `TODO`(`M17-T5`, `M17-T6`, `M17-T9`, `M17-T25`)는 사용자 지목 대기 |
-| 다음 행동 | 하네스 정비와 `ORCH-T6` 변경의 커밋 허가 대기. 미커밋 상태이며 `.claude/settings.json`의 `unity-mcp-skill` deny 규칙과 CLAUDE.md `unity-mcp-skill` 한 줄도 같은 작업 트리에 섞여 있음. M17 남은 태스크 지목 대기 |
+| 진행 중 태스크 | 없음 (사용자 지목 대기). ORCH 트랙 전 태스크 `DONE`(`ORCH-T6` 2026-10-22 완료, 커밋 `dae5bde`) — [`plan/tracks/orch/`](plan/tracks/orch/README.md). M17 남은 `TODO`(`M17-T5`, `M17-T6`, `M17-T9`, `M17-T25`)는 사용자 지목 대기 |
+| 다음 행동 | M17 남은 태스크 지목 대기. `dae5bde` 는 아직 푸시하지 않았음 |
 | 마지막 완료 | `ORCH-T6` CLAUDE.md 다이어트와 Unity REST 함정 단일화 (2026-10-22). `ORCH-T5` 조회 스크립트·시작 주입·읽기 가드·QA 도메인 스킬 (2026-10-22). `ORCH-T4` `tessera-gate` 마일스톤 게이트 (2026-10-22). `ORCH-T3` `tessera-adr`와 통제 매니페스트 (2026-10-22). 직전 `M17-T7` 무작위 전체 게임 완주 테스트, `M17-T10`, `M17-T4`·`M17-T12` (2026-09-20) |
 | 차단 요소 | 없음 |
 | 트랙 | SOLID 남은 7개 (전체 12) · improvement 남은 8개 (전체 13) · ORCH 남은 0개 (전체 6) |

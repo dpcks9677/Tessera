@@ -60,6 +60,8 @@
 > 이 문서는 위 시점의 코드에서 확인된 것만 기술합니다. 계획 항목은 상태 표기로 구분합니다.
 ```
 
+AI 에이전트가 작업 중 따르는 규칙·근거 문서(`reference/control_manifest.md`, `unity-rest.md`, `orchestration.md`, `plan/process.md`)는 첫 줄을 `> **문서 종류**: 작업 규칙 (AI 대상)` 으로 답니다. 위 표의 `reference/` 사람 대상 정의에서 벗어나는 의도된 예외입니다.
+
 `archive/` 문서는 `코드 대조 기준` 대신 작성 시점과 보관 사유를 적습니다.
 
 ### 코드 스니펫 출처 표기
@@ -86,6 +88,7 @@
 | [control_manifest.md](reference/control_manifest.md) | 레이어별 해야 할 것·하지 말 것. 구현 지시서에 절 단위로 싣는 원본 |
 | [coding_conventions.md](reference/coding_conventions.md) | C# 규약, Unity 직렬화 예외, 식별자 영문 규칙 |
 | [art_style_guide.md](reference/art_style_guide.md) | 아트 톤앤매너, 조명, 팔레트, 외부 에셋 출처 |
+| [unity-cli.md](reference/unity-cli.md) | Unity CLI 사용 요령과 함정. REST와의 역할 분담 근거, 테스트 실행, `script eval` 조회 |
 | [unity-rest.md](reference/unity-rest.md) | unity-skills REST 공통 요령·함정. 서버 탐색, 호출 형태, `job_wait` 금지, 스크린샷, Play Mode 진입 |
 | [orchestration.md](reference/orchestration.md) | `CLAUDE.md` 오케스트레이션·Unity 자동화 규칙의 근거와 사례 |
 | [art/pixel_edge_filter_plan.md](reference/art/pixel_edge_filter_plan.md) | `M12` 엣지 검출 셰이더 기술 레퍼런스 |
