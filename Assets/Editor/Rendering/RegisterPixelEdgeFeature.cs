@@ -13,12 +13,12 @@ using UnityEngine.Rendering.Universal;
 /// </summary>
 public static class RegisterPixelEdgeFeature
 {
-    private const string ShaderAssetPath = "Assets/Rendering/Shaders/DicePixelEdge.shader";
+    private const string ShaderAssetPath = "Assets/06.Rendering/Shaders/DicePixelEdge.shader";
 
     private static readonly string[] RendererDataPaths =
     {
-        "Assets/Settings/PC_Renderer.asset",
-        "Assets/Settings/Mobile_Renderer.asset"
+        "Assets/07.Settings/PC_Renderer.asset",
+        "Assets/07.Settings/Mobile_Renderer.asset"
     };
 
     [MenuItem("Tools/Tessera/Register Pixel Edge Renderer Feature")]

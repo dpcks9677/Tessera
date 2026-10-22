@@ -17,7 +17,7 @@ namespace Tessera.EditorTools
     /// </summary>
     public static class TabletopSceneMigrator
     {
-        private const string PrefabFolder = "Assets/Prefabs/Tabletop";
+        private const string PrefabFolder = "Assets/03.Prefabs/Tabletop";
         private const string LayoutRootName = "Graphics Layout";
 
         private sealed class PropPose
@@ -123,7 +123,7 @@ namespace Tessera.EditorTools
         [MenuItem("Tessera/Tabletop/Setup Crisp UI Pipeline")]
         public static void SetupCrispUiPipeline()
         {
-            var controller = Object.FindFirstObjectByType<Tessera.Games.AugmentedYacht.AugmentedYachtController>();
+            var controller = Object.FindFirstObjectByType<Tessera.Games.Yacht.Presentation.AugmentedYachtController>();
             if (controller == null)
             {
                 Debug.LogError("[TabletopSceneMigrator] 씬에서 AugmentedYachtController를 찾지 못했습니다.");

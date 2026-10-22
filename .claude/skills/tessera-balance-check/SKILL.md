@@ -31,9 +31,11 @@ effort: high
 분석 문서 머리의 「코드 대조 기준」 커밋 이후 증강 코드가 바뀌었는지 봅니다.
 
 ```
-git log --oneline <기준 커밋>..HEAD -- Assets/Scripts/Games/AugmentedYacht/Logic
-git status --porcelain -- Assets/Scripts/Games/AugmentedYacht/Logic
+git log --oneline <기준 커밋>..HEAD -- Assets/02.Scripts/Games/Yacht/Rules Assets/02.Scripts/Games/Yacht/Augments Assets/Scripts/Games/AugmentedYacht/Logic Assets/Scripts/Games/Yacht
+git status --porcelain -- Assets/02.Scripts/Games/Yacht/Rules Assets/02.Scripts/Games/Yacht/Augments
 ```
+
+`git log` 줄의 `Assets/Scripts/...` 두 경로는 LAYOUT 트랙 이전 위치입니다. `git log` 는 경로 지정 시 이동을 따라가지 않으므로, 이동 전 기준 커밋과 비교할 때 필요합니다.
 
 - 변경이 없으면 기록된 수치를 그대로 씁니다.
 - 변경이 있으면 `tessera-scout` 에 대상 증강 ID 목록과 분석 문서에 적힌 효과(점수, 조건, 사용 한도, 배율)를 넘겨, 현재 코드 값이 같은지 증강별로 확인받습니다. 값이 달라진 증강은 기록된 GEV가 무효이므로 `NOT ASSESSED — 코드 값 변경, 재계산 필요` 입니다.

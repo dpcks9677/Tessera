@@ -245,10 +245,10 @@ $$\text{GEV}_{\text{상단 변형}} = \underbrace{\Delta\mathbb{E}[\text{슬롯 
 
 ### 8.1 코드가 정한 규칙
 
-- `YachtAugmentRuntime.ResetFilledTarget`([YachtAugmentRuntime.cs:1020-1048](../../Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs#L1020-L1048)) — 변형 증강을 얻었을 때 대상 칸이 이미 채워져 있으면 그 칸의 점수·기본 점수·기입 표시를 모두 지우고 총점을 다시 계산한 뒤 `ExtraTurns`를 1 올립니다.
-- 적립된 추가 턴은 12라운드가 끝난 뒤 `IsExtraTurnPhase`에서 소비됩니다([LocalGameAuthority.cs:399-453](../../Assets/Scripts/Games/Yacht/LocalGameAuthority.cs#L399-L453)). 남은 칸이 있어야 소비됩니다.
-- `CanAcquire`([YachtAugmentRuntime.cs:913-937](../../Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs#L913-L937))는 대상 칸이 채워졌는지를 보지 않습니다. 채워진 칸을 노리는 변형도 정상 후보로 올라옵니다.
-- 드래프트는 라운드 **1·6·9** 에만 열립니다(`IsDraftRound`, [YachtAugmentRuntime.cs:851](../../Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs#L851)). 1라운드에는 채워진 칸이 없으므로 이 경로가 열리는 것은 **6라운드와 9라운드 두 번뿐**입니다.
+- `YachtAugmentRuntime.ResetFilledTarget`([YachtAugmentRuntime.cs:1020-1048](../../Assets/02.Scripts/Games/Yacht/Augments/Framework/YachtAugmentRuntime.cs#L1020-L1048)) — 변형 증강을 얻었을 때 대상 칸이 이미 채워져 있으면 그 칸의 점수·기본 점수·기입 표시를 모두 지우고 총점을 다시 계산한 뒤 `ExtraTurns`를 1 올립니다.
+- 적립된 추가 턴은 12라운드가 끝난 뒤 `IsExtraTurnPhase`에서 소비됩니다([LocalGameAuthority.cs:399-453](../../Assets/02.Scripts/Games/Yacht/Rules/LocalGameAuthority.cs#L399-L453)). 남은 칸이 있어야 소비됩니다.
+- `CanAcquire`([YachtAugmentRuntime.cs:913-937](../../Assets/02.Scripts/Games/Yacht/Augments/Framework/YachtAugmentRuntime.cs#L913-L937))는 대상 칸이 채워졌는지를 보지 않습니다. 채워진 칸을 노리는 변형도 정상 후보로 올라옵니다.
+- 드래프트는 라운드 **1·6·9** 에만 열립니다(`IsDraftRound`, [YachtAugmentRuntime.cs:851](../../Assets/02.Scripts/Games/Yacht/Augments/Framework/YachtAugmentRuntime.cs#L851)). 1라운드에는 채워진 칸이 없으므로 이 경로가 열리는 것은 **6라운드와 9라운드 두 번뿐**입니다.
 - `PhaseOneOnly` 인 4종(`reverse-choice`, `2nd-choice`, `blackjack-21`, `fibonacci-numbers`)은 1라운드에만 얻을 수 있어 **이 경로를 영원히 쓰지 못합니다.** 나머지 14종만 해당합니다.
 
 ### 8.2 추가 턴은 공짜 득점 기회가 아닙니다

@@ -14,11 +14,11 @@ namespace Tessera.Editor.Tests
     /// </summary>
     public sealed class RerollCounterBarTests
     {
-        private const string PrefabPath = "Assets/Prefabs/Tabletop/3D Reroll Counter Bar.prefab";
+        private const string PrefabPath = "Assets/03.Prefabs/Tabletop/3D Reroll Counter Bar.prefab";
         private const string GemMatPath =
-            "Assets/Art/Generated/Tabletop/Materials/3D_Reroll_Counter_Bar_Counter_HexGemBaseMat.mat";
+            "Assets/04.Art/Generated/Tabletop/Materials/3D_Reroll_Counter_Bar_Counter_HexGemBaseMat.mat";
         private const string RidgeMatPath =
-            "Assets/Art/Generated/Tabletop/Materials/3D_Reroll_Counter_Bar_Counter_GemRidgeBaseMat.mat";
+            "Assets/04.Art/Generated/Tabletop/Materials/3D_Reroll_Counter_Bar_Counter_GemRidgeBaseMat.mat";
         private const string UnlitShaderName = "Universal Render Pipeline/Unlit";
 
         private GameObject testRoot;

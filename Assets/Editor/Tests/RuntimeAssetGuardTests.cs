@@ -14,7 +14,7 @@ namespace Tessera.Editor.Tests
     public class RuntimeAssetGuardTests
     {
         private const string MaterialPath =
-            "Assets/Art/Generated/Tabletop/Materials/3D_Roll_Cosmic_Cube_Cosmic_Energy_Core_Mat.mat";
+            "Assets/04.Art/Generated/Tabletop/Materials/3D_Roll_Cosmic_Cube_Cosmic_Energy_Core_Mat.mat";
 
         private GameObject target;
 

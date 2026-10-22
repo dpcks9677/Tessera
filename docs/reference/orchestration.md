@@ -52,5 +52,5 @@ Editor 통로를 작업 종류로 나눈 것은 2026-10-22 실측 비교로 정�
 
 - `unity:optimize-text-mesh-pro` (TMP 동적 아틀라스·한글 폴백)
 - `unity:urp-postprocessing` 과 `unity:validate-urp-render-graph-renderer-feature` (픽셀 엣지 Renderer Feature)
-- `unity:optimize-audio` (`Assets/Audio` 임포트 설정)
+- `unity:optimize-audio` (`Assets/05.Audio` 임포트 설정)
 - `unity:physics-3d-collision` (주사위 프리셋 베이킹)

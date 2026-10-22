@@ -3,7 +3,7 @@ using System;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
-using Tessera.Games.AugmentedYacht;
+using Tessera.Games.Yacht.Presentation;
 
 namespace Tessera.EditorTools
 {
@@ -18,8 +18,8 @@ namespace Tessera.EditorTools
         [MenuItem("Tools/Tessera/Generate Parchment & Score Sheet Assets")]
         public static void GenerateAllAssets()
         {
-            string baseDir = Path.Combine(Application.dataPath, "Art", "Generated", "Parchment");
-            string iconsDir = Path.Combine(baseDir, "Icons");
+            string baseDir = Path.Combine(Application.dataPath, "04.Art", "Generated", "Parchment");
+            string iconsDir = Path.Combine(Application.dataPath, "04.Art", "Generated", "Games", "Yacht", "ScoreIcons");
 
             if (!Directory.Exists(baseDir)) Directory.CreateDirectory(baseDir);
             if (!Directory.Exists(iconsDir)) Directory.CreateDirectory(iconsDir);
@@ -376,7 +376,7 @@ namespace Tessera.EditorTools
 
         private static void ConfigureTextureImporters()
         {
-            string[] iconFiles = Directory.GetFiles("Assets/Art/Generated/Parchment/Icons", "*.png");
+            string[] iconFiles = Directory.GetFiles("Assets/04.Art/Generated/Games/Yacht/ScoreIcons", "*.png");
             foreach (string file in iconFiles)
             {
                 string unityPath = file.Replace("\\", "/");
@@ -392,7 +392,7 @@ namespace Tessera.EditorTools
                 }
             }
 
-            string[] parchmentFiles = Directory.GetFiles("Assets/Art/Generated/Parchment", "*.png");
+            string[] parchmentFiles = Directory.GetFiles("Assets/04.Art/Generated/Parchment", "*.png");
             foreach (string file in parchmentFiles)
             {
                 string unityPath = file.Replace("\\", "/");

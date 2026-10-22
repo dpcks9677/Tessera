@@ -64,13 +64,13 @@ flowchart TD
 
 ### 1) 전략 패턴 + 템플릿 메서드 (Strategy + Template Method)
 
-**핵심 파일**: [IAugmentHandler.cs](../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/IAugmentHandler.cs)
+**핵심 파일**: [IAugmentHandler.cs](../../Assets/02.Scripts/Games/Yacht/Augments/Framework/IAugmentHandler.cs)
 
 계약은 단 세 가지입니다. `Apply()` 같은 만능 진입점은 없습니다. 실제 발동 시점은 핸들러가 **추가로 구현한
 훅 인터페이스**가 정하고, 디스패처가 그것을 보고 호출 대상을 고릅니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/IAugmentHandler.cs:9-27
+// Assets/02.Scripts/Games/Yacht/Augments/Framework/IAugmentHandler.cs:9-27
 public interface IAugmentHandler
 {
     string Id { get; }
@@ -96,7 +96,7 @@ public abstract class AugmentHandler : IAugmentHandler
 변하는 한 지점만 `CalculateScore` 추상 훅으로 자식에게 넘깁니다. 이것이 템플릿 메서드입니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Modification/ModificationAugment.cs:8-36
+// Assets/02.Scripts/Games/Yacht/Augments/Modification/ModificationAugment.cs:8-36
 public abstract class ModificationAugment : AugmentHandler, IBeforeScorePreview
 {
     public abstract string DisplayName { get; }
@@ -131,7 +131,7 @@ public abstract class ModificationAugment : AugmentHandler, IBeforeScorePreview
 런타임에 분기를 더하지 않았고, 다른 파일을 고치지도 않았습니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Modification/Evens.cs (전문)
+// Assets/02.Scripts/Games/Yacht/Augments/Modification/Evens.cs (전문)
 /// <summary>Small Straight를 모든 눈이 2·4·6이면 20점인 족보로 바꿉니다.</summary>
 public sealed class Evens : ModificationAugment
 {
@@ -151,14 +151,14 @@ public sealed class Evens : ModificationAugment
 
 ### 2) 훅 & 멀티캐스트 디스패처 (Hook / Multi-cast Dispatcher)
 
-**핵심 파일**: [YachtAugmentDispatcher.cs](../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/YachtAugmentDispatcher.cs)
+**핵심 파일**: [YachtAugmentDispatcher.cs](../../Assets/02.Scripts/Games/Yacht/Augments/Framework/YachtAugmentDispatcher.cs)
 
 인터페이스 분리 원칙(ISP)에 따라 개입 시점별로 세분화된 인터페이스가 있고, 디스패처는 **그 인터페이스를
 구현한 핸들러만** 골라 결정론적 순서로 돌려줍니다. 정렬은 `Order`가 먼저이고, 같으면 카탈로그 등록
 순서입니다. 이 두 단계 덕분에 같은 입력이면 어느 기기에서든 같은 결과가 납니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/YachtAugmentDispatcher.cs:12-22, 40-64
+// Assets/02.Scripts/Games/Yacht/Augments/Framework/YachtAugmentDispatcher.cs:12-22, 40-64
 public static List<T> Collect<T>(YachtGameState state, int playerIndex) where T : class
 {
     var result = new List<T>();
@@ -199,7 +199,7 @@ private static int CompareHandlers<T>(T left, T right) where T : class
 이 `BindAugment` 한 줄이 있어 핸들러가 자기 전용 상태에만 닿을 수 있습니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:603-613
+// Assets/02.Scripts/Games/Yacht/Augments/Framework/YachtAugmentRuntime.cs:603-613
 YachtDiceFacts facts = YachtAugmentScoreEngine.CreateFacts(
     scoringDice, state.AugmentPlayers[playerIndex].OwnedIds);
 Dictionary<ScoreCategory, int> scores = YachtAugmentScoreEngine.CalculateBaseScores(facts);
@@ -215,14 +215,14 @@ return scores;
 
 ### 3) 상태 격리 (Isolated State)
 
-**핵심 파일**: [AugmentStateStore.cs](../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/AugmentStateStore.cs), [IAugmentState.cs](../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/IAugmentState.cs)
+**핵심 파일**: [AugmentStateStore.cs](../../Assets/02.Scripts/Games/Yacht/Augments/Framework/AugmentStateStore.cs), [IAugmentState.cs](../../Assets/02.Scripts/Games/Yacht/Augments/Framework/IAugmentState.cs)
 
 퀘스트 누적 카운트, 스킬 사용 여부, 주사위 성장 단계 같은 가변 상태를 권위 데이터 구조
 (`YachtGameState`)에 계속 덧붙이지 않고, 증강별 전용 DTO로 격리해 보관합니다.
 타입이 어긋나면 조용히 넘어가지 않고 **예외로 터뜨립니다.**
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/AugmentStateStore.cs:11-40
+// Assets/02.Scripts/Games/Yacht/Augments/Framework/AugmentStateStore.cs:11-40
 public sealed class AugmentStateStore
 {
     private string[] ids = Array.Empty<string>();
@@ -265,7 +265,7 @@ public sealed class AugmentStateStore
 단계를 통과합니다. 4장의 수식이 그대로 코드에 있습니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:639-673
+// Assets/02.Scripts/Games/Yacht/Augments/Framework/YachtAugmentRuntime.cs:639-673
 for (int i = 0; i < result.Length; i++)
 {
     ScoreCategory category = YachtScoreCalculator.ScorableCategories[i];
@@ -308,14 +308,14 @@ for (int i = 0; i < result.Length; i++)
 
 ### 5) 레지스트리 (Registry)
 
-**핵심 파일**: [YachtAugmentCatalog.cs](../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/YachtAugmentCatalog.cs)
+**핵심 파일**: [YachtAugmentCatalog.cs](../../Assets/02.Scripts/Games/Yacht/Augments/Framework/YachtAugmentCatalog.cs)
 
 리플렉션 런타임 검색은 Unity IL2CPP / AOT 빌드에서 코드 스트리핑과 성능 저하를 부릅니다.
 그래서 46개 핸들러를 **정적 배열에 손으로 등록**합니다. 등록 순서가 곧 드래프트 후보와 정의 목록의
 노출 순서이며, 디스패처 정렬의 2차 기준이기도 합니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/YachtAugmentCatalog.cs:11-20, 68-84
+// Assets/02.Scripts/Games/Yacht/Augments/Framework/YachtAugmentCatalog.cs:11-20, 68-84
 public static class YachtAugmentCatalog
 {
     private static readonly IAugmentHandler[] Handlers =
@@ -353,13 +353,13 @@ public static class YachtAugmentCatalog
 
 ### 6) 컨텍스트 파사드 (Context Object)
 
-**핵심 파일**: [AugmentContexts.cs](../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/AugmentContexts.cs)
+**핵심 파일**: [AugmentContexts.cs](../../Assets/02.Scripts/Games/Yacht/Augments/Framework/AugmentContexts.cs)
 
 핸들러는 `YachtGameState`를 직접 만지지 않습니다. 할 수 있는 일이 컨텍스트가 열어 준 몇 개의 메서드로
 좁혀져 있고, 그것이 곧 증강이 게임에 개입할 수 있는 범위의 정의입니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/AugmentContexts.cs:52-74
+// Assets/02.Scripts/Games/Yacht/Augments/Framework/AugmentContexts.cs:52-74
 /// <summary>현재 증강의 전용 상태를 가져옵니다. 없으면 만들어집니다.</summary>
 public T State<T>() where T : class, IAugmentState, new() => Player.States.GetOrCreate<T>(AugmentId);
 
@@ -390,14 +390,14 @@ public void AddBonus(int points, string message)
 
 ### 7) 커맨드 + 가드 (Command with Guard)
 
-**핵심 파일**: [IAugmentHandler.cs](../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/IAugmentHandler.cs) `:98-110`
+**핵심 파일**: [IAugmentHandler.cs](../../Assets/02.Scripts/Games/Yacht/Augments/Framework/IAugmentHandler.cs) `:98-110`
 
 플레이어가 버튼을 눌러 쓰는 수동 행동 증강은 **검증(`CanUse`)과 실행(`Use`)이 분리**돼 있습니다.
 UI는 `CanUse`만 불러 버튼 활성화를 정하고, 권위는 실행 직전에 같은 함수를 다시 부릅니다.
 거절 사유가 문자열이 아니라 `YachtCommandErrorCode` 열거형이라 네트워크 너머로도 그대로 옮겨집니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Enhance/TableFlip.cs:38-69
+// Assets/02.Scripts/Games/Yacht/Augments/ManualAction/TableFlip.cs:38-69
 public bool CanUse(AugmentActionContext context, out YachtCommandErrorCode code, out string message)
 {
     code = YachtCommandErrorCode.None;
@@ -436,7 +436,7 @@ public void Use(AugmentActionContext context)
 "직전에 0점을 냈으면 이번 득점에 1.5배"라는 규칙을 두 훅에 나눠 담습니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Enhance/Momentum.cs:39-65
+// Assets/02.Scripts/Games/Yacht/Augments/Enhance/Momentum.cs:39-65
 public bool TryGetEnhancement(AugmentQueryContext context, ScoreCategory category, int baseScore, out float multiplier, out string enhancementSource)
 {
     var state = GetOrSync(context);
@@ -470,7 +470,7 @@ public void AfterScoreCommit(AugmentCommitContext context)
 함께 구현합니다. 한 증강이 여러 훅을 겸하는 표준형입니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Enhance/GoldenDie.cs:6-27
+// Assets/02.Scripts/Games/Yacht/Augments/Enhance/GoldenDie.cs:6-27
 public sealed class GoldenDie : EnhanceAugment, IDiceLayoutProvider, IDiceBonusProvider
 {
     public override string Id => YachtAugmentRuntime.GoldenDieId;
@@ -498,13 +498,13 @@ public sealed class GoldenDie : EnhanceAugment, IDiceLayoutProvider, IDiceBonusP
 
 ### 8) 프로토타입 (Prototype)
 
-**핵심 파일**: [IAugmentState.cs](../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/IAugmentState.cs)
+**핵심 파일**: [IAugmentState.cs](../../Assets/02.Scripts/Games/Yacht/Augments/Framework/IAugmentState.cs)
 
 상태와 정의는 전부 `Clone()` 계약을 집니다. 권위가 상태 스냅샷을 뷰에 넘길 때 참조가 아니라 복제본을
 주기 때문에, 프레젠테이션 계층이 실수로 권위 상태를 건드릴 수 없습니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/NoTimeToWaste.cs:5-31
+// Assets/02.Scripts/Games/Yacht/Augments/Quest/NoTimeToWaste.cs:5-31
 [Serializable]
 public sealed class NoTimeToWasteState : IAugmentState, IAugmentProgressText
 {
@@ -613,7 +613,7 @@ sequenceDiagram
 > 먼저 기입한 쪽의 점수가 비어 판정이 불가능해집니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:713-723
+// Assets/02.Scripts/Games/Yacht/Augments/Framework/YachtAugmentRuntime.cs:713-723
 // 라운드 점수 기록은 증강 보유와 무관한 코어 상태다. 결투를 라운드 도중에 획득하는
 // 경로(드래프트 라운드의 턴 전환)가 있어 보유 여부로 게이팅하면 먼저 기입한 쪽의
 // 점수가 비어 판정이 불가능해진다. 그래서 기록은 항상 하고 판정만 훅에 맡긴다.
@@ -679,7 +679,7 @@ $$\text{FinalScore} = \Big(\lfloor \text{BaseScore} \times \text{EnhancementMult
 | 라운드 제한 | 정의의 `PhaseOneOnly` 플래그 | `YachtAugmentRuntime.cs:900` |
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:896-920
+// Assets/02.Scripts/Games/Yacht/Augments/Framework/YachtAugmentRuntime.cs:896-920
 private bool CanAcquire(YachtGameState state, int playerIndex, string augmentId)
 {
     YachtAugmentDefinition definition = FindDefinition(augmentId);
@@ -708,11 +708,11 @@ private bool CanAcquire(YachtGameState state, int playerIndex, string augmentId)
 ```
 
 충돌 선언은 한쪽만 적어도 됩니다. `HasConflict`가 후보와 보유분을 양방향으로 대조하기 때문입니다.
-실제로 `8-sided`와 `table-flip`의 충돌은 [TableFlip.cs](../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Enhance/TableFlip.cs)
+실제로 `8-sided`와 `table-flip`의 충돌은 [TableFlip.cs](../../Assets/02.Scripts/Games/Yacht/Augments/ManualAction/TableFlip.cs)
 한쪽에만 `Conflicts => new[] { YachtAugmentRuntime.OctahedronId }`로 적혀 있습니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:922-934
+// Assets/02.Scripts/Games/Yacht/Augments/Framework/YachtAugmentRuntime.cs:922-934
 private bool HasConflict(YachtAugmentPlayerState player, string candidateId)
 {
     YachtAugmentDefinition candidate = FindDefinition(candidateId);
@@ -732,7 +732,7 @@ private bool HasConflict(YachtAugmentPlayerState player, string candidateId)
 주사위가 5개뿐이므로, 주사위를 요구하는 증강을 무한히 쌓을 수 없습니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:936-941
+// Assets/02.Scripts/Games/Yacht/Augments/Framework/YachtAugmentRuntime.cs:936-941
 private static int RequiredDiceSlots(string augmentId)
 {
     if (YachtAugmentCatalog.Find(augmentId) is IDiceLayoutProvider provider)
@@ -757,24 +757,24 @@ private static int RequiredDiceSlots(string augmentId)
 
 | No | ID | 이름 | 대상 카테고리 | 치환 조건 및 효과 | 발동 훅 | C# 구현 클래스 | 상태 |
 |:---:|---|---|---|---|---|---|:---:|
-| **1** | `lucky-sevens` | 럭키 세븐 | `Aces` | 눈금 합이 7, 17, 27이면 15점 (상단 합산 포함) | `IBeforeScorePreview` | `LuckySevens` | `DONE` |
-| **2** | `perfect-squares` | 퍼펙트 스퀘어 | `Aces` | 눈금 합이 9, 16, 25이면 12점 (상단 합산 포함) | `IBeforeScorePreview` | `PerfectSquares` | `DONE` |
-| **9** | `gambler` | 갬블러 | `Choice` | 눈금 합이 24 이상이면 합계 + 7점 | `IBeforeScorePreview` | `Gambler` | `DONE` |
-| **10** | `three-of-a-kind` | 쓰리 오브 어 카인드 | `FourOfAKind` | 같은 눈 3개 이상이면 모든 주사위 눈금 합계 | `IBeforeScorePreview` | `ThreeOfAKind` | `DONE` |
-| **12** | `tiny-house` | 타이니 하우스 | `FullHouse` | 5, 6, 7 없이(1~4로만) 풀하우스 달성 시 28점 | `IBeforeScorePreview` | `TinyHouse` | `DONE` |
-| **13** | `two-pair` | 투 페어 | `FullHouse` | 서로 다른 2쌍 또는 4개 이상 동일 눈금 시 15점 | `IBeforeScorePreview` | `TwoPair` | `DONE` |
-| **14** | `head-and-tail` | 머리와 몸통 | `FullHouse` | 1페어 + 연속된 3개 눈금 조합 시 합계 + 10점 | `IBeforeScorePreview` | `HeadAndTail` | `DONE` |
-| **15** | `evens` | 에번스 | `SmallStraight` | 모든 주사위가 짝수(2, 4, 6)이면 20점 | `IBeforeScorePreview` | `Evens` | `DONE` |
-| **16** | `odds` | 오즈 | `SmallStraight` | 모든 주사위가 홀수(1, 3, 5, 7)이면 20점 | `IBeforeScorePreview` | `Odds` | `DONE` |
-| **17** | `double-large-straight` | 더블 라지 스트레이트 | `SmallStraight` | 스몰 스트레이트를 라지 스트레이트(30점)로 치환, 상단 보너스 기준을 60으로 완화 | `IBeforeScorePreview`<br/>`IOnAugmentSelected` | `DoubleLargeStraight` | `DONE` |
-| **18** | `prime-collection` | 프라임 컬렉션 | `LargeStraight` | 모든 눈이 소수(2,3,5,7)이고 2,3,5가 모두 포함되면 35점 | `IBeforeScorePreview` | `PrimeCollection` | `DONE` |
-| **19** | `duplex-house` | 땅콩주택 | `LargeStraight` | 차이가 정확히 1인 두 숫자로 풀하우스 달성 시 35점 (예: 222-33) | `IBeforeScorePreview` | `DuplexHouse` | `DONE` |
-| **20** | `mountain` | 마운틴 | `LargeStraight` | 정확히 2, 3, 4, 5, 6 조합이면 40점 | `IBeforeScorePreview` | `Mountain` | `DONE` |
-| **21** | `high-dice` | 하이 다이스 | `LargeStraight` | 모든 눈이 4, 5, 6, 7이고 합계가 26 이상이면 35점 | `IBeforeScorePreview` | `HighDice` | `DONE` |
-| **22** | `2nd-choice` | 두 번째 초이스 | `Yacht` | 요트 칸을 주사위 눈금 합계의 절반(내림)으로 기입 | `IBeforeScorePreview` | `SecondChoice` | `DONE` |
-| **23** | `fibonacci-numbers` | 피보나치 넘버즈 | `Yacht` | 정렬된 눈금이 정확히 [1, 1, 2, 3, 5]이면 25점 | `IBeforeScorePreview` | `FibonacciNumbers` | `DONE` |
-| **24** | `reverse-choice` | 리버스 초이스 | `Yacht` | 요트 칸을 `30 - 합계`로 기입 (음수 점수 허용 및 총점 차감) | `IBeforeScorePreview` | `ReverseChoice` | `DONE` |
-| **26** | `blackjack-21` | 블랙잭 21 | `Yacht` | 주사위 5개의 눈금 합이 정확히 21이면 21점 | `IBeforeScorePreview` | `Blackjack21` | `DONE` |
+| **1** | `lucky-sevens` | 럭키 세븐 | `Aces` | 눈금 합이 7, 17, 27이면 15점 (상단 합산 포함) | `IBeforeScorePreview` | [`LuckySevens`](../../Assets/02.Scripts/Games/Yacht/Augments/Modification/LuckySevens.cs) | `DONE` |
+| **2** | `perfect-squares` | 퍼펙트 스퀘어 | `Aces` | 눈금 합이 9, 16, 25이면 12점 (상단 합산 포함) | `IBeforeScorePreview` | [`PerfectSquares`](../../Assets/02.Scripts/Games/Yacht/Augments/Modification/PerfectSquares.cs) | `DONE` |
+| **9** | `gambler` | 갬블러 | `Choice` | 눈금 합이 24 이상이면 합계 + 7점 | `IBeforeScorePreview` | [`Gambler`](../../Assets/02.Scripts/Games/Yacht/Augments/Modification/Gambler.cs) | `DONE` |
+| **10** | `three-of-a-kind` | 쓰리 오브 어 카인드 | `FourOfAKind` | 같은 눈 3개 이상이면 모든 주사위 눈금 합계 | `IBeforeScorePreview` | [`ThreeOfAKind`](../../Assets/02.Scripts/Games/Yacht/Augments/Modification/ThreeOfAKind.cs) | `DONE` |
+| **12** | `tiny-house` | 타이니 하우스 | `FullHouse` | 5, 6, 7 없이(1~4로만) 풀하우스 달성 시 28점 | `IBeforeScorePreview` | [`TinyHouse`](../../Assets/02.Scripts/Games/Yacht/Augments/Modification/TinyHouse.cs) | `DONE` |
+| **13** | `two-pair` | 투 페어 | `FullHouse` | 서로 다른 2쌍 또는 4개 이상 동일 눈금 시 15점 | `IBeforeScorePreview` | [`TwoPair`](../../Assets/02.Scripts/Games/Yacht/Augments/Modification/TwoPair.cs) | `DONE` |
+| **14** | `head-and-tail` | 머리와 몸통 | `FullHouse` | 1페어 + 연속된 3개 눈금 조합 시 합계 + 10점 | `IBeforeScorePreview` | [`HeadAndTail`](../../Assets/02.Scripts/Games/Yacht/Augments/Modification/HeadAndTail.cs) | `DONE` |
+| **15** | `evens` | 에번스 | `SmallStraight` | 모든 주사위가 짝수(2, 4, 6)이면 20점 | `IBeforeScorePreview` | [`Evens`](../../Assets/02.Scripts/Games/Yacht/Augments/Modification/Evens.cs) | `DONE` |
+| **16** | `odds` | 오즈 | `SmallStraight` | 모든 주사위가 홀수(1, 3, 5, 7)이면 20점 | `IBeforeScorePreview` | [`Odds`](../../Assets/02.Scripts/Games/Yacht/Augments/Modification/Odds.cs) | `DONE` |
+| **17** | `double-large-straight` | 더블 라지 스트레이트 | `SmallStraight` | 스몰 스트레이트를 라지 스트레이트(30점)로 치환, 상단 보너스 기준을 60으로 완화 | `IBeforeScorePreview`<br/>`IOnAugmentSelected` | [`DoubleLargeStraight`](../../Assets/02.Scripts/Games/Yacht/Augments/Modification/DoubleLargeStraight.cs) | `DONE` |
+| **18** | `prime-collection` | 프라임 컬렉션 | `LargeStraight` | 모든 눈이 소수(2,3,5,7)이고 2,3,5가 모두 포함되면 35점 | `IBeforeScorePreview` | [`PrimeCollection`](../../Assets/02.Scripts/Games/Yacht/Augments/Modification/PrimeCollection.cs) | `DONE` |
+| **19** | `duplex-house` | 땅콩주택 | `LargeStraight` | 차이가 정확히 1인 두 숫자로 풀하우스 달성 시 35점 (예: 222-33) | `IBeforeScorePreview` | [`DuplexHouse`](../../Assets/02.Scripts/Games/Yacht/Augments/Modification/DuplexHouse.cs) | `DONE` |
+| **20** | `mountain` | 마운틴 | `LargeStraight` | 정확히 2, 3, 4, 5, 6 조합이면 40점 | `IBeforeScorePreview` | [`Mountain`](../../Assets/02.Scripts/Games/Yacht/Augments/Modification/Mountain.cs) | `DONE` |
+| **21** | `high-dice` | 하이 다이스 | `LargeStraight` | 모든 눈이 4, 5, 6, 7이고 합계가 26 이상이면 35점 | `IBeforeScorePreview` | [`HighDice`](../../Assets/02.Scripts/Games/Yacht/Augments/Modification/HighDice.cs) | `DONE` |
+| **22** | `2nd-choice` | 두 번째 초이스 | `Yacht` | 요트 칸을 주사위 눈금 합계의 절반(내림)으로 기입 | `IBeforeScorePreview` | [`SecondChoice`](../../Assets/02.Scripts/Games/Yacht/Augments/Modification/SecondChoice.cs) | `DONE` |
+| **23** | `fibonacci-numbers` | 피보나치 넘버즈 | `Yacht` | 정렬된 눈금이 정확히 [1, 1, 2, 3, 5]이면 25점 | `IBeforeScorePreview` | [`FibonacciNumbers`](../../Assets/02.Scripts/Games/Yacht/Augments/Modification/FibonacciNumbers.cs) | `DONE` |
+| **24** | `reverse-choice` | 리버스 초이스 | `Yacht` | 요트 칸을 `30 - 합계`로 기입 (음수 점수 허용 및 총점 차감) | `IBeforeScorePreview` | [`ReverseChoice`](../../Assets/02.Scripts/Games/Yacht/Augments/Modification/ReverseChoice.cs) | `DONE` |
+| **26** | `blackjack-21` | 블랙잭 21 | `Yacht` | 주사위 5개의 눈금 합이 정확히 21이면 21점 | `IBeforeScorePreview` | [`Blackjack21`](../../Assets/02.Scripts/Games/Yacht/Augments/Modification/Blackjack21.cs) | `DONE` |
 
 ---
 
@@ -783,17 +783,17 @@ private static int RequiredDiceSlots(string augmentId)
 
 | No | ID | 이름 | 유형 | 효과 설명 | 발동 훅 | C# 구현 클래스 | 상태 |
 |:---:|---|---|---|---|---|---|:---:|
-| **25** | `yacht-bank` | 요트 뱅크 | 점수 저축 | 3턴 동안 점수 확정 시 킵 존 가장 왼쪽 주사위를 제외하고 저축(최대 15점), 이후 턴 시작 시 일시 지급 | `IScoringDiceFilter`<br/>`IOnTurnStarted`<br/>`IAfterScoreCommit` | `YachtBank` | `DONE` |
-| **37** | `weighted-dice` | 묵직한 주사위 | 특수 주사위 | 주사위 1개의 면을 [4, 4, 5, 5, 6, 6]으로 영구 교체 | `IDiceLayoutProvider` | `WeightedDice` | `DONE` |
-| **38** | `momentum` | 추진력 | 배율 강화 | 첫 족보 0점(스크래치) 발생 시 발동 대기, 다음 턴 양수 기본 족보 점수를 1.5배로 강화 | `IScoreEnhancementModifier`<br/>`IAfterScoreCommit` | `Momentum` | `DONE` |
-| **39** | `golden-die` | 황금 주사위 | 특수 주사위 | 황금 주사위 눈이 1, 2, 3이면 각각 +2점 보너스 (상단 합산 포함) | `IDiceLayoutProvider`<br/>`IDiceBonusProvider` | `GoldenDie` | `DONE` |
-| **41** | `8-sided` | 8면 주사위 | 특수 주사위 | 주사위 2개를 옥타헤드론 [1, 2, 3, 4, 4, 5, 5, 6] 면으로 교체 | `IDiceLayoutProvider` | `Octahedron` | `DONE` |
-| **43** | `promotion-die` | 프로모션 주사위 | 성장 주사위 | 눈 1로 시작해 내 턴마다 눈이 +1 성장, 눈 6 상태로 기입 시 일반 주사위로 복귀 | `IDiceLayoutProvider`<br/>`IOnTurnStarted`<br/>`IAfterScoreCommit` | `PromotionDie` | `DONE` |
-| **44** | `couple-dice` | 커플 주사위 | 특수 주사위 | 커플 주사위 2개의 눈이 서로 같으면 점수에 +3점 보너스 | `IDiceLayoutProvider`<br/>`IDiceBonusProvider` | `CoupleDice` | `DONE` |
-| **45** | `sevens-dice` | 세븐스 다이스 | 특수 주사위 | 주사위 2개를 [2, 3, 4, 5, 6, 7] 면으로 교체. 7을 족보 정상 숫자로 인정하고 4567, 34567 스트레이트 허용 | `IDiceLayoutProvider`<br/>`IBeforeScorePreview` | `SevensDice` | `DONE` |
-| **49** | `duel` | 결투 | 대전 보너스 | 획득 즉시 해당 라운드 양쪽 턴 점수를 비교하여 승리 시 +10점, 동점 시 +5점 지급 | `IAfterScoreCommit` | `Duel` | `DONE` |
-| **51** | `random-box` | 랜덤 박스 | 증강 교체 | 드래프트 후 비퀘스트 무작위 증강으로 즉시 교체되며 상단 보너스 기준을 58로 완화 | `IOnAugmentSelected` | `RandomBox` | `DONE` |
-| **55** | `piggy-bank` | 저금통 | 자원 보너스 | 턴 종료 시 남은 리롤마다 3점씩 저축, 12점 도달 시 +12점 보너스 지급 후 초기화 | `IOnTurnEnded` | `PiggyBank` | `DONE` |
+| **25** | `yacht-bank` | 요트 뱅크 | 점수 저축 | 3턴 동안 점수 확정 시 킵 존 가장 왼쪽 주사위를 제외하고 저축(최대 15점), 이후 턴 시작 시 일시 지급 | `IScoringDiceFilter`<br/>`IOnTurnStarted`<br/>`IAfterScoreCommit` | [`YachtBank`](../../Assets/02.Scripts/Games/Yacht/Augments/Enhance/YachtBank.cs) | `DONE` |
+| **37** | `weighted-dice` | 묵직한 주사위 | 특수 주사위 | 주사위 1개의 면을 [4, 4, 5, 5, 6, 6]으로 영구 교체 | `IDiceLayoutProvider` | [`WeightedDice`](../../Assets/02.Scripts/Games/Yacht/Augments/Enhance/WeightedDice.cs) | `DONE` |
+| **38** | `momentum` | 추진력 | 배율 강화 | 첫 족보 0점(스크래치) 발생 시 발동 대기, 다음 턴 양수 기본 족보 점수를 1.5배로 강화 | `IScoreEnhancementModifier`<br/>`IAfterScoreCommit` | [`Momentum`](../../Assets/02.Scripts/Games/Yacht/Augments/Enhance/Momentum.cs) | `DONE` |
+| **39** | `golden-die` | 황금 주사위 | 특수 주사위 | 황금 주사위 눈이 1, 2, 3이면 각각 +2점 보너스 (상단 합산 포함) | `IDiceLayoutProvider`<br/>`IDiceBonusProvider` | [`GoldenDie`](../../Assets/02.Scripts/Games/Yacht/Augments/Enhance/GoldenDie.cs) | `DONE` |
+| **41** | `8-sided` | 8면 주사위 | 특수 주사위 | 주사위 2개를 옥타헤드론 [1, 2, 3, 4, 4, 5, 5, 6] 면으로 교체 | `IDiceLayoutProvider` | [`Octahedron`](../../Assets/02.Scripts/Games/Yacht/Augments/Enhance/Octahedron.cs) | `DONE` |
+| **43** | `promotion-die` | 프로모션 주사위 | 성장 주사위 | 눈 1로 시작해 내 턴마다 눈이 +1 성장, 눈 6 상태로 기입 시 일반 주사위로 복귀 | `IDiceLayoutProvider`<br/>`IOnTurnStarted`<br/>`IAfterScoreCommit` | [`PromotionDie`](../../Assets/02.Scripts/Games/Yacht/Augments/Enhance/PromotionDie.cs) | `DONE` |
+| **44** | `couple-dice` | 커플 주사위 | 특수 주사위 | 커플 주사위 2개의 눈이 서로 같으면 점수에 +3점 보너스 | `IDiceLayoutProvider`<br/>`IDiceBonusProvider` | [`CoupleDice`](../../Assets/02.Scripts/Games/Yacht/Augments/Enhance/CoupleDice.cs) | `DONE` |
+| **45** | `sevens-dice` | 세븐스 다이스 | 특수 주사위 | 주사위 2개를 [2, 3, 4, 5, 6, 7] 면으로 교체. 7을 족보 정상 숫자로 인정하고 4567, 34567 스트레이트 허용 | `IDiceLayoutProvider`<br/>`IBeforeScorePreview` | [`SevensDice`](../../Assets/02.Scripts/Games/Yacht/Augments/Enhance/SevensDice.cs) | `DONE` |
+| **49** | `duel` | 결투 | 대전 보너스 | 획득 즉시 해당 라운드 양쪽 턴 점수를 비교하여 승리 시 +10점, 동점 시 +5점 지급 | `IAfterScoreCommit` | [`Duel`](../../Assets/02.Scripts/Games/Yacht/Augments/Enhance/Duel.cs) | `DONE` |
+| **51** | `random-box` | 랜덤 박스 | 증강 교체 | 드래프트 후 비퀘스트 무작위 증강으로 즉시 교체되며 상단 보너스 기준을 58로 완화 | `IOnAugmentSelected` | [`RandomBox`](../../Assets/02.Scripts/Games/Yacht/Augments/Enhance/RandomBox.cs) | `DONE` |
+| **55** | `piggy-bank` | 저금통 | 자원 보너스 | 턴 종료 시 남은 리롤마다 3점씩 저축, 12점 도달 시 +12점 보너스 지급 후 초기화 | `IOnTurnEnded` | [`PiggyBank`](../../Assets/02.Scripts/Games/Yacht/Augments/Enhance/PiggyBank.cs) | `DONE` |
 
 ---
 
@@ -804,17 +804,17 @@ private static int RequiredDiceSlots(string augmentId)
 
 | No | ID | 이름 | 과제 조건 | 보상 | C# 구현 클래스 | 전용 상태 구조체 | 상태 |
 |:---:|---|---|---|:---:|---|---|:---:|
-| **27** | `fast-straight` | 재빠른 스트레이트 | 8라운드 이내에 Small 및 Large Straight 모두 기입 | +15점 | `FastStraight` | `FastStraightState` | `DONE` |
-| **28** | `no-time-to-waste` | 낭비할 시간 없다 | 연속 3턴 동안 리롤 없이 첫 굴림 후 바로 기입 | +15점 | `NoTimeToWaste` | `NoTimeToWasteState` | `DONE` |
-| **29** | `step-by-step` | 차근차근 | Aces부터 Sixes까지 순서대로 상단 기입 완료 | 상단 기준 58 완화 및 보너스 +55점 | `StepByStep` | `StepByStepState` | `DONE` |
-| **31** | `holdout` | 알박기 | 9번째 턴 이후에 Full House 기입 | +7점 | `Holdout` | `HoldoutState` | `DONE` |
-| **32** | `cautious-straight` | 신중한 스트레이트 | Small Straight 기입 후 Large Straight 순서대로 기입 (역순 시 실패) | +7점 | `CautiousStraight` | `CautiousStraightState` | `DONE` |
-| **33** | `every-little` | 티끌 모아 태산 | 득점에 사용한 눈금 '1'을 누적 7개 이상 달성 | +15점 | `EveryLittleCounts` | `EveryLittleCountsState` | `DONE` |
-| **34** | `copycat` | 카피캣 | 상대가 기입한 족보를 3회 따라 기입하거나, 하단에서 동일 점수 달성 | +10점 | `Copycat` | `CopycatState` | `DONE` |
-| **35** | `doubling` | 더블링 | 스크래치를 제외하고 동일한 점수로 2회 기입 | +10점 | `Doubling` | `DoublingState` | `DONE` |
-| **36** | `nozdormu` | 노즈도르무 | 턴 제한시간 15초 페널티를 감수하고 목표 라운드 도달 | +9점 | `Nozdormu` | `NozdormuState` | `DONE` |
-| **48** | `bounty-hunter` | 현상금 사냥꾼 | 매 턴 무작위로 지정되는 빈 족보 타깃을 3회 기입 | 최대 15점 (스크래치당 -3점 감산) | `BountyHunter` | `BountyHunterState` | `DONE` |
-| **52** | `prophet` | 예지자 | 3턴 동안 제시된 숫자 3개(1~30) 중 하나와 일치하는 점수 기입 | 일치할 때마다 +7점 | `Prophet` | `ProphetState` | `DONE` |
+| **27** | `fast-straight` | 재빠른 스트레이트 | 8라운드 이내에 Small 및 Large Straight 모두 기입 | +15점 | [`FastStraight`](../../Assets/02.Scripts/Games/Yacht/Augments/Quest/FastStraight.cs) | `FastStraightState` | `DONE` |
+| **28** | `no-time-to-waste` | 낭비할 시간 없다 | 연속 3턴 동안 리롤 없이 첫 굴림 후 바로 기입 | +15점 | [`NoTimeToWaste`](../../Assets/02.Scripts/Games/Yacht/Augments/Quest/NoTimeToWaste.cs) | `NoTimeToWasteState` | `DONE` |
+| **29** | `step-by-step` | 차근차근 | Aces부터 Sixes까지 순서대로 상단 기입 완료 | 상단 기준 58 완화 및 보너스 +55점 | [`StepByStep`](../../Assets/02.Scripts/Games/Yacht/Augments/Quest/StepByStep.cs) | `StepByStepState` | `DONE` |
+| **31** | `holdout` | 알박기 | 9번째 턴 이후에 Full House 기입 | +7점 | [`Holdout`](../../Assets/02.Scripts/Games/Yacht/Augments/Quest/Holdout.cs) | `HoldoutState` | `DONE` |
+| **32** | `cautious-straight` | 신중한 스트레이트 | Small Straight 기입 후 Large Straight 순서대로 기입 (역순 시 실패) | +7점 | [`CautiousStraight`](../../Assets/02.Scripts/Games/Yacht/Augments/Quest/CautiousStraight.cs) | `CautiousStraightState` | `DONE` |
+| **33** | `every-little` | 티끌 모아 태산 | 득점에 사용한 눈금 '1'을 누적 7개 이상 달성 | +15점 | [`EveryLittleCounts`](../../Assets/02.Scripts/Games/Yacht/Augments/Quest/EveryLittleCounts.cs) | `EveryLittleCountsState` | `DONE` |
+| **34** | `copycat` | 카피캣 | 상대가 기입한 족보를 3회 따라 기입하거나, 하단에서 동일 점수 달성 | +10점 | [`Copycat`](../../Assets/02.Scripts/Games/Yacht/Augments/Quest/Copycat.cs) | `CopycatState` | `DONE` |
+| **35** | `doubling` | 더블링 | 스크래치를 제외하고 동일한 점수로 2회 기입 | +10점 | [`Doubling`](../../Assets/02.Scripts/Games/Yacht/Augments/Quest/Doubling.cs) | `DoublingState` | `DONE` |
+| **36** | `nozdormu` | 노즈도르무 | 턴 제한시간 15초 페널티를 감수하고 목표 라운드 도달 | +9점 | [`Nozdormu`](../../Assets/02.Scripts/Games/Yacht/Augments/Quest/Nozdormu.cs) | `NozdormuState` | `DONE` |
+| **48** | `bounty-hunter` | 현상금 사냥꾼 | 매 턴 무작위로 지정되는 빈 족보 타깃을 3회 기입 | 최대 15점 (스크래치당 -3점 감산) | [`BountyHunter`](../../Assets/02.Scripts/Games/Yacht/Augments/Quest/BountyHunter.cs) | `BountyHunterState` | `DONE` |
+| **52** | `prophet` | 예지자 | 3턴 동안 제시된 숫자 3개(1~30) 중 하나와 일치하는 점수 기입 | 일치할 때마다 +7점 | [`Prophet`](../../Assets/02.Scripts/Games/Yacht/Augments/Quest/Prophet.cs) | `ProphetState` | `DONE` |
 
 `bounty-hunter`는 점수표 UI에도 별도 표시가 있습니다. `ParchmentScoreSheet.SetTargetMark`/`ClearTargetMark`가
 타깃 족보 칸에 골드 테두리·증강 아이콘·남은 횟수를 상시로 그리며(원래 족보 아이콘·이름은 가리지 않음),
@@ -828,12 +828,12 @@ private static int RequiredDiceSlots(string augmentId)
 
 | No | ID | 이름 | 사용 타이밍 | 효과 설명 | C# 구현 클래스 | 상태 |
 |:---:|---|---|---|---|---|:---:|
-| **46** | `table-flip` | 판 뒤집기 | 첫 굴림 후 (게임당 1회) | 킵하지 않은 주사위를 전부 무료 재굴림 (리롤 횟수 차감 안 됨) | `TableFlip` | `DONE` |
-| **47** | `equivalent-exchange` | 등가교환 | 리롤 소진 후 (최대 3회) | 영구 점수 -5점을 지불하고 추가 재굴림 1회 획득 | `EquivalentExchange` | `DONE` |
-| **50** | `coin-toss` | 코인 토스 | 첫 굴림 후 (게임당 1회) | 동전 3개를 던져 앞면 수에 따라 분기: 0개 -5점 / 1개 보너스 +3점 획득 / 2개 이번 턴 리롤 +1 / 3개 상단 보너스 기준 min(현재, 57)로 완화 | `CoinToss` | `DONE` |
-| **53** | `gambit` | 갬빗 | 굴림 전 (게임당 1회) | 이번 턴은 주사위 4개로 플레이하는 대신, 다음 턴에 주사위 6개로 플레이 | `Gambit` | `DONE` |
-| **54** | `double-down` | 더블 다운 | 9턴 이후 굴림 도중 (1회) | 이번 턴 기본 족보 점수를 1.5배(추진력과 동시 사용 시 2배)로 배율 강화 | `DoubleDown` | `DONE` |
-| **56** | `dice-alchemy` | 주사위 연금술 | 첫 굴림 후 (게임당 1회) | 킵되지 않은 모든 주사위의 눈금을 1씩 낮춤 (최저 1 유지) | `DiceAlchemy` | `DONE` |
+| **46** | `table-flip` | 판 뒤집기 | 첫 굴림 후 (게임당 1회) | 킵하지 않은 주사위를 전부 무료 재굴림 (리롤 횟수 차감 안 됨) | [`TableFlip`](../../Assets/02.Scripts/Games/Yacht/Augments/ManualAction/TableFlip.cs) | `DONE` |
+| **47** | `equivalent-exchange` | 등가교환 | 리롤 소진 후 (최대 3회) | 영구 점수 -5점을 지불하고 추가 재굴림 1회 획득 | [`EquivalentExchange`](../../Assets/02.Scripts/Games/Yacht/Augments/ManualAction/EquivalentExchange.cs) | `DONE` |
+| **50** | `coin-toss` | 코인 토스 | 첫 굴림 후 (게임당 1회) | 동전 3개를 던져 앞면 수에 따라 분기: 0개 -5점 / 1개 보너스 +3점 획득 / 2개 이번 턴 리롤 +1 / 3개 상단 보너스 기준 min(현재, 57)로 완화 | [`CoinToss`](../../Assets/02.Scripts/Games/Yacht/Augments/ManualAction/CoinToss.cs) | `DONE` |
+| **53** | `gambit` | 갬빗 | 굴림 전 (게임당 1회) | 이번 턴은 주사위 4개로 플레이하는 대신, 다음 턴에 주사위 6개로 플레이 | [`Gambit`](../../Assets/02.Scripts/Games/Yacht/Augments/ManualAction/Gambit.cs) | `DONE` |
+| **54** | `double-down` | 더블 다운 | 9턴 이후 굴림 도중 (1회) | 이번 턴 기본 족보 점수를 1.5배(추진력과 동시 사용 시 2배)로 배율 강화 | [`DoubleDown`](../../Assets/02.Scripts/Games/Yacht/Augments/ManualAction/DoubleDown.cs) | `DONE` |
+| **56** | `dice-alchemy` | 주사위 연금술 | 첫 굴림 후 (게임당 1회) | 킵되지 않은 모든 주사위의 눈금을 1씩 낮춤 (최저 1 유지) | [`DiceAlchemy`](../../Assets/02.Scripts/Games/Yacht/Augments/ManualAction/DiceAlchemy.cs) | `DONE` |
 
 ---
 
@@ -872,7 +872,7 @@ private static int RequiredDiceSlots(string augmentId)
 
 ### 6.1 `AugmentStateStore`의 동작 방식
 
-[AugmentStateStore.cs](../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/AugmentStateStore.cs)는
+[AugmentStateStore.cs](../../Assets/02.Scripts/Games/Yacht/Augments/Framework/AugmentStateStore.cs)는
 증강들의 런타임 가변 데이터를 보관하는 중앙 저장소입니다. 각 증강은 자신의 ID를 키로 전용 상태
 객체(`IAugmentState`)를 등록·조회합니다. 저장소 구현은 2장 3절에 실었습니다.
 
@@ -883,7 +883,7 @@ private static int RequiredDiceSlots(string augmentId)
 상태 DTO와 진행 로직이 한 파일에 함께 있는 것이 이 프로젝트의 표준 형태입니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/NoTimeToWaste.cs:5-31
+// Assets/02.Scripts/Games/Yacht/Augments/Quest/NoTimeToWaste.cs:5-31
 [Serializable]
 public sealed class NoTimeToWasteState : IAugmentState, IAugmentProgressText
 {
@@ -914,7 +914,7 @@ public sealed class NoTimeToWasteState : IAugmentState, IAugmentProgressText
 ```
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/NoTimeToWaste.cs:69-96
+// Assets/02.Scripts/Games/Yacht/Augments/Quest/NoTimeToWaste.cs:69-96
 public void AfterScoreCommit(AugmentCommitContext context)
 {
     var state = GetOrSync(context);
@@ -976,7 +976,7 @@ public void AfterScoreCommit(AugmentCommitContext context)
 - `AugmentProgressOutcome`— `InProgress` / `Succeeded` / `Failed` 3값이며, UI가 이 값으로 상태 라벨 색을 구분합니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/IAugmentProgressText.cs:1-25
+// Assets/02.Scripts/Games/Yacht/Augments/Framework/IAugmentProgressText.cs:1-25
 namespace Tessera.Games.Yacht
 {
     /// <summary>줄 판정에 필요한 것만 담은 조회 쿼리입니다. UI는 이 쿼리를 몰라도 됩니다.</summary>
@@ -1004,14 +1004,14 @@ namespace Tessera.Games.Yacht
 }
 ```
 
-소비 측은 `AugmentTrayPresenter`([AugmentTrayPresenter.cs](../../Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentTrayPresenter.cs))입니다.
+소비 측은 `AugmentTrayPresenter`([AugmentTrayPresenter.cs](../../Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/AugmentTrayPresenter.cs))입니다.
 보유 증강마다 상태가 `IAugmentProgressText`를 구현하는지 검사해 `DescribeProgress`를 호출하고,
 그 결과를 `AugmentTrayCardView.Bind`의 `progress` 인자로 넘깁니다. `AugmentTrayCardView`는 이 값을
 그대로 내부 `AugmentCardView`에 전달할 뿐이며, 실제 렌더링은 `AugmentCardView.SetProgressBlock`이
 합니다. 완료된 줄(`Done`이 참이거나 `Outcome`이 `Failed`)은 `<s>` 리치 텍스트 태그로 취소선을 그어
 표시합니다.
 
-`Assets/Scripts/Games/Yacht/ScoreCategoryNames.cs`는 족보 칸의 표기를 한 곳에 모은 테이블입니다.
+`Assets/02.Scripts/Games/Yacht/Rules/ScoreCategoryNames.cs`는 족보 칸의 표기를 한 곳에 모은 테이블입니다.
 `CautiousStraight`, `Holdout`, `FastStraight`, `StepByStep`, `BountyHunter` 등 여러 퀘스트 상태의
 `DescribeProgress`가 이 클래스로 카테고리 이름을 얻어 진행도 문구를 만들며, 같은 클래스를
 `ParchmentScoreSheet`의 점수표 칸 이름 렌더링도 함께 씁니다. 두 표기가 같은 출처를 쓰도록 맞춘
@@ -1025,17 +1025,17 @@ namespace Tessera.Games.Yacht
 
 증강 로직의 정합성은 다음 EditMode 테스트들이 검증합니다.
 
-- [YachtGameRulesTests.cs](../../Assets/Editor/Tests/Yacht/YachtGameRulesTests.cs): 기본 요트 규칙과 점수 계산 전반.
-- [YachtModificationAugmentTests.cs](../../Assets/Editor/Tests/Yacht/YachtModificationAugmentTests.cs): 18종 변형 족보(`evens`, `odds`, `tiny-house` 등)의 수학적 판정 검증.
-- [YachtEnhanceAugmentTests.cs](../../Assets/Editor/Tests/Yacht/YachtEnhanceAugmentTests.cs): 강화 증강(`momentum`, `golden-die`, `yacht-bank` 등)의 배율 및 보너스 합산 검증.
-- [YachtQuestAugmentTests.cs](../../Assets/Editor/Tests/Yacht/YachtQuestAugmentTests.cs): 11종 퀘스트의 라운드 기한, 연속 성공 조건, 실패 조건 전이 검증.
-- [YachtManualActionAugmentTests.cs](../../Assets/Editor/Tests/Yacht/YachtManualActionAugmentTests.cs): 수동 행동(`table-flip`, `equivalent-exchange`, `gambit`)의 발동 제한 및 턴 소비 검증.
-- [YachtDraftOrderTests.cs](../../Assets/Editor/Tests/Yacht/YachtDraftOrderTests.cs): 드래프트 라운드 판정과 후보 제시 순서 검증.
+- [YachtGameRulesTests.cs](../../Assets/Editor/Tests/Games/Yacht/YachtGameRulesTests.cs): 기본 요트 규칙과 점수 계산 전반.
+- [YachtModificationAugmentTests.cs](../../Assets/Editor/Tests/Games/Yacht/YachtModificationAugmentTests.cs): 18종 변형 족보(`evens`, `odds`, `tiny-house` 등)의 수학적 판정 검증.
+- [YachtEnhanceAugmentTests.cs](../../Assets/Editor/Tests/Games/Yacht/YachtEnhanceAugmentTests.cs): 강화 증강(`momentum`, `golden-die`, `yacht-bank` 등)의 배율 및 보너스 합산 검증.
+- [YachtQuestAugmentTests.cs](../../Assets/Editor/Tests/Games/Yacht/YachtQuestAugmentTests.cs): 11종 퀘스트의 라운드 기한, 연속 성공 조건, 실패 조건 전이 검증.
+- [YachtManualActionAugmentTests.cs](../../Assets/Editor/Tests/Games/Yacht/YachtManualActionAugmentTests.cs): 수동 행동(`table-flip`, `equivalent-exchange`, `gambit`)의 발동 제한 및 턴 소비 검증.
+- [YachtDraftOrderTests.cs](../../Assets/Editor/Tests/Games/Yacht/YachtDraftOrderTests.cs): 드래프트 라운드 판정과 후보 제시 순서 검증.
 
 전체 실행은 `Tessera/Validation/Run All EditMode Tests` 메뉴로 합니다.
 
 ### 7.2 인게임 디버그 패널을 통한 샌드박스 테스트
-- 메인 씬 실행 후 화면의 [YachtDebugPanel.cs](../../Assets/Scripts/Games/AugmentedYacht/Presentation/YachtDebugPanel.cs) UI를 통해:
+- 메인 씬 실행 후 화면의 [YachtDebugPanel.cs](../../Assets/02.Scripts/Games/Yacht/Presentation/Hud/YachtDebugPanel.cs) UI를 통해:
   1. 원하는 특정 주사위 눈금(예: `[1, 1, 2, 3, 5]`)을 강제 세팅하여 `FibonacciNumbers` 등 까다로운 족보를 즉시 테스트.
   2. 드래프트 과정을 거치지 않고 원하는 증강 ID(예: `bounty-hunter`)를 플레이어에게 즉시 주입.
   3. 라운드를 강제로 건너뛰어 퀘스트 기한 만료 및 보너스 지급 시점 검증 가능.

@@ -6,13 +6,13 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
-using Tessera.Games.AugmentedYacht;
+using Tessera.Games.Yacht.Presentation;
 
 public static class BuildDiceGraphicsPoC
 {
-    private const string ScenePath = "Assets/Scenes/Augmented Dice.unity";
-    private const string TrayStlPath = "Assets/Art/Source/Tray/yacht-tray.stl";
-    private const string TrayMeshPath = "Assets/Art/Generated/Tray/yacht-tray.asset";
+    private const string ScenePath = "Assets/01.Scenes/Augmented Dice.unity";
+    private const string TrayStlPath = "Assets/04.Art/Source/Tray/yacht-tray.stl";
+    private const string TrayMeshPath = "Assets/04.Art/Generated/Tray/yacht-tray.asset";
     [MenuItem("Tools/Tessera/Rebuild Augmented Dice Scene")]
     public static void RebuildScene()
     {
@@ -45,9 +45,9 @@ public static class BuildDiceGraphicsPoC
 
     private static void BuildScene(bool openAfterBuild)
     {
-        GameObject dice = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Art/Source/Dice/normal_dice.fbx");
+        GameObject dice = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/04.Art/Source/Dice/normal_dice.fbx");
         Mesh yachtTray = EnsureYachtTrayMesh();
-        Shader shader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/Rendering/Shaders/DicePixelUpscale.shader");
+        Shader shader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/06.Rendering/Shaders/DicePixelUpscale.shader");
         if (dice == null || yachtTray == null || shader == null)
         {
             Debug.LogError("Tessera build stopped: FBX dice model or upscale shader missing.");
@@ -70,8 +70,8 @@ public static class BuildDiceGraphicsPoC
         serialized.FindProperty("upscaleShader").objectReferenceValue = shader;
         serialized.ApplyModifiedPropertiesWithoutUndo();
 
-        // 테이블 프롭은 코드로 만들지 않는다(M9). Assets/Prefabs/Tabletop 의 프리팹을 씬에 배치한다.
-        Debug.LogWarning("빈 씬을 만들었습니다. Assets/Prefabs/Tabletop 의 프리팹을 씬에 배치하십시오.");
+        // 테이블 프롭은 코드로 만들지 않는다(M9). Assets/03.Prefabs/Tabletop 의 프리팹을 씬에 배치한다.
+        Debug.LogWarning("빈 씬을 만들었습니다. Assets/03.Prefabs/Tabletop 의 프리팹을 씬에 배치하십시오.");
 
         EditorSceneManager.SaveScene(scene, ScenePath);
         EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
@@ -80,7 +80,7 @@ public static class BuildDiceGraphicsPoC
             EditorSceneManager.CloseScene(previous, true);
 
         if (openAfterBuild) EditorSceneManager.OpenScene(ScenePath);
-        Debug.Log("Dice Graphics PoC scene built: Assets/Scenes/GraphicsPoC.unity");
+        Debug.Log("Dice Graphics PoC scene built: Assets/01.Scenes/GraphicsPoC.unity");
     }
 
     private static Mesh EnsureYachtTrayMesh()

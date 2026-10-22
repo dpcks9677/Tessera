@@ -1,6 +1,6 @@
 ---
 paths:
-  - "Assets/Scripts/**/*.cs"
+  - "Assets/02.Scripts/**/*.cs"
 ---
 
 # 모듈 경계

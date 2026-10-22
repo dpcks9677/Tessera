@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
-using Tessera.Games.AugmentedYacht;
+using Tessera.Games.Yacht.Presentation;
 using Tessera.Games.Yacht;
 using Tessera.Rendering;
 using UnityEditor;
@@ -19,7 +19,7 @@ using UnityEngine;
 [InitializeOnLoad]
 public static class RunPixelReadabilityValidation
 {
-    private const string ScenePath = "Assets/Scenes/Augmented Dice.unity";
+    private const string ScenePath = "Assets/01.Scenes/Augmented Dice.unity";
     private const string RequestedKey = "Tessera.PixelReadabilityRequested";
     private const string RunningKey = "Tessera.PixelReadabilityRunning";
 

@@ -19,7 +19,7 @@ graph LR
 ```
 
 - **전체 무드**: 아늑하고 따뜻한 중세 판타지 학자의 서재 / 벽난로 선술집 (Cozy Fantasy Study & Hearth).
-- **조명 리그**: `YachtLightingRig`(`Assets/Scripts/Games/AugmentedYacht/Presentation/YachtLightingRig.cs`)가 런타임에 Directional 키·필 라이트의 색과 강도를 프리셋 값으로 덮어쓴다. 씬에 직렬화된 라이트 값은 실효값이 아니므로, 조명 값의 원본은 이 파일의 `presets` 다.
+- **조명 리그**: `YachtLightingRig`(`Assets/02.Scripts/Games/Yacht/Presentation/Stage/YachtLightingRig.cs`)가 런타임에 Directional 키·필 라이트의 색과 강도를 프리셋 값으로 덮어쓴다. 씬에 직렬화된 라이트 값은 실효값이 아니므로, 조명 값의 원본은 이 파일의 `presets` 다.
   - **프리셋**: 기본은 `Soft Neutral`(`#ffe0bd`, 총 강도 1.35). 전환 순서로 `Warm Amber`(`#ff9e3b`, 1.50), `Pure White`, `Cool Moon`, `Cozy Candle` 이 있다.
   - **키/필 분배**: 총 강도의 75%를 키 라이트(pitch 60°, yaw -35°, Soft 그림자)가, 25%를 필 라이트(yaw 반대, 그림자 없음)가 쓴다. 필 라이트는 키와 **같은 색**이며 별도의 쿨 계열 림 라이트는 없다.
   - **색온도**: 쓰지 않는다(`useColorTemperature` 꺼짐). 색은 RGB로만 지정한다.
@@ -69,7 +69,7 @@ graph LR
 
 ## 4. 디자인 시스템 컬러 팔레트 (Design Tokens)
 
-`TesseraPixelPalette`(`Assets/Scripts/Rendering/TesseraPixelPalette.cs`)가 코드로 가진 토큰이며, 픽셀 필터의 팔레트 양자화와 목재 램프의 기준색으로 쓰인다. 조명·카메라 토큰 세 개는 실제 라이트·카메라 값과 다르다. 실효값은 §1을 본다.
+`TesseraPixelPalette`(`Assets/02.Scripts/Rendering/TesseraPixelPalette.cs`)가 코드로 가진 토큰이며, 픽셀 필터의 팔레트 양자화와 목재 램프의 기준색으로 쓰인다. 조명·카메라 토큰 세 개는 실제 라이트·카메라 값과 다르다. 실효값은 §1을 본다.
 
 | 토큰 명칭 | Hex Code | RGB (0~255) | 적용 대상 및 역할 |
 | :--- | :--- | :--- | :--- |
@@ -97,8 +97,8 @@ graph LR
 ## 6. 외부 에셋 출처
 
 프로젝트 대부분의 3D 프롭은 에디터 제너레이터가 절차적으로 만들지만, 일부는 외부에서 가져온
-모델입니다. 개별 모델 파일은 `Assets/Art/Source/<도메인>/`에 둡니다. 다만 에셋 스토어 패키지처럼
-자체 폴더 구조를 갖고 들어오는 것은 `Assets/Art/ThirdParty/`에 임포트된 폴더를 그대로 두므로,
+모델입니다. 개별 모델 파일은 `Assets/04.Art/Source/<도메인>/`에 둡니다. 다만 에셋 스토어 패키지처럼
+자체 폴더 구조를 갖고 들어오는 것은 `Assets/04.Art/ThirdParty/`에 임포트된 폴더를 그대로 두므로,
 경로가 이 규칙을 따르지 않습니다.
 
 | 에셋 | 출처 | 라이선스 |
@@ -106,10 +106,10 @@ graph LR
 | `quill_pen_low.fbx` | 제3자 로우폴리 깃펜 모델 (`free-quill-pen-lowpoly`) | **미기록.** 내려받은 패키지에 라이선스 파일이 없었습니다. 배포 전에 출처와 이용 조건을 확인해 여기 적어야 합니다 |
 | `normal_dice.fbx` | 자체 제작 (`normal_dice.blend`) | 자체 |
 | `yacht-tray.stl` → `yacht-tray.asset` | 자체 제작 | 자체 |
-| `Assets/Art/ThirdParty/msVFX_Free Smoke Effects Pack/` | 제3자 연기 VFX 팩 (`Materials/msVFX_Stylized Smoke 1_Material.mat`, `Prefabs/msVFX_Stylized Smoke 1~4.prefab`, `Textures/msVFX_Stylized Smoke 1_Texture.png`) | **미기록.** 팩 폴더 안에 라이선스·README 파일이 하나도 없습니다. 배포 전에 출처와 이용 조건을 확인해 여기 적어야 합니다 |
-| `Assets/Art/Source/Coin/coin.glb` | **반입 예정(`M17-T23`).** 제3자 동전 3D 모델 (`gold-coin.zip`에서 풀린 Blender glTF 2.0 파일) | 미기록 |
-| `Assets/Art/Source/Coin/coin_head_source.png` | **반입 예정(`M17-T23`).** 사용자 제공 흉상 선화 | 미기록 |
-| `Assets/Art/Source/Coin/coin_tail_source.png` | **반입 예정(`M17-T23`).** 사용자 제공 리라·월계관 선화 | 미기록 |
+| `Assets/04.Art/ThirdParty/msVFX_Free Smoke Effects Pack/` | 제3자 연기 VFX 팩 (`Materials/msVFX_Stylized Smoke 1_Material.mat`, `Prefabs/msVFX_Stylized Smoke 1~4.prefab`, `Textures/msVFX_Stylized Smoke 1_Texture.png`) | **미기록.** 팩 폴더 안에 라이선스·README 파일이 하나도 없습니다. 배포 전에 출처와 이용 조건을 확인해 여기 적어야 합니다 |
+| `Assets/04.Art/Source/Coin/coin.glb` | **반입 예정(`M17-T23`).** 제3자 동전 3D 모델 (`gold-coin.zip`에서 풀린 Blender glTF 2.0 파일) | 미기록 |
+| `Assets/04.Art/Source/Coin/coin_head_source.png` | **반입 예정(`M17-T23`).** 사용자 제공 흉상 선화 | 미기록 |
+| `Assets/04.Art/Source/Coin/coin_tail_source.png` | **반입 예정(`M17-T23`).** 사용자 제공 리라·월계관 선화 | 미기록 |
 
 > **`quill_pen_low.fbx`의 라이선스 미기록은 배포 전에 반드시 해소해야 하는 항목입니다.**
 > 이 경고는 원래 `Assets/Docs/README.md`에 있었고, 그 문서를 `docs/archive/plans/poc_technical_notes.md`로

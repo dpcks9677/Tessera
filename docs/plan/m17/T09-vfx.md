@@ -39,7 +39,7 @@
 | **앵커** | 이펙트가 시작·부착되는 화면상 위치 |
 | **세기** | 연출 길이와 화면 점유 등급 |
 | **결과 표현** | 발동 후 성공/실패/누적 등 결과 분기의 시각 처리 |
-| **발동 훅** | 실제 로직이 호출되는 코드 시점 (`Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/IAugmentHandler.cs`) |
+| **발동 훅** | 실제 로직이 호출되는 코드 시점 (`Assets/02.Scripts/Games/Yacht/Augments/Framework/IAugmentHandler.cs`) |
 
 > §1.2~§1.4는 **Claude가 §3의 `구현 사양` 열을 채울 때 쓰는 표기**다. 사용자는 이 어휘를 몰라도 되며, `연출 설명` 열은 평범한 문장으로 쓴다.
 
@@ -151,7 +151,7 @@
 
 **다만 이건 고치려면 고칠 수 있는 문제다.** `Emit`을 넣고 컨텍스트에 수집기를 넘기면 이벤트는 나온다. 진짜 문제는 그렇게 만든 이벤트가 쓸모없다는 것이다.
 
-`ModifyScores`는 점수를 계산할 때마다 돈다. 그 계산(`UpdateCandidates`)은 **굴림 직후와 킵을 토글할 때마다** 호출되므로(`Assets/Scripts/Games/Yacht/LocalGameAuthority.cs:170`·`237`) 한 턴에 수십 번이다. 게다가 조건 성립 여부를 보지 않고 조건이 안 맞으면 `0`을 그대로 쓴다. 즉 "실행됐다"와 "뭔가 일어났다"가 분리돼 있지 않다. 여기에 `Emit`을 넣으면 킵을 하나 눌렀다 뗄 때마다 `AugmentTriggered`가 나오는데, 그 안에 "이번엔 진짜 뭔가 일어났다"는 정보가 없다.
+`ModifyScores`는 점수를 계산할 때마다 돈다. 그 계산(`UpdateCandidates`)은 **굴림 직후와 킵을 토글할 때마다** 호출되므로(`Assets/02.Scripts/Games/Yacht/Rules/LocalGameAuthority.cs:170`·`237`) 한 턴에 수십 번이다. 게다가 조건 성립 여부를 보지 않고 조건이 안 맞으면 `0`을 그대로 쓴다. 즉 "실행됐다"와 "뭔가 일어났다"가 분리돼 있지 않다. 여기에 `Emit`을 넣으면 킵을 하나 눌렀다 뗄 때마다 `AugmentTriggered`가 나오는데, 그 안에 "이번엔 진짜 뭔가 일어났다"는 정보가 없다.
 
 비교하면 분명하다. 퀘스트 11개는 `AfterScoreCommit`에서 `Emit`하고, 점수 확정은 한 턴에 정확히 한 번 일어나며 그때 진행도가 실제로 바뀐다. 이산적인 사건이라 이벤트가 맞는다. 변형은 굴림·킵 상태에 딸린 연속 함수에 가깝다.
 
@@ -256,8 +256,8 @@
 
 | 변경 | 위치 | 내용 |
 |---|---|---|
-| 필드 1개 추가 (미구현) | `YachtScoreCandidate` (`Assets/Scripts/Games/Yacht/YachtGameCore.cs`) | `public string ModifiedByAugmentId;` — **아직 코드에 없다.** 현재 필드는 `Category`·`Score`·`BaseScore`·`DiceBonusScore`·`IsEnhanced`·`EnhancementSource` 6개다 |
-| 스탬프 | `YachtAugmentRuntime.CreateScoreCandidates` (`.../Logic/YachtAugmentRuntime.cs:730`) | 보유한 `ModificationAugment`를 훑어 `Target`이 일치하는 후보에 `Id`를 찍는다. 점수 계산은 건드리지 않는다 |
+| 필드 1개 추가 (미구현) | `YachtScoreCandidate` (`Assets/02.Scripts/Games/Yacht/Rules/YachtGameCore.cs`) | `public string ModifiedByAugmentId;` — **아직 코드에 없다.** 현재 필드는 `Category`·`Score`·`BaseScore`·`DiceBonusScore`·`IsEnhanced`·`EnhancementSource` 6개다 |
+| 스탬프 | `YachtAugmentRuntime.CreateScoreCandidates` (`.../Augments/Framework/YachtAugmentRuntime.cs:730`) | 보유한 `ModificationAugment`를 훑어 `Target`이 일치하는 후보에 `Id`를 찍는다. 점수 계산은 건드리지 않는다 |
 
 기존 `IsEnhanced`·`EnhancementSource`는 `IScoreEnhancementModifier`(추진력·더블 다운) 전용이라 재사용하지 않는다. 그쪽은 배율 강화고 이쪽은 규칙 교체라 뜻이 다르다.
 
@@ -267,7 +267,7 @@
 
 | 순서 | 작업 | 상태 | 산출물·검증 |
 |---:|---|---|---|
-| 1 | 스티커 텍스처 절차 생성기 | **완료 (2026-09-08)** | `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentStickerTexture.cs`. 24px 기준 변마다 톱니 6개, 금테 링 68px, 안쪽은 문양 자리로 비움. EditMode 8건(`AugmentStickerTextureTests.cs`) |
+| 1 | 스티커 텍스처 절차 생성기 | **완료 (2026-09-08)** | `Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/AugmentStickerTexture.cs`. 24px 기준 변마다 톱니 6개, 금테 링 68px, 안쪽은 문양 자리로 비움. EditMode 8건(`AugmentStickerTextureTests.cs`) |
 | 2 | 증강별 색상코드 테이블 | **완료 (2026-09-08)** | `AugmentStickerCatalog.cs`. 기본 버건디 + 예외만 등록하는 구조. 활성 변형 18개 전부 색상코드와 대상 칸이 해석됨 |
 | 3 | 이벤트 → 재생 요청 변환기 (I1) | **완료 (2026-09-08)** | `AugmentVfxPlanner.cs`. 순수 클래스. `AugmentSelected`·`AugmentReplaced` → `S0`, `ScoreCommitted` → `S2`. EditMode 10건(`AugmentVfxPlannerTests.cs`) |
 | 4 | 스티커 슬롯과 표시 대상 | **완료 (2026-09-08, `D-040`으로 갱신)** | `ParchmentScoreSheet`에 플레이어별 슬롯 14개씩(`SetSticker`·`ClearSticker`·`StickerSlot`이 모두 `playerIndex`를 받음). 천이 `[아이콘 섹터 + Categories]`를 덮고 열이 접히면 아이콘 폭만 남음. `AugmentStickerCatalog.CollectFor`를 두 사람 몫으로 두 번 부름. EditMode 8건(`AugmentStickerCatalogTests.cs`) + 열 경계 14건(`ScoreSheetColumnLayoutTests.cs`) |
@@ -310,18 +310,18 @@
 
 | # | 증강 | 발동 훅 | 기존 프로필 | 연출 설명 (사용자 기입) | 구현 사양 (Claude 기입) |
 |---:|---|---|---|---|---|
-| 25 | `yacht-bank` / 요트 뱅크 | `OnAugmentSelected` `OnTurnStarted` `ScoringDiceFilter` `AfterScoreCommit` | 누적·자동 기입 | 첫 번째 주사위 킵 칸이 금색으로 빛남. (골드 파티클 및 네온 글로우) / 첫 번째 칸에 주사위가 들어가있다면 주사위가 금색으로 변하면서 서서히 투명해지는 연출 적용  | `P3`+`P5` / `DICE(킵 0번 칸)` / `#e5a93c` / `M` / `누적`. 대상은 **가장 왼쪽 킵 칸 하나로 고정**이다(사용자 확정). 킵 칸은 오브젝트가 아니라 좌표이므로(`DiceBoardMetrics.GetKeepPosition(0)`, `Assets/Scripts/Core/DiceBoardMetrics.cs:145`) 슬롯 하이라이트 쿼드(I3)를 그 좌표에 고정 배치한다. 칸에 주사위가 들어오면 `DiceVisualPool.ApplyDieType`로 `DieType.Golden` 머티리얼 교체 후 알파 감소. **주의**: 알파 페이드가 픽셀 필터를 통과하면 디더링으로 깨지므로 4~5스텝 계단식으로 처리. 파티클은 `RollCosmicCube`의 `ParticleSystem` 구성 재사용. 신규 에셋 없음. 슬롯 0(KeepSlotIndex == 0) 위치 주사위 기준 정합화 확정(§7·§8 참조) |
+| 25 | `yacht-bank` / 요트 뱅크 | `OnAugmentSelected` `OnTurnStarted` `ScoringDiceFilter` `AfterScoreCommit` | 누적·자동 기입 | 첫 번째 주사위 킵 칸이 금색으로 빛남. (골드 파티클 및 네온 글로우) / 첫 번째 칸에 주사위가 들어가있다면 주사위가 금색으로 변하면서 서서히 투명해지는 연출 적용  | `P3`+`P5` / `DICE(킵 0번 칸)` / `#e5a93c` / `M` / `누적`. 대상은 **가장 왼쪽 킵 칸 하나로 고정**이다(사용자 확정). 킵 칸은 오브젝트가 아니라 좌표이므로(`DiceBoardMetrics.GetKeepPosition(0)`, `Assets/02.Scripts/Core/DiceBoardMetrics.cs:145`) 슬롯 하이라이트 쿼드(I3)를 그 좌표에 고정 배치한다. 칸에 주사위가 들어오면 `DiceVisualPool.ApplyDieType`로 `DieType.Golden` 머티리얼 교체 후 알파 감소. **주의**: 알파 페이드가 픽셀 필터를 통과하면 디더링으로 깨지므로 4~5스텝 계단식으로 처리. 파티클은 `RollCosmicCube`의 `ParticleSystem` 구성 재사용. 신규 에셋 없음. 슬롯 0(KeepSlotIndex == 0) 위치 주사위 기준 정합화 확정(§7·§8 참조) |
 | 37 | `weighted-dice` / 묵직한 주사위 | `DiceLayoutProvider` | 주사위 변환·발동 |  |  |
-| 38 | `momentum` / 추진력 | `OnAugmentSelected` `ScoreEnhancementModifier` `AfterScoreCommit` | 대기·발동·소모 | 조건 발동 시 증강 카드 테두리가 금색으로 빛남. 주사위 트레이도 테두리가 금색으로 빛남 | `P3` / `CARD + DICE` / `#e5a93c` / `S` / `대기·발동·소모`. 카드 테두리는 기존 `AugmentCardView.CardOutline`(uGUI `Outline`)의 `effectColor`·`effectDistance`를 보간하면 끝(`Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs:56`). 주사위 트레이는 **테두리 오브젝트가 없어** 트레이 외곽 쿼드 1개 신규 필요. 신규 에셋 없음 |
+| 38 | `momentum` / 추진력 | `OnAugmentSelected` `ScoreEnhancementModifier` `AfterScoreCommit` | 대기·발동·소모 | 조건 발동 시 증강 카드 테두리가 금색으로 빛남. 주사위 트레이도 테두리가 금색으로 빛남 | `P3` / `CARD + DICE` / `#e5a93c` / `S` / `대기·발동·소모`. 카드 테두리는 기존 `AugmentCardView.CardOutline`(uGUI `Outline`)의 `effectColor`·`effectDistance`를 보간하면 끝(`Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/AugmentCardView.cs:56`). 주사위 트레이는 **테두리 오브젝트가 없어** 트레이 외곽 쿼드 1개 신규 필요. 신규 에셋 없음 |
 | 39 | `golden-die` / 황금 주사위 | `DiceLayoutProvider` | 주사위 변환·점수 보너스 |  |  |
 | 41 | `8-sided` / 8면 주사위 | `DiceLayoutProvider` | 주사위 변환·충돌 |  |  |
 | 43 | `promotion-die` / 프로모션 주사위 | `OnAugmentSelected` `OnTurnStarted` `DiceLayoutProvider` `AfterScoreCommit` | 변환·성장·소모 |  |  |
 | 44 | `couple-dice` / 커플 주사위 | `DiceLayoutProvider` | 변환·일치 보너스 | 두 눈의 값이 일치하면 x회전을 약간 줘서 서로를 향해 기울여지는 효과 + 하트 파티클 | `P5` / `DICE(커플 2개)` / 로즈 / `M` / `단발`. 주사위 자세는 `DiceVisualPool.AnimateLayout` 코루틴이 잡으므로 정지 후 트랜스폼 보간으로 기울임 가능. **주의**: 눈 판정이 상단 면 기준이라 판정 확정 뒤에만 적용하고 이미 확정된 값 스냅샷을 쓴다. 하트 파티클용 픽셀 스프라이트 1종(16px) 신규 필요 |
 | 45 | `sevens-dice` / 세븐스 다이스 | `DiceLayoutProvider` | 변환·눈 7 강조 |  |  |
 | 46 | `table-flip` / 판 뒤집기 | `ManualActionAugment` | 사용 가능·재굴림·소모 | 발동 시 카메라 흔들기 및 주사위 트레이 흔들고 약간 삐뚤어지게 배치. 삐뚤어진 트레이는 리롤하거나 턴이 넘어가면 자연스럽게 원래 위치로 돌아가야 함. 주사위는 위로 솟구쳐야 함 (전용 프리셋 베이킹 있긴 한데 조금 더 드라마틱한 연출 필요) | `P6` / `TABLE > DICE` / — / `L` / `소모`. **카메라 흔들기는 그대로 쓰면 안 됨** — 월드 카메라가 내부 저해상도 RT에 렌더된 뒤 업스케일되므로(`YachtCameraRig`) 카메라를 흔들면 화면 전체 픽셀이 지글거린다. 대신 RT를 그리는 `RawImage`(`YachtCameraRig.GameImage`)를 **내부 해상도 정수 픽셀 단위(1~3px)** 로 오프셋한다. 트레이 기울기는 목표 회전값을 상태로 들고 `DiceRolled`·`TurnAdvanced`에서 0으로 복귀. 주사위 솟구침은 기존 table-flip 베이킹 프리셋이 있으나 액션이 약해 더 드라마틱한 솟구침 액션으로 재베이킹하여 적용(물리 전환 배제, 사용자 확정). 신규 인프라 2건(화면 셰이크 유틸, 트레이 기울기 상태) |
-| 47 | `equivalent-exchange` / 등가교환 | `ManualActionAugment` | 사용 가능·대가·소모 | 등가교환 발동 가능할 시, 코스믹 큐브가 보라색 톤으로 페이드 되듯 변경되며 일렁거리는 효과 추가. 등가교환을 발동하면 약한 카메라 흔들림 재생 | `P6` / `TABLE(코스믹 큐브)` / 보라 / 대기 `S` · 발동 `M` / `대기·소모`. `RollCosmicCube`에 이미 `SetHovered`·`SetInteractable`·halo 색 필드가 있어(`Assets/Scripts/Tabletop/RollCosmicCube.cs:287`) `SetAugmentTint(Color, bool pulse)` 한 개만 추가하면 된다. 일렁임은 기존 halo 파라미터 진동으로 처리. 카메라 흔들림은 46번의 셰이크 유틸 공유(진폭 1px). 신규 에셋 없음 |
+| 47 | `equivalent-exchange` / 등가교환 | `ManualActionAugment` | 사용 가능·대가·소모 | 등가교환 발동 가능할 시, 코스믹 큐브가 보라색 톤으로 페이드 되듯 변경되며 일렁거리는 효과 추가. 등가교환을 발동하면 약한 카메라 흔들림 재생 | `P6` / `TABLE(코스믹 큐브)` / 보라 / 대기 `S` · 발동 `M` / `대기·소모`. `RollCosmicCube`에 이미 `SetHovered`·`SetInteractable`·halo 색 필드가 있어(`Assets/02.Scripts/Tabletop/RollCosmicCube.cs:287`) `SetAugmentTint(Color, bool pulse)` 한 개만 추가하면 된다. 일렁임은 기존 halo 파라미터 진동으로 처리. 카메라 흔들림은 46번의 셰이크 유틸 공유(진폭 1px). 신규 에셋 없음 |
 | 49 | `duel` / 결투 | `OnAugmentSelected` (+ 내부 `AugmentTriggered` 발행) | 대결·승리·무승부·패배 | 턴 시작할 때 나팔 사운드 재생 (사운드 추가해야 함.) 주사위 트레이 바닥에는 두 칼이 교차하는 svg 그래픽을 버건디 매트 위에 그림. 승리 시 증강 카드 우상단에 훈장 그래픽 추가, 패배 시 스크롤 테두리가 찢어진 그래픽으로 변경하고 약간 창백한 톤으로 변경. 무승부 시에는 약간 창백한 톤만 적용 | `P4` / `TABLE + CARD` / 버건디·골드 / `M` / `성공/실패/무승부`. **사운드는 `M17-T13`(`DEFERRED`) 범위** — T9에서는 재생 훅만 남기고 클립은 넣지 않는다(`YachtAudioService`는 `AudioSource` 1개에 roll·impact 클립 배열뿐이라 슬롯 확장 필요). 트레이 바닥 두 칼 그래픽은 매트 위 데칼 쿼드. **SVG는 Unity에서 직접 못 쓴다** → 부록 A 아이콘 파이프라인 3~5단계로 픽셀 스프라이트 변환. 창백 톤은 `AugmentCardView.SetState`의 색 상수에 한 줄 추가. 신규 에셋 3종(교차검 데칼, 훈장, 찢긴 테두리) |
-| 50 | `coin-toss` / 코인 토스 | `ManualActionAugment` | 사용 가능·판정·소모 | 발동 시 주사위(킵 줄 포함 전체)를 숨기고, 동전 3개를 게임 트레이 안으로 던져 공중에서 회전하다 착지 후 감쇠 흔들림을 거쳐 앞뒤 면이 확정된다. 확정 결과(앞면 0/1/2/3개)에 따라 주사위 값이 반영되며 다시 표시되고, 동전은 사라진 뒤 점수·리롤 바·카드 문구가 반영된다 | `P6` / `TABLE(게임 트레이 내부, centerSectionX -1.8/0/+1.8, Y = RollSurfaceY(0.2)+0.08, Z = TrayCenterZ(-0.3))` / — / `M` / `단발`. 재생기 `Assets/Scripts/Dice/CoinTossVfx.cs`가 동전마다 프리셋을 중복 없이 골라 0.12초 간격으로 던진다. 프리셋은 에디터 메뉴 `Tessera/Bake/Coin Spin Presets`로 해석적 궤적 5종을 굽는다(체공 0.9초·높이 3.0·X축 반바퀴 4/6/8/10/12회·착지 후 0.45초 감쇠 흔들림·30fps, `Assets/Resources/Vfx/CoinSpin/coin_spin_0..4.json`). 뒷면은 회전 우측에 X축 180°를 곱해 반전. 프리팹은 `Assets/Resources/Vfx/CoinTossCoin.prefab`(Coin.prefab Variant). `YachtTurnFlowPresenter.RunCoinTossSequence`가 발동 즉시 주사위(킵 줄 포함)를 숨기고 동전을 던진 뒤, 착지 후 2초 대기 → 주사위 값 반영 후 재표시 → 동전 숨김(파괴) → 점수표·리롤 바·카드 문구 반영 → 입력 해제 순으로 진행한다. 연출 중에는 입력과 턴 타이머를 멈추며, 새 게임 시작으로 중단되는 경로에서도 주사위 표시를 복구한다. 배선은 `AugmentVfxCue.CoinToss`, `AugmentTrayPresenter.ManualAugmentIds`. 프리셋 선택 난수는 판정 난수와 분리(시드 테스트 보호). 신규 에셋: 코인 프리팹 1종, 베이크 프리셋 5종. 효과음은 동전 3개 각각의 스핀 시작 시점에 1회씩(총 3회) 재생(`CoinTossVfx.Play`의 `onCoinSpinStarted` 콜백 → `YachtAudioService.PlayCoinToss`, `coin_flip.mp3`, 2026-09-20). 촉각 피드백 등 나머지는 `M17-T13`(증강 사운드·촉각 피드백, `DEFERRED`) 범위로 이관 |
+| 50 | `coin-toss` / 코인 토스 | `ManualActionAugment` | 사용 가능·판정·소모 | 발동 시 주사위(킵 줄 포함 전체)를 숨기고, 동전 3개를 게임 트레이 안으로 던져 공중에서 회전하다 착지 후 감쇠 흔들림을 거쳐 앞뒤 면이 확정된다. 확정 결과(앞면 0/1/2/3개)에 따라 주사위 값이 반영되며 다시 표시되고, 동전은 사라진 뒤 점수·리롤 바·카드 문구가 반영된다 | `P6` / `TABLE(게임 트레이 내부, centerSectionX -1.8/0/+1.8, Y = RollSurfaceY(0.2)+0.08, Z = TrayCenterZ(-0.3))` / — / `M` / `단발`. 재생기 `Assets/02.Scripts/Dice/CoinTossVfx.cs`가 동전마다 프리셋을 중복 없이 골라 0.12초 간격으로 던진다. 프리셋은 에디터 메뉴 `Tessera/Bake/Coin Spin Presets`로 해석적 궤적 5종을 굽는다(체공 0.9초·높이 3.0·X축 반바퀴 4/6/8/10/12회·착지 후 0.45초 감쇠 흔들림·30fps, `Assets/Resources/Vfx/CoinSpin/coin_spin_0..4.json`). 뒷면은 회전 우측에 X축 180°를 곱해 반전. 프리팹은 `Assets/Resources/Vfx/CoinTossCoin.prefab`(Coin.prefab Variant). `YachtTurnFlowPresenter.RunCoinTossSequence`가 발동 즉시 주사위(킵 줄 포함)를 숨기고 동전을 던진 뒤, 착지 후 2초 대기 → 주사위 값 반영 후 재표시 → 동전 숨김(파괴) → 점수표·리롤 바·카드 문구 반영 → 입력 해제 순으로 진행한다. 연출 중에는 입력과 턴 타이머를 멈추며, 새 게임 시작으로 중단되는 경로에서도 주사위 표시를 복구한다. 배선은 `AugmentVfxCue.CoinToss`, `AugmentTrayPresenter.ManualAugmentIds`. 프리셋 선택 난수는 판정 난수와 분리(시드 테스트 보호). 신규 에셋: 코인 프리팹 1종, 베이크 프리셋 5종. 효과음은 동전 3개 각각의 스핀 시작 시점에 1회씩(총 3회) 재생(`CoinTossVfx.Play`의 `onCoinSpinStarted` 콜백 → `YachtAudioService.PlayCoinToss`, `coin_flip.mp3`, 2026-09-20). 촉각 피드백 등 나머지는 `M17-T13`(증강 사운드·촉각 피드백, `DEFERRED`) 범위로 이관 |
 | 51 | `random-box` / 랜덤 박스 | `OnAugmentSelected` | 상자 개봉·카드 교체 | 증강 카드에 상자 svg 이미지를 올림 (텍스트에 방해가 되지 않게 레이어 위치 조정 필요) | `P7` / `CARD` / — / `M` / `변환`. **원래 `구현 사양` 칸에 적혀 있던 것을 `연출 설명`으로 옮김.** 카드 아이콘 슬롯(`AugmentCardView.Icon`)과 별개로 `ContentRoot` 아래 Image 1개를 추가하고 `nameText`·`descriptionText`보다 낮은 `siblingIndex`에 두면 텍스트를 가리지 않는다. 상자 스프라이트 1종(닫힘·열림 2프레임) 신규 필요 |
 | 53 | `gambit` / 갬빗 | `ManualActionAugment` `DiceCountModifier` `AfterScoreCommit` | 선언·감소·증가·소모 | 발동 시 증강 카드 테두리가 금색으로 빛남 | `P6` / `CARD` / `#e5a93c` / `S` / `선언·소모`. 38번과 같은 `CardOutline` 메커니즘 재사용. 신규 에셋·인프라 없음. 가장 먼저 구현할 수 있는 항목 |
 | 54 | `double-down` / 더블 다운 | `ManualActionAugment` `ScoreEnhancementModifier` `AfterScoreCommit` | 사용 가능·배율·소모 |  |  |
@@ -344,7 +344,7 @@
 | 34 | `copycat` / 카피캣 | `AfterScoreCommit` | 진행·성공·실패 |  |  |
 | 35 | `doubling` / 더블링 | `AfterScoreCommit` | 진행·성공 |  |  |
 | 36 | `nozdormu` / 노즈도르무 | `OnAugmentSelected` `TurnDurationModifier` `AfterScoreCommit` | 제한 시간·성공·실패 | 화면 전체에 모래바람 이펙트 적용 | `P4`+신규 / 풀스크린 / 모래색 / `C`(지속) / `제한 시간·성공·실패`. 풀스크린 오버레이는 `CrispUI` 레이어에 깔면 픽셀 크기가 본편과 안 맞으므로 **월드·프레젠테이션 카메라 쪽 풀스크린 쿼드**로 넣어 픽셀 필터를 함께 통과시킨다. 제한 시간 내내 유지되는 지속형이라 §6.2의 "한 턴 총 연출 시간" 예산 대상이 아니다 → §1.3에 `C` 등급 추가함. 신규 에셋 1종(모래 노이즈 텍스처) |
-| 48 | `bounty-hunter` / 현상금 사냥꾼 | `OnAugmentSelected` `OnTurnStarted` `AfterScoreCommit` | 타깃·진행·성공·감점 | 타겟 족보의 categories 부분의 테두리가 빛남 | `P3` / `CELL(타깃 족보)` / 앰버 / `C`(지속) / `대기·성공·감점`. `ParchmentScoreSheet`가 `p1ScoreSlots`·`p2ScoreSlots`에 카테고리별 `Image`를 들고 있어(`Assets/Scripts/Games/AugmentedYacht/Presentation/ParchmentScoreSheet.cs:526`) 해당 인덱스에 Outline을 켜면 된다. **경계 확정**: 타깃 지정 순간 번쩍임 및 달성/실패 시 폭발 연출은 T9, 점수표 위 상시 테두리/아이콘/수치 표기는 M17-T10 담당으로 분리(§6.3·§7 참조). 신규 에셋 없음 |
+| 48 | `bounty-hunter` / 현상금 사냥꾼 | `OnAugmentSelected` `OnTurnStarted` `AfterScoreCommit` | 타깃·진행·성공·감점 | 타겟 족보의 categories 부분의 테두리가 빛남 | `P3` / `CELL(타깃 족보)` / 앰버 / `C`(지속) / `대기·성공·감점`. `ParchmentScoreSheet`가 `p1ScoreSlots`·`p2ScoreSlots`에 카테고리별 `Image`를 들고 있어(`Assets/02.Scripts/Games/Yacht/Presentation/Table/ParchmentScoreSheet.cs:526`) 해당 인덱스에 Outline을 켜면 된다. **경계 확정**: 타깃 지정 순간 번쩍임 및 달성/실패 시 폭발 연출은 T9, 점수표 위 상시 테두리/아이콘/수치 표기는 M17-T10 담당으로 분리(§6.3·§7 참조). 신규 에셋 없음 |
 | 52 | `prophet` / 예지자 | `OnAugmentSelected` `OnTurnStarted` `AfterScoreCommit` | 예언 제시·일치·완료 |  |  |
 
 > 11개 전부 `AfterScoreCommit`에서 진행도가 갱신되고 `AugmentContext.Emit`으로 `AugmentTriggered` 이벤트를 발행한다. 진행도 게이지 자체는 `M17-T11`(진행형 증강 상태 표시) 범위이며, 여기서는 **갱신되는 순간의 연출**만 정한다.
@@ -367,15 +367,15 @@
 
 #### I1. 이벤트 → VFX 디스패처 상세
 
-**지금 구조.** 권위(`LocalGameAuthority`)는 명령을 처리할 때마다 `YachtGameEvent[]`를 만들어 `YachtGameCommandResult.Events`에 담아 돌려준다(`Assets/Scripts/Games/Yacht/LocalGameAuthority.cs:526`). 증강도 `AugmentContext.Emit`·`AddBonus`로 이 배열에 `AugmentTriggered`를 넣는다(`.../Augments/Core/AugmentContexts.cs:57`). 즉 **"무엇이 발동했는가"는 이미 구조화된 데이터로 나오고 있다.**
+**지금 구조.** 권위(`LocalGameAuthority`)는 명령을 처리할 때마다 `YachtGameEvent[]`를 만들어 `YachtGameCommandResult.Events`에 담아 돌려준다(`Assets/02.Scripts/Games/Yacht/Rules/LocalGameAuthority.cs:526`). 증강도 `AugmentContext.Emit`·`AddBonus`로 이 배열에 `AugmentTriggered`를 넣는다(`.../Augments/Core/AugmentContexts.cs:57`). 즉 **"무엇이 발동했는가"는 이미 구조화된 데이터로 나오고 있다.**
 
-문제는 받는 쪽이다. 화면에서 이 배열을 읽는 코드는 `YachtTurnFlowPresenter.GetAugmentEventMessage` 하나뿐이고, 하는 일은 배열을 뒤에서부터 훑어 **비어 있지 않은 `Message` 문자열 한 개**를 꺼내는 것이다(`.../Presentation/YachtTurnFlowPresenter.cs:247-252`). 나머지 필드(`Type`·`AugmentId`·`PlayerIndex`·`Category`·`Score`·`DieId`)는 전부 버려진다. 그래서 지금 화면에 증강 발동이 드러나는 유일한 경로가 HUD 텍스트 한 줄이다 — `M17-T9` 완료 조건이 "과도한 텍스트 없이"인데 **현재는 텍스트가 유일한 수단**이다.
+문제는 받는 쪽이다. 화면에서 이 배열을 읽는 코드는 `YachtTurnFlowPresenter.GetAugmentEventMessage` 하나뿐이고, 하는 일은 배열을 뒤에서부터 훑어 **비어 있지 않은 `Message` 문자열 한 개**를 꺼내는 것이다(`.../Presentation/Flow/YachtTurnFlowPresenter.cs:247-252`). 나머지 필드(`Type`·`AugmentId`·`PlayerIndex`·`Category`·`Score`·`DieId`)는 전부 버려진다. 그래서 지금 화면에 증강 발동이 드러나는 유일한 경로가 HUD 텍스트 한 줄이다 — `M17-T9` 완료 조건이 "과도한 텍스트 없이"인데 **현재는 텍스트가 유일한 수단**이다.
 
 **넣을 자리.** `YachtGameSession.LastCommandResult`가 단일 관문이다(`LocalGameAuthority.cs:597`). 모든 `Try*`/`Execute` 경로가 여기에 결과를 쓰므로, 이 setter 한 곳에서 이벤트를 흘려보내면 명령 종류마다 배선할 필요가 없다.
 
 | 항목 | 안 |
 |---|---|
-| 신규 파일 | `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtAugmentVfxPresenter.cs` |
+| 신규 파일 | `Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/YachtAugmentVfxPresenter.cs` |
 | 입력 | `YachtGameCommandResult.Events` 전체 배열 (마지막 메시지가 아니라) |
 | 배선 | `YachtGameSession`에 `event Action<YachtGameEvent[]> EventsPublished` 추가 → `LastCommandResult` 설정 지점에서 1회 발행 |
 | 매핑 | `AugmentId` → §3의 행 → 프리셋·앵커·색·세기 |
@@ -387,7 +387,7 @@
 2. **테이블 주도로 만든다.** `switch (augmentId)`로 46갈래를 치면 §3 표와 코드가 갈라진다. §3의 `구현 사양` 열을 그대로 `ScriptableObject` 또는 정적 테이블(`id → 프리셋·앵커·색·세기`)로 옮기고, 디스패처는 테이블을 조회만 하게 한다. 미기입 증강은 테이블에 없으니 자동으로 "연출 없음"이 되고, 이게 §1의 "빈 셀 = 미정" 규칙과 그대로 맞는다.
 3. **지속형(`C`)은 이벤트가 아니라 상태로 건다.** 36 `nozdormu`·48 `bounty-hunter`는 발동 순간이 아니라 조건이 유지되는 동안 켜져 있어야 한다. 25 `yacht-bank`의 칸 하이라이트도 증강을 가진 3턴 내내 켜져 있어야 하므로 같은 부류다(칸 위치는 고정이라 재계산은 필요 없고, 칸에 주사위가 들어왔는지만 본다). 이 셋은 이벤트 큐가 아니라 **매 상태 갱신 시 `State`를 보고 on/off를 맞추는 별도 경로**로 처리한다.
 
-**검증 방법.** 디스패처는 `MonoBehaviour` 없이 순수 클래스로 두면 EditMode 테스트로 "이벤트 배열 → 재생 요청 목록" 매핑을 검사할 수 있다. 기존 `Assets/Editor/Tests/Yacht/AugmentCardViewTests.cs` 패턴을 따른다.
+**검증 방법.** 디스패처는 `MonoBehaviour` 없이 순수 클래스로 두면 EditMode 테스트로 "이벤트 배열 → 재생 요청 목록" 매핑을 검사할 수 있다. 기존 `Assets/Editor/Tests/Games/Yacht/AugmentCardViewTests.cs` 패턴을 따른다.
 
 ### 3.5 신규 에셋 목록 (기입분 기준)
 
@@ -425,7 +425,7 @@
 
 ## 5. 발동 이벤트 대응 (참고, 프리필)
 
-`YachtGameEventType`(`Assets/Scripts/Games/Yacht/YachtGameCore.cs`)에서 VFX 트리거로 쓸 수 있는 이벤트다. 새 이벤트가 필요하면 여기에 행을 추가하고 §7에 사유를 남긴다.
+`YachtGameEventType`(`Assets/02.Scripts/Games/Yacht/Rules/YachtGameCore.cs`)에서 VFX 트리거로 쓸 수 있는 이벤트다. 새 이벤트가 필요하면 여기에 행을 추가하고 §7에 사유를 남긴다.
 
 | 이벤트 | 발행 위치 | VFX 용도 |
 |---|---|---|
@@ -542,10 +542,10 @@
 
 착수 시점에 다시 유효한지 확인한다.
 
-- **값 변경 지점**: `Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Enhance/DiceAlchemy.cs:68`. `RerollsDice => false`, `RequiredPhase => ScoreSelection`. 로직은 그대로 두고 표시만 늦춘다.
+- **값 변경 지점**: `Assets/02.Scripts/Games/Yacht/Augments/ManualAction/DiceAlchemy.cs:68`. `RerollsDice => false`, `RequiredPhase => ScoreSelection`. 로직은 그대로 두고 표시만 늦춘다.
 - **발동 경로**: `AugmentedYachtController.cs:346`의 `augmentTray.ActionRequested` → `YachtTurnFlowPresenter.cs:503 UseAugmentAction` → `gameSession.TryUseAugmentAction`. 이벤트는 `LocalGameAuthority.cs:241`에서 `AugmentActionUsed`로 나온다.
 - **눈 표시를 실제로 바꾸는 코드**: `BakedDiceController.cs:206 ApplyTargetValues`. `private static`이고 `Play` 안에서만 불린다. `landingFrame`이 `null`이면 각 주사위의 현재 `localRotation`을 기준 회전으로 쓰는 분기가 이미 있으므로(`:219-221`), 굴림 없는 제자리 갱신에 그대로 재사용할 수 있다. 새 회전 수학은 필요 없다.
-- **기존 이벤트 → VFX 경로**: `AugmentVfxPlanner.Plan`(순수 클래스, `Assets/Editor/Tests/Yacht/AugmentVfxPlannerTests.cs`로 검증 중) → `YachtTurnFlowPresenter.cs:717 PlayPendingStickerStamps`가 `State.Revision`으로 중복 재생을 막는다. `AugmentActionUsed`는 planner의 `switch`(`AugmentVfxPlanner.cs:58-72`)에 아직 없다.
+- **기존 이벤트 → VFX 경로**: `AugmentVfxPlanner.Plan`(순수 클래스, `Assets/Editor/Tests/Games/Yacht/AugmentVfxPlannerTests.cs`로 검증 중) → `YachtTurnFlowPresenter.cs:717 PlayPendingStickerStamps`가 `State.Revision`으로 중복 재생을 막는다. `AugmentActionUsed`는 planner의 `switch`(`AugmentVfxPlanner.cs:58-72`)에 아직 없다.
 - **파티클 선례**: 현재 프로젝트에 남은 `ParticleSystem` 사용처는 `Tabletop/RollCosmicCube.cs` 하나다. 이쪽은 파티클을 코드로 만들지 않고 **프리팹에 이미 들어 있는 것을 `GetComponentsInChildren<ParticleSystem>(true)`로 수집해(`:209`) `Emit(8)`로 터뜨린다(`:364`)**. 프로젝트에 오브젝트 풀도 공용 이펙트 재생 유틸도 없다.
   > 이 문서가 앞서 참고 구현으로 지목했던 `RollOrb.cs:971 CreateMagicParticles`(코드로 `AddComponent<ParticleSystem>()` 후 모듈 설정)는 **더 이상 존재하지 않는다.** `RollOrb`는 커밋 `53fc78e`로 삭제됐다. 절차적 구성 방식을 쓰려면 선례 없이 새로 작성해야 한다.
 - **주의 — 8면체 숫자**: `DiceVisualPool.cs:179 PromoteOctaDigitsToCrispUi`가 8면체 면 숫자를 `TesseraLayers.CrispUI`로 올린다. Crisp 카메라는 월드 위에 합성되므로 월드 레이어의 연기는 이 숫자를 가리지 못한다.
@@ -577,8 +577,8 @@
 
 **표시 갱신 지연 큐 (`I5`).** 굴림 없이 눈만 스냅 갱신하는 경로를 만든다.
 
-- `Assets/Scripts/Dice/BakedDiceController.cs` — 기존 `ApplyTargetValues`를 감싸는 공개 진입점 `ApplyValuesInPlace(IReadOnlyList<Transform> dice, IReadOnlyList<int> targetValues)`를 추가하고 `ApplyTargetValues(dice, null, targetValues, null, false)`로 넘긴다. 본문은 손대지 않는다.
-- `.../Presentation/YachtDiceRoundPresenter.cs` — `SyncFromAuthority`와 별개로 `ApplyValuesToVisuals()`를 추가해 `activeDice`의 `Transform`과 `diceValues`를 위 진입점에 넘긴다. `PlayRoll`의 `BuildPresetSlotOrder` 재배열은 프리셋 클립 슬롯 정렬용이므로 여기서는 쓰지 않는다.
+- `Assets/02.Scripts/Dice/BakedDiceController.cs` — 기존 `ApplyTargetValues`를 감싸는 공개 진입점 `ApplyValuesInPlace(IReadOnlyList<Transform> dice, IReadOnlyList<int> targetValues)`를 추가하고 `ApplyTargetValues(dice, null, targetValues, null, false)`로 넘긴다. 본문은 손대지 않는다.
+- `.../Presentation/Flow/YachtDiceRoundPresenter.cs` — `SyncFromAuthority`와 별개로 `ApplyValuesToVisuals()`를 추가해 `activeDice`의 `Transform`과 `diceValues`를 위 진입점에 넘긴다. `PlayRoll`의 `BuildPresetSlotOrder` 재배열은 프리셋 클립 슬롯 정렬용이므로 여기서는 쓰지 않는다.
 
 **이벤트 → 연출 요청.** 프레젠터에서 `augmentId`로 `switch`하지 않고 §3.4의 테이블 주도 원칙대로 `AugmentVfxPlanner`를 확장한다.
 
@@ -586,7 +586,7 @@
 - `Plan`의 `switch`에 `case YachtGameEventType.AugmentActionUsed:`를 추가하고 `AugmentId == YachtAugmentRuntime.DiceAlchemyId`일 때만 요청을 낸다. 다른 수동 행동(`table-flip`·`equivalent-exchange`·`gambit`)은 요청을 내지 않는다.
 - 대상 주사위는 요청에 싣지 않는다. 프레젠터가 `gameSession.State.Dice`의 `IsKept`로 판정한다.
 
-**연기 컴포넌트.** 신규 `.../Presentation/DiceSmokePuffVfx.cs`(`MonoBehaviour`).
+**연기 컴포넌트.** 신규 `.../Presentation/Dice/DiceSmokePuffVfx.cs`(`MonoBehaviour`).
 
 - `Awake`에서 `ParticleSystem` 하나를 절차 구성한다. 참고할 선례가 프로젝트에 없으므로(위 「파티클 선례」 참조) 모듈 설정과 셰이더 폴백 체인을 새로 작성한다. 머티리얼은 알파 블렌드이고 텍스처는 아래 PNG를 `Resources.Load`로 읽는다.
 - `simulationSpace = World`, `playOnAwake = false`, `emission.enabled = false`(수동 `Emit`만 씀), `maxParticles = 40`.
@@ -604,14 +604,14 @@
 
 | 파일 | 변경 |
 |---|---|
-| `Assets/Scripts/Dice/BakedDiceController.cs` | `ApplyValuesInPlace` 공개 진입점 |
-| `.../Presentation/YachtDiceRoundPresenter.cs` | `ApplyValuesToVisuals` |
-| `.../Presentation/AugmentVfxPlanner.cs` | `DiceSmokeSwap` 큐 + `AugmentActionUsed` 케이스 |
-| `.../Presentation/DiceSmokePuffVfx.cs` | 신규 |
-| `.../Presentation/YachtTurnFlowPresenter.cs` | 굴림 없음 분기를 지연 코루틴으로 |
+| `Assets/02.Scripts/Dice/BakedDiceController.cs` | `ApplyValuesInPlace` 공개 진입점 |
+| `.../Presentation/Flow/YachtDiceRoundPresenter.cs` | `ApplyValuesToVisuals` |
+| `.../Presentation/AugmentViews/AugmentVfxPlanner.cs` | `DiceSmokeSwap` 큐 + `AugmentActionUsed` 케이스 |
+| `.../Presentation/Dice/DiceSmokePuffVfx.cs` | 신규 |
+| `.../Presentation/Flow/YachtTurnFlowPresenter.cs` | 굴림 없음 분기를 지연 코루틴으로 |
 | `Assets/Editor/DiceSmokeSpriteBaker.cs` | 신규 (일회성 PNG 생성). 커밋 `2497bfc`에서 외부 에셋팩 프리팹 교체로 삭제됨 |
 | `Assets/Resources/Vfx/DiceSmokeBurst.prefab` · `.mat` · `DiceSmokeBurstTexture.png` | 신규 에셋. 절차적 `DiceSmokePuff.png` 계획을 대체해 커밋 `2497bfc`에서 외부 에셋팩 기반 프리팹으로 확정됨 |
-| `Assets/Editor/Tests/Yacht/AugmentVfxPlannerTests.cs` | 케이스 추가 |
+| `Assets/Editor/Tests/Games/Yacht/AugmentVfxPlannerTests.cs` | 케이스 추가 |
 
 ### 9.7 작업 분해
 

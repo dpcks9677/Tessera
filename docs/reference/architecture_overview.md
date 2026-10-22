@@ -67,7 +67,7 @@ Tessera는 **벽난로 불꽃과 촛불이 은은하게 타오르는 중세 판�
 ### 2.3 시스템 및 엔진 아키텍처 용어
 - **권위 (Authority / `IGameAuthority`)**: 게임의 논리 상태(`YachtGameState`)와 점수 유효성을 배타적으로 보증하는 주체. 로컬에서는 `LocalGameAuthority`가 담당.
 - **베이킹 (Baking / `BakedDiceController`)**: 물리 충돌을 실시간으로 계산하지 않고, 미리 결정론적으로 시뮬레이션해 둔 주사위 낙하/회전 궤적 데이터 클립.
-- **합성 루트 (Composition Root)**: 씬에서 오브젝트 간의 의존성을 조립하고 단방향 데이터 흐름을 시작시키는 진입 지점 ([AugmentedYachtController](../../Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentedYachtController.cs)).
+- **합성 루트 (Composition Root)**: 씬에서 오브젝트 간의 의존성을 조립하고 단방향 데이터 흐름을 시작시키는 진입 지점 ([AugmentedYachtController](../../Assets/02.Scripts/Games/Yacht/Presentation/Flow/AugmentedYachtController.cs)).
 
 ---
 
@@ -76,60 +76,63 @@ Tessera는 **벽난로 불꽃과 촛불이 은은하게 타오르는 중세 판�
 Tessera는 도메인 주도(Domain-Driven) 원칙에 따라 독립성이 보장된 모듈 계층으로 분리되어 있습니다.
 
 ```
-Assets/Scripts/
+Assets/02.Scripts/
 ├── Core/                   # 공통 기반 메트릭 및 시스템 인프라 (Tessera.Core)
 ├── Dice/                   # 주사위 물리/베이킹/팩토리/카탈로그 (Tessera.Dice)
 ├── Tabletop/               # 테이블탑 3D 소품 및 절차적 기하학 (Tessera.Tabletop)
 ├── Rendering/              # URP 커스텀 패스 및 셰이더/머티리얼 (Tessera.Rendering)
 ├── Games/                  # 게임 모드 도메인
-│   ├── Yacht/              # 순수 요트 다이스 권위/명령/코어 룰 (Tessera.Games.Yacht)
-│   └── AugmentedYacht/     # 증강 요트 다이스 전용 시스템
-│       ├── Logic/          # 증강 런타임, 점수 엔진, 46종 증강 핸들러 (Tessera.Games.Yacht)
+│   └── Yacht/              # 요트 다이스 게임 모드 (증강 포함)
+│       ├── Rules/          # 권위·명령·코어 룰 (Tessera.Games.Yacht)
+│       ├── Augments/       # 증강 런타임, 점수 엔진, 46종 증강 핸들러 (Tessera.Games.Yacht)
+│       │   ├── Framework/      # IAugmentHandler, 런타임, 점수 엔진
+│       │   └── Modification/ Enhance/ Quest/ ManualAction/   # 증강 종류별 핸들러
 │       └── Presentation/   # 점수판, UI 뷰, 턴 연출, 카메라/조명 리그, 컨트롤러
-│                           #   (Tessera.Games.AugmentedYacht)
+│           │               #   (Tessera.Games.Yacht.Presentation)
+│           └── Flow/ Stage/ Table/ Hud/ Dice/ AugmentViews/
 └── Network/                # 빈 폴더. 온라인 통신 계층 자리만 잡아 둠 (파일 0개)
 ```
 
 > **괄호 안의 이름은 어셈블리가 아니라 C# 네임스페이스입니다.** 모듈 경계를 컴파일러가 막지 못하는 사정과
 > 레이어 규칙은 [`control_manifest.md`](control_manifest.md)에 있습니다.
 >
-> 폴더와 네임스페이스가 어긋나는 지점이 하나 있습니다. `AugmentedYacht/Logic/` 아래 파일은 전부
-> `Tessera.Games.Yacht` 네임스페이스이고, `AugmentedYacht/Presentation/` 아래 파일만
-> `Tessera.Games.AugmentedYacht`입니다. 증강 규칙이 요트 도메인 로직의 연장이기 때문입니다.
+> 하위 폴더별 네임스페이스는 없습니다. `Rules/`와 `Augments/` 아래 파일은 하위 폴더와 무관하게 전부
+> `Tessera.Games.Yacht`이고, `Presentation/` 아래 하위 폴더(`Flow`, `Stage`, `Table`, `Hud`, `Dice`,
+> `AugmentViews`)는 전부 `Tessera.Games.Yacht.Presentation`입니다.
 
 ### 모듈별 상세 역할
 
 #### 1) `Tessera.Core`
-- [DiceBoardMetrics.cs](../../Assets/Scripts/Core/DiceBoardMetrics.cs): 주사위 트레이, 굴림 영역, 카메라 시야의 표준 3D 물리 좌표와 오프셋 메트릭 정의.
-- [RuntimeAssetGuard.cs](../../Assets/Scripts/Core/RuntimeAssetGuard.cs): 런타임 중 에디터 에셋이 누수되거나 원본이 변조되지 않도록 인스턴스를 보호.
-- [TesseraLayers.cs](../../Assets/Scripts/Core/TesseraLayers.cs): 레이캐스트 및 렌더링에 사용되는 Unity Layer 상수 중앙화.
+- [DiceBoardMetrics.cs](../../Assets/02.Scripts/Core/DiceBoardMetrics.cs): 주사위 트레이, 굴림 영역, 카메라 시야의 표준 3D 물리 좌표와 오프셋 메트릭 정의.
+- [RuntimeAssetGuard.cs](../../Assets/02.Scripts/Core/RuntimeAssetGuard.cs): 런타임 중 에디터 에셋이 누수되거나 원본이 변조되지 않도록 인스턴스를 보호.
+- [TesseraLayers.cs](../../Assets/02.Scripts/Core/TesseraLayers.cs): 레이캐스트 및 렌더링에 사용되는 Unity Layer 상수 중앙화.
 
 #### 2) `Tessera.Dice`
-- [BakedDiceController.cs](../../Assets/Scripts/Dice/BakedDiceController.cs): 권위 계층이 전달한 주사위 최종 눈금과 연출 프리셋을 받아 부드럽게 굴림 애니메이션을 재생.
-- [DicePresetCatalog.cs](../../Assets/Scripts/Dice/DicePresetCatalog.cs): 사전 베이크된 낙하/회전 애니메이션 클립 저장소.
-- [DiceFaceOrientation.cs](../../Assets/Scripts/Dice/DiceFaceOrientation.cs): 주사위의 윗면(Top Face)이 나타내는 숫자를 계산하는 기하학적 오리엔테이션 판정기.
-- [DiceMaterialFactory.cs](../../Assets/Scripts/Dice/DiceMaterialFactory.cs) & [DicePaletteCatalog.cs](../../Assets/Scripts/Dice/DicePaletteCatalog.cs): 일반 주사위, 황금 주사위, 흑요석 주사위 등의 머티리얼 인스턴싱 및 캐싱.
+- [BakedDiceController.cs](../../Assets/02.Scripts/Dice/BakedDiceController.cs): 권위 계층이 전달한 주사위 최종 눈금과 연출 프리셋을 받아 부드럽게 굴림 애니메이션을 재생.
+- [DicePresetCatalog.cs](../../Assets/02.Scripts/Dice/DicePresetCatalog.cs): 사전 베이크된 낙하/회전 애니메이션 클립 저장소.
+- [DiceFaceOrientation.cs](../../Assets/02.Scripts/Dice/DiceFaceOrientation.cs): 주사위의 윗면(Top Face)이 나타내는 숫자를 계산하는 기하학적 오리엔테이션 판정기.
+- [DiceMaterialFactory.cs](../../Assets/02.Scripts/Dice/DiceMaterialFactory.cs) & [DicePaletteCatalog.cs](../../Assets/02.Scripts/Dice/DicePaletteCatalog.cs): 일반 주사위, 황금 주사위, 흑요석 주사위 등의 머티리얼 인스턴싱 및 캐싱.
 
 #### 3) `Tessera.Tabletop`
 테이블 위에서 살아 숨 쉬는 유기적 소품들로 구성됩니다:
-- [HourglassTimer.cs](../../Assets/Scripts/Tabletop/HourglassTimer.cs) & [HourglassMeshBuilder.cs](../../Assets/Scripts/Tabletop/HourglassMeshBuilder.cs): 턴 제한시간을 나타내는 3D 모래시계. 절차적 모래 유동 메시 빌드.
-- [InkwellAndQuill.cs](../../Assets/Scripts/Tabletop/InkwellAndQuill.cs) & [QuillHoverAnimator.cs](../../Assets/Scripts/Tabletop/QuillHoverAnimator.cs): 점수판을 마우스 오버하거나 점수를 기록할 때 유기적으로 반응하는 잉크통과 마법 깃펜.
-- [RunicSlateMatrix.cs](../../Assets/Scripts/Tabletop/RunicSlateMatrix.cs): 고대 룬 문자가 빛나며 게임 상태를 알리는 석판.
-- [RollCosmicCube.cs](../../Assets/Scripts/Tabletop/RollCosmicCube.cs): 주사위 굴리기 버튼 역할을 겸하는 성운 큐브. 앞서 같은 역할을 하던 `RollOrb`는 폐기됐습니다.
+- [HourglassTimer.cs](../../Assets/02.Scripts/Tabletop/HourglassTimer.cs) & [HourglassMeshBuilder.cs](../../Assets/02.Scripts/Tabletop/HourglassMeshBuilder.cs): 턴 제한시간을 나타내는 3D 모래시계. 절차적 모래 유동 메시 빌드.
+- [InkwellAndQuill.cs](../../Assets/02.Scripts/Tabletop/InkwellAndQuill.cs) & [QuillHoverAnimator.cs](../../Assets/02.Scripts/Tabletop/QuillHoverAnimator.cs): 점수판을 마우스 오버하거나 점수를 기록할 때 유기적으로 반응하는 잉크통과 마법 깃펜.
+- [RunicSlateMatrix.cs](../../Assets/02.Scripts/Tabletop/RunicSlateMatrix.cs): 고대 룬 문자가 빛나며 게임 상태를 알리는 석판.
+- [RollCosmicCube.cs](../../Assets/02.Scripts/Tabletop/RollCosmicCube.cs): 주사위 굴리기 버튼 역할을 겸하는 성운 큐브. 앞서 같은 역할을 하던 `RollOrb`는 폐기됐습니다.
 
 #### 4) `Tessera.Rendering`
-- [PixelEdgeRendererFeature.cs](../../Assets/Scripts/Rendering/PixelEdgeRendererFeature.cs): URP 렌더러에 주입되는 후처리 피처. 3D 모델의 깊이(Depth)와 노멀(Normal)을 기반으로 스타일라이즈드 픽셀 외곽선 검출.
-- [CelMaterialFactory.cs](../../Assets/Scripts/Rendering/CelMaterialFactory.cs) & [CelStyleSwitcher.cs](../../Assets/Scripts/Rendering/CelStyleSwitcher.cs): 클래식 렌더와 레트로 픽셀아트 렌더 간 실시간 토글 지원.
+- [PixelEdgeRendererFeature.cs](../../Assets/02.Scripts/Rendering/PixelEdgeRendererFeature.cs): URP 렌더러에 주입되는 후처리 피처. 3D 모델의 깊이(Depth)와 노멀(Normal)을 기반으로 스타일라이즈드 픽셀 외곽선 검출.
+- [CelMaterialFactory.cs](../../Assets/02.Scripts/Rendering/CelMaterialFactory.cs) & [CelStyleSwitcher.cs](../../Assets/02.Scripts/Rendering/CelStyleSwitcher.cs): 클래식 렌더와 레트로 픽셀아트 렌더 간 실시간 토글 지원.
 
-#### 5) `Tessera.Games.Yacht` & `Tessera.Games.AugmentedYacht`
-- **게임의 심장부**: 순수 도메인 로직(`Logic`)과 화면 표현(`Presentation`)이 엄격하게 분리되어 있습니다.
+#### 5) `Tessera.Games.Yacht` & `Tessera.Games.Yacht.Presentation`
+- **게임의 심장부**: 순수 도메인 로직(`Rules`·`Augments`)과 화면 표현(`Presentation`)이 엄격하게 분리되어 있습니다.
 
-### 3.1 `Assets/Art/` 디렉터리 구조 (2026-09-19 재편)
+### 3.1 `Assets/04.Art/` 디렉터리 구조 (2026-09-19 재편)
 
-`Assets/Art/` 아래 최상위 폴더는 "누가 이 파일을 쓰는가"로 나뉩니다.
+`Assets/04.Art/` 아래 최상위 폴더는 "누가 이 파일을 쓰는가"로 나뉩니다.
 
 ```
-Assets/Art/
+Assets/04.Art/
 ├── Source/<도메인>/         # 사람이 만든 원본·베이커 입력 (예: Source/Coin/coin.glb)
 ├── ThirdParty/              # 외부 반입 에셋. 라이선스·README를 폴더에 동봉
 └── Generated/<도메인>/<종류>/   # 에디터 베이커 산출물. 재생성 가능, 원본이 아님
@@ -137,7 +140,7 @@ Assets/Art/
 
 - `Resources.Load`가 필요한 생성물은 `Generated/<도메인>/Resources/<이름>/`처럼 `Generated` 안에
   `Resources` 폴더를 중첩합니다. `Resources.Load` 호출 경로 자체는 `<이름>/...`로 폴더 이동과 무관하게 유지됩니다.
-- 오디오는 `Assets/Audio/Sfx/<도메인>/<종류>/`에 둡니다. 도메인 폴더는 쓰는 소리가 실제로 늘어날 때만 추가합니다.
+- 오디오는 `Assets/05.Audio/Sfx/<도메인>/<종류>/`에 둡니다. 도메인 폴더는 쓰는 소리가 실제로 늘어날 때만 추가합니다.
 
 ### 3.2 `Assets/Editor/` 디렉터리 구조 (2026-09-20 재편)
 
@@ -146,13 +149,13 @@ Assets/Art/
 ```
 Assets/Editor/
 ├── Tests/
-│   ├── Yacht/       # 요트·증강 도메인 EditMode 테스트
+│   ├── Games/Yacht/ # 요트·증강 도메인 EditMode 테스트
 │   ├── Dice/        # 주사위·동전 도메인 EditMode 테스트
 │   ├── Tabletop/    # 테이블탑 소품 도메인 EditMode 테스트
 │   ├── Rendering/   # 렌더링 도메인 EditMode 테스트
 │   └── (루트)       # 도메인에 속하지 않는 횡단 테스트 (예: FontFallbackTests, RuntimeAssetGuardTests)
-├── Yacht/           # 요트·증강 도메인 베이커/에디터 도구
-├── Dice/            # 주사위·동전 도메인 베이커/에디터 도구
+├── Games/Yacht/     # 요트·증강 도메인 베이커/에디터 도구
+├── Dice/            # 주사위·동전 도메인 베이커/에디터 도구 (CoinSpinPresetBaker 포함)
 ├── Tabletop/        # 테이블탑 소품 도메인 베이커/에디터 도구
 ├── Rendering/       # 렌더링 도메인 베이커/에디터 도구
 └── Tools/           # 도메인에 묶이지 않는 프로젝트 전역 도구
@@ -160,7 +163,7 @@ Assets/Editor/
 
 분류 기준:
 - `Tests/` — 테스트 전용입니다. 하위는 검증 대상 도메인을 따라 프로덕션 코드 폴더와 대칭을 이룹니다. 도메인에 속하지 않는 횡단 테스트만 `Tests/` 루트에 둡니다.
-- 도메인 폴더(`Yacht`, `Dice`, `Tabletop`, `Rendering`) — 그 도메인의 에셋을 굽거나(Baker), 씬을 조작하거나, 그 도메인을 검증하는 에디터 코드가 들어갑니다.
+- 도메인 폴더(`Games/Yacht`, `Dice`, `Tabletop`, `Rendering`) — 그 도메인의 에셋을 굽거나(Baker), 씬을 조작하거나, 그 도메인을 검증하는 에디터 코드가 들어갑니다.
 - `Tools/` — 도메인에 묶이지 않는 프로젝트 전역 도구가 들어갑니다.
 - 동전 관련 에디터 코드는 `Dice/`에 둡니다. 굴려서 면이 결정되고, 메시 베이크 → 면 텍스처 → 프리팹으로 이어지는 파이프라인이 주사위와 같은 구조이기 때문입니다.
 - 프로젝트에 `.asmdef`가 없어 `Assets/Editor` 하위 어느 깊이에 있든 전부 `Assembly-CSharp-Editor`로 컴파일됩니다. `[MenuItem]` 메뉴 경로는 파일의 폴더 위치와 무관하며, 어트리뷰트 문자열이 그대로 메뉴 경로가 됩니다.
@@ -169,7 +172,7 @@ Assets/Editor/
 
 ## 4. 씬(Scene) 계층 구조 및 런타임 수명 주기
 
-메인 씬 위치: `Assets/Scenes/Augmented Dice.unity`
+메인 씬 위치: `Assets/01.Scenes/Augmented Dice.unity`
 
 신입 개발자가 씬을 열었을 때 가장 많이 혼란을 겪는 부분은 **"씬에 배치된 정적 GameObject"**와 **"코드가 런타임에 동적으로 절차적 생성(Procedural Generation)하는 오브젝트"**의 경계입니다.
 
@@ -206,11 +209,11 @@ Augmented Dice (Scene)
 ```
 
 > **프롭은 전부 `Graphics Layout`의 직계 자식인 프리팹 인스턴스입니다.** `TableRoot`나 `Props` 같은
-> 중간 그룹 노드는 없습니다. 프리팹 원본은 `Assets/Prefabs/Tabletop/`에 있고,
+> 중간 그룹 노드는 없습니다. 프리팹 원본은 `Assets/03.Prefabs/Tabletop/`에 있고,
 > `Tessera/Tabletop/Bake Tabletop Prefabs` 메뉴가 씬의 프롭을 프리팹으로 다시 굽습니다.
 >
 > 테이블 상판의 나무 판자와 천 러너만은 프리팹에 구워져 있지 않고
-> [TabletopSurfaceBuilder.cs](../../Assets/Scripts/Games/AugmentedYacht/Presentation/TabletopSurfaceBuilder.cs)가
+> [TabletopSurfaceBuilder.cs](../../Assets/02.Scripts/Games/Yacht/Presentation/Table/TabletopSurfaceBuilder.cs)가
 > 게임 시작 시 절차적으로 만듭니다.
 
 ### 4.2 런타임 초기화 수명 주기 (Lifecycle Sequence)
@@ -238,7 +241,7 @@ sequenceDiagram
 
 > [!IMPORTANT]
 > **정적 씬 오브젝트 vs 동적 생성 오브젝트**:
-> - 테이블의 나무 판자 이음새와 천 러너는 씬 에셋이 아니라, 게임 시작 시 [TabletopSurfaceBuilder.cs](../../Assets/Scripts/Games/AugmentedYacht/Presentation/TabletopSurfaceBuilder.cs)가 프로시저럴(절차적)하게 버텍스를 계산하여 생성합니다.
+> - 테이블의 나무 판자 이음새와 천 러너는 씬 에셋이 아니라, 게임 시작 시 [TabletopSurfaceBuilder.cs](../../Assets/02.Scripts/Games/Yacht/Presentation/Table/TabletopSurfaceBuilder.cs)가 프로시저럴(절차적)하게 버텍스를 계산하여 생성합니다.
 > - 따라서 테이블 외형을 수정하려면 씬의 Transform이 아니라 빌더 스크립트나 머티리얼 팩토리를 확인해야 합니다.
 
 ---
@@ -282,10 +285,10 @@ flowchart LR
 ```
 
 1. **사용자 액션 발생**: 플레이어가 점수판의 "Full House" 칸을 클릭합니다.
-2. **명령 캡슐화**: [ParchmentScoreSheet.cs](../../Assets/Scripts/Games/AugmentedYacht/Presentation/ParchmentScoreSheet.cs)가 점수 변수를 직접 수정하지 않고, [YachtInputRouter.cs](../../Assets/Scripts/Games/AugmentedYacht/Presentation/YachtInputRouter.cs)를 통해 `YachtGameCommand`(`Type = YachtCommandType.CommitScore`)를 생성합니다. 명령은 타입별 클래스가 아니라 `YachtCommandType` 열거형으로 구분되는 단일 클래스입니다.
-3. **권위 검증 및 실행**: [LocalGameAuthority.cs](../../Assets/Scripts/Games/Yacht/LocalGameAuthority.cs)가 현재 턴, 주사위 값, 이미 기록된 칸인지 검증하고 `YachtGameState`를 단독 갱신합니다.
-4. **결과 브로드캐스트**: 갱신된 내역은 `YachtGameEvent`와 함께 합성 루트([AugmentedYachtController.cs](../../Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentedYachtController.cs))로 리턴됩니다.
-5. **뷰 반영**: 점수판 텍스트가 갱신되고, 마법 깃펜([InkwellAndQuill.cs](../../Assets/Scripts/Tabletop/InkwellAndQuill.cs))이 날아와 점수를 서명하는 연출이 실행됩니다.
+2. **명령 캡슐화**: [ParchmentScoreSheet.cs](../../Assets/02.Scripts/Games/Yacht/Presentation/Table/ParchmentScoreSheet.cs)가 점수 변수를 직접 수정하지 않고, [YachtInputRouter.cs](../../Assets/02.Scripts/Games/Yacht/Presentation/Flow/YachtInputRouter.cs)를 통해 `YachtGameCommand`(`Type = YachtCommandType.CommitScore`)를 생성합니다. 명령은 타입별 클래스가 아니라 `YachtCommandType` 열거형으로 구분되는 단일 클래스입니다.
+3. **권위 검증 및 실행**: [LocalGameAuthority.cs](../../Assets/02.Scripts/Games/Yacht/Rules/LocalGameAuthority.cs)가 현재 턴, 주사위 값, 이미 기록된 칸인지 검증하고 `YachtGameState`를 단독 갱신합니다.
+4. **결과 브로드캐스트**: 갱신된 내역은 `YachtGameEvent`와 함께 합성 루트([AugmentedYachtController.cs](../../Assets/02.Scripts/Games/Yacht/Presentation/Flow/AugmentedYachtController.cs))로 리턴됩니다.
+5. **뷰 반영**: 점수판 텍스트가 갱신되고, 마법 깃펜([InkwellAndQuill.cs](../../Assets/02.Scripts/Tabletop/InkwellAndQuill.cs))이 날아와 점수를 서명하는 연출이 실행됩니다.
 
 ---
 
@@ -294,12 +297,12 @@ flowchart LR
 ### 6.1 결정론적 주사위 베이킹(Baking) 시스템
 - **문제점**: Unity PhysX 물리 엔진으로 주사위를 직접 굴리면 프레임레이트, 부동소수점 오차, 클라이언트 사양에 따라 결과가 비결정론적으로 변합니다. 이는 리플레이 저장이나 네트워크 동기화를 불가능하게 만듭니다.
 - **해결책**:
-  1. 권위 계층([LocalGameAuthority.cs](../../Assets/Scripts/Games/Yacht/LocalGameAuthority.cs))이 시드 기반 난수로 최종 눈금(예: `[1, 3, 3, 5, 6]`)을 **수학적으로 먼저 확정**합니다.
-  2. 사전 베이크 라이브러리([DicePresetCatalog.cs](../../Assets/Scripts/Dice/DicePresetCatalog.cs))에서 해당 눈금 조합으로 자연스럽게 떨어지는 3D 회전/낙하 궤적 애니메이션 클립을 조회합니다.
-  3. [BakedDiceController.cs](../../Assets/Scripts/Dice/BakedDiceController.cs)가 클립을 재생하여 100% 결정론적이면서도 물리적으로 완벽한 주사위 굴림을 연출합니다.
+  1. 권위 계층([LocalGameAuthority.cs](../../Assets/02.Scripts/Games/Yacht/Rules/LocalGameAuthority.cs))이 시드 기반 난수로 최종 눈금(예: `[1, 3, 3, 5, 6]`)을 **수학적으로 먼저 확정**합니다.
+  2. 사전 베이크 라이브러리([DicePresetCatalog.cs](../../Assets/02.Scripts/Dice/DicePresetCatalog.cs))에서 해당 눈금 조합으로 자연스럽게 떨어지는 3D 회전/낙하 궤적 애니메이션 클립을 조회합니다.
+  3. [BakedDiceController.cs](../../Assets/02.Scripts/Dice/BakedDiceController.cs)가 클립을 재생하여 100% 결정론적이면서도 물리적으로 완벽한 주사위 굴림을 연출합니다.
 
 ### 6.2 46종 증강(Augments) 확장 시스템 (OCP 준수)
-모든 증강은 [IAugmentHandler.cs](../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/IAugmentHandler.cs) 인터페이스를 구현하며, `YachtAugmentRuntime`에 if-else 사다리를 추가하지 않고 독립 클래스로 존재합니다.
+모든 증강은 [IAugmentHandler.cs](../../Assets/02.Scripts/Games/Yacht/Augments/Framework/IAugmentHandler.cs) 인터페이스를 구현하며, `YachtAugmentRuntime`에 if-else 사다리를 추가하지 않고 독립 클래스로 존재합니다.
 
 > 📖 **46종 증강 전수 목록, 8단계 턴 훅 오케스트레이션 및 점수 계산 파이프라인**에 대한 상세 기술 문서는 [`augments_specification_and_status.md`](augments_specification_and_status.md)를 참고하세요.
 
@@ -390,7 +393,7 @@ Tessera는 외부 툴(Blender, Photoshop) 의존도를 낮추고 일관된 아�
 | **양피지 텍스처** | [ParchmentTextureGenerator.cs](../../Assets/Editor/Tabletop/ParchmentTextureGenerator.cs) | 점수판 양피지 섬유질 노이즈 텍스처 | `Tools/Tessera/Generate Parchment & Score Sheet Assets` |
 | **주사위 궤적 베이커** | [DicePresetBaker.cs](../../Assets/Editor/Dice/DicePresetBaker.cs) | 3D 주사위 낙하 물리 시뮬레이션 클립 베이킹 | `Tessera/Bake/Dice Presets` |
 | **특수 주사위 메시** | [DiceShapeBaker.cs](../../Assets/Editor/Dice/DiceShapeBaker.cs) | 옥타헤드론(8면체) 등 절차적 주사위 메시 | `Tessera/Bake/Dice Shapes` |
-| **증강 아이콘 갤러리** | [AugmentIconGalleryWindow.cs](../../Assets/Editor/Yacht/AugmentIconGalleryWindow.cs) | 전체 46종 증강 카드 렌더링 검수 윈도우 | `Tessera/증강 아이콘 갤러리` |
+| **증강 아이콘 갤러리** | [AugmentIconGalleryWindow.cs](../../Assets/Editor/Games/Yacht/AugmentIconGalleryWindow.cs) | 전체 46종 증강 카드 렌더링 검수 윈도우 | `Tessera/증강 아이콘 갤러리` |
 | **픽셀 필터 프리뷰** | [PixelFilterPreview.cs](../../Assets/Editor/Rendering/PixelFilterPreview.cs) | 픽셀 외곽선 검출 셰이더 실시간 조정 창 | `Tools/Tessera/Sync Pixel Filter Preview` |
 
 ---
@@ -401,15 +404,15 @@ Tessera는 외부 툴(Blender, Photoshop) 의존도를 낮추고 일관된 아�
 
 | 화면 요소 (UI & 3D Props) | 씬 내 역할 | 담당 C# 스크립트 |
 |---|---|---|
-| **양피지 점수판** | 12개 카테고리 득점표, 빗금 처리, 호버 표시 | [ParchmentScoreSheet.cs](../../Assets/Scripts/Games/AugmentedYacht/Presentation/ParchmentScoreSheet.cs) |
-| **굴러가는 3D 주사위들** | 주사위 프리셋 애니메이션 재생 및 최종 눈금 정렬 | [BakedDiceController.cs](../../Assets/Scripts/Dice/BakedDiceController.cs) |
-| **주사위 고정(Keep) 영역** | 주사위를 클릭해 아래쪽 트레이로 내리는 인터랙션 | [DiceKeepTarget.cs](../../Assets/Scripts/Dice/DiceKeepTarget.cs) |
-| **마법 깃펜과 잉크통** | 점수 기입 서명 연출, 호버 제스처 애니메이션 | [InkwellAndQuill.cs](../../Assets/Scripts/Tabletop/InkwellAndQuill.cs), [QuillHoverAnimator.cs](../../Assets/Scripts/Tabletop/QuillHoverAnimator.cs) |
-| **모래시계** | 턴 제한시간 표시, 모래 떨어지는 애니메이션 | [HourglassTimer.cs](../../Assets/Scripts/Tabletop/HourglassTimer.cs) |
-| **코스믹 큐브 (Roll Cosmic Cube)** | 굴리기 버튼 클릭 시 회전 및 성운 빛 방출 | [RollCosmicCube.cs](../../Assets/Scripts/Tabletop/RollCosmicCube.cs) |
-| **증강 카드 트레이 (우측 상단)** | 현재 플레이어가 보유한 증강 카드 3장 표시 | [AugmentCardTray.cs](../../Assets/Scripts/Tabletop/AugmentCardTray.cs), [AugmentTrayPresenter.cs](../../Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentTrayPresenter.cs) |
-| **룬 석판** | 턴 진행 상태 및 라운드 표시 룬 문자 발광 | [RunicSlateMatrix.cs](../../Assets/Scripts/Tabletop/RunicSlateMatrix.cs) |
-| **인게임 디버그 창** | 주사위 눈 강제 지정, 증강 즉시 주입 치트 창 | [YachtDebugPanel.cs](../../Assets/Scripts/Games/AugmentedYacht/Presentation/YachtDebugPanel.cs) |
+| **양피지 점수판** | 12개 카테고리 득점표, 빗금 처리, 호버 표시 | [ParchmentScoreSheet.cs](../../Assets/02.Scripts/Games/Yacht/Presentation/Table/ParchmentScoreSheet.cs) |
+| **굴러가는 3D 주사위들** | 주사위 프리셋 애니메이션 재생 및 최종 눈금 정렬 | [BakedDiceController.cs](../../Assets/02.Scripts/Dice/BakedDiceController.cs) |
+| **주사위 고정(Keep) 영역** | 주사위를 클릭해 아래쪽 트레이로 내리는 인터랙션 | [DiceKeepTarget.cs](../../Assets/02.Scripts/Dice/DiceKeepTarget.cs) |
+| **마법 깃펜과 잉크통** | 점수 기입 서명 연출, 호버 제스처 애니메이션 | [InkwellAndQuill.cs](../../Assets/02.Scripts/Tabletop/InkwellAndQuill.cs), [QuillHoverAnimator.cs](../../Assets/02.Scripts/Tabletop/QuillHoverAnimator.cs) |
+| **모래시계** | 턴 제한시간 표시, 모래 떨어지는 애니메이션 | [HourglassTimer.cs](../../Assets/02.Scripts/Tabletop/HourglassTimer.cs) |
+| **코스믹 큐브 (Roll Cosmic Cube)** | 굴리기 버튼 클릭 시 회전 및 성운 빛 방출 | [RollCosmicCube.cs](../../Assets/02.Scripts/Tabletop/RollCosmicCube.cs) |
+| **증강 카드 트레이 (우측 상단)** | 현재 플레이어가 보유한 증강 카드 3장 표시 | [AugmentCardTray.cs](../../Assets/02.Scripts/Tabletop/AugmentCardTray.cs), [AugmentTrayPresenter.cs](../../Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/AugmentTrayPresenter.cs) |
+| **룬 석판** | 턴 진행 상태 및 라운드 표시 룬 문자 발광 | [RunicSlateMatrix.cs](../../Assets/02.Scripts/Tabletop/RunicSlateMatrix.cs) |
+| **인게임 디버그 창** | 주사위 눈 강제 지정, 증강 즉시 주입 치트 창 | [YachtDebugPanel.cs](../../Assets/02.Scripts/Games/Yacht/Presentation/Hud/YachtDebugPanel.cs) |
 
 ---
 
@@ -423,15 +426,15 @@ Tessera는 외부 툴(Blender, Photoshop) 의존도를 낮추고 일관된 아�
 
 ### 2. 프레젠테이션/뷰에서 `YachtGameState` 직접 수정 금지
 - **위험**: "점수판 스크립트에서 플레이어 점수 프로퍼티에 바로 10을 더하면 편하지 않나?"라고 생각해 직접 대입하면 권위 계층의 동기화가 깨지고, 이벤트가 발생하지 않아 다른 프레젠터가 갱신되지 않습니다.
-- **해결책**: 모든 상태 변경은 반드시 [YachtInputRouter.cs](../../Assets/Scripts/Games/AugmentedYacht/Presentation/YachtInputRouter.cs)를 거쳐 Command를 발행해야 합니다.
+- **해결책**: 모든 상태 변경은 반드시 [YachtInputRouter.cs](../../Assets/02.Scripts/Games/Yacht/Presentation/Flow/YachtInputRouter.cs)를 거쳐 Command를 발행해야 합니다.
 
 ### 3. 주사위 굴림에 물리 Rigidbody 직접 조작 금지
 - **위험**: `rigidbody.AddForce()` 등으로 주사위를 날리면 사양에 따라 착지 결과가 달라져 미리 계산된 권위 결과값과 불일치(Desync)가 발생합니다.
-- **해결책**: 주사위 물리 연출은 [BakedDiceController.cs](../../Assets/Scripts/Dice/BakedDiceController.cs)에 클립 재생을 위임해야 합니다.
+- **해결책**: 주사위 물리 연출은 [BakedDiceController.cs](../../Assets/02.Scripts/Dice/BakedDiceController.cs)에 클립 재생을 위임해야 합니다.
 
 ### 4. 도메인 로직에 Unity 엔진 객체(`GameObject`, `Transform`) 결합 금지
 - **위험**: `IYachtRuleSet`이나 `AugmentHandler` 내부에서 `GameObject.Find`나 `Transform`을 참조하면 EditMode NUnit 테스트 실행 시 씬이 없어 NullReferenceException이 발생합니다.
-- **해결책**: `Logic/` 하위 코드는 순수 C# POCO(Plain Old CLR Object) 상태를 유지해야 합니다.
+- **해결책**: `Rules/`·`Augments/` 하위 코드는 순수 C# POCO(Plain Old CLR Object) 상태를 유지해야 합니다.
 
 ### 5. 무분별한 `async`/`await` 도입 지양 (코루틴 우선)
 - **위험**: 게임 연출(주사위 굴림 시간, 카메라 이동, 카드 드로우 등)은 Unity의 메인 스레드 프레임 타이밍과 완벽히 동기화되어야 합니다. 멀티스레드 기반 `Task`를 연출에 남용하면 프레임 스킵이나 스레드 충돌이 발생합니다.
@@ -444,15 +447,15 @@ Tessera는 외부 툴(Blender, Photoshop) 의존도를 낮추고 일관된 아�
 ### 레시피 1: 신규 증강(Augment) 카드 추가하기
 
 1. **핸들러 파일 생성**
-   - 위치: `Assets/Scripts/Games/AugmentedYacht/Logic/Augments/{Modification|Enhance|Quest}/`
+   - 위치: `Assets/02.Scripts/Games/Yacht/Augments/{Modification|Enhance|Quest|ManualAction}/`
    - 파일명은 증강 이름 그대로입니다. `Handler` 접미사를 붙이지 않습니다 (`GoldenDie.cs`, `BountyHunter.cs`).
-   - `Core/`는 인프라(인터페이스·디스패처·카탈로그·상태 저장소) 전용입니다. 핸들러를 넣지 않습니다.
+   - `Augments/Framework/`는 인프라(인터페이스·디스패처·카탈로그·상태 저장소) 전용입니다. 핸들러를 넣지 않습니다.
 2. **카테고리 기반 클래스를 상속**하고 필요한 훅 인터페이스만 추가로 구현합니다.
    ```csharp
-   // 실제 예: Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Enhance/GoldenDie.cs 와 같은 형태
+   // 실제 예: Assets/02.Scripts/Games/Yacht/Augments/Enhance/GoldenDie.cs 와 같은 형태
    using System.Collections.Generic;
 
-   namespace Tessera.Games.Yacht   // Logic/ 아래는 전부 이 네임스페이스입니다
+   namespace Tessera.Games.Yacht   // Rules/와 Augments/ 아래는 전부 이 네임스페이스입니다
    {
        /// <summary>눈이 7이면 +7점 보너스를 얻습니다.</summary>
        public sealed class LuckySeven : EnhanceAugment, IDiceBonusProvider
@@ -482,7 +485,7 @@ Tessera는 외부 툴(Blender, Photoshop) 의존도를 낮추고 일관된 아�
 4. **카탈로그에 등록**: `YachtAugmentCatalog.Handlers` 배열에 `new LuckySeven()`을 추가합니다.
    리플렉션 자동 수집을 쓰지 않고 명시적으로 등록합니다 (IL2CPP에서 안전하고, 등록 순서가 곧 노출 순서입니다).
    여기 등록하지 않으면 드래프트 후보에 나오지 않습니다.
-5. **단위 테스트 작성**: `Assets/Editor/Tests/Yacht/YachtEnhanceAugmentTests.cs`에 득점 계산 검증을 추가하고
+5. **단위 테스트 작성**: `Assets/Editor/Tests/Games/Yacht/YachtEnhanceAugmentTests.cs`에 득점 계산 검증을 추가하고
    `Tessera/Validation/Run All EditMode Tests`로 확인합니다. 테스트 메서드 이름은 영문으로 짓습니다.
 
 ### 레시피 2: EditMode 단위 테스트 실행 및 회귀 검증

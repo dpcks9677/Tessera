@@ -19,8 +19,8 @@ namespace Tessera.Editor.Tests
     [TestFixture]
     public sealed class PixelEdgeFilterTests
     {
-        private const string PcRendererPath = "Assets/Settings/PC_Renderer.asset";
-        private const string ScenePath = "Assets/Scenes/Augmented Dice.unity";
+        private const string PcRendererPath = "Assets/07.Settings/PC_Renderer.asset";
+        private const string ScenePath = "Assets/01.Scenes/Augmented Dice.unity";
 
         [Test]
         public void EdgeShaderHasAllRequiredProperties()

@@ -12,7 +12,7 @@ namespace Tessera.Editor.Tests
     /// </summary>
     public sealed class RuntimeAssetLibraryTests
     {
-        private const string IconsDir = "Assets/Art/Generated/Parchment/Icons";
+        private const string IconsDir = "Assets/04.Art/Generated/Games/Yacht/ScoreIcons";
 
         // ParchmentScoreSheet.cs의 upperIcons/lowerIcons 배열에 실제로 넘기는 문자열 그대로.
         private static readonly string[] UsedIconNames =

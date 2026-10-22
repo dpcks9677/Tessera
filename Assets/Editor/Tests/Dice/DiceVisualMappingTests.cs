@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Tessera.Dice;
-using Tessera.Games.AugmentedYacht;
+using Tessera.Games.Yacht.Presentation;
 using Tessera.Games.Yacht;
 using UnityEngine;
 

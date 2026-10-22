@@ -39,7 +39,7 @@
 
 ### 3.1 로직 `YachtBank`
 
-- 파일: `Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Enhance/YachtBank.cs`, 네임스페이스 `Tessera.Games.Yacht`.
+- 파일: `Assets/02.Scripts/Games/Yacht/Augments/Enhance/YachtBank.cs`, 네임스페이스 `Tessera.Games.Yacht`.
 - `YachtBankState`(L7): `RemainingTurns = 3`(**기본값 3**), `Balance`, `PayoutPending`, `Paid`.
 - `YachtBank : EnhanceAugment, IOnAugmentSelected, IOnTurnStarted, IScoringDiceFilter, IAfterScoreCommit`(L24). `MaxBalance = 15`.
 - `OnSelected`(L34): 상태와 `context.Player.YachtBank*` 미러 필드를 3/0/false/false로 초기화.
@@ -53,16 +53,16 @@
 
 ### 3.2 상태 접근자
 
-- `Assets/Scripts/Games/AugmentedYacht/Logic/YachtAugmentRuntime.cs:221-240`: `YachtAugmentPlayerState.YachtBankRemainingTurns/Balance/PayoutPending/Paid`. 전부 `States.GetOrCreate<YachtBankState>(YachtBankId)` 경유.
+- `Assets/02.Scripts/Games/Yacht/Augments/Framework/YachtAugmentRuntime.cs:221-240`: `YachtAugmentPlayerState.YachtBankRemainingTurns/Balance/PayoutPending/Paid`. 전부 `States.GetOrCreate<YachtBankState>(YachtBankId)` 경유.
 - **함정**: `GetOrCreate`가 없으면 새로 만들고 기본값이 `RemainingTurns = 3`이라, **요트 뱅크를 갖지 않은 플레이어도 잔여 턴 3을 읽는다.** 표시 판정은 보유 여부(`OwnedIds`)를 반드시 먼저 검사해야 한다.
-- 현재 플레이어: `YachtGameState.CurrentPlayerIndex`(`Assets/Scripts/Games/Yacht/YachtGameCore.cs:233`), 세션 쪽 `LocalGameAuthority.cs:723`.
+- 현재 플레이어: `YachtGameState.CurrentPlayerIndex`(`Assets/02.Scripts/Games/Yacht/Rules/YachtGameCore.cs:233`), 세션 쪽 `LocalGameAuthority.cs:723`.
 - 보유 목록: `state.AugmentPlayers[i].OwnedIds`(테스트 `YachtGameRulesTests.cs:643` 사용례).
 - 드래프트 여부: `gameSession.IsDrafting`(`YachtTurnFlowPresenter.cs:814` 사용례).
 
 ### 3.3 킵 존 좌표
 
-- 킵 존은 씬 오브젝트가 아니다. `Assets/Scenes/Augmented Dice.unity`에 Keep 이름 오브젝트 0건. 트레이 STL에 파인 홈이고 좌표는 상수로만 존재.
-- `Assets/Scripts/Core/DiceBoardMetrics.cs`
+- 킵 존은 씬 오브젝트가 아니다. `Assets/01.Scenes/Augmented Dice.unity`에 Keep 이름 오브젝트 0건. 트레이 STL에 파인 홈이고 좌표는 상수로만 존재.
+- `Assets/02.Scripts/Core/DiceBoardMetrics.cs`
   - L57-68: `KeepSurfaceY`, `KeepStartX`(-2.64), `KeepSpacingX`(1.32), `KeepCenterZ`(+3.18). 12시 방향 킵 홈.
   - L95-104: 소켓은 17×17 소스 단위 정사각형. 칸 중심 소스 x -44/-22/0/22/44, 깊이 z 49.5~66.5. `KeepDieScale`, `KeptDieSize`, `KeptDieHalfSize`.
   - L106-112: 카메라 피치 75도 시차 보정 `KeepParallaxZ`.
@@ -71,7 +71,7 @@
 
 ### 3.4 연결 지점 후보
 
-- `YachtTurnFlowPresenter.RefreshAugmentPresentation`(`Assets/Scripts/Games/AugmentedYacht/Presentation/YachtTurnFlowPresenter.cs:793`): 트레이 재바인딩 → `augmentTray.Refresh` → `SyncAugmentStickers`. 같은 파일 안 호출처 15곳(L235, 272, 278, 319, 359, 381, 439, 470, 502, 557, 596, 607, 639, 677, 722) + `YachtDebugPanel.cs:88`. 턴 전환·점수 확정·증강 선택·드래프트·수동 발동이 모두 지난다.
+- `YachtTurnFlowPresenter.RefreshAugmentPresentation`(`Assets/02.Scripts/Games/Yacht/Presentation/Flow/YachtTurnFlowPresenter.cs:793`): 트레이 재바인딩 → `augmentTray.Refresh` → `SyncAugmentStickers`. 같은 파일 안 호출처 15곳(L235, 272, 278, 319, 359, 381, 439, 470, 502, 557, 596, 607, 639, 677, 722) + `YachtDebugPanel.cs:88`. 턴 전환·점수 확정·증강 선택·드래프트·수동 발동이 모두 지난다.
 - 선례 `RefreshRollBudgetState`(L785): "굴림 수를 건드리거나 턴을 넘기는 모든 경로가 이미 여기를 지나므로 한 곳에 두면 상태가 고착될 경로가 남지 않는다". 같은 원칙을 따른다.
 - 판정 순수 함수 선례 `ResolveRollBudgetState`(L774, `public static`).
 - `AugmentVfxPlanner`(`AugmentVfxPlanner.cs:47`)/`AugmentVfxCue` 파이프라인은 단발 이벤트 큐라 지속형에 맞지 않음. 사용하지 않는다.
@@ -80,20 +80,20 @@
 
 - 지연 생성: `coinTossVfx ??= new CoinTossVfx();`(`YachtTurnFlowPresenter.cs:700`).
 - 주사위 카메라 레이어: `DiceSmokePuffVfx.cs` `ResolveDiceCamera`(L125), `SetLayerRecursive`(L137). 연기 쿼드 깊이 테스트 함정 주석(L18-29)도 참고.
-- 루프 파티클 절차 생성: `Assets/Scripts/Tabletop/RollCosmicCube.cs:1305-1349` `Cosmic_Internal_Stars`. loop, maxParticles 44, Box 셰이프, 저속·소형, velocityOverLifetime orbital, colorOverLifetime, sizeOverLifetime 커브, 그림자 끔.
-- 언릿 셰이더 폴백 체인: `Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color")`(`Assets/Scripts/Dice/DicePaletteCatalog.cs:230`, `CozyCandleStand.cs:186`, `RunicSlateMatrix.cs:761`).
+- 루프 파티클 절차 생성: `Assets/02.Scripts/Tabletop/RollCosmicCube.cs:1305-1349` `Cosmic_Internal_Stars`. loop, maxParticles 44, Box 셰이프, 저속·소형, velocityOverLifetime orbital, colorOverLifetime, sizeOverLifetime 커브, 그림자 끔.
+- 언릿 셰이더 폴백 체인: `Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color")`(`Assets/02.Scripts/Dice/DicePaletteCatalog.cs:230`, `CozyCandleStand.cs:186`, `RunicSlateMatrix.cs:761`).
 - 트리거형 글로우 참고: `TabletopTrinketManaCrystal.cs:344-390` `TriggerGlow`/`GlowAnimationRoutine`(emission + `Light.intensity` 페이드). 지속형이 아니라 참고만.
-- 기존 `Sparkle/Glint/Highlight/Glow` 이름 클래스는 `Assets/Scripts`에 없음.
+- 기존 `Sparkle/Glint/Highlight/Glow` 이름 클래스는 `Assets/02.Scripts`에 없음.
 
 ### 3.6 테스트
 
-- `Assets/Editor/YachtGameRulesTests.cs:639` `M6_YachtBankSavesLeftmostKeptForThreeTurnsThenPaysNextTurn`: dice[1]이 슬롯 0(값 2), dice[0]이 슬롯 1(값 6). Choice 18(2 제외), 3회 저축 잔액 6, 다음 턴 지급 6. **슬롯 0 기준으로 바꿔도 기대값 불변.**
-- `Assets/Editor/YachtEnhanceAugmentTests.cs:197` `YachtBank_HoldsLeftmostKeptDieForThreeTurnsThenReturnsIt`: 매 턴 dice[0] 슬롯 0에 6·5·5, 15점 상한 지급. **기대값 불변.**
+- `Assets/Editor/Tests/Games/Yacht/YachtGameRulesTests.cs:639` `M6_YachtBankSavesLeftmostKeptForThreeTurnsThenPaysNextTurn`: dice[1]이 슬롯 0(값 2), dice[0]이 슬롯 1(값 6). Choice 18(2 제외), 3회 저축 잔액 6, 다음 턴 지급 6. **슬롯 0 기준으로 바꿔도 기대값 불변.**
+- `Assets/Editor/Tests/Games/Yacht/YachtEnhanceAugmentTests.cs:197` `YachtBank_HoldsLeftmostKeptDieForThreeTurnsThenReturnsIt`: 매 턴 dice[0] 슬롯 0에 6·5·5, 15점 상한 지급. **기대값 불변.**
 - EditMode 기준선(T24 시점): 1204건 중 1200 통과·실패 0·스킵 4(unity-skills 패키지 소속).
 
 ### 3.7 아트·모듈 규칙
 
-- `AGENTS.md`: 식별자는 영문, 한국어는 주석·문서만. 로직 `Tessera.Games.Yacht`는 프레젠테이션을 참조하지 않는다. 뷰는 `Tessera.Games.AugmentedYacht` 프레젠테이션 쪽.
+- `AGENTS.md`: 식별자는 영문, 한국어는 주석·문서만. 로직 `Tessera.Games.Yacht`는 프레젠테이션을 참조하지 않는다. 뷰는 `Tessera.Games.Yacht.Presentation` 프레젠테이션 쪽.
 - 색: 러너 골드 `#e5a93c`(사양서 공통 강조색). 팔레트 원천 [`docs/reference/art_style_guide.md`](../../reference/art_style_guide.md).
 - 사양서 25번 행 주의: 알파 페이드가 픽셀 필터를 통과하면 디더링으로 깨지므로 4~5스텝 계단식 처리.
 
@@ -119,7 +119,7 @@ ShouldShowYachtBankHighlight(YachtGameState state, bool isDrafting)
 
 ### 4.2 뷰 `YachtBankKeepZoneVfx` (신규)
 
-- 경로: `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtBankKeepZoneVfx.cs`, 네임스페이스 `Tessera.Games.AugmentedYacht`.
+- 경로: `Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/YachtBankKeepZoneVfx.cs`, 네임스페이스 `Tessera.Games.Yacht.Presentation`.
 - `MonoBehaviour`. 공개 API는 `SetVisible(bool visible)` 하나. 첫 `SetVisible(true)` 때 자식 오브젝트를 지연 생성.
 - **위치**: `DiceBoardMetrics.GetKeepPosition(0)`의 X·Z. Y는 소켓 바닥(`KeepSurfaceY - KeptDieHalfSize`)에서 z-fighting 피할 만큼만 띄움. 시차 보정 `KeepParallaxZ`는 주사위 중심 높이 기준이라 바닥 쿼드에는 그대로 맞지 않을 수 있음. 구현 시 화면 확인으로 판정.
 - **크기**: 소켓 17 소스 단위(`17f * DiceBoardMetrics.TrayScale`) 기준.
@@ -151,11 +151,11 @@ ShouldShowYachtBankHighlight(YachtGameState state, bool isDrafting)
 
 | 파일 | 변경 | 상태 |
 |---|---|---|
-| `Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Enhance/YachtBank.cs` | 슬롯 0 기준 정합화, 설명 문구 | `TODO` |
-| `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtBankKeepZoneVfx.cs` | 신규 뷰 | `TODO` |
-| `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtTurnFlowPresenter.cs` | 판정 static, `SyncYachtBankHighlight`, 필드 1개 | `TODO` |
-| `Assets/Editor/YachtEnhanceAugmentTests.cs` | 슬롯 0 규칙 테스트 추가 | `TODO` |
-| `Assets/Editor/YachtBankHighlightTests.cs` | 신규. 판정 함수 테스트 | `TODO` |
+| `Assets/02.Scripts/Games/Yacht/Augments/Enhance/YachtBank.cs` | 슬롯 0 기준 정합화, 설명 문구 | `TODO` |
+| `Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/YachtBankKeepZoneVfx.cs` | 신규 뷰 | `TODO` |
+| `Assets/02.Scripts/Games/Yacht/Presentation/Flow/YachtTurnFlowPresenter.cs` | 판정 static, `SyncYachtBankHighlight`, 필드 1개 | `TODO` |
+| `Assets/Editor/Tests/Games/Yacht/YachtEnhanceAugmentTests.cs` | 슬롯 0 규칙 테스트 추가 | `TODO` |
+| `Assets/Editor/Tests/Games/Yacht/YachtBankHighlightTests.cs` | 신규. 판정 함수 테스트 | `TODO` |
 | `docs/plan/m17/README.md` | `M17-T25` 상태 갱신 | `TODO` 등록 완료 |
 | `docs/plan/m17/T09-vfx.md` | 25번 행에 "주사위 금색 변환·투명화는 후속 분리" 표기 | `TODO` |
 | `docs/reference/augments_specification_and_status.md` | 25번 규칙 문구 정정 | `TODO` |

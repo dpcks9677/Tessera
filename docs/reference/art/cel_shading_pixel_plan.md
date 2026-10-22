@@ -26,14 +26,14 @@ M13이 세운 가설은 "픽셀아트를 픽셀아트로 만드는 것은 픽셀
 | 주사위 바디가 URP Lit + 스페큘러 + 환경 반사 + 자발광 | `DicePaletteCatalog.GetBodyMaterial` | 시점 의존 하이라이트가 표면 위를 미끄러짐 |
 | Metallic 최대 0.80 / Smoothness 최대 0.80 | `DicePaletteCatalog` 정의 표 | 위와 같음 |
 | 키 라이트 `LightShadows.Soft`, 그림자맵 2048 | `YachtLightingRig.Configure` | 반그림자가 연속 그라데이션 |
-| SSAO 렌더 피처 (Intensity 0.4) | `Assets/Settings/PC_Renderer.asset` | 크레비스에 연속 AO |
+| SSAO 렌더 피처 (Intensity 0.4) | `Assets/07.Settings/PC_Renderer.asset` | 크레비스에 연속 AO |
 | 1920x1080 렌더 후 격자 점 샘플링 | `YachtCameraRig.CreateRenderTarget` | 셰이딩과 절차적 디테일이 픽셀보다 미세해 앨리어싱 |
 
 픽셀화 자체가 가짜였다는 점이 중요하다. 카메라는 항상 1920x1080에 렌더하고, 업스케일 셰이더가 `floor(uv * 480x270)`으로 셀 중심만 뽑아 왔다. 격자만 굵어졌을 뿐 그림의 내용은 풀해상도 3D 렌더 그대로였다.
 
 ## 3. 셰이딩 규약
 
-`Assets/Rendering/Shaders/CelSurface.shader`와 공유 include `CelSurfaceShading.hlsl`이 규약을 담는다. 세 패스(`UniversalForward`, `ShadowCaster`, `DepthNormals`)가 같은 상수 버퍼를 선언한다.
+`Assets/06.Rendering/Shaders/CelSurface.shader`와 공유 include `CelSurfaceShading.hlsl`이 규약을 담는다. 세 패스(`UniversalForward`, `ShadowCaster`, `DepthNormals`)가 같은 상수 버퍼를 선언한다.
 
 ### 3.1 노멀 축 스냅 (`_NormalSnap`)
 
@@ -80,7 +80,7 @@ URP는 비-OCT 경로에서 `half4(normalWS, 0.0)`을 쓴다(`DepthNormalsPass.h
 
 ## 4. Deferred에서 Forward로
 
-`Assets/Settings/PC_Renderer.asset`의 `m_RenderingMode`를 `2`(Deferred)에서 `0`(Forward)으로 바꿨다.
+`Assets/07.Settings/PC_Renderer.asset`의 `m_RenderingMode`를 `2`(Deferred)에서 `0`(Forward)으로 바꿨다.
 
 셀 셰이더는 커스텀 라이팅이라 GBuffer를 채우지 않는다. Deferred에서는 forward-only 목록으로 밀려나고, 그러면 엣지 피처가 읽는 GBuffer 노멀이 비어 주사위에서 노멀 엣지가 사라진다. 셀 셰이딩 후에는 광원이 사실상 하나라 Deferred 이점도 없다.
 
@@ -142,7 +142,7 @@ URP는 비-OCT 경로에서 `half4(normalWS, 0.0)`을 쓴다(`DepthNormalsPass.h
 
 이유는 두 가지다.
 
-- 재질 생성 지점이 `Assets/Scripts/Tabletop/` 아래에 열 곳 넘게 흩어져 있어, 분기를 넣으면 롤백 지점이 그만큼 늘어난다.
+- 재질 생성 지점이 `Assets/02.Scripts/Tabletop/` 아래에 열 곳 넘게 흩어져 있어, 분기를 넣으면 롤백 지점이 그만큼 늘어난다.
 - 빌더 코드를 건드리지 않으면 Baseline 경로가 문자 그대로 무손상이다.
 
 이미 Unlit인 재질(촛대, 룬 슬레이트 채널 등)은 두 모드 공용이라 그대로 둔다. 주사위와 Crisp UI 레이어는 각자 담당이 있어 제외한다.
@@ -153,7 +153,7 @@ URP는 비-OCT 경로에서 `half4(normalWS, 0.0)`을 쓴다(`DepthNormalsPass.h
 
 | 파일 | 필드 | 원래 값 | 현재 값 |
 |---|---|---|---|
-| `Assets/Settings/PC_Renderer.asset` | `m_RenderingMode` | `2` (Deferred) | `0` (Forward) |
+| `Assets/07.Settings/PC_Renderer.asset` | `m_RenderingMode` | `2` (Deferred) | `0` (Forward) |
 
 `m_SoftShadowsSupported`와 `m_MainLightShadowmapResolution`은 결국 건드리지 않았다. 그림자 하드화를 라이트 컴포넌트 쪽(`keyLight.shadows`)에서만 처리해 런타임 토글로 완전히 덮이기 때문이다.
 
@@ -177,12 +177,12 @@ M13이 쓴 "고유 색 수"는 616 → 30까지 줄고도 3D로 읽혔으므로 
 
 | 파일 | 역할 |
 |---|---|
-| `Assets/Rendering/Shaders/CelSurface.shader` | 셀 셰이더 세 패스 |
-| `Assets/Rendering/Shaders/CelSurfaceShading.hlsl` | 노멀 스냅과 밴드 규약, 상수 버퍼 |
-| `Assets/Scripts/Rendering/RenderStyle.cs` | 연출 방식 열거형 |
-| `Assets/Scripts/Rendering/CelMaterialFactory.cs` | 셀 재질을 만드는 유일한 지점 |
-| `Assets/Scripts/Rendering/CelStyleSwitcher.cs` | 씬 재질 교체와 복구 |
-| `Assets/Scripts/Rendering/PixelReadabilityMetrics.cs` | 지표 순수 함수 |
+| `Assets/06.Rendering/Shaders/CelSurface.shader` | 셀 셰이더 세 패스 |
+| `Assets/06.Rendering/Shaders/CelSurfaceShading.hlsl` | 노멀 스냅과 밴드 규약, 상수 버퍼 |
+| `Assets/02.Scripts/Rendering/RenderStyle.cs` | 연출 방식 열거형 |
+| `Assets/02.Scripts/Rendering/CelMaterialFactory.cs` | 셀 재질을 만드는 유일한 지점 |
+| `Assets/02.Scripts/Rendering/CelStyleSwitcher.cs` | 씬 재질 교체와 복구 |
+| `Assets/02.Scripts/Rendering/PixelReadabilityMetrics.cs` | 지표 순수 함수 |
 | `Assets/Editor/Rendering/RunPixelReadabilityValidation.cs` | Baseline/Cel 동시 측정 도구 |
 | `Assets/Editor/Tests/Rendering/CelSurfaceTests.cs` | 셰이더·재질·Forward 계약 |
 | `Assets/Editor/Tests/Rendering/PixelReadabilityMetricsTests.cs` | 지표 검증 |

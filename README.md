@@ -38,14 +38,13 @@
 확장성 높은 도메인 주도 모듈 설계를 채택하여, 신규 게임 모드 추가 및 네트워크 기능 확장을 독립적으로 지원합니다:
 
 ```
-Assets/Scripts/
+Assets/02.Scripts/
 ├── Core/               # 공통 보드 메트릭 및 시스템 유틸리티 (Tessera.Core)
 ├── Dice/               # 3D 주사위 물리/롤 컨트롤러, 팩토리, 프리셋 (Tessera.Dice)
 ├── Tabletop/           # 테이블탑 소품 (잉크통/깃펜, 문진 등) (Tessera.Tabletop)
 ├── Rendering/          # URP 픽셀 프레젠테이션 & 셰이더 제어 (Tessera.Rendering)
 ├── Games/
-│   ├── Yacht/          # 요트 다이스 권위·명령·코어 룰 (Tessera.Games.Yacht)
-│   └── AugmentedYacht/ # 증강 요트 다이스 전용 게임 루프 & 족보
+│   └── Yacht/          # 요트 다이스 규칙·증강·연출 (Tessera.Games.Yacht / .Presentation)
 └── Network/            # 온라인 멀티플레이어 통신 계층 (아직 빈 폴더)
 ```
 
@@ -90,4 +89,4 @@ Assets/Scripts/
    ```
 2. **Unity Hub**에서 프로젝트 폴더를 열고 `6000.3.21f1` 버전으로 프로젝트를 로드합니다.
 3. 메인 씬을 열어 실행합니다:
-   * 씬 경로: `Assets/Scenes/Augmented Dice.unity`
+   * 씬 경로: `Assets/01.Scenes/Augmented Dice.unity`

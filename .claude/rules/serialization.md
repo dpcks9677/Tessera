@@ -1,6 +1,6 @@
 ---
 paths:
-  - "Assets/Scripts/**/*.cs"
+  - "Assets/02.Scripts/**/*.cs"
   - "Assets/**/*.{unity,prefab}"
 ---
 

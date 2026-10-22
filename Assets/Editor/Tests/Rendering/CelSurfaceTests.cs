@@ -16,7 +16,7 @@ namespace Tessera.Editor.Tests
     [TestFixture]
     public sealed class CelSurfaceTests
     {
-        private const string PcRendererPath = "Assets/Settings/PC_Renderer.asset";
+        private const string PcRendererPath = "Assets/07.Settings/PC_Renderer.asset";
         private const string LitShaderName = "Universal Render Pipeline/Lit";
 
         [TearDown]

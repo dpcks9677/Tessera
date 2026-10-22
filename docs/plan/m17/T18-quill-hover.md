@@ -31,7 +31,7 @@
 
 ### 2.1 깃펜
 
-- `Assets/Scripts/Tabletop/InkwellAndQuill.cs`는 절차적 기하 생성 전용이다. `Update`도 상태도 없고, 다른 스크립트에서 이 타입을 참조하는 곳도 없다. 씬에 `3D Inkwell and Quill Decoration`이라는 이름으로 한 개 놓여 있다.
+- `Assets/02.Scripts/Tabletop/InkwellAndQuill.cs`는 절차적 기하 생성 전용이다. `Update`도 상태도 없고, 다른 스크립트에서 이 타입을 참조하는 곳도 없다. 씬에 `3D Inkwell and Quill Decoration`이라는 이름으로 한 개 놓여 있다.
 - 깃펜 전체는 `Quill Pen Root` 자식 하나에 모여 있다. 로컬 위치 `(0, 0.78, 0)`, 로컬 회전 `Euler(40, -65, 20)`이 잉크통에 꽂힌 기본 자세다.
 - 깃펜 로컬 좌표계는 `+Y`가 닙 끝(`y = 0`)에서 깃털 팁(`y ≈ 3.97`) 방향이다. 즉 `Quill Pen Root`의 원점이 곧 닙 끝이므로, 이 트랜스폼의 월드 위치를 목표 지점에 놓으면 닙이 그 지점에 닿는다. 별도 오프셋 계산이 필요 없다.
 - 깃털 날 길이는 로컬 3.22 단위다. **다만 씬의 잉크통 오브젝트에 2.5배 스케일이 걸려 있다.** 아래 수치는 모두 이 배율을 반영한 월드 값이고, 에디터에서 직접 재서 얻었다.
@@ -45,7 +45,7 @@
 
 ### 2.2 점수표
 
-- `Assets/Scripts/Games/AugmentedYacht/Presentation/ParchmentScoreSheet.cs`가 월드 스페이스 캔버스로 표를 그린다. 점수 칸은 `ConfigureScoreSlot`에서 만들어지는 `Image` + `Button`이며, `p1ScoreSlots` / `p2ScoreSlots`, `p1ScoreButtons` / `p2ScoreButtons` 배열에 족보 인덱스로 담긴다.
+- `Assets/02.Scripts/Games/Yacht/Presentation/Table/ParchmentScoreSheet.cs`가 월드 스페이스 캔버스로 표를 그린다. 점수 칸은 `ConfigureScoreSlot`에서 만들어지는 `Image` + `Button`이며, `p1ScoreSlots` / `p2ScoreSlots`, `p1ScoreButtons` / `p2ScoreButtons` 배열에 족보 인덱스로 담긴다.
 - 칸의 기입 가능 여부는 `UpdateSlotState`가 `button.interactable`에 그대로 넣는다. 조건은 `selectionEnabled && 활성 플레이어 && 미기입 && 후보 점수 존재`다. 깃펜이 반응해야 하는 칸의 조건과 정확히 같으므로 이 값을 그대로 쓴다.
 - 칸 `RectTransform`의 피벗은 가운데이므로 `rect.position`이 곧 칸 중앙의 월드 좌표다. 오버레이가 시트의 자식이고 스케일이 `1/100`이지만 월드 좌표에는 이미 반영돼 있다.
 - 표는 여섯 열이고 P2 쪽은 좌우가 뒤집힌 배치다(`D-040`). 칸 안에서 좌우 오프셋을 줄 때 플레이어별로 부호를 뒤집어야 대칭이 맞는다.
@@ -147,13 +147,13 @@ ResolveWritingPose(cellWorld, dockedRotation, sheetUp, yawDegrees) -> (position,
 
 ### 4.1 소유권
 
-세 조각으로 나눈다. 잉크통은 공통 소품(`Tessera.Tabletop`)이고 점수표는 게임 모듈(`Tessera.Games.AugmentedYacht`)이므로, 소품이 게임 규칙을 알지 못하게 유지한다.
+세 조각으로 나눈다. 잉크통은 공통 소품(`Tessera.Tabletop`)이고 점수표는 게임 모듈(`Tessera.Games.Yacht.Presentation`)이므로, 소품이 게임 규칙을 알지 못하게 유지한다.
 
 | 조각 | 위치 | 책임 |
 | --- | --- | --- |
 | `ScoreSlotHoverRelay` | `ParchmentScoreSheet` 내부 중첩 타입 | 칸의 `IPointerEnterHandler` / `IPointerExitHandler`를 받아 점수표에 알린다 |
 | `ParchmentScoreSheet` (수정) | 기존 파일 | 호버 이벤트를 밖으로 노출하고, 칸의 월드 앵커를 알려 준다 |
-| `QuillHoverAnimator` | `Assets/Scripts/Tabletop/QuillHoverAnimator.cs` (신규) | 월드 좌표 하나를 받아 깃펜을 움직인다. 점수표도 게임 상태도 모른다 |
+| `QuillHoverAnimator` | `Assets/02.Scripts/Tabletop/QuillHoverAnimator.cs` (신규) | 월드 좌표 하나를 받아 깃펜을 움직인다. 점수표도 게임 상태도 모른다 |
 | `AugmentedYachtController` (수정) | 기존 파일 | 둘을 잇는다 |
 
 `InkwellAndQuill.cs`의 애니메이션 책임은 늘리지 않는다. 기하 생성 클래스가 이미 638줄이고 소품 클래스가 크다는 지적이 [`docs/archive/reports/code_review_20260906.md`](../../archive/reports/code_review_20260906.md)에 있다. 애니메이션은 같은 게임 오브젝트에 붙는 별도 컴포넌트로 둔다.
@@ -197,7 +197,7 @@ public void ClearWritingTarget();
 
 **대응 C (채택)**: 깃펜 파츠마다 형상이 같은 판을 `CrispUI` 레이어에 하나 더 두고 `DicePoC/CrispUiDepthMask`로 **색은 한 픽셀도 쓰지 않고 깊이만** 남긴다. 월드 스페이스 캔버스가 `ZTest LEqual`로 그려지므로 그 부분에서 글자가 잘리고, 화면에 남는 것은 월드 카메라가 그린 깃펜이라 픽셀 필터도 그대로 받는다.
 
-이것은 이 프로젝트가 이미 쓰는 방식이다. 주사위 눈이 트레이 벽에 가려지게 하는 `DiceVisualPool`, 증강 카드 글자를 가리는 `AugmentTrayCardView`가 같은 셰이더를 쓴다. 구현은 `Assets/Scripts/Tabletop/QuillCrispUiMask.cs`이고, 판은 원본 파츠에 로컬 변환 항등으로 붙어 자세를 저절로 따라간다. `HideFlags.DontSave`라 씬에 저장되지 않는다.
+이것은 이 프로젝트가 이미 쓰는 방식이다. 주사위 눈이 트레이 벽에 가려지게 하는 `DiceVisualPool`, 증강 카드 글자를 가리는 `AugmentTrayCardView`가 같은 셰이더를 쓴다. 구현은 `Assets/02.Scripts/Tabletop/QuillCrispUiMask.cs`이고, 판은 원본 파츠에 로컬 변환 항등으로 붙어 자세를 저절로 따라간다. `HideFlags.DontSave`라 씬에 저장되지 않는다.
 
 **폐기한 안 둘**:
 

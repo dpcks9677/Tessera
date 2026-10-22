@@ -135,15 +135,15 @@ F1/F2 해상도 전환이 자동으로 반영된다.
 
 | 역할 | 파일 |
 |---|---|
-| 엣지 셰이더 | `Assets/Rendering/Shaders/DicePixelEdge.shader` (`DicePoC/PixelEdge`) |
-| 렌더러 피처와 패스 | `Assets/Scripts/Rendering/PixelEdgeRendererFeature.cs` |
-| 대상 카메라 표시 | `Assets/Scripts/Rendering/PixelEdgeCamera.cs` |
-| 표시 부착, 해상도 전달, 켜고 끄기 | `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtCameraRig.cs` |
-| `F3` 입력 | `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtInputRouter.cs` |
-| 토글 버튼과 문구 | `Assets/Scripts/Games/AugmentedYacht/Presentation/YachtSceneAssembler.cs` |
+| 엣지 셰이더 | `Assets/06.Rendering/Shaders/DicePixelEdge.shader` (`DicePoC/PixelEdge`) |
+| 렌더러 피처와 패스 | `Assets/02.Scripts/Rendering/PixelEdgeRendererFeature.cs` |
+| 대상 카메라 표시 | `Assets/02.Scripts/Rendering/PixelEdgeCamera.cs` |
+| 표시 부착, 해상도 전달, 켜고 끄기 | `Assets/02.Scripts/Games/Yacht/Presentation/Stage/YachtCameraRig.cs` |
+| `F3` 입력 | `Assets/02.Scripts/Games/Yacht/Presentation/Flow/YachtInputRouter.cs` |
+| 토글 버튼과 문구 | `Assets/02.Scripts/Games/Yacht/Presentation/Flow/YachtSceneAssembler.cs` |
 | 렌더러 에셋 등록 (일회성 메뉴) | `Assets/Editor/Rendering/RegisterPixelEdgeFeature.cs` |
 | 계약 테스트 | `Assets/Editor/Tests/Rendering/PixelEdgeFilterTests.cs` |
-| 등록 대상 | `Assets/Settings/PC_Renderer.asset`, `Assets/Settings/Mobile_Renderer.asset` |
+| 등록 대상 | `Assets/07.Settings/PC_Renderer.asset`, `Assets/07.Settings/Mobile_Renderer.asset` |
 
 `PixelEdgeCamera`가 붙은 카메라에서만 패스가 돈다. 렌더러 피처는 렌더러 에셋 단위라
 같은 에셋을 쓰는 Crisp UI 카메라와 Display 1 카메라에서도 후보가 되기 때문이다.

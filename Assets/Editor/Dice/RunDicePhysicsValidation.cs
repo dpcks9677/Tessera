@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using Tessera.Games.AugmentedYacht;
+using Tessera.Games.Yacht.Presentation;
 using Tessera.Games.Yacht;
 
 [InitializeOnLoad]
 public static class RunDicePhysicsValidation
 {
-    private const string ScenePath = "Assets/Scenes/Augmented Dice.unity";
+    private const string ScenePath = "Assets/01.Scenes/Augmented Dice.unity";
     private const string ValidationRequestedKey = "Tessera.PhysicsKeepValidationRequested";
     private const string ValidationRunningKey = "Tessera.PhysicsKeepValidationRunning";
 

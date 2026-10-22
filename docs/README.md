@@ -70,7 +70,7 @@ AI 에이전트가 작업 중 따르는 규칙·근거 문서(`reference/control
 문서 안에 남습니다.
 
 ```csharp
-// Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/IAugmentHandler.cs:9-27
+// Assets/02.Scripts/Games/Yacht/Augments/Framework/IAugmentHandler.cs:9-27
 ```
 
 ---

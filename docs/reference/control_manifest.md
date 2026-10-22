@@ -20,7 +20,7 @@
 
 ## 레이어: 공통
 
-**적용 폴더**: `Assets/Scripts/Core/`, `Assets/Scripts/Dice/`, `Assets/Scripts/Tabletop/`, `Assets/Scripts/Rendering/`
+**적용 폴더**: `Assets/02.Scripts/Core/`, `Assets/02.Scripts/Dice/`, `Assets/02.Scripts/Tabletop/`, `Assets/02.Scripts/Rendering/`
 
 ### 해야 할 것
 
@@ -34,7 +34,7 @@
 
 ## 레이어: 게임 규칙
 
-**적용 폴더**: `Assets/Scripts/Games/Yacht/`, `Assets/Scripts/Games/AugmentedYacht/Logic/` (둘 다 네임스페이스 `Tessera.Games.Yacht`)
+**적용 폴더**: `Assets/02.Scripts/Games/Yacht/Rules/`, `Assets/02.Scripts/Games/Yacht/Augments/` (둘 다 네임스페이스 `Tessera.Games.Yacht`)
 
 ### 해야 할 것
 
@@ -53,7 +53,7 @@
 
 ## 레이어: 프레젠테이션
 
-**적용 폴더**: `Assets/Scripts/Games/AugmentedYacht/Presentation/` (네임스페이스 `Tessera.Games.AugmentedYacht`)
+**적용 폴더**: `Assets/02.Scripts/Games/Yacht/Presentation/` (네임스페이스 `Tessera.Games.Yacht.Presentation`)
 
 ### 해야 할 것
 

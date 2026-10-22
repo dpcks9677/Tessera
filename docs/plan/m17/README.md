@@ -100,7 +100,7 @@
 
 ### `M17-T2` 플레이어별 드래프트 UI
 
-게이팅은 이미 이중으로 존재. `LocalGameAuthority.TrySelectAugment`는 `playerIndex` 인자를 받지 않고 내부에서 `Draft.PlayerIndex`를 직접 읽어 UI 경로 사칭이 불가능하고, `YachtAugmentRuntime.TrySelectAugment`는 `Draft.PlayerIndex != playerIndex`이면 `YachtCommandErrorCode.NotDrafting`으로 거부. 차례 표시도 이미 있음: `AugmentTrayPresenter`가 `P{n} 증강 선택 · {라운드}라운드` 타이틀을 그리고, 점수표 활성 열이 드래프트 차례를 따라감. 이번 산출물은 그 게이팅을 고정하는 회귀 테스트 `OnlyCurrentDraftPlayerCanSelectAugment`(`Assets/Editor/Tests/Yacht/YachtDraftOrderTests.cs`) 추가. 프로덕션 코드 미수정. EditMode 전체 242/242 통과(2026-09-13)
+게이팅은 이미 이중으로 존재. `LocalGameAuthority.TrySelectAugment`는 `playerIndex` 인자를 받지 않고 내부에서 `Draft.PlayerIndex`를 직접 읽어 UI 경로 사칭이 불가능하고, `YachtAugmentRuntime.TrySelectAugment`는 `Draft.PlayerIndex != playerIndex`이면 `YachtCommandErrorCode.NotDrafting`으로 거부. 차례 표시도 이미 있음: `AugmentTrayPresenter`가 `P{n} 증강 선택 · {라운드}라운드` 타이틀을 그리고, 점수표 활성 열이 드래프트 차례를 따라감. 이번 산출물은 그 게이팅을 고정하는 회귀 테스트 `OnlyCurrentDraftPlayerCanSelectAugment`(`Assets/Editor/Tests/Games/Yacht/YachtDraftOrderTests.cs`) 추가. 프로덕션 코드 미수정. EditMode 전체 242/242 통과(2026-09-13)
 
 ### `M17-T3` 보유 증강 표시
 
@@ -112,7 +112,7 @@
 
 ### `M17-T7` 반복/무작위 전체 게임 테스트
 
-여러 증강 조합으로 완주함. `Assets/Editor/Tests/Yacht/YachtRandomFullGamePlaythroughTests.cs` 신규. 시드 고정 난수원으로 증강 요트 한 판을 끝까지 자동 진행하는 하네스를 만들고 테스트 2개를 둠: 시드 0~59로 60판을 완주시켜 예외 없이 끝나는지 보는 것, 시드 0~19로 20판을 돌려 서로 다른 증강 ID가 10종 이상 발동하고 수동 행동이 최소 한 번 발동하는지 보는 것. 무한 루프 방지로 2000회 반복 상한. 검증: EditMode 전체 369/369 통과(기존 367 + 신규 2), 컴파일 에러·경고 0건(2026-09-20)
+여러 증강 조합으로 완주함. `Assets/Editor/Tests/Games/Yacht/YachtRandomFullGamePlaythroughTests.cs` 신규. 시드 고정 난수원으로 증강 요트 한 판을 끝까지 자동 진행하는 하네스를 만들고 테스트 2개를 둠: 시드 0~59로 60판을 완주시켜 예외 없이 끝나는지 보는 것, 시드 0~19로 20판을 돌려 서로 다른 증강 ID가 10종 이상 발동하고 수동 행동이 최소 한 번 발동하는지 보는 것. 무한 루프 방지로 2000회 반복 상한. 검증: EditMode 전체 369/369 통과(기존 367 + 신규 2), 컴파일 에러·경고 0건(2026-09-20)
 
 ### `M17-T8` 특수 주사위 외형 구현 (구 `M7-T5`)
 
@@ -160,7 +160,7 @@
 
 ### `M17-T19` 깃펜 깃털 흰색 전환과 갈라짐 연출
 
-절차적 깃펜 자체를 폐기하고 외부 로우폴리 모델 `Assets/Art/Reference/quill_pen_low.fbx`로 교체(2026-09-12). 화면이 480x270 격자로 필터링돼 여기서 맞춘 디테일이 남지 않는데도 굽고 눈으로 확인하는 왕복이 계속 필요해 비용이 맞지 않았다. 계획서는 [`docs/archive/plans/quill_feather_appearance_plan.md`](../../archive/plans/quill_feather_appearance_plan.md)에 폐기 표시와 함께 남김
+절차적 깃펜 자체를 폐기하고 외부 로우폴리 모델 `Assets/04.Art/Source/Quill/quill_pen_low.fbx`로 교체(2026-09-12). 화면이 480x270 격자로 필터링돼 여기서 맞춘 디테일이 남지 않는데도 굽고 눈으로 확인하는 왕복이 계속 필요해 비용이 맞지 않았다. 계획서는 [`docs/archive/plans/quill_feather_appearance_plan.md`](../../archive/plans/quill_feather_appearance_plan.md)에 폐기 표시와 함께 남김
 
 ### `M17-T22` 깃펜 외부 모델 교체
 
@@ -172,4 +172,4 @@
 
 ### `M17-T24` coin-toss 증강 로직·동전 스핀 연출
 
-동전 3개 앞뒤에 따라 0개(−5점)·1개(보너스 +3점 획득)·2개(이번 턴 리롤 +1)·3개(상단 보너스 기준 min(현재,57))로 갈리는 수동 발동 증강. `CoinToss`/`CoinTossState`(`Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Enhance/CoinToss.cs`), 보너스 굴림 기록(`YachtGameState.BonusRolls`), 해석적 코인 스핀 프리셋 5종 베이크와 재생기 `CoinTossVfx.cs` 구현 완료. 연출은 발동 시 주사위(킵 줄 포함) 숨김 → 게임 트레이 내부 투척 → 착지 후 2초 대기 → 주사위 값 반영 후 재표시 → 동전 숨김 → 점수표·리롤 바·문구 반영 순으로 재구성(2026-09-15). EditMode 1204건 중 1200 통과·실패 0·스킵 4(unity-skills 패키지 소속), 사용자 Play Mode 시각 확인 통과(2026-09-15). 효과음은 동전 3개 각각의 스핀 시작 시점에 1회씩(총 3회) 재생하도록 구현 완료(`CoinTossVfx.Play`의 `onCoinSpinStarted` 콜백 → `YachtAudioService.PlayCoinToss`, `coin_flip.mp3`, 2026-09-20). 촉각 피드백 등 나머지는 `M17-T13`(증강 사운드·촉각 피드백, `DEFERRED`) 범위로 이관
+동전 3개 앞뒤에 따라 0개(−5점)·1개(보너스 +3점 획득)·2개(이번 턴 리롤 +1)·3개(상단 보너스 기준 min(현재,57))로 갈리는 수동 발동 증강. `CoinToss`/`CoinTossState`(`Assets/02.Scripts/Games/Yacht/Augments/ManualAction/CoinToss.cs`), 보너스 굴림 기록(`YachtGameState.BonusRolls`), 해석적 코인 스핀 프리셋 5종 베이크와 재생기 `CoinTossVfx.cs` 구현 완료. 연출은 발동 시 주사위(킵 줄 포함) 숨김 → 게임 트레이 내부 투척 → 착지 후 2초 대기 → 주사위 값 반영 후 재표시 → 동전 숨김 → 점수표·리롤 바·문구 반영 순으로 재구성(2026-09-15). EditMode 1204건 중 1200 통과·실패 0·스킵 4(unity-skills 패키지 소속), 사용자 Play Mode 시각 확인 통과(2026-09-15). 효과음은 동전 3개 각각의 스핀 시작 시점에 1회씩(총 3회) 재생하도록 구현 완료(`CoinTossVfx.Play`의 `onCoinSpinStarted` 콜백 → `YachtAudioService.PlayCoinToss`, `coin_flip.mp3`, 2026-09-20). 촉각 피드백 등 나머지는 `M17-T13`(증강 사운드·촉각 피드백, `DEFERRED`) 범위로 이관

@@ -12,7 +12,7 @@
 |---|---|---|
 | 스크립트는 도메인 우선이고, 도메인 안에 `Core`·`Data`·`Presentation`을 둠 | 채택 | 이미 모듈 우선입니다. `Games/Yacht` 안을 `Rules`·`Augments`·`Presentation`으로 나눕니다(§2) |
 | 타입 폴더의 둘째 단을 같은 도메인 이름으로 통일 (`03.Prefabs/Enemy`, `05.Animations/Enemy`) | 채택 | 게임 전용 에셋에 `Games/<게임>/` 도메인을 둡니다(§6) |
-| 최상위 번호 접두사 | 채택 안 함 | 아래 「번호 접두사의 비용」 |
+| 최상위 번호 접두사 | 채택(일반 폴더만) | 사용자가 비용을 보고 도입을 선택했습니다(`D-046`). 아래 「번호 접두사의 비용」과 §7 |
 | 도메인별 asmdef와 테스트 동거 | 보류 (`ARCH-05`) | asmdef 없이 기능 폴더 안에 테스트를 두려면 폴더마다 `Editor` 특수 폴더를 만들어야 해 테스트가 오히려 흩어집니다 |
 | GUID를 유지하는 이동 | 채택 | `AssetDatabase.MoveAsset`만 씁니다 |
 | 서드파티 혼재 (`09.VFX/Consumable/JMO Assets`, 최상위 `TextMesh Pro`) | 피함 | `Art/ThirdParty/` 규칙을 유지합니다 |
@@ -30,6 +30,10 @@
 - 씬 경로를 쓰는 에디터 도구 4개와 `AGENTS.md`의 메인 씬 경로
 
 반면 얻는 것은 프로젝트 창의 정렬 순서뿐입니다. Tessera의 최상위는 14개 안팎이라 알파벳 정렬로 충분합니다.
+
+사용자가 이 비용을 보고 도입을 선택했습니다(`D-046`, 2026-10-22). 제안(미채택)을 뒤집은 결정입니다. 방식은 일반 폴더만 번호를 붙이는 것입니다(`01.Scenes`~`07.Settings`, 이동표는 §7).
+
+**번호를 붙이지 않는 폴더.** Unity 특수 폴더는 이름이 정확히 일치해야 동작합니다. `01.Editor`로 바꾸면 에디터 스크립트가 런타임 어셈블리로 들어가 빌드가 깨지고, `Resources`를 바꾸면 `Resources.Load`가 전부 null이 됩니다. `StreamingAssets`도 같은 이유로 그대로 둡니다. `TextMesh Pro`는 패키지 임포트 폴더, `Temp`·`_Recovery`는 gitignore 대상이라 그대로 둡니다.
 
 ## 2. Scripts 이동 (`LAYOUT-T1`)
 
@@ -124,7 +128,9 @@ Assets/Scripts/
 
 ## 6. 에셋 재편 (`LAYOUT-T5`)
 
-제안 단계입니다. 사용자가 확인하기 전까지 `LAYOUT-T5`는 `BLOCKED`입니다.
+사용자가 2026-10-22에 「제안 결정」 5건을 확정했습니다(`D-046`). `LAYOUT-T5`는 `TODO`입니다.
+
+§6.1 최상위 목록과 §6.2 이동표·§6.3 경로는 `LAYOUT-T5` 기준이라 옛 최상위 이름을 그대로 둡니다. `LAYOUT-T7`이 T5 뒤에 바꿉니다.
 
 ### 6.1 규칙 (`architecture_overview.md` §3.1 개정안)
 
@@ -185,8 +191,58 @@ Assets/Scripts/
 ### 6.6 범위 밖 발견
 
 - `AugmentScrollModel.cs:438`의 `Resources.Load<Texture2D>("Parchment/parchment_base")` 대체 경로는 항상 null입니다. `Parchment/`를 담은 `Resources` 폴더가 없기 때문입니다. 주 경로인 `AugmentScrolls/parchment_scroll_albedo`는 존재합니다. 이번 트랙에서는 고치지 않고 보고만 합니다.
+- `AugmentScrollAssetGenerator.Generate()`를 다시 돌리면 `RenderPreview`(`Assets/Editor/Games/Yacht/AugmentScrollAssetGenerator.cs:175`)가 프리뷰마다 `Releasing render texture that is set as Camera.targetTexture!` 오류를 1건씩 남김(4건). 프리뷰 4개는 정상 생성·로드됨. 또 재생성은 비결정적이어서 프리셋 프리팹 내부 fileID·자식 순서, 머티리얼 블록 순서, 프리뷰 PNG 바이트가 매번 바뀜. GUID는 유지됨. 이번 트랙에서는 고치지 않고 보고만 합니다.
+- Unity 직렬화된 `m_EditorClassIdentifier` 값에 옛 네임스페이스 `Tessera.Games.AugmentedYacht.*`가 남아 있습니다. `Assets/01.Scenes/Augmented Dice.unity`(2곳), `Assets/03.Prefabs/Tabletop/3D Layered Parchment Score Sheet.prefab`(1곳), `AugmentScrollPreset_0~3.prefab`(4곳)입니다. 에디터 전용 식별자이고 스크립트 바인딩은 GUID로 하므로 런타임 영향이 없으며 Missing Script는 0건입니다. 에셋을 다시 저장하면 갱신됩니다. 이 트랙에서는 고치지 않습니다.
 
-## 7. 문서·설정 갱신 (`LAYOUT-T6`)
+## 7. 번호 접두사 적용 (`LAYOUT-T7`)
+
+`LAYOUT-T5` 다음, `LAYOUT-T6` 이전에 합니다. T6이 문서 경로를 한 번에 고치도록 옛 최상위 이름을 먼저 없앱니다. 근거는 §1 「번호 접두사의 비용」과 `D-046`입니다.
+
+### 이동표
+
+| 현재 | 새 위치 |
+|---|---|
+| `Assets/Scenes/` | `Assets/01.Scenes/` |
+| `Assets/Scripts/` | `Assets/02.Scripts/` |
+| `Assets/Prefabs/` | `Assets/03.Prefabs/` |
+| `Assets/Art/` | `Assets/04.Art/` |
+| `Assets/Audio/` | `Assets/05.Audio/` |
+| `Assets/Rendering/` | `Assets/06.Rendering/` |
+| `Assets/Settings/` | `Assets/07.Settings/` |
+
+폴더 단위로 `AssetDatabase.MoveAsset`로 옮깁니다. 하위 파일의 `.meta` GUID가 그대로 유지됩니다.
+
+### 바꾸지 않는 폴더
+
+| 폴더 | 사유 |
+|---|---|
+| `Editor` | Unity 특수 폴더입니다. `01.Editor`로 바꾸면 에디터 스크립트가 런타임 어셈블리로 들어가 빌드가 깨집니다 |
+| `Resources` | Unity 특수 폴더입니다. 바꾸면 `Resources.Load`가 전부 null이 됩니다 |
+| `StreamingAssets` | Unity 특수 폴더입니다. 이름이 정확히 일치해야 합니다 |
+| `TextMesh Pro` | 패키지 임포트 폴더입니다 |
+| `Temp`, `_Recovery` | gitignore 대상입니다 |
+| `Screenshots` | 확정 목록에도 제외 목록에도 없습니다. §6.5 사유(unity-skills가 저장 위치를 고정)로 그대로 둡니다. 대상 7개 목록이 확정이므로 제외로 봅니다 |
+
+### 고칠 대상
+
+- `.claude/rules/` `paths` 글롭 8줄 (serialization 2, module-boundary 1, editor-tests 1, art-direction 4)
+- `.claude/skills/tessera-balance-check/SKILL.md`의 경로 2줄 (34~35행)
+- 코드의 `"Assets/..."` 문자열 78건 (Editor 50, 테스트 22, 런타임 6). 착수 때 tessera-scout가 건수를 다시 셉니다
+- 씬 경로를 쓰는 에디터 도구 4개
+- `AGENTS.md`의 메인 씬 경로
+- `EditorBuildSettings`(빌드 씬 목록): 이동할 때 Unity가 경로를 갱신하는지 착수 때 확인합니다. 미확인
+
+### 담당
+
+tessera-unity-operator가 폴더 이동과 `EditorBuildSettings` 확인을, tessera-implementer가 코드 문자열과 도구 경로를 맡습니다. `.claude/rules/`·스킬·`AGENTS.md`의 담당은 정하지 않았습니다. 착수 때 정합니다.
+
+### 검증
+
+- 컴파일 오류 0
+- EditMode 테스트가 착수 전 기준선과 같은 수로 전부 통과
+- 옛 최상위 접두사(`Assets/Scenes/`, `Assets/Scripts/`, `Assets/Prefabs/`, `Assets/Art/`, `Assets/Audio/`, `Assets/Rendering/`, `Assets/Settings/`)가 코드와 `.claude/rules/`에 0건
+
+## 8. 문서·설정 갱신 (`LAYOUT-T6`)
 
 ### 대상
 
@@ -200,12 +256,14 @@ Assets/Scripts/
 - `augments_specification_and_status.md`에 남은 옛 경로
 - `docs/README.md:73`의 코드 스니펫 출처 예시 경로
 - `.claude/rules/art-direction.md:6` 글롭: `Stage/YachtLightingRig`, `Stage/YachtCameraRig`, `Table/TabletopSurfaceBuilder` 세 파일을 가리키게 바꿉니다
-- `.claude/skills/tessera-balance-check/SKILL.md:34-35`: `Assets/Scripts/Games/Yacht/Augments`로 바꿉니다
+  - `LAYOUT-T7`에서 해결했습니다. 글롭은 이제 `Assets/02.Scripts/Games/Yacht/Presentation/**/{YachtLightingRig,YachtCameraRig,TabletopSurfaceBuilder}.cs`를 가리킵니다.
+- `.claude/skills/tessera-balance-check/SKILL.md:34-35`: `Assets/Scripts/Games/Yacht/Augments`로 바꿉니다 (`LAYOUT-T7`에서 `Assets/02.Scripts/Games/Yacht/Rules`·`Augments` 로 반영)
 - `docs/plan/` 중 진행 중인 문서(`m17/`, `tracks/*/README.md`)의 옛 경로
 - `improvement` 트랙
   - `ARCH-02`는 `VOID`로 처리하고 흡수 사유를 적습니다
   - `ARCH-05` §2 의존 순서를 `Games.Yacht → Games.Yacht.Presentation`으로 바꿉니다
   - `ARCH-05` 세부안 트리에 「LAYOUT 이후 트리 기준으로 다시 설계」 한 줄을 추가합니다
+- 새 최상위 이름 반영 (`LAYOUT-T7` 이후): 위 목록과 `docs/` 안의 옛 최상위 경로(`Assets/Scenes/`, `Assets/Scripts/` 등)를 번호 이름으로 바꿉니다
 - `graphify update .` 실행
 
 ### 고치지 않는 것
@@ -223,20 +281,21 @@ Assets/Scripts/
 - 완료 게이트에 적힌 옛 경로 문자열의 검색 결과가 0건이어야 합니다.
 - `graphify-out/.graphify_labels.json`의 커뮤니티 이름은 LLM 생성물이라 다시 만드는 데 비용이 듭니다. `update` 후 커뮤니티 구성이 크게 바뀌었는지 보고하고, 재생성 여부는 사용자에게 묻습니다.
 
-## 8. 실행 순서와 담당
+## 9. 실행 순서와 담당
 
 Unity 접근 에이전트는 한 번에 하나만 돌립니다.
 
 | 단계 | 태스크 | 담당 | 비고 |
 |---|---|---|---|
-| 0 | 결정 기록 | tessera-scribe | 제안 결정이 확인된 뒤 `D-046` 기록과 `ARCH-02` `VOID` 처리. 트랙 등록과 `D-045`는 2026-10-22에 마침 |
+| 0 | 결정 기록 | tessera-scribe | 2026-10-22 완료: `D-046` 기록과 `ARCH-02` `VOID` 처리. 트랙 등록과 `D-045`도 2026-10-22에 마침 |
 | 0 | 기준선 | tessera-verifier | EditMode 통과 수, 콘솔 오류, guid 목록 |
 | 1 | T1 | tessera-unity-operator → tessera-verifier | |
 | 2 | T2 | tessera-implementer → tessera-verifier | |
 | 3 | T3 ∥ T4 | T3: tessera-unity-operator / T4: tessera-implementer(카탈로그 주석), tessera-scribe(명세 링크) | 대상 파일이 겹치지 않습니다. T4가 끝나면 tessera-verifier가 컴파일을 확인합니다 |
 | 4 | T5 | tessera-scout → tessera-unity-operator → tessera-implementer → tessera-verifier → tessera-unity-operator(베이커 재실행) | |
-| 5 | T6 | tessera-scribe → tessera-reader → `graphify update .` | |
-| 6 | 게이트 | `/tessera-gate LAYOUT` | `PASS`이면 커밋 허가를 요청합니다. 커밋은 `refactor(layout): …` 한 번입니다 |
+| 5 | T7 | tessera-unity-operator(폴더 이동) → tessera-implementer(코드 문자열·도구 경로) → tessera-verifier | 옛 최상위 접두사 0건을 확인한 뒤 T6으로 넘어갑니다 |
+| 6 | T6 | tessera-scribe → tessera-reader → `graphify update .` | |
+| 7 | 게이트 | `/tessera-gate LAYOUT` | `PASS`이면 커밋 허가를 요청합니다. 커밋은 `refactor(layout): …` 한 번입니다 |
 
 ### 위험과 대책
 

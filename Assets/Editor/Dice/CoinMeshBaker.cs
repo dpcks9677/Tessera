@@ -30,14 +30,14 @@ public sealed class CoinMeshSplit
 
 public static class CoinMeshBaker
 {
-    private const string GlbPath = "Assets/Art/Source/Coin/coin.glb";
-    private const string HeadSourcePath = "Assets/Art/Source/Coin/coin_head_source.png";
-    private const string TailSourcePath = "Assets/Art/Source/Coin/coin_tail_source.png";
-    private const string GeneratedFolder = "Assets/Art/Generated/Coin";
+    private const string GlbPath = "Assets/04.Art/Source/Coin/coin.glb";
+    private const string HeadSourcePath = "Assets/04.Art/Source/Coin/coin_head_source.png";
+    private const string TailSourcePath = "Assets/04.Art/Source/Coin/coin_tail_source.png";
+    private const string GeneratedFolder = "Assets/04.Art/Generated/Coin";
     private const string MeshFolder = GeneratedFolder + "/Meshes";
     private const string MaterialFolder = GeneratedFolder + "/Materials";
     private const string TextureFolder = GeneratedFolder + "/Textures";
-    private const string PrefabPath = "Assets/Prefabs/Coin/Coin.prefab";
+    private const string PrefabPath = "Assets/03.Prefabs/Coin/Coin.prefab";
 
     // 사용자 화면 확인으로 정한 값. 지름 약 1.59(주사위 한 변 1.014의 약 1.57배).
     private const float ModelScale = 0.8f;
@@ -311,7 +311,7 @@ public static class CoinMeshBaker
         CreateChild(root.transform, "Face_Head", headMesh, headMaterial);
         CreateChild(root.transform, "Face_Tail", tailMesh, tailMaterial);
 
-        EnsureFolder("Assets/Prefabs/Coin");
+        EnsureFolder("Assets/03.Prefabs/Coin");
         PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
         UnityEngine.Object.DestroyImmediate(root);
     }

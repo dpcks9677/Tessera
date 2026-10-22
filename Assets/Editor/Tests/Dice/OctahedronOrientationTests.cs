@@ -1,6 +1,6 @@
 using NUnit.Framework;
 using Tessera.Dice;
-using Tessera.Games.AugmentedYacht;
+using Tessera.Games.Yacht.Presentation;
 using UnityEngine;
 
 namespace Tessera.Editor.Tests

@@ -18,15 +18,15 @@ namespace Tessera.EditorTools
     {
         private const string OutputAssetPath = "Assets/Resources/RuntimeAssetLibrary.asset";
 
-        private const string MulmaruPath = "Assets/Art/ThirdParty/Fonts/Mulmaru.ttf";
-        private const string AlagardPath = "Assets/Art/ThirdParty/Fonts/alagard.ttf";
-        private const string M6x11Path = "Assets/Art/ThirdParty/Fonts/m6x11.ttf";
+        private const string MulmaruPath = "Assets/04.Art/ThirdParty/Fonts/Mulmaru.ttf";
+        private const string AlagardPath = "Assets/04.Art/ThirdParty/Fonts/alagard.ttf";
+        private const string M6x11Path = "Assets/04.Art/ThirdParty/Fonts/m6x11.ttf";
 
-        private const string ParchmentBasePath = "Assets/Art/Generated/Parchment/parchment_base.png";
-        private const string ParchmentBurntEdgePath = "Assets/Art/Generated/Parchment/parchment_burnt_edge.png";
-        private const string ParchmentWarmSandPath = "Assets/Art/Generated/Parchment/parchment_warm_sand.png";
+        private const string ParchmentBasePath = "Assets/04.Art/Generated/Parchment/parchment_base.png";
+        private const string ParchmentBurntEdgePath = "Assets/04.Art/Generated/Parchment/parchment_burnt_edge.png";
+        private const string ParchmentWarmSandPath = "Assets/04.Art/Generated/Parchment/parchment_warm_sand.png";
 
-        private const string IconsDir = "Assets/Art/Generated/Parchment/Icons";
+        private const string IconsDir = "Assets/04.Art/Generated/Games/Yacht/ScoreIcons";
 
         [MenuItem("Tools/Tessera/Bake Runtime Asset Library")]
         public static void Bake()

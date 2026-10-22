@@ -63,17 +63,17 @@ EOS 또는 Steam 기반 호스트 온라인 연결
 
 | 영역 | 상태 | 근거/비고 |
 |---|---|---|
-| 기본 2인 요트 점수 계산 | 구현됨 | `Assets/Scripts/Games/AugmentedYacht/YachtGameRules.cs` |
+| 기본 2인 요트 점수 계산 | 구현됨 | `YachtGameRules.cs` (LAYOUT-T1에서 삭제) |
 | 12라운드 턴 진행 | 구현됨 | `YachtGameSession` |
-| 기본 규칙 EditMode 테스트 | 일부 구현됨 | `Assets/Editor/Tests/Yacht/YachtGameRulesTests.cs` |
+| 기본 규칙 EditMode 테스트 | 일부 구현됨 | `Assets/Editor/Tests/Games/Yacht/YachtGameRulesTests.cs` |
 | 베이킹 프리셋 로딩/재생 | 구현됨 | `DicePresetCatalog`, `BakedDiceController` |
 | 주사위 값 결정 | 컨트롤러에 결합됨 | `AugmentedYachtController`가 `UnityEngine.Random` 사용 |
 | 베이킹 프리셋 선택 | 컨트롤러에 결합됨 | 일반 5주사위 프리셋을 직접 선택 |
 | 주사위 킵 상태 | 프레젠테이션 계층에 일부 존재 | 권위 상태로 이동 필요 |
 | 증강 정의 데이터 | 55개 존재 | `Assets/StreamingAssets/WebSource/data/augments.json` (2026-09-19 디렉터리 재편에서 삭제. 코드에서 읽지 않던 웹 잔재였음) |
-| 증강 카드 트레이 비주얼 | 구현됨 | `Assets/Scripts/Tabletop/AugmentCardTray.cs` |
+| 증강 카드 트레이 비주얼 | 구현됨 | `Assets/02.Scripts/Tabletop/AugmentCardTray.cs` |
 | 실제 증강 런타임 | 미구현 | 트리거, 상태, 효과 처리기 필요 |
-| 네트워크 모듈 | 비어 있음 | `Assets/Scripts/Network` |
+| 네트워크 모듈 | 비어 있음 | `Assets/02.Scripts/Network` |
 | 일반/증강 모드 전환 | 미구현 | 공유 씬 모드 분기 필요 |
 
 ### 2.2 현재 구조에서 주의할 점
@@ -154,6 +154,8 @@ Tessera.Network
 ```
 
 위 구조는 책임 경계다. 실제 폴더 배치는 `D-028`에서 확정했다: 증강 관련 코드는 전부 `Assets/Scripts/Games/AugmentedYacht/` 아래에 두되, 순수 C# 로직은 `Logic/`, MonoBehaviour 프레젠테이션은 `Presentation/`으로 나눈다. 네임스페이스는 `Tessera.Games.Yacht`를 유지한다(`D-021`). asmdef 분리는 아직 하지 않는다.
+
+이 배치는 LAYOUT 트랙에서 다시 바뀌었다. 현재 위치는 `Assets/02.Scripts/Games/Yacht/` 아래 `Rules/`·`Augments/`(네임스페이스 `Tessera.Games.Yacht`)와 `Presentation/`(네임스페이스 `Tessera.Games.Yacht.Presentation`)이다. 근거는 [LAYOUT 설계](tracks/layout/design.md)에 있다.
 
 ### 3.2 핵심 처리 흐름
 
@@ -269,25 +271,25 @@ ManualAction
 ### 현재 메인 씬
 
 ```text
-Assets/Scenes/Augmented Dice.unity
+Assets/01.Scenes/Augmented Dice.unity
 ```
 
 ### 현재 기본 규칙
 
 ```text
-Assets/Scripts/Games/AugmentedYacht/YachtGameRules.cs
+YachtGameRules.cs (LAYOUT-T1에서 삭제)
 ```
 
 ### 현재 게임 컨트롤러
 
 ```text
-Assets/Scripts/Games/AugmentedYacht/AugmentedYachtController.cs
+Assets/02.Scripts/Games/Yacht/Presentation/Flow/AugmentedYachtController.cs
 ```
 
 ### 현재 증강 데이터
 
 ```text
-Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Core/YachtAugmentCatalog.cs
+Assets/02.Scripts/Games/Yacht/Augments/Framework/YachtAugmentCatalog.cs
 ```
 
 ### 원칙 한 줄 요약

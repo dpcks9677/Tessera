@@ -15,8 +15,8 @@ namespace Tessera.Editor.Tests
     /// </summary>
     public sealed class RollCosmicCubeAugmentStateTests
     {
-        private const string ShaderFolder = "Assets/Rendering/Shaders";
-        private const string MaterialFolder = "Assets/Art/Generated/Tabletop/Materials";
+        private const string ShaderFolder = "Assets/06.Rendering/Shaders";
+        private const string MaterialFolder = "Assets/04.Art/Generated/Tabletop/Materials";
         private const string TintProperty = "_AugmentTint";
         private const string DrainProperty = "_AugmentDrain";
 
@@ -151,7 +151,7 @@ namespace Tessera.Editor.Tests
         [Test]
         public void BaseAndPillarDoNotUseAugmentStateShader()
         {
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Tabletop/3D Roll Cosmic Cube.prefab");
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/03.Prefabs/Tabletop/3D Roll Cosmic Cube.prefab");
             Assert.That(prefab, Is.Not.Null);
 
             Transform body = prefab.transform.Find("Cosmic_Cube_Floating_Root/Cosmic_Cube_Body");

@@ -1,7 +1,7 @@
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
-using Tessera.Games.AugmentedYacht;
+using Tessera.Games.Yacht.Presentation;
 
 namespace Tessera.EditorTools
 {

@@ -1,9 +1,9 @@
 ---
 paths:
   - "Assets/**/*.{unity,prefab,mat,shader,shadergraph,hlsl}"
-  - "Assets/Scripts/Rendering/**"
-  - "Assets/Rendering/**"
-  - "Assets/Scripts/Games/AugmentedYacht/Presentation/{YachtLightingRig,YachtCameraRig,TabletopSurfaceBuilder}.cs"
+  - "Assets/02.Scripts/Rendering/**"
+  - "Assets/06.Rendering/**"
+  - "Assets/02.Scripts/Games/Yacht/Presentation/**/{YachtLightingRig,YachtCameraRig,TabletopSurfaceBuilder}.cs"
 ---
 
 # 아트 방향

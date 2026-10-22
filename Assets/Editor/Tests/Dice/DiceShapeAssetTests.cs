@@ -189,14 +189,14 @@ namespace Tessera.Editor.Tests
 
         private static Mesh LoadOctahedronBody()
         {
-            Mesh body = AssetDatabase.LoadAssetAtPath<Mesh>("Assets/Art/Generated/Dice/Dice_Octahedron_Body.mesh");
+            Mesh body = AssetDatabase.LoadAssetAtPath<Mesh>("Assets/04.Art/Generated/Dice/Dice_Octahedron_Body.mesh");
             Assert.That(body, Is.Not.Null, "8면 몸체 메시가 없습니다. Tessera/Bake/Dice Shapes 로 먼저 구우십시오.");
             return body;
         }
 
         private static GameObject LoadPrefab(string assetName)
         {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Prefabs/Dice/{assetName}.prefab");
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/03.Prefabs/Dice/{assetName}.prefab");
             Assert.That(prefab, Is.Not.Null, $"{assetName} 프리팹이 없습니다. Tessera/Bake/Dice Shapes 로 먼저 구우십시오.");
             return prefab;
         }

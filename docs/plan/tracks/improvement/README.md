@@ -36,21 +36,21 @@
 
 | 작업 ID | 우선순위 | 작업명 | 주요 대상 파일 | 예상 영향도 | 상태 |
 |:---:|:---:|---|---|:---:|:---:|
-| **BUILD-01** | **P1** | `PixelEdgeRendererFeature.cs` 컴파일 경고 해소 (CS0672, CS0618) | `Assets/Scripts/Rendering/PixelEdgeRendererFeature.cs` | 최하 (안전) | `TODO` |
+| **BUILD-01** | **P1** | `PixelEdgeRendererFeature.cs` 컴파일 경고 해소 (CS0672, CS0618) | `Assets/02.Scripts/Rendering/PixelEdgeRendererFeature.cs` | 최하 (안전) | `TODO` |
 | **TEST-01** | **P1** | `FontFallbackTests.cs` 직렬화 API 버그 픽스 검증 및 커밋 | `Assets/Editor/Tests/FontFallbackTests.cs` | 최하 (테스트) | `DONE` |
 | **DOC-01** | **P2** | 기술 문서 정합성 동기화 (`RollOrb` 폐기 반영 및 클린업 완료 기록) | `docs/agent/solid_refactoring_work_plan.md`, `docs/archive/plans/dead_code_cleanup_proposal.md` | 최하 (문서) | `DONE` |
-| **SOLID-T05**| **P2** | `IYachtRuleSet` ISP 분리 (`SelectPresetFile` 뷰 결합 추출) | `Assets/Scripts/Games/Yacht/YachtGameCore.cs`, `LocalGameAuthority.cs` | 낮음 (구조) | `TODO` |
-| **AUG-01** | **P3** | 증강 핸들러 내 불필요한 과도기 `GetOrSync` 동기화 헬퍼 정리 | `Assets/Scripts/Games/AugmentedYacht/Logic/Augments/...` (12개 파일) | 낮음 (단순화) | `TODO` |
-| **PERF-01** | **P3** | `AugmentCardView` 증강 아이콘 로딩 캐시 및 GC 할당 완화 (`RES-2`) | `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs` | 낮음 (성능) | `TODO` |
-| **SOLID-T07**| **P4** | `YachtScoreCalculator` 가변 주사위 및 범위 방어적 처리 | `Assets/Scripts/Games/Yacht/YachtGameCore.cs` | 낮음 (안정성) | `TODO` |
+| **SOLID-T05**| **P2** | `IYachtRuleSet` ISP 분리 (`SelectPresetFile` 뷰 결합 추출) | `Assets/02.Scripts/Games/Yacht/Rules/YachtGameCore.cs`, `LocalGameAuthority.cs` | 낮음 (구조) | `TODO` |
+| **AUG-01** | **P3** | 증강 핸들러 내 불필요한 과도기 `GetOrSync` 동기화 헬퍼 정리 | `Assets/02.Scripts/Games/Yacht/Augments/...` (12개 파일) | 낮음 (단순화) | `TODO` |
+| **PERF-01** | **P3** | `AugmentCardView` 증강 아이콘 로딩 캐시 및 GC 할당 완화 (`RES-2`) | `Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/AugmentCardView.cs` | 낮음 (성능) | `TODO` |
+| **SOLID-T07**| **P4** | `YachtScoreCalculator` 가변 주사위 및 범위 방어적 처리 | `Assets/02.Scripts/Games/Yacht/Rules/YachtGameCore.cs` | 낮음 (안정성) | `TODO` |
 | **ARCH-01** | **P5** | Pure C# 게임 규칙 계층 독립 어셈블리 정의(`.asmdef`) 도입 가이드 | `Assets/Scripts/Games/Yacht/`, `AugmentedYacht/Logic/` | 중간 (구조) | `VOID` |
-| **ARCH-02** | **P5** | 런타임 에셋을 기능 경계 기준으로 재편 (`Assets/GameContent/...`) | `Assets/Prefabs/`, `Assets/Resources/`, `Assets/Art/Generated/` | 중간 (구조) | `TODO` |
+| **ARCH-02** | **P5** | 런타임 에셋을 기능 경계 기준으로 재편 (`Assets/GameContent/...`) | `Assets/03.Prefabs/`, `Assets/Resources/`, `Assets/04.Art/Generated/` | 중간 (구조) | `VOID` |
 | **ARCH-03** | **P5** | `Resources/` 사용 축소와 Addressables 전환 검토 | `Assets/Resources/` | 중간 (구조) | `TODO` |
-| **ARCH-04** | **P5** | `DicePresetCatalog`의 StreamingAssets 로드를 `UnityWebRequest` 대응으로 전환 | `Assets/Scripts/Dice/DicePresetCatalog.cs` | 낮음 (이식성) | `TODO` |
-| **ARCH-05** | **P5** | asmdef 도입 (`Tessera.Core` → `Dice`/`Tabletop`/`Rendering` → `Games.Yacht` → `Games.AugmentedYacht`) | `Assets/Scripts/` 전체 | 중간 (구조) | `TODO` |
+| **ARCH-04** | **P5** | `DicePresetCatalog`의 StreamingAssets 로드를 `UnityWebRequest` 대응으로 전환 | `Assets/02.Scripts/Dice/DicePresetCatalog.cs` | 낮음 (이식성) | `TODO` |
+| **ARCH-05** | **P5** | asmdef 도입 (`Tessera.Core` → `Dice`/`Tabletop`/`Rendering` → `Games.Yacht` → `Games.Yacht.Presentation`) | `Assets/02.Scripts/` 전체 | 중간 (구조) | `TODO` |
 | **LOAD-01** | **P2** | 런타임 스크립트 5개의 에디터 전용 에셋 로딩(`#if UNITY_EDITOR` + `AssetDatabase.LoadAssetAtPath`)이 플레이어 빌드에서 null 반환 | `AugmentCardView.cs`, `AugmentedYachtController.cs`, `InkwellAndQuill.cs`, `ParchmentScoreSheet.cs`, `YachtHudFactory.cs` | 높음 (빌드 결함) | `DONE` |
-| **LOAD-02** | **P3** | `AugmentScrollModel.cs`의 죽은 `Resources.Load` 폴백 경로 정리 | `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentScrollModel.cs` | 낮음 (단순화) | `TODO` |
-| **LOAD-03** | **P3** | `AugmentCardView.LoadProgressFont`의 정적 TMP 아틀라스 캐시가 파괴된 텍스처를 걸러내지 못함 | `Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs` | 낮음 (안정성) | `DONE` |
+| **LOAD-02** | **P3** | `AugmentScrollModel.cs`의 죽은 `Resources.Load` 폴백 경로 정리 | `Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/AugmentScrollModel.cs` | 낮음 (단순화) | `TODO` |
+| **LOAD-03** | **P3** | `AugmentCardView.LoadProgressFont`의 정적 TMP 아틀라스 캐시가 파괴된 텍스처를 걸러내지 못함 | `Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/AugmentCardView.cs` | 낮음 (안정성) | `DONE` |
 
 ---
 
@@ -64,7 +64,7 @@
 Unity 6 URP에서 Render Graph 파이프라인이 기본 활성화되면서, 비 Render Graph(호환 모드/Compatibility Mode)용 레거시 API 재정의에 대해 3건의 경고(`CS0672`, `CS0618`)가 발생합니다. 이로 인해 전체 솔루션이 'Clean Build (경고 0개)' 상태를 달성하지 못하고 있습니다.
 
 #### 2. 대상 파일
-- [PixelEdgeRendererFeature.cs](../../../../Assets/Scripts/Rendering/PixelEdgeRendererFeature.cs) (Line 166 ~ Line 190)
+- [PixelEdgeRendererFeature.cs](../../../../Assets/02.Scripts/Rendering/PixelEdgeRendererFeature.cs) (Line 166 ~ Line 190)
 
 #### 3. 작업 지침
 호환 모드 메서드 블록 앞뒤에 `#pragma warning disable CS0618, CS0672`와 `#pragma warning restore CS0618, CS0672`를 감싸거나, Unity 권장대로 `[System.Obsolete]`를 부여합니다.
@@ -164,7 +164,7 @@ dotnet build Assembly-CSharp.csproj /p:WarningLevel=5
 `dead_code_cleanup_proposal.md`는 실행이 끝났는데도 "제안" 상태에 untracked로 남아 있었습니다.
 
 > **원 명세의 사실 오류 정정**: 이 태스크는 `ZodiacConstellationData.cs`도 "완전히 삭제되었다"고
-> 적었으나 **사실이 아닙니다.** 해당 파일은 `Assets/Scripts/Tabletop/ZodiacConstellationData.cs`에
+> 적었으나 **사실이 아닙니다.** 해당 파일은 `Assets/02.Scripts/Tabletop/ZodiacConstellationData.cs`에
 > 520줄 그대로 있고, `RollCosmicCube.cs`와 `AugmentedYachtController.cs`가 여전히 참조합니다.
 > 황도 12궁 연출은 폐기된 기능이지만 코드는 남기고 게임에 적재만 하지 않는 상태입니다
 > (`EnabledInGame = false`). 삭제된 것은 `RollOrb.cs` 하나뿐입니다.
@@ -195,11 +195,11 @@ dotnet build Assembly-CSharp.csproj /p:WarningLevel=5
 순수 도메인 게임 규칙 인터페이스인 `IYachtRuleSet`에 애니메이션 프리셋 에셋 파일명(`dice_presets_normal_5.json`)을 반환하는 `SelectPresetFile` 메서드가 포함되어 있습니다. 이는 규칙 계층이 프레젠테이션/에셋 명명 규칙을 강제로 알게 만드는 인터페이스 분리 원칙(ISP) 위반입니다.
 
 #### 2. 대상 파일
-- [YachtGameCore.cs](../../../../Assets/Scripts/Games/Yacht/YachtGameCore.cs) (Line 393 ~ Line 435)
-- [LocalGameAuthority.cs](../../../../Assets/Scripts/Games/Yacht/LocalGameAuthority.cs) (Line 184 ~ Line 185)
+- [YachtGameCore.cs](../../../../Assets/02.Scripts/Games/Yacht/Rules/YachtGameCore.cs) (Line 393 ~ Line 435)
+- [LocalGameAuthority.cs](../../../../Assets/02.Scripts/Games/Yacht/Rules/LocalGameAuthority.cs) (Line 184 ~ Line 185)
 
 #### 3. 작업 지침
-1. **[YachtGameCore.cs](../../../../Assets/Scripts/Games/Yacht/YachtGameCore.cs)**:
+1. **[YachtGameCore.cs](../../../../Assets/02.Scripts/Games/Yacht/Rules/YachtGameCore.cs)**:
    - `IYachtRuleSet`에서 `string SelectPresetFile(IReadOnlyList<YachtDieState> dice);` 선언을 제거합니다.
    - `NormalYachtRuleSet` 및 `AugmentedYachtRuleSet`의 `SelectPresetFile` 메서드 구현을 제거합니다.
    - 프리셋 선택 책임을 전담하는 정적 유틸리티 클래스 `YachtPresetSelector`를 `Tessera.Games.Yacht` 네임스페이스에 선언합니다:
@@ -209,7 +209,7 @@ dotnet build Assembly-CSharp.csproj /p:WarningLevel=5
          public static string SelectNormalPresetFile(int diceCount) => $"dice_presets_normal_{diceCount}.json";
      }
      ```
-2. **[LocalGameAuthority.cs](../../../../Assets/Scripts/Games/Yacht/LocalGameAuthority.cs)**:
+2. **[LocalGameAuthority.cs](../../../../Assets/02.Scripts/Games/Yacht/Rules/LocalGameAuthority.cs)**:
    - Line 185의 `rules.SelectPresetFile(state.Dice)` 호출을 `YachtPresetSelector.SelectNormalPresetFile(state.Dice.Length)`로 변경합니다.
 
 ```csharp
@@ -260,7 +260,7 @@ dotnet build Assembly-CSharp-Editor.csproj /p:WarningLevel=5
 
 #### 1. 배경 및 목적
 증강 상태 저장소가 `AugmentStateStore`(`IAugmentState`)로 개편되는 과정에서, 개별 증강 클래스에 `GetOrSync`라는 과도기 헬퍼가 다수 생성되었습니다.
-예를 들어 [PiggyBank.cs](../../../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Enhance/PiggyBank.cs)를 보면:
+예를 들어 [PiggyBank.cs](../../../../Assets/02.Scripts/Games/Yacht/Augments/Enhance/PiggyBank.cs)를 보면:
 ```csharp
 private static PiggyBankState GetOrSync(AugmentContext context)
 {
@@ -275,18 +275,18 @@ private static PiggyBankState GetOrSync(AugmentContext context)
 하지만 `context.Player.PiggyBankBalance`는 이미 내부에서 `States.GetOrCreate<PiggyBankState>().Balance`를 직접 반환하므로, `state`와 `context.Player.PiggyBankBalance`는 완전히 동일한 인스턴스의 동일한 필드입니다. 즉 `GetOrSync`는 불필요한 중복 코드이자 자기 대입입니다.
 
 #### 2. 대상 파일
-- [PiggyBank.cs](../../../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Enhance/PiggyBank.cs)
-- [CautiousStraight.cs](../../../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/CautiousStraight.cs)
-- [Copycat.cs](../../../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/Copycat.cs)
-- [Doubling.cs](../../../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/Doubling.cs)
-- [EveryLittleCounts.cs](../../../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/EveryLittleCounts.cs)
-- [FastStraight.cs](../../../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/FastStraight.cs)
-- [Holdout.cs](../../../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/Holdout.cs)
-- [NoTimeToWaste.cs](../../../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/NoTimeToWaste.cs)
-- [Nozdormu.cs](../../../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/Nozdormu.cs)
-- [Prophet.cs](../../../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/Prophet.cs)
-- [StepByStep.cs](../../../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/StepByStep.cs)
-- [BountyHunter.cs](../../../../Assets/Scripts/Games/AugmentedYacht/Logic/Augments/Quest/BountyHunter.cs)
+- [PiggyBank.cs](../../../../Assets/02.Scripts/Games/Yacht/Augments/Enhance/PiggyBank.cs)
+- [CautiousStraight.cs](../../../../Assets/02.Scripts/Games/Yacht/Augments/Quest/CautiousStraight.cs)
+- [Copycat.cs](../../../../Assets/02.Scripts/Games/Yacht/Augments/Quest/Copycat.cs)
+- [Doubling.cs](../../../../Assets/02.Scripts/Games/Yacht/Augments/Quest/Doubling.cs)
+- [EveryLittleCounts.cs](../../../../Assets/02.Scripts/Games/Yacht/Augments/Quest/EveryLittleCounts.cs)
+- [FastStraight.cs](../../../../Assets/02.Scripts/Games/Yacht/Augments/Quest/FastStraight.cs)
+- [Holdout.cs](../../../../Assets/02.Scripts/Games/Yacht/Augments/Quest/Holdout.cs)
+- [NoTimeToWaste.cs](../../../../Assets/02.Scripts/Games/Yacht/Augments/Quest/NoTimeToWaste.cs)
+- [Nozdormu.cs](../../../../Assets/02.Scripts/Games/Yacht/Augments/Quest/Nozdormu.cs)
+- [Prophet.cs](../../../../Assets/02.Scripts/Games/Yacht/Augments/Quest/Prophet.cs)
+- [StepByStep.cs](../../../../Assets/02.Scripts/Games/Yacht/Augments/Quest/StepByStep.cs)
+- [BountyHunter.cs](../../../../Assets/02.Scripts/Games/Yacht/Augments/Quest/BountyHunter.cs)
 
 #### 3. 작업 지침
 각 파일에서:
@@ -346,10 +346,10 @@ dotnet build Assembly-CSharp.csproj /p:WarningLevel=5
 ### [PERF-01] `AugmentCardView` 증강 아이콘 로딩 캐시 및 GC 할당 완화 (`RES-2`)
 
 #### 1. 배경 및 목적
-[AugmentCardView.cs](../../../../Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs)의 `Bind` 메서드는 호출될 때마다 `Resources.Load<Sprite>($"AugmentIcons/{definition.Id}")`를 수행합니다. 문자열 보간(`$"..."`)으로 인해 매 바인딩 시 GC 가비지가 생성됩니다. 반면 `YachtTurnFlowPresenter.cs`는 딕셔너리로 아이콘을 캐시하고 있어 구현 일관성이 결여되어 있습니다.
+[AugmentCardView.cs](../../../../Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/AugmentCardView.cs)의 `Bind` 메서드는 호출될 때마다 `Resources.Load<Sprite>($"AugmentIcons/{definition.Id}")`를 수행합니다. 문자열 보간(`$"..."`)으로 인해 매 바인딩 시 GC 가비지가 생성됩니다. 반면 `YachtTurnFlowPresenter.cs`는 딕셔너리로 아이콘을 캐시하고 있어 구현 일관성이 결여되어 있습니다.
 
 #### 2. 대상 파일
-- [AugmentCardView.cs](../../../../Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs) (Line 94)
+- [AugmentCardView.cs](../../../../Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/AugmentCardView.cs) (Line 94)
 
 #### 3. 작업 지침
 `AugmentCardView` 클래스 내부에 정적 아이콘 캐시(`Dictionary<string, Sprite>`)를 두거나, 캐시 헬퍼 메서드를 통해 이미 로드된 스프라이트를 재사용하도록 개선합니다.
@@ -386,13 +386,13 @@ dotnet build Assembly-CSharp.csproj /p:WarningLevel=5
 ### [SOLID-T07] `YachtScoreCalculator` 가변 주사위 및 눈금 범위 방어적 처리
 
 #### 1. 배경 및 목적
-[YachtGameCore.cs#L464](../../../../Assets/Scripts/Games/Yacht/YachtGameCore.cs#L464)의 `YachtScoreCalculator.Calculate(IReadOnlyList<int> dice)`는:
+[YachtGameCore.cs#L464](../../../../Assets/02.Scripts/Games/Yacht/Rules/YachtGameCore.cs#L464)의 `YachtScoreCalculator.Calculate(IReadOnlyList<int> dice)`는:
 1. `dice.Count != 5`이면 `ArgumentException`을 던집니다.
 2. `value < 1 || value > 6`이면 `ArgumentOutOfRangeException`을 던집니다.
 증강 요트에는 8면 주사위(눈 1~8) 및 향후 가변 주사위 개수가 도입될 수 있습니다. `Calculate` 메서드가 예외로 프로세스를 중단시키지 않고 방어적으로 동작하도록 개선합니다.
 
 #### 2. 대상 파일
-- [YachtGameCore.cs](../../../../Assets/Scripts/Games/Yacht/YachtGameCore.cs) (Line 462 ~ Line 500)
+- [YachtGameCore.cs](../../../../Assets/02.Scripts/Games/Yacht/Rules/YachtGameCore.cs) (Line 462 ~ Line 500)
 
 #### 3. 작업 지침
 - `dice == null`일 경우에만 빈 딕셔너리 또는 기존 예외를 반환하고, 주사위 개수가 5개가 아니더라도 가용 주사위 목록 기준으로 점수를 산출하도록 허용합니다.
@@ -435,7 +435,9 @@ Assets/Scripts/
 
 ---
 
-### [ARCH-02] 런타임 에셋을 기능 경계 기준으로 재편
+### [ARCH-02] 런타임 에셋을 기능 경계 기준으로 재편 — `VOID`
+
+**무효화: 2026-10-22.** 「에셋 도메인 유지」 결정(`D-046`)이 이 항목의 목표 구조를 대체하므로 [`LAYOUT` 트랙](../layout/README.md)으로 흡수됨.
 
 #### 1. 배경 및 목적
 2026-09-19 아트·오디오 디렉터리 재편(커밋 `a2acacb`)과 2026-09-20 에디터 스크립트 기능별 폴더 분리에 이어지는 후속 후보입니다. 현재 `Assets/Prefabs`, `Assets/Resources`, `Assets/Art/Generated`는 타입(프리팹/리소스/생성물) 기준으로 나뉘어 있어, 특정 기능(예: 증강 요트)에 속한 에셋을 한눈에 찾기 어렵습니다.
@@ -459,6 +461,8 @@ Assets/GameContent/
 #### 4. 현재 상태
 `Assets/Prefabs`, `Assets/Resources`, `Assets/Art/Generated`가 타입 기준으로 나뉘어 있습니다.
 
+**VOID (2026-10-22).** 사용자가 LAYOUT 트랙의 「에셋 도메인 유지」를 확정했습니다(`D-046`). 타입·출처 최상위는 그대로 두고 게임 전용 에셋만 각 루트 안 `Games/<게임>/`으로 옮기므로, 이 항목의 `Assets/GameContent/` 기능 우선 구조와 반대 방향입니다. 두 계획이 남지 않도록 흡수했습니다(`ARCH-01`→`ARCH-05` 선례). 후속 작업은 [`plan/tracks/layout/`](../layout/README.md)의 `LAYOUT-T1`~`T7`을 봅니다.
+
 ---
 
 ### [ARCH-03] `Resources/` 사용 축소와 Addressables 전환 검토
@@ -477,7 +481,7 @@ Assets/GameContent/
 ### [ARCH-04] `DicePresetCatalog`의 StreamingAssets 로드를 `UnityWebRequest` 대응으로 전환
 
 #### 1. 배경 및 목적
-[DicePresetCatalog.cs](../../../../Assets/Scripts/Dice/DicePresetCatalog.cs)는 `Path.Combine(Application.streamingAssetsPath, "WebSource", "presets", ...)` 경로를 일반 파일 IO(`File.ReadAllText` 등)로 직접 읽습니다. Android와 WebGL에서는 StreamingAssets가 일반 파일 API로 읽을 수 없는 경로(APK 내부 압축, 웹 서버 경로)라 이 방식이 실패합니다.
+[DicePresetCatalog.cs](../../../../Assets/02.Scripts/Dice/DicePresetCatalog.cs)는 `Path.Combine(Application.streamingAssetsPath, "WebSource", "presets", ...)` 경로를 일반 파일 IO(`File.ReadAllText` 등)로 직접 읽습니다. Android와 WebGL에서는 StreamingAssets가 일반 파일 API로 읽을 수 없는 경로(APK 내부 압축, 웹 서버 경로)라 이 방식이 실패합니다.
 
 #### 2. 착수 조건
 Android나 WebGL을 목표 플랫폼에 넣을 때 착수합니다.
@@ -499,10 +503,11 @@ Android나 WebGL을 목표 플랫폼에 넣을 때 착수합니다.
 
 #### 2. 목표 의존 순서
 ```text
-Tessera.Core → Dice / Tabletop / Rendering → Games.Yacht → Games.AugmentedYacht
+Tessera.Core → Dice / Tabletop / Rendering → Games.Yacht → Games.Yacht.Presentation
 ```
 
-`ARCH-01`이 제시했던 게임 규칙 계층 내부 분리 구조는 위 순서 중 `Games.Yacht` / `Games.AugmentedYacht` 계층의 세부안으로 다음과 같이 참고합니다:
+`ARCH-01`이 제시했던 게임 규칙 계층 내부 분리 구조는 위 순서 중 `Games.Yacht` / `Games.Yacht.Presentation` 계층의 세부안으로 다음과 같이 참고합니다:
+LAYOUT 이후 트리 기준으로 다시 설계해야 합니다.
 ```text
 Assets/Scripts/
 ├── Games/Yacht/                       -> [Tessera.Games.Yacht.Core.asmdef] (Unity 의존성 0)
@@ -548,7 +553,7 @@ Assets/Scripts/
 - 플레이어 빌드(또는 빌드에 준하는 환경)에서 해당 에셋들이 null이 아닌지 확인.
 
 #### 5. 해결 진행 상황
-- `Assets/Scripts/Core/RuntimeAssetLibrary.cs`(신규, `Tessera.Core`): `Assets/Resources/RuntimeAssetLibrary.asset` `ScriptableObject` 카탈로그를 통해 폰트 3종·양피지 텍스처 3종·족보 아이콘 12개를 런타임에 제공합니다. 에셋 파일은 `Assets/Art/` 자리에 그대로 두고 카탈로그가 참조하므로 빌드에 포함됩니다. `Resources/` 표면이 파일 하나로 끝나 `ARCH-03`(Resources 축소) 방향과 어긋나지 않습니다.
+- `Assets/02.Scripts/Core/RuntimeAssetLibrary.cs`(신규, `Tessera.Core`): `Assets/Resources/RuntimeAssetLibrary.asset` `ScriptableObject` 카탈로그를 통해 폰트 3종·양피지 텍스처 3종·족보 아이콘 12개를 런타임에 제공합니다. 에셋 파일은 `Assets/Art/` 자리에 그대로 두고 카탈로그가 참조하므로 빌드에 포함됩니다. `Resources/` 표면이 파일 하나로 끝나 `ARCH-03`(Resources 축소) 방향과 어긋나지 않습니다.
 - 선택 이유: 폰트를 쓰는 세 곳 중 `YachtHudFactory`는 static 유틸리티, `AugmentCardView`는 런타임 `AddComponent` 생성이라 `[SerializeField]` 경로가 원천적으로 막혀 있습니다. 에셋 2.83MB를 `Resources/`로 옮기는 안은 디렉터리 규칙을 되돌리게 되어 채택하지 않았습니다.
 - `Assets/Editor/Tools/RuntimeAssetLibraryBaker.cs`(신규): `Tools/Tessera/Bake Runtime Asset Library` 메뉴로 카탈로그를 굽습니다.
 - 수정: `AugmentCardView.cs`, `YachtHudFactory.cs`, `ParchmentScoreSheet.cs`. 폰트 폴백 순서와 최종 빌트인 폴백(`LegacyRuntime.ttf`)은 그대로 유지했습니다.
@@ -560,10 +565,10 @@ Assets/Scripts/
 ### [LOAD-02] `AugmentScrollModel.cs`의 죽은 `Resources.Load` 폴백 경로 정리
 
 #### 1. 배경 및 목적
-`Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentScrollModel.cs:438`의 `Resources.Load<Texture2D>("Parchment/parchment_base")` 폴백은 해당 경로가 `Resources/` 밑에 존재하지 않아 항상 null을 반환하는 죽은 코드입니다.
+`Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/AugmentScrollModel.cs:438`의 `Resources.Load<Texture2D>("Parchment/parchment_base")` 폴백은 해당 경로가 `Resources/` 밑에 존재하지 않아 항상 null을 반환하는 죽은 코드입니다.
 
 #### 2. 대상 파일
-- [AugmentScrollModel.cs](../../../../Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentScrollModel.cs) (Line 438)
+- [AugmentScrollModel.cs](../../../../Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/AugmentScrollModel.cs) (Line 438)
 
 #### 3. 작업 지침
 폴백 경로를 제거하거나, 의도한 실제 에셋 경로로 교정합니다. 어느 쪽이 맞는지는 착수 시 확인 필요(미확인).
@@ -581,13 +586,13 @@ dotnet build Assembly-CSharp.csproj /p:WarningLevel=5
 **완료: 2026-09-20.** 착수 시점에는 긴급도를 낮게 판단했으나, `origin/feature/m17-augmented-hotseat` 머지로 `Tessera.Editor.Tests` 테스트가 333개에서 349개로 늘고 실행 순서가 바뀌면서 필터 실행에서도 결함이 상시 재현되어 기본 검증 게이트가 빨간불이 됐습니다. 사용자 판단으로 푸시 전에 먼저 고쳤습니다.
 
 #### 1. 배경 및 목적
-`Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs` 613-636행의 `static TMP_FontAsset progressFont`는 `TMP_FontAsset.CreateFontAsset` 산출물을 `HideFlags.DontSave`로 캐시합니다. 재사용 가드가 `if (progressFont != null)` 하나뿐이라, 폰트 에셋 자체는 살아 있고 그 동적 아틀라스 `Texture2D`만 파괴된 상태를 걸러내지 못해 `MissingReferenceException`이 발생합니다. 2026-09-20 필터 없는 EditMode 전체 실행에서 `AugmentCardViewTests` 63개 중 36개가 이 예외로 실패해 실증됐습니다. 플레이어에서도 씬 언로드 시 같은 상태가 될 수 있습니다.
+`Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/AugmentCardView.cs` 613-636행의 `static TMP_FontAsset progressFont`는 `TMP_FontAsset.CreateFontAsset` 산출물을 `HideFlags.DontSave`로 캐시합니다. 재사용 가드가 `if (progressFont != null)` 하나뿐이라, 폰트 에셋 자체는 살아 있고 그 동적 아틀라스 `Texture2D`만 파괴된 상태를 걸러내지 못해 `MissingReferenceException`이 발생합니다. 2026-09-20 필터 없는 EditMode 전체 실행에서 `AugmentCardViewTests` 63개 중 36개가 이 예외로 실패해 실증됐습니다. 플레이어에서도 씬 언로드 시 같은 상태가 될 수 있습니다.
 
 #### 2. 대상 파일
-- [AugmentCardView.cs](../../../../Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs) (Line 613-636)
+- [AugmentCardView.cs](../../../../Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/AugmentCardView.cs) (Line 613-636)
 
 #### 3. 해결 내용
-`Assets/Scripts/Games/AugmentedYacht/Presentation/AugmentCardView.cs`의 `LoadProgressFont()` 캐시 가드를 `progressFont != null`에서 `progressFont != null && progressFont.atlasTexture != null`로 넓히고, 아틀라스가 없으면 `progressFont = null`로 되돌려 다시 굽게 했습니다.
+`Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/AugmentCardView.cs`의 `LoadProgressFont()` 캐시 가드를 `progressFont != null`에서 `progressFont != null && progressFont.atlasTexture != null`로 넓히고, 아틀라스가 없으면 `progressFont = null`로 되돌려 다시 굽게 했습니다.
 
 ```
 - if (progressFont != null) return progressFont;
@@ -620,4 +625,4 @@ dotnet build Assembly-CSharp.csproj /p:WarningLevel=5
   - `AugmentCardViewTests`
   - `FontFallbackTests`
 - [ ] **메인 씬 무결성**:
-  - `Assets/Scenes/Augmented Dice.unity` 열었을 때 `Missing (MonoBehaviour)` 또는 레퍼런스 유실이 없을 것.
+  - `Assets/01.Scenes/Augmented Dice.unity` 열었을 때 `Missing (MonoBehaviour)` 또는 레퍼런스 유실이 없을 것.

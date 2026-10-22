@@ -18,8 +18,8 @@ namespace Tessera.EditorTools
     /// </summary>
     public static class TabletopPrefabBaker
     {
-        private const string PrefabFolder = "Assets/Prefabs/Tabletop";
-        private const string GeneratedFolder = "Assets/Art/Generated/Tabletop";
+        private const string PrefabFolder = "Assets/03.Prefabs/Tabletop";
+        private const string GeneratedFolder = "Assets/04.Art/Generated/Tabletop";
         private const string MeshFolder = GeneratedFolder + "/Meshes";
         private const string MaterialFolder = GeneratedFolder + "/Materials";
         private const string TextureFolder = GeneratedFolder + "/Textures";
@@ -298,10 +298,10 @@ namespace Tessera.EditorTools
 
         private static void EnsureFolders()
         {
-            EnsureFolder("Assets", "Prefabs");
-            EnsureFolder("Assets/Prefabs", "Tabletop");
-            EnsureFolder("Assets/Art", "Generated");
-            EnsureFolder("Assets/Art/Generated", "Tabletop");
+            EnsureFolder("Assets", "03.Prefabs");
+            EnsureFolder("Assets/03.Prefabs", "Tabletop");
+            EnsureFolder("Assets/04.Art", "Generated");
+            EnsureFolder("Assets/04.Art/Generated", "Tabletop");
             EnsureFolder(GeneratedFolder, "Meshes");
             EnsureFolder(GeneratedFolder, "Materials");
             EnsureFolder(GeneratedFolder, "Textures");
