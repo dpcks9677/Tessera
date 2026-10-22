@@ -226,6 +226,49 @@ namespace Tessera.Editor.Tests
         }
 
         [Test]
+        public void YachtBank_WithOnlySlotOneKept_DoesNotBankAndStillConsumesTurn()
+        {
+            var random = new SequenceRandom(0);
+            AcquireAugment(YachtAugmentRuntime.YachtBankId);
+
+            // 슬롯 1에만 킵: 슬롯 0이 비어 있어 필터가 아무것도 빼지 않음
+            state.Dice[0].IsKept = true;
+            state.Dice[0].KeepSlotIndex = 1;
+            state.Dice[0].Value = 6;
+
+            // 원본 5개 유지: 6 + 2 + 3 + 4 + 5 = 20
+            YachtScoreCandidate choice = FindCandidate(runtime.CreateScoreCandidates(state, 0, state.Dice), ScoreCategory.Choice);
+            Assert.That(choice.BaseScore, Is.EqualTo(20));
+
+            runtime.AfterScoreCommit(state, 0, 1, ScoreCategory.Aces, 0, 0, state.Dice, random);
+            Assert.That(state.AugmentPlayers[0].YachtBankBalance, Is.EqualTo(0));
+            Assert.That(state.AugmentPlayers[0].YachtBankRemainingTurns, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void YachtBank_WithSlotZeroAndOneKept_BanksOnlySlotZeroDieRegardlessOfArrayOrder()
+        {
+            var random = new SequenceRandom(0);
+            AcquireAugment(YachtAugmentRuntime.YachtBankId);
+
+            // 슬롯 1 주사위는 배열 앞쪽, 슬롯 0 주사위는 dice[2]
+            state.Dice[0].IsKept = true;
+            state.Dice[0].KeepSlotIndex = 1;
+            state.Dice[0].Value = 6;
+            state.Dice[2].IsKept = true;
+            state.Dice[2].KeepSlotIndex = 0;
+            state.Dice[2].Value = 4;
+
+            // 슬롯 0 주사위(4)만 제외: 6 + 2 + 4 + 5 = 17 (원본 합계 21 - 4)
+            YachtScoreCandidate choice = FindCandidate(runtime.CreateScoreCandidates(state, 0, state.Dice), ScoreCategory.Choice);
+            Assert.That(choice.BaseScore, Is.EqualTo(17));
+
+            runtime.AfterScoreCommit(state, 0, 1, ScoreCategory.Aces, 0, 0, state.Dice, random);
+            Assert.That(state.AugmentPlayers[0].YachtBankBalance, Is.EqualTo(4));
+            Assert.That(state.AugmentPlayers[0].YachtBankRemainingTurns, Is.EqualTo(2));
+        }
+
+        [Test]
         public void Momentum_ChargesOnZeroScoreAndBoostsNextScoreByOnePointFive()
         {
             var random = new SequenceRandom(0);

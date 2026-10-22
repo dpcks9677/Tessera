@@ -151,11 +151,11 @@ ShouldShowYachtBankHighlight(YachtGameState state, bool isDrafting)
 
 | 파일 | 변경 | 상태 |
 |---|---|---|
-| `Assets/02.Scripts/Games/Yacht/Augments/Enhance/YachtBank.cs` | 슬롯 0 기준 정합화, 설명 문구 | `TODO` |
-| `Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/YachtBankKeepZoneVfx.cs` | 신규 뷰 | `TODO` |
-| `Assets/02.Scripts/Games/Yacht/Presentation/Flow/YachtTurnFlowPresenter.cs` | 판정 static, `SyncYachtBankHighlight`, 필드 1개 | `TODO` |
-| `Assets/Editor/Tests/Games/Yacht/YachtEnhanceAugmentTests.cs` | 슬롯 0 규칙 테스트 추가 | `TODO` |
-| `Assets/Editor/Tests/Games/Yacht/YachtBankHighlightTests.cs` | 신규. 판정 함수 테스트 | `TODO` |
+| `Assets/02.Scripts/Games/Yacht/Augments/Enhance/YachtBank.cs` | 슬롯 0 기준 정합화, 설명 문구 | `DONE` |
+| `Assets/02.Scripts/Games/Yacht/Presentation/AugmentViews/YachtBankKeepZoneVfx.cs` | 신규 뷰 | `DONE` |
+| `Assets/02.Scripts/Games/Yacht/Presentation/Flow/YachtTurnFlowPresenter.cs` | 판정 static, `SyncYachtBankHighlight`, 필드 1개 | `DONE` |
+| `Assets/Editor/Tests/Games/Yacht/YachtEnhanceAugmentTests.cs` | 슬롯 0 규칙 테스트 추가 | `DONE` |
+| `Assets/Editor/Tests/Games/Yacht/YachtBankHighlightTests.cs` | 신규. 판정 함수 테스트 | `DONE` |
 | `docs/plan/m17/README.md` | `M17-T25` 상태 갱신 | `TODO` 등록 완료 |
 | `docs/plan/m17/T09-vfx.md` | 25번 행에 "주사위 금색 변환·투명화는 후속 분리" 표기 | `TODO` |
 | `docs/reference/augments_specification_and_status.md` | 25번 규칙 문구 정정 | `TODO` |
@@ -167,11 +167,11 @@ ShouldShowYachtBankHighlight(YachtGameState state, bool isDrafting)
 
 | ID | 내용 | 완료 조건 | 상태 |
 |---|---|---|---|
-| `M17-T25-1` | `YachtBank.cs` 슬롯 0 정합화 + 로직 테스트 추가 | 신규·기존 요트 뱅크 테스트 통과 | `TODO` |
-| `M17-T25-2` | 판정 함수 + `YachtBankHighlightTests` | §7.1 케이스 전부 통과 | `TODO` |
-| `M17-T25-3` | `YachtBankKeepZoneVfx` 뷰 구현 | 컴파일, 켜고 끄기 반복 시 오브젝트 누수 없음 | `TODO` |
-| `M17-T25-4` | `RefreshAugmentPresentation` 연결 | EditMode 전체 실패 0 | `TODO` |
-| `M17-T25-5` | Play Mode 시각 확인 | 보유자 턴 표시·상대 턴 숨김·3턴 후 소등 확인, 사용자 통과 | `TODO` |
+| `M17-T25-1` | `YachtBank.cs` 슬롯 0 정합화 + 로직 테스트 추가 | 신규·기존 요트 뱅크 테스트 통과 | `DONE` |
+| `M17-T25-2` | 판정 함수 + `YachtBankHighlightTests` | §7.1 케이스 전부 통과 | `DONE` |
+| `M17-T25-3` | `YachtBankKeepZoneVfx` 뷰 구현 | 컴파일, 켜고 끄기 반복 시 오브젝트 누수 없음 | `DONE` |
+| `M17-T25-4` | `RefreshAugmentPresentation` 연결 | EditMode 전체 실패 0 | `DONE` |
+| `M17-T25-5` | Play Mode 시각 확인 | 보유자 턴 표시·상대 턴 숨김·3턴 후 소등 확인, 사용자 통과 | `DONE` |
 | `M17-T25-6` | 문서 갱신 | §5 문서 항목 반영 | `TODO` |
 
 ---

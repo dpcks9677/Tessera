@@ -20,7 +20,7 @@ namespace Tessera.Games.Yacht
         };
     }
 
-    /// <summary>3턴 동안 가장 왼쪽 킵 주사위를 점수에서 제외해 최대 15까지 저축하고 다음 내 턴에 받습니다.</summary>
+    /// <summary>3턴 동안 첫 번째 킵 칸의 주사위를 점수에서 제외해 최대 15까지 저축하고 다음 내 턴에 받습니다.</summary>
     public sealed class YachtBank : EnhanceAugment, IOnAugmentSelected, IOnTurnStarted, IScoringDiceFilter, IAfterScoreCommit
     {
         public const int MaxBalance = 15;
@@ -29,7 +29,7 @@ namespace Tessera.Games.Yacht
 
         public override string DisplayName => "요트 뱅크";
 
-        public override string Description => "3턴 동안 가장 왼쪽 킵 주사위를 점수에서 제외해 최대 15까지 저축하고 다음 내 턴에 받습니다.";
+        public override string Description => "3턴 동안 첫 번째 킵 칸의 주사위를 점수에서 제외해 최대 15까지 저축하고 다음 내 턴에 받습니다.";
 
         public void OnSelected(AugmentSelectionContext context)
         {
@@ -77,7 +77,7 @@ namespace Tessera.Games.Yacht
             var state = GetOrSync(context);
             if (state.RemainingTurns <= 0) return dice;
 
-            int excludedIndex = FindLowestKeptIndex(dice);
+            int excludedIndex = FindSlotZeroKeptIndex(dice);
             if (excludedIndex < 0) return dice;
 
             var result = new List<YachtDieState>(dice.Count - 1);
@@ -93,20 +93,10 @@ namespace Tessera.Games.Yacht
             var state = GetOrSync(context);
             if (state.RemainingTurns <= 0) return;
 
-            int lowestSlot = int.MaxValue;
-            YachtDieState banked = null;
-            for (int i = 0; i < (context.Dice?.Count ?? 0); i++)
+            int bankedIndex = FindSlotZeroKeptIndex(context.Dice);
+            if (bankedIndex >= 0)
             {
-                YachtDieState die = context.Dice[i];
-                if (!die.IsKept) continue;
-                int slot = die.KeepSlotIndex >= 0 ? die.KeepSlotIndex : i;
-                if (slot >= lowestSlot) continue;
-                lowestSlot = slot;
-                banked = die;
-            }
-
-            if (banked != null)
-            {
+                YachtDieState banked = context.Dice[bankedIndex];
                 state.Balance = Math.Min(MaxBalance, state.Balance + banked.Value);
             }
 
@@ -121,19 +111,13 @@ namespace Tessera.Games.Yacht
             context.Player.YachtBankPayoutPending = state.PayoutPending;
         }
 
-        private static int FindLowestKeptIndex(IReadOnlyList<YachtDieState> dice)
+        private static int FindSlotZeroKeptIndex(IReadOnlyList<YachtDieState> dice)
         {
-            int excludedIndex = -1;
-            int lowestSlot = int.MaxValue;
             for (int i = 0; i < (dice?.Count ?? 0); i++)
             {
-                if (!dice[i].IsKept) continue;
-                int slot = dice[i].KeepSlotIndex >= 0 ? dice[i].KeepSlotIndex : i;
-                if (slot >= lowestSlot) continue;
-                lowestSlot = slot;
-                excludedIndex = i;
+                if (dice[i].IsKept && dice[i].KeepSlotIndex == 0) return i;
             }
-            return excludedIndex;
+            return -1;
         }
     }
 }

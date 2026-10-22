@@ -15,6 +15,25 @@
 
 ---
 
+### 2026-10-22 — Claude Opus (`M17-T25` yacht-bank 킵 존 하이라이트·반짝이 연출 구현, 중단)
+
+- 작업 ID: `M17-T25`. 상태는 `DOING` 유지. 사용자 지시로 중단. DONE 처리는 하지 않음
+- 변경 ①(구현): `YachtBank.cs` 저축 대상을 "킵 칸 슬롯 0 주사위"로 정합화. `FindLowestKeptIndex`를 `FindSlotZeroKeptIndex`로 바꾸고 `AfterScoreCommit`의 중복 루프를 제거. 음수 슬롯 폴백을 없애고 설명 문구를 "첫 번째 킵 칸의 주사위"로 변경
+- 변경 ②(구현): `YachtTurnFlowPresenter`에 `ShouldShowYachtBankHighlight(IReadOnlyYachtGameState, bool isDrafting)` public static 판정 함수를 추가하고, `RefreshAugmentPresentation` 끝에 `SyncYachtBankHighlight()`를 붙임
+- 변경 ③(구현): 신규 뷰 `YachtBankKeepZoneVfx`. 금색(`#e5a93c`) 테두리 쿼드 4장, 6단계 계단식 펄스, 루프 파티클(`maxParticles` 16), 레이어 Dice
+- 변경 ④(테스트): 신규 `YachtBankHighlightTests` 7건. `YachtEnhanceAugmentTests`에 `YachtBank_WithOnlySlotOneKept_DoesNotBankAndStillConsumesTurn`, `YachtBank_WithSlotZeroAndOneKept_BanksOnlySlotZeroDieRegardlessOfArrayOrder` 2건 추가
+- 설계와의 차이 ①: 판정 함수 인자를 계획의 `YachtGameState` 대신 `IReadOnlyYachtGameState`로 함. 사유는 프레젠터가 받는 상태가 읽기 전용 인터페이스이고 통제 매니페스트가 이를 요구하기 때문. 은행 상태는 `FindState(YachtBankId) as YachtBankState`로 읽어 `GetOrCreate` 기본값 3 함정을 피함
+- 설계와의 차이 ②: `SetVisible(bool visible, float centerX = 0f)`. 주사위 루트가 `centerSectionX`(-0.39)만큼 이동돼 있어 `GetKeepPosition`에 더해야 월드 위치가 맞음(`DiceVisualPool.EnsureDiceRoot`)
+- 설계와의 차이 ③: 테두리 높이를 계획의 소켓 바닥에서 앞쪽 턱 윗면(약 1.784)으로 변경. 크기는 안쪽 17·바깥 21 소스 단위. 반짝이는 킵 주사위 윗면(2.557)에서 생성. Z는 `KeepParallaxZ` 없이 `KeepCenterZ`(3.18). 사유: 트레이 메시 실측에서 소켓 바닥 1.597, 앞쪽 턱 1.774, 뒤쪽 벽 2.257이었고, 바닥 테두리와 칸 안 파티클이 킵 주사위(16/17 단위)와 벽에 가려 보이지 않음. 계획서 §4.2가 높이를 화면 확인으로 판정하도록 열어 둔 범위 안
+- 설계와의 차이 ④(버그): 첫 Play Mode에서 `Particle Velocity curves must all be in the same mode` 에러. 원인은 `velocityOverLifetime`의 축별 모드 불일치. 세 축을 TwoConstants로 통일해 해소
+- 검증 ①: Unity 재컴파일 오류 0. EditMode 380/380 통과(기준선 371 + 신규 9, 실패 0·스킵 0). `M6_YachtBankSavesLeftmostKeptForThreeTurnsThenPaysNextTurn`·`YachtBank_HoldsLeftmostKeptDieForThreeTurnsThenReturnsIt` 기대값 불변 통과
+- 검증 ②(한계): 380/380은 뷰 파티클·위치 수정 전 시점. 이후 수정은 `YachtBankKeepZoneVfx.cs` 값 변경뿐이며 컴파일 오류 0만 확인. 최종 코드 기준 EditMode 재실행은 미수행
+- 검증 ③(Play Mode, 최종): 드래프트 중 미생성. 플레이어 0 턴 루트 (-3.030, 1.787, 3.180) active, `particleCount` 6. 킵 전·후 모두 금색 앞쪽 테두리와 반짝이 화면 확인. 플레이어 1 턴 `active=false`. 콘솔 Error 0·Warning 0, 씬 `isDirty=false`
+- 시각 강도: 약함(앞쪽 변 한 줄, 반짝이 점 몇 개). 강화 여부는 사용자 판단 대기
+- 중단 사유: 사용자 지시로 중단
+- 다음 작업: ① DONE 게이트(DONE-CRITERIA) 판정 ② `T25-6` 문서 갱신(T09-vfx.md 25번 행 "주사위 금색 변환·투명화는 후속 분리" 표기, `augments_specification_and_status.md`:602·:785 "왼쪽/가장 왼쪽" → "첫 번째 킵 칸(슬롯 0)" 정정, 태스크 표 DONE 처리) ③ 최종 코드 기준 EditMode 재실행 ④ `PYTHONHASHSEED=0 graphify update .` ⑤ graphify 재라벨링. 미커밋 `graphify-out/.graphify_labels.json`이 있으므로 커밋 직전 마지막 단계로 다시 해야 함
+- 시각 확인 방식: `tessera-unity-operator` 의 Play Mode 화면 확인. 사용자 확인은 아직 없음. 스크린샷 파일은 내부 조회용이며 문서에 경로를 남기지 않음
+
 ### 2026-09-20 — Claude (`M17-T7` 무작위 전체 게임 완주 테스트, 문서 정정, 증강 밸런스 분석)
 
 - 작업 ID: `M17-T7`. 문서 정정 3건과 밸런스 분석·설계 백로그는 태스크 ID 없이 같은 세션에서 수행

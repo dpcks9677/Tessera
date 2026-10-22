@@ -69,6 +69,7 @@ namespace Tessera.Games.Yacht.Presentation
         private Coroutine smokeRoutine;
         private Coroutine coinTossRoutine;
         private CoinTossVfx coinTossVfx;
+        private YachtBankKeepZoneVfx yachtBankKeepZoneVfx;
         private YachtAudioService audioService;
 
         /// <summary>연출 시퀀스가 하나라도 도는 중인가. 새 증강 행동·굴림 입력을 막을 때 쓴다.</summary>
@@ -782,6 +783,32 @@ namespace Tessera.Games.Yacht.Presentation
             return equivalentExchangeReady ? RollBudgetState.AugmentReady : RollBudgetState.Drained;
         }
 
+        /// <summary>요트 뱅크 저축이 진행 중인 소유자 턴이면 킵 칸 슬롯 0 하이라이트를 보여 준다.</summary>
+        public static bool ShouldShowYachtBankHighlight(IReadOnlyYachtGameState state, bool isDrafting)
+        {
+            if (isDrafting) return false;
+            if (state == null || state.AugmentPlayers == null) return false;
+            int index = state.CurrentPlayerIndex;
+            if (index < 0 || index >= state.AugmentPlayers.Count) return false;
+
+            IReadOnlyYachtAugmentPlayerState player = state.AugmentPlayers[index];
+            if (player == null || player.OwnedIds == null) return false;
+            bool owned = false;
+            for (int i = 0; i < player.OwnedIds.Count; i++)
+            {
+                if (player.OwnedIds[i] == YachtAugmentRuntime.YachtBankId)
+                {
+                    owned = true;
+                    break;
+                }
+            }
+            if (!owned) return false;
+
+            if (!(player.FindState(YachtAugmentRuntime.YachtBankId) is YachtBankState bank)) return false;
+            if (bank.RemainingTurns <= 0) return false;
+            return !(bank.PayoutPending || bank.Paid);
+        }
+
         /// <summary>
         /// 코스믹 큐브의 굴림 예산 상태를 다시 계산한다. 상호작용 토글과 같은 자리에서 도는 이유는
         /// 하나다. 굴림 수를 건드리거나 턴을 넘기는 모든 경로가 이미 여기를 지나므로, 여기 한 곳에
@@ -801,6 +828,28 @@ namespace Tessera.Games.Yacht.Presentation
             augmentTray?.Refresh(gameSession, Phase.IsInteractive(), message);
             SyncAugmentStickers();
             SyncBountyHunterTargetMarks();
+            SyncYachtBankHighlight();
+        }
+
+        /// <summary>요트 뱅크 하이라이트를 현재 상태에 맞춘다. 뷰는 처음 필요할 때 만든다.</summary>
+        private void SyncYachtBankHighlight()
+        {
+            if (gameSession == null)
+            {
+                if (yachtBankKeepZoneVfx != null) yachtBankKeepZoneVfx.SetVisible(false);
+                return;
+            }
+
+            bool show = ShouldShowYachtBankHighlight(gameSession.State, gameSession.IsDrafting);
+            if (!show && yachtBankKeepZoneVfx == null) return;
+
+            if (yachtBankKeepZoneVfx == null)
+            {
+                yachtBankKeepZoneVfx = GetComponent<YachtBankKeepZoneVfx>();
+                if (yachtBankKeepZoneVfx == null) yachtBankKeepZoneVfx = gameObject.AddComponent<YachtBankKeepZoneVfx>();
+            }
+
+            yachtBankKeepZoneVfx.SetVisible(show, centerSectionX);
         }
 
         /// <summary>
