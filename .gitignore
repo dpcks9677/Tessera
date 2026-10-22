@@ -180,3 +180,6 @@ docs/**/*.pdf
 # (Assets/Editor/Tools/FontFallbackSetup.cs) 이 에셋은 TMP 기본 리소스라 재생성 가능하다.
 /Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Fallback.asset
 /Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Fallback.asset.meta
+
+# Python bytecode
+__pycache__/

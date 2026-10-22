@@ -90,11 +90,11 @@ Assets/Scripts/
 └── Network/                # 빈 폴더. 온라인 통신 계층 자리만 잡아 둠 (파일 0개)
 ```
 
-> **괄호 안의 이름은 어셈블리가 아니라 C# 네임스페이스입니다.** 이 프로젝트에는 `.asmdef`가 하나도 없어
-> 모든 스크립트가 `Assembly-CSharp` 하나로 컴파일됩니다. 모듈 경계는 컴파일러가 아니라 규약으로 지킵니다.
+> **괄호 안의 이름은 어셈블리가 아니라 C# 네임스페이스입니다.** 모듈 경계를 컴파일러가 막지 못하는 사정과
+> 레이어 규칙은 [`control_manifest.md`](control_manifest.md)에 있습니다.
 >
-> 폴더와 네임스페이스가 어긋나는 지점이 하나 있습니다. `AugmentedYacht/Logic/` 아래 61개 파일은 전부
-> `Tessera.Games.Yacht` 네임스페이스이고, `AugmentedYacht/Presentation/` 아래 26개 파일만
+> 폴더와 네임스페이스가 어긋나는 지점이 하나 있습니다. `AugmentedYacht/Logic/` 아래 파일은 전부
+> `Tessera.Games.Yacht` 네임스페이스이고, `AugmentedYacht/Presentation/` 아래 파일만
 > `Tessera.Games.AugmentedYacht`입니다. 증강 규칙이 요트 도메인 로직의 연장이기 때문입니다.
 
 ### 모듈별 상세 역할

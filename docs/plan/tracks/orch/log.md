@@ -15,6 +15,21 @@
 
 ---
 
+### 2026-10-22 — Claude Opus (ORCH 게이트 수락 CONCERNS 후속 수정)
+
+- 작업 ID: ORCH 트랙 종료 게이트 수락 잔여 항목 (a)~(d) (태스크 ID 없음)
+- 변경:
+  - (a) 모듈 목록·네임스페이스 사본 정리. `AGENTS.md` 모듈 아키텍처 항목을 `architecture_overview.md` §3과 `control_manifest.md` 머리말 포인터로 교체. `.claude/rules/module-boundary.md` 의 폴더↔네임스페이스 예시와 `Tessera.Network` 문장을 제거하고 「새 파일 네임스페이스는 같은 폴더의 기존 파일을 따름」 한 줄로 축소. `architecture_overview.md` §3 인용 블록의 `.asmdef` 설명을 `control_manifest.md` 포인터로 바꾸고 파일 개수(61개·26개) 제거
+  - (b) Unity 단독 실행 사유의 사본 4곳(`tessera-unity/SKILL.md`, `tessera-verifier.md`, `tessera-unity-operator.md`, `tessera-reviewer.md`)을 `CLAUDE.md` 「오케스트레이션 › 규칙」 포인터로 교체
+  - (c) `.claude/scripts/tessera_query.py` 에 `in_plan()` 헬퍼 추출, 빈 `--state` 값을 argparse 오류(종료 코드 2)로 처리. 회귀 테스트 `.claude/scripts/test_tessera_query.py` 신설. `.gitignore` 에 `__pycache__/` 추가
+  - (d) `architecture_decisions.md` 「ADR 양식」 필드 절에 근거 절 첫 줄 대조 기준 줄 규칙, 문서 머리 기준 불변, 새 본문은 문서 끝에 `---` 로 구분, 제목 앵커 링크 규칙 추가. ADR-001 근거 절 첫 줄에 「대조 기준: 2026-09-14 · 커밋 `0a2f770`」 추가. `tessera-adr/SKILL.md` new 3단계에 양식 절 포인터 추가
+- 검증:
+  - `python -m unittest discover -s .claude/scripts -p "test_*.py"` → 7개 통과. 테스트 범위: 헤딩 내 `#` 보존, 닫는 `#` 제거, BOM 첫 헤딩, 펜스 무시, BOM 표, 경로 구간 일치, 빈 `--state`
+- 커밋: 미실행(사용자 허가 대기)
+- 다음 작업: M17 남은 태스크 지목 대기
+
+---
+
 ### 2026-10-22 — Claude Opus (ORCH 트랙 종료 게이트 `/tessera-gate orch`)
 
 - 작업 ID: ORCH 트랙 종료 (태스크 ID 없음, 트랙 게이트)

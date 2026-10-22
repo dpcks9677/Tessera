@@ -82,6 +82,11 @@ def all_rows():
         yield from task_rows(path)
 
 
+def in_plan(location, plan):
+    """Match whole path segments so "m1" does not also select m10~m19."""
+    return f"/{plan.strip('/')}/" in f"/{location.rsplit(':', 1)[0]}/"
+
+
 def sections(path):
     """Return [(line_number, level, heading_text)], ignoring fenced code blocks."""
     result = []
@@ -129,11 +134,14 @@ def main():
         for r in found:
             print_row(r)
     elif args.cmd == "tasks":
-        states = {s.strip().lower() for s in args.state.split(",")} if args.state else None
+        states = None
+        if args.state is not None:
+            states = {s.strip().lower() for s in args.state.split(",") if s.strip()}
+            if not states:
+                parser.error("--state 값이 비었습니다")
         count = 0
         for r in all_rows():
-            # Match whole path segments so "m1" does not also select m10~m19.
-            if args.plan and f"/{args.plan.strip('/')}/" not in f"/{r[3].rsplit(':', 1)[0]}/":
+            if args.plan and not in_plan(r[3], args.plan):
                 continue
             if states and r[1].lower() not in states:
                 continue

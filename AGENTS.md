@@ -12,10 +12,8 @@
 - **모듈 아키텍처 준수**:
   - 프로젝트명: `Tessera` / 루트 네임스페이스: `Tessera`
   - 메인 씬: `Assets/Scenes/Augmented Dice.unity`
-  - 공통 시스템: `Tessera.Core`, `Tessera.Dice`, `Tessera.Tabletop`, `Tessera.Rendering`
-  - 게임별 독립 모듈: `Tessera.Games.Yacht` (요트 규칙과 증강 로직), `Tessera.Games.AugmentedYacht` (증강 요트 프레젠테이션)
-  - 네트워크/멀티플레이어: `Assets/Scripts/Network/`는 아직 빈 폴더입니다
-  - 위 이름들은 어셈블리가 아니라 **C# 네임스페이스**입니다. 경계를 컴파일러가 막지 못하는 사정과 레이어 규칙은 [`control_manifest.md`](docs/reference/control_manifest.md)에 있습니다
+  - 모듈 목록과 폴더↔네임스페이스 대응: [`architecture_overview.md`](docs/reference/architecture_overview.md) §3. 모듈 이름은 어셈블리가 아니라 **C# 네임스페이스**입니다
+  - 경계를 컴파일러가 막지 못하는 사정: [`control_manifest.md`](docs/reference/control_manifest.md) 머리말
 - **코딩 규약**: C# 코드는 [`docs/reference/coding_conventions.md`](docs/reference/coding_conventions.md)와 리포지토리 루트의 `.editorconfig`를 따릅니다. Microsoft C#/.NET 규약 기준이며 Unity 직렬화 관련 예외가 명시돼 있습니다. 규약은 신규 파일과 실제 수정하는 파일에만 적용하고, 기존 파일을 일괄 재포맷하지 않습니다.
 - **구조적 결정**: 상태 소유권·계층 경계 등 구조 판단은 [`docs/reference/architecture_decisions.md`](docs/reference/architecture_decisions.md)의 ADR을 먼저 확인합니다. 짧은 결정은 [`docs/decisions.md`](docs/decisions.md)에 있습니다. 레이어별 해야 할 것·하지 말 것은 [`docs/reference/control_manifest.md`](docs/reference/control_manifest.md)에 있습니다.
 

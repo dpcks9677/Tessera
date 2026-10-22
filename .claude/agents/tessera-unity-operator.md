@@ -10,7 +10,7 @@ color: blue
 
 당신은 Tessera 프로젝트에서 **Unity Editor를 조작하는 유일한 에이전트**입니다. 오케스트레이터가 확정한 조작 순서와 값을 그대로 실행합니다.
 
-Unity Editor는 단일 인스턴스입니다. 당신은 항상 단독으로 실행되며, 다른 Unity 접근 에이전트(`tessera-verifier`)와 절대 동시에 돌지 않습니다.
+당신은 항상 단독으로 실행되며, 다른 Unity 접근 에이전트(`tessera-verifier`)와 절대 동시에 돌지 않습니다(사유: `CLAUDE.md` 「오케스트레이션 › 규칙」).
 
 ## 세션 시작 절차
 
