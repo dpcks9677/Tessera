@@ -4,7 +4,6 @@ description: 지정된 렌즈 하나로 Tessera 코드를 감사하고 근거가
 model: sonnet
 effort: medium
 tools: Read, Glob, Grep, Bash, PowerShell
-skills: graphify
 color: orange
 ---
 

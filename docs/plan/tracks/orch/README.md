@@ -37,6 +37,14 @@ CCGS(`donchitos/claude-code-game-studios`)의 작업 방식(게이트 판정, �
 | `ORCH-T3` | `tessera-adr`와 통제 매니페스트 | `DONE` | 기존 ADR이 새 필드 형식으로 변환되고, 모듈별 해야 할 것·하지 말 것 구간을 implementer 프롬프트에 따로 실을 수 있음 | [`control_manifest.md`](../../../reference/control_manifest.md), [`tessera-adr/`](../../../../.claude/skills/tessera-adr/SKILL.md) |
 | `ORCH-T4` | `tessera-gate` 마일스톤 게이트 | `DONE` | 완료된 마일스톤 하나에 시험 판정이 나오고, `PASS`이면 커밋 허가 요청으로 이어짐 | [`tessera-gate/`](../../../../.claude/skills/tessera-gate/SKILL.md) |
 | `ORCH-T5` | 부가: 조회 스크립트, 시작 주입, 읽기 가드, 도메인 스킬 | `DONE` | 네 항목이 각각 개별 시험을 통과함 | — |
+| `ORCH-T6` | CLAUDE.md 다이어트와 Unity REST 공통 함정 단일화 | `TODO` | tessera-reader 대조로 옮기기 전 규칙 문장이 새 위치에 모두 존재(누락 0), tessera-verifier로 EditMode 테스트 1회 실행 시 포트 탐색·실행 정상, CLAUDE.md 바이트 크기 측정값 기록 | — |
+
+> 2026-10-22 트랙 종료 게이트(`CONCERNS` 수락) 뒤 후속 태스크 `ORCH-T6`가 추가되어 트랙이 재개됐습니다. 게이트 기록은 [`log.md`](log.md)에 그대로 둡니다.
+
+- `ORCH-T6` 범위 (2026-10-22 등록, 선행 없음. M2를 M3보다 먼저 씁니다. 둘 다 CLAUDE.md §0.1을 건드리기 때문):
+  - M2: `tessera-verifier`·`tessera-unity-operator` 정의에 중복된 포트 탐색, `job_wait` 금지, 스크린샷 기술 규칙(960x540, `returnImage` 금지, 파일명, 재시도), `editor_play_capture` 주의, `dryRun`을 `docs/reference/unity-rest.md`로 단일화. 두 에이전트에는 「먼저 이 파일을 읽는다」 한 줄과 역할 고유 절만 남김. CLAUDE.md §0.1은 「언제 찍는가」 정책만 유지 (근거: `.claude/rules/skill-authoring.md` 1항 원본 한 곳 규칙)
+  - M3: 프로젝트 CLAUDE.md §1~4(Karpathy, 전역과 중복) 삭제. 역할별 재사용 근거·토큰 예산 서사·`unity-agent-plugin` 역할 분담 근거를 `docs/reference/orchestration.md`로 이동하고 CLAUDE.md에는 결론 줄만 남김. 목표 20KB → 10KB 안팎
+  - L1: `korean-guard.py` 주석과 CLAUDE.md §0의 caveman 플러그인 재주입 전제 문구 정정(플러그인 미설치 확인)
 
 ## 완료 기록
 

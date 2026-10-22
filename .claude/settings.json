@@ -1,4 +1,12 @@
 {
+  "permissions": {
+    "ask": [
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "PowerShell(git commit *)",
+      "PowerShell(git push *)"
+    ]
+  },
   "env": {
     "PYTHONHASHSEED": "0",
     "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "200000"

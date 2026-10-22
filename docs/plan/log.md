@@ -15,6 +15,26 @@
 
 ---
 
+### 2026-10-22 — Claude (하네스 정비 1·2단계, 태스크 ID 없음)
+
+- 작업 ID: 없음. 하네스 구조 평가(저장소 밖 `C:\Users\dpcks\Downloads\tessera-harness-review.html`)의 H1~H3·M1~M4·L1~L3 중 1·2단계. 사용자 결정으로 태스크를 만들지 않고 세션 로그로만 기록. 3단계는 `ORCH-T6`
+- 변경:
+  - 1단계 (적용 완료)
+    - H2 커밋 허가 강제: 프로젝트 `.claude/settings.json` 에 `permissions.ask` 추가. Bash·PowerShell 각각 `git commit *`, `git push *`. 전역 allow 는 다른 프로젝트용으로 유지. ask 가 allow 보다 우선
+    - H3: `tessera-scout`·`tessera-reviewer` frontmatter 의 `skills: graphify` 제거. 전역 graphify SKILL.md(43.7KB)를 에이전트 생성 때마다 프리로드하던 비용 제거. 본문에 graphify 명령·실행 경로가 이미 있음
+    - M1: `settings.local.json` 의 graphify hook-guard(Bash|Grep, Read|Glob) 제거. 서브에이전트·docs 면제가 없어 `main-session-guard` 와 이중 발화했고, `tessera-reader` 에도 graphify 강제 문구가 들어가 있던 문제. 훅은 세션 시작 때 읽히므로 다음 세션부터 적용
+    - M4: 허용 목록 정리. `settings.local.json` allow 34개 → 3개(`dotnet build`, `graphify update`, `git add`). `__TRACKED_VAR__` curl 12개, 일회성 PowerShell 12개(원격 설치 스크립트 `irm … | iex` 포함), `python -c` 3개 삭제. 전역 `~/.claude/settings.json` 의 포트 8090 하드코딩 curl 7개 삭제
+    - 전역·로컬 설정은 git 미추적이라 이 로그가 유일한 변경 기록
+  - 2단계 (적용 완료, 저장소 밖 전역 파일)
+    - H1: `~/.claude/CLAUDE.md` 「하위 에이전트 위임 규칙」 절에 우선순위 문장 추가. 프로젝트 CLAUDE.md 에 오케스트레이션 규칙이 있거나 프로젝트 `.claude/agents` 에 같은 역할 에이전트가 있으면 이 절 대신 프로젝트 쪽을 따름. 전역 「Unity 작업은 메인이 직접」 규칙과 프로젝트 「unity-operator 위임」 규칙의 충돌 해소
+    - 전역 에이전트 scout·implementer·reviewer 설명 끝에 「프로젝트 전용 에이전트가 있으면 그쪽을 쓰고 이 에이전트는 쓰지 않음」 추가
+  - 사용자 결정: Tessera 는 이 PC 에서만 작업하므로 Karpathy 지침은 전역 CLAUDE.md 에만 두고, 프로젝트 CLAUDE.md §1~4 는 `ORCH-T6` 에서 삭제. L3(에이전트 정의의 기기 고정 경로)는 조치 불필요
+- 검증: 미실행. 1단계 ask 규칙의 확인창 실제 발화 여부는 미확인
+- 미결: L2 전역 `unity-mcp-skill` 삭제 여부. Unity MCP 서버가 전역·프로젝트 어디에도 없어 이 프로젝트에서 동작 불가. 사용자 답 대기
+- 다음 작업: 다음 세션에서 `ask` 확인창 재시험(auto 모드에서 건너뛰면 PreToolUse 훅 방식으로 전환). `ORCH-T6` 착수
+
+---
+
 ### 2026-09-20 — Claude (훅 Python 이식 잔여 정리)
 
 - 작업 ID: 없음. 커밋 `4aee9db`의 Node → Python 훅 이식에서 검증되지 않은 채 남아 있던 3개 지점을 정리하며, 마일스톤·태스크로 기록하지 않는다

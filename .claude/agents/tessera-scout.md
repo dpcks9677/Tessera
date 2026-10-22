@@ -4,7 +4,6 @@ description: Tessera 코드베이스에서 심볼 위치, 호출 관계, 영향 
 model: sonnet
 effort: medium
 tools: Read, Glob, Grep, Bash, PowerShell
-skills: graphify
 color: cyan
 ---
 
