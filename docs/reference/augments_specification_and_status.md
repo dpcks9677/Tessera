@@ -600,7 +600,7 @@ sequenceDiagram
 | **턴 시작** | `IOnTurnStarted` | `AugmentTurnContext` | `promotion-die`(눈금+1 성장)<br/>`bounty-hunter`(사냥 타깃 제시) |
 | **주사위 구성** | `IDiceLayoutProvider` | `AugmentDiceContext` | `8-sided`(8면체 배치)<br/>`golden-die`(황금 주사위 배치) |
 | **수동 발동** | `IManualActionAugment` | `AugmentActionContext` | `table-flip`(무료 재굴림)<br/>`equivalent-exchange`(추가 굴림) |
-| **점수 필터** | `IScoringDiceFilter` | `AugmentQueryContext` | `yacht-bank`(왼쪽 주사위 점수 계산 제외) |
+| **점수 필터** | `IScoringDiceFilter` | `AugmentQueryContext` | `yacht-bank`(첫 번째 킵 칸(슬롯 0) 주사위 점수 계산 제외) |
 | **족보/점수** | `IBeforeScorePreview`<br/>`IScoreEnhancementModifier`<br/>`IDiceBonusProvider` | `AugmentScoreContext`<br/>`AugmentQueryContext` | `evens`, `odds`, `tiny-house`(족보 교체)<br/>`momentum`(1.5배)<br/>`couple-dice`(+3) |
 | **점수 확정 후** | `IAfterScoreCommit` | `AugmentCommitContext` | `fast-straight`, `holdout`(퀘스트 보상)<br/>`bounty-hunter`(사냥 성공/실패 정산) |
 | **턴 종료** | `IOnTurnEnded` | `AugmentCommitContext` | `piggy-bank`(남은 리롤×3 저금) |
@@ -783,7 +783,7 @@ private static int RequiredDiceSlots(string augmentId)
 
 | No | ID | 이름 | 유형 | 효과 설명 | 발동 훅 | C# 구현 클래스 | 상태 |
 |:---:|---|---|---|---|---|---|:---:|
-| **25** | `yacht-bank` | 요트 뱅크 | 점수 저축 | 3턴 동안 점수 확정 시 킵 존 가장 왼쪽 주사위를 제외하고 저축(최대 15점), 이후 턴 시작 시 일시 지급 | `IScoringDiceFilter`<br/>`IOnTurnStarted`<br/>`IAfterScoreCommit` | [`YachtBank`](../../Assets/02.Scripts/Games/Yacht/Augments/Enhance/YachtBank.cs) | `DONE` |
+| **25** | `yacht-bank` | 요트 뱅크 | 점수 저축 | 3턴 동안 점수 확정 시 첫 번째 킵 칸(슬롯 0) 주사위를 제외하고 저축(최대 15점), 이후 턴 시작 시 일시 지급 | `IScoringDiceFilter`<br/>`IOnTurnStarted`<br/>`IAfterScoreCommit` | [`YachtBank`](../../Assets/02.Scripts/Games/Yacht/Augments/Enhance/YachtBank.cs) | `DONE` |
 | **37** | `weighted-dice` | 묵직한 주사위 | 특수 주사위 | 주사위 1개의 면을 [4, 4, 5, 5, 6, 6]으로 영구 교체 | `IDiceLayoutProvider` | [`WeightedDice`](../../Assets/02.Scripts/Games/Yacht/Augments/Enhance/WeightedDice.cs) | `DONE` |
 | **38** | `momentum` | 추진력 | 배율 강화 | 첫 족보 0점(스크래치) 발생 시 발동 대기, 다음 턴 양수 기본 족보 점수를 1.5배로 강화 | `IScoreEnhancementModifier`<br/>`IAfterScoreCommit` | [`Momentum`](../../Assets/02.Scripts/Games/Yacht/Augments/Enhance/Momentum.cs) | `DONE` |
 | **39** | `golden-die` | 황금 주사위 | 특수 주사위 | 황금 주사위 눈이 1, 2, 3이면 각각 +2점 보너스 (상단 합산 포함) | `IDiceLayoutProvider`<br/>`IDiceBonusProvider` | [`GoldenDie`](../../Assets/02.Scripts/Games/Yacht/Augments/Enhance/GoldenDie.cs) | `DONE` |
