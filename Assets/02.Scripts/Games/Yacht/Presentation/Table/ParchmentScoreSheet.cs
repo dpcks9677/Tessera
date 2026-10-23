@@ -490,6 +490,8 @@ namespace Tessera.Games.Yacht.Presentation
             Texture2D baseTex = RuntimeAssetLibrary.ParchmentBase;
             Texture2D burntTex = RuntimeAssetLibrary.ParchmentBurntEdge;
             Texture2D warmTex = RuntimeAssetLibrary.ParchmentWarmSand;
+            Texture2D layer3Tex = RuntimeAssetLibrary.ParchmentBaseLayer3 ?? baseTex;
+            Texture2D layer4Tex = RuntimeAssetLibrary.ParchmentBaseLayer4 ?? baseTex;
 
             // Layer 1 (Bottom): -5.2° 회전 / 짙은 에크루 톤 / 그을린 모서리 (테이블 바닥 밀착)
             CreateParchmentLayer("Layer 1 - Bottom Burnt Parchment", -5.2f, new Vector3(-0.08f, 0.000f, -0.05f), 1.14f, 1.12f,
@@ -501,11 +503,11 @@ namespace Tessera.Games.Yacht.Presentation
 
             // Layer 3: -2.4° 회전 / 빈티지 에이지드 톤 (테이블 바닥 밀착)
             CreateParchmentLayer("Layer 3 - Aged Parchment", -2.4f, new Vector3(-0.04f, sheetThickness * 1.4f, -0.02f), 1.06f, 1.05f,
-                baseTex, new Color(0.90f, 0.84f, 0.73f), 0.10f, litShader);
+                layer3Tex, new Color(0.90f, 0.84f, 0.73f), 0.10f, litShader);
 
             // Layer 4: +1.2° 회전 / 밝은 크림 톤 (테이블 바닥 밀착)
             CreateParchmentLayer("Layer 4 - Cream Parchment", 1.2f, new Vector3(0.03f, sheetThickness * 2.1f, 0.01f), 1.03f, 1.02f,
-                baseTex, new Color(0.94f, 0.89f, 0.79f), 0.11f, litShader);
+                layer4Tex, new Color(0.94f, 0.89f, 0.79f), 0.11f, litShader);
 
             // Layer 5 (Top - Stable Score Sheet): 바닥과 평행(0°) 유지 + 완벽한 정적 고정
             topLayerBaseLocalPos = new Vector3(0f, sheetThickness * 3.5f + 0.08f, 0f);

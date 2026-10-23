@@ -99,6 +99,15 @@ namespace Tessera.Games.Yacht.Presentation
         private const float RollCenterXNormalized = -.385f;
         private const float RollCenterYNormalized = .125f;
 
+        /// <summary>카드 크기에 맞춰 프리셋 루트에 거는 로컬 스케일.</summary>
+        public static Vector3 PresetLocalScale(Vector2 cardSize)
+        {
+            return new Vector3(
+                cardSize.x / ReferenceWidth,
+                Mathf.Min(cardSize.x / ReferenceWidth, cardSize.y / ReferenceHeight),
+                cardSize.y / ReferenceHeight);
+        }
+
         public static AugmentScrollModel Create(Transform parent, AugmentParchmentPreset preset, Vector2 size)
         {
             int key = (int)AugmentParchmentVisuals.Normalize((int)preset);
@@ -107,10 +116,7 @@ namespace Tessera.Games.Yacht.Presentation
             {
                 GameObject instance = Object.Instantiate(prefab, parent, false);
                 instance.name = $"Augment Scroll Preset {key}";
-                instance.transform.localScale = new Vector3(
-                    size.x / ReferenceWidth,
-                    Mathf.Min(size.x / ReferenceWidth, size.y / ReferenceHeight),
-                    size.y / ReferenceHeight);
+                instance.transform.localScale = PresetLocalScale(size);
                 return instance.GetComponent<AugmentScrollModel>();
             }
 
@@ -120,6 +126,7 @@ namespace Tessera.Games.Yacht.Presentation
             Material wax = CreateMaterial("Runtime Scroll Wax", new Color(.54f, .10f, .09f, 1f), .34f, false);
             Material[] materials = { front, underside, leather, wax };
             AugmentScrollModel model = Build(parent, preset, size.x, size.y, materials, true);
+            ApplyPaperTiling(model, front, underside);
             model.RegisterRuntimeAsset(front);
             model.RegisterRuntimeAsset(underside);
             model.RegisterRuntimeAsset(leather);
@@ -425,6 +432,23 @@ namespace Tessera.Games.Yacht.Presentation
             return renderer;
         }
 
+        // 본문 월드 크기가 정해진 뒤(부모에 붙은 다음)에야 정확한 타일링을 알 수 있어 Build 이후에 건다.
+        private static void ApplyPaperTiling(AugmentScrollModel model, params Material[] paperMaterials)
+        {
+            Transform bodyTransform = model.transform.Find("Rectangular Paper Body");
+            if (bodyTransform == null || !bodyTransform.TryGetComponent(out MeshFilter filter)) return;
+
+            Vector2 bodyWorldSize = AugmentScrollTexelMapping.BodyWorldSize(
+                filter.sharedMesh.bounds.size, bodyTransform.lossyScale);
+            for (int i = 0; i < paperMaterials.Length; i++)
+            {
+                Texture texture = paperMaterials[i].mainTexture;
+                if (texture == null) continue;
+                paperMaterials[i].mainTextureScale = AugmentScrollTexelMapping.Tiling(
+                    bodyWorldSize, texture.width, texture.height);
+            }
+        }
+
         private static Material CreateMaterial(string name, Color color, float smoothness, bool usePaperTexture)
         {
             Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
@@ -440,7 +464,6 @@ namespace Tessera.Games.Yacht.Presentation
                 {
                     material.mainTexture = texture;
                     if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", texture);
-                    material.mainTextureScale = new Vector2(1.10f, .92f);
                 }
             }
             return material;

@@ -1,4 +1,5 @@
 using System;
+using Tessera.Rendering;
 using UnityEngine;
 
 namespace Tessera.Dice
@@ -37,8 +38,8 @@ namespace Tessera.Dice
             new Vector3(-1f, -1f, 1f).normalized, new Vector3(-1f, 1f, 1f).normalized
         };
 
-        public const float DefaultCameraPitch = 75.0f;
-        public const float DefaultCameraTiltOffset = -15.0f; // 75f - 90f
+        public const float DefaultCameraPitch = PixelFilterSettings.WorldCameraPitch;
+        public const float DefaultCameraTiltOffset = DefaultCameraPitch - 90f;
 
         public static Quaternion GetTopRotation(int value)
         {

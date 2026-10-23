@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using System.IO;
+using Tessera.Games.Yacht.Presentation;
 using Tessera.Rendering;
 using UnityEditor;
 using UnityEngine;
@@ -25,14 +26,24 @@ namespace Tessera.EditorTools
         private const int SeedBase = 20260908;
 
         /// <summary>
-        /// 텍셀 해상도. 판자는 월드 38 × 4.9이고 저해상도 격자는 480×270이라, 이 크기에서
-        /// 텍셀 하나가 월드 0.148 × 0.153 — 거의 정방형에 화면 격자 두세 칸이다.
-        /// 여전히 곱게 보이면 128 × 16으로 낮춰 다시 굽는다.
+        /// 텍셀 해상도. 텍셀 하나가 필터 한 칸이 되도록 판자 월드 크기에서 공용 규칙(D-050)으로 구한다.
         /// </summary>
-        private const int Width = 256;
+        private static readonly Vector2Int Resolution = PixelTexelDensity.TexelCountFor(
+            new Vector2(TabletopSurfaceBuilder.PlankWidth, TabletopSurfaceBuilder.PlankDepth), PixelSurfaceFacing.Floor);
 
-        /// <inheritdoc cref="Width"/>
-        private const int Height = 32;
+        private static int Width => Resolution.x;
+
+        private static int Height => Resolution.y;
+
+        /// <summary>구 해상도(256×32) 기준 좌표계를 현재 해상도로 옮기는 배율. 특징의 월드 크기를 유지한다.</summary>
+        private const float LegacyWidth = 256f;
+
+        /// <inheritdoc cref="LegacyWidth"/>
+        private const float LegacyHeight = 32f;
+
+        private static float ScaleX => Width / LegacyWidth;
+
+        private static float ScaleY => Height / LegacyHeight;
 
         private const float Tau = Mathf.PI * 2f;
 
@@ -213,7 +224,7 @@ namespace Tessera.EditorTools
 
             for (int i = 0; i < count; i++)
             {
-                float radiusY = 4f + (float)random.NextDouble() * 3f;
+                float radiusY = (4f + (float)random.NextDouble() * 3f) * ScaleY;
                 knots[i] = new Knot
                 {
                     // 링이 위아래로 잘리지 않도록 세로는 가운데로 몰고, 가로만 판자 전체에 흩는다.
@@ -228,19 +239,20 @@ namespace Tessera.EditorTools
             return knots;
         }
 
-        /// <summary>판자 길이 방향으로 흐르는 짧은 균열선 하나. 굵기는 1텍셀이다.</summary>
+        /// <summary>판자 길이 방향으로 흐르는 짧은 균열선 하나. 굵기는 월드 크기를 유지하도록 배율을 따르되 최소 1텍셀이다.</summary>
         private static void DrawCrack(int[] shadeIndices, System.Random random)
         {
+            int thickness = Mathf.Max(1, Mathf.RoundToInt(ScaleY * 0.9f));
             int x = random.Next(Width);
-            int y = 2 + random.Next(Height - 4);
+            int y = 2 + random.Next(Height - 4 - thickness);
             int length = Width / 6 + random.Next(Width / 6);
 
             for (int i = 0; i < length && x < Width; i++, x++)
             {
-                shadeIndices[y * Width + x] = 0;
+                for (int row = 0; row < thickness; row++) shadeIndices[(y + row) * Width + x] = 0;
                 if (random.Next(6) != 0) continue;
 
-                y = Mathf.Clamp(y + (random.Next(2) == 0 ? -1 : 1), 1, Height - 2);
+                y = Mathf.Clamp(y + (random.Next(2) == 0 ? -1 : 1), 1, Height - 2 - thickness);
             }
         }
 
@@ -257,7 +269,7 @@ namespace Tessera.EditorTools
             {
                 int startX = random.Next(Width);
                 int y = 2 + random.Next(Height - 4);
-                int length = 1 + random.Next(2);
+                int length = (1 + random.Next(2)) * Mathf.Max(1, Mathf.RoundToInt(ScaleX));
 
                 for (int dx = 0; dx < length; dx++)
                 {
@@ -272,12 +284,16 @@ namespace Tessera.EditorTools
         /// <summary>위아래 두 줄을 단계적으로 어둡게 해 판자끼리 분리돼 보이게 한다.</summary>
         private static void DarkenEdges(int[] shadeIndices)
         {
+            int edgeRows = Mathf.Max(1, Mathf.RoundToInt(ScaleY));
             for (int x = 0; x < Width; x++)
             {
-                Darken(shadeIndices, x, 0, 2);
-                Darken(shadeIndices, x, Height - 1, 2);
-                Darken(shadeIndices, x, 1, 1);
-                Darken(shadeIndices, x, Height - 2, 1);
+                for (int row = 0; row < edgeRows; row++)
+                {
+                    Darken(shadeIndices, x, row, 2);
+                    Darken(shadeIndices, x, Height - 1 - row, 2);
+                    Darken(shadeIndices, x, edgeRows + row, 1);
+                    Darken(shadeIndices, x, Height - 1 - edgeRows - row, 1);
+                }
             }
             return;
 
@@ -334,7 +350,7 @@ namespace Tessera.EditorTools
                 importer.wrapMode = TextureWrapMode.Clamp;
                 importer.sRGBTexture = true;
                 importer.npotScale = TextureImporterNPOTScale.None;
-                importer.maxTextureSize = 512;
+                importer.maxTextureSize = 1024;
                 importer.SaveAndReimport();
             }
         }

@@ -31,8 +31,8 @@ public sealed class CoinMeshSplit
 public static class CoinMeshBaker
 {
     private const string GlbPath = "Assets/04.Art/Source/Coin/coin.glb";
-    private const string HeadSourcePath = "Assets/04.Art/Source/Coin/coin_head_source.png";
-    private const string TailSourcePath = "Assets/04.Art/Source/Coin/coin_tail_source.png";
+    public const string HeadPixelPath = "Assets/04.Art/Source/Coin/coin_head_pixel.png";
+    public const string TailPixelPath = "Assets/04.Art/Source/Coin/coin_tail_pixel.png";
     private const string GeneratedFolder = "Assets/04.Art/Generated/Coin";
     private const string MeshFolder = GeneratedFolder + "/Meshes";
     private const string MaterialFolder = GeneratedFolder + "/Materials";
@@ -40,7 +40,11 @@ public static class CoinMeshBaker
     private const string PrefabPath = "Assets/03.Prefabs/Coin/Coin.prefab";
 
     // 사용자 화면 확인으로 정한 값. 지름 약 1.59(주사위 한 변 1.014의 약 1.57배).
-    private const float ModelScale = 0.8f;
+    public const float ModelScale = 0.8f;
+
+    // 면 텍스처 한 변. 면 지름(캡 반지름 약 0.897 × 2 × ModelScale ≈ 1.435)을 바닥 텍셀로 나눈 칸 수라
+    // 텍셀 하나가 필터 한 칸에 찍힌다(D-050). 원본 선화를 자동 축소하면 문양이 사라져 22칸용으로 손으로 그렸다(D-053).
+    public const int FaceTextureSize = 22;
 
     // 캡 필드(테두리 안쪽 평판) 깊이 실측. 평판은 |y|=SourcePlateauHeight(반지름 r≤0.817, 법선 y≈0.999)에서
     // 시작해, 바깥으로 둥근 필렛이 r=0.897에서 |y|=RimLipHeight까지 올라가 테두리 안턱과 만난다.
@@ -48,11 +52,6 @@ public static class CoinMeshBaker
     private const float SourcePlateauHeight = 0.0696f;
     private const float RimLipHeight = 0.0996f;
     private const float FieldPlateauHeight = 0.03f;
-
-    // 키라이트 Quaternion.Euler(60f, -35f, 0f), 카메라 yaw 0(YachtSceneAssembler.cs:139,159)이라
-    // 빛은 +x·-z에서 들어온다. 앞면 UV는 u=+x·v=+z라 텍셀 방향 (+1,-1). 뒷면은 v=-z로 투영했으므로
-    // X축으로 뒤집은 상태에서 v=월드 +z가 되어 마찬가지로 (+1,-1)이 된다.
-    private static readonly Vector2Int FaceLightFrom = new(1, -1);
 
     /// <summary>
     /// Coin 프리미티브를 삼각형 기하 법선의 Y 부호로 Head/Tail로 가르고, CoinRim을 Edge로 삼는다.
@@ -185,8 +184,8 @@ public static class CoinMeshBaker
         Mesh tailMesh = SaveMesh(ToMesh(split.Tail), "Coin_Tail");
         Mesh edgeMesh = SaveMesh(ToMesh(split.Edge), "Coin_Edge");
 
-        Texture2D headTexture = BakeFaceTexture(HeadSourcePath, $"{TextureFolder}/coin_head_albedo.png");
-        Texture2D tailTexture = BakeFaceTexture(TailSourcePath, $"{TextureFolder}/coin_tail_albedo.png");
+        Texture2D headTexture = BakeFaceTexture(HeadPixelPath, $"{TextureFolder}/coin_head_albedo.png");
+        Texture2D tailTexture = BakeFaceTexture(TailPixelPath, $"{TextureFolder}/coin_tail_albedo.png");
 
         Material edgeMaterial = CreateOrReplaceLitMaterial($"{MaterialFolder}/CoinEdge.mat",
             new Color32(0xE5, 0xA9, 0x3C, 0xFF), metallic: 0.88f, smoothness: 0.75f, texture: null);
@@ -239,22 +238,20 @@ public static class CoinMeshBaker
     }
 
     /// <summary>
-    /// 소스 PNG를 임포터 설정과 무관하게 원본 픽셀로 읽어 <see cref="CoinFaceTextureConverter"/>로 픽셀아트화하고,
+    /// 손으로 그린 면 도트(<see cref="FaceTextureSize"/> 정사각)를 그대로 복사하고,
     /// 픽셀아트 텍스처가 요구하는 Point/밉맵 off/비압축 임포트 설정으로 저장한다.
     /// </summary>
     private static Texture2D BakeFaceTexture(string sourcePath, string outputPath)
     {
+        byte[] bytes = File.ReadAllBytes(sourcePath);
         var source = new Texture2D(2, 2);
-        source.LoadImage(File.ReadAllBytes(sourcePath));
-        Color32[] converted = CoinFaceTextureConverter.Convert(
-            source.GetPixels32(), source.width, source.height, CoinFaceTextureConverter.PixelPathSize, FaceLightFrom);
+        source.LoadImage(bytes);
+        int width = source.width;
+        int height = source.height;
         UnityEngine.Object.DestroyImmediate(source);
+        ValidateFaceSize(sourcePath, width, height);
 
-        var output = new Texture2D(CoinFaceTextureConverter.PixelPathSize, CoinFaceTextureConverter.PixelPathSize,
-            TextureFormat.RGBA32, false);
-        output.SetPixels32(converted);
-        File.WriteAllBytes(outputPath, output.EncodeToPNG());
-        UnityEngine.Object.DestroyImmediate(output);
+        File.WriteAllBytes(outputPath, bytes);
 
         AssetDatabase.ImportAsset(outputPath);
         if (AssetImporter.GetAtPath(outputPath) is TextureImporter importer)
@@ -272,6 +269,14 @@ public static class CoinMeshBaker
         }
 
         return AssetDatabase.LoadAssetAtPath<Texture2D>(outputPath);
+    }
+
+    /// <summary>면 도트가 <see cref="FaceTextureSize"/> 정사각이 아니면 텍셀이 필터 칸과 어긋나므로 굽기를 멈춘다.</summary>
+    public static void ValidateFaceSize(string path, int width, int height)
+    {
+        if (width != FaceTextureSize || height != FaceTextureSize)
+            throw new InvalidDataException(
+                $"{path}: 동전 면 도트는 {FaceTextureSize}×{FaceTextureSize}이어야 합니다(현재 {width}×{height}).");
     }
 
     /// <summary>

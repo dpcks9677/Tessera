@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using Tessera.Games.Yacht.Presentation;
+using Tessera.Tabletop;
 using UnityEditor;
 using UnityEngine;
 
@@ -11,7 +12,11 @@ public static class AugmentScrollAssetGenerator
     private const string MaterialFolder = RootFolder + "/Materials";
     private const string PreviewFolder = RootFolder + "/Previews";
     private const string TexturePath = RootFolder + "/parchment_scroll_albedo.png";
+    // 유니티가 가져오지 않는 `~` 폴더에 둔 원본(1254²). 다시 구울 때마다 이 원본에서 줄인다.
+    private const string TextureSourcePath = "Assets/04.Art/Source/AugmentScrolls~/parchment_scroll_albedo_source.png";
     private const int PreviewLayer = 30;
+    public const string TrayPrefabPath = "Assets/03.Prefabs/Tabletop/3D Stone Augment Card Tray.prefab";
+    public const string BodyObjectName = "Rectangular Paper Body";
 
     [InitializeOnLoadMethod]
     private static void GenerateMissingAssetsAfterReload()
@@ -97,6 +102,7 @@ public static class AugmentScrollAssetGenerator
         AssetDatabase.Refresh();
         for (int key = 0; key < AugmentParchmentVisuals.PresetCount; key++)
             ConfigurePreview($"{PreviewFolder}/AugmentScrollPreview_{key}.png");
+        ApplyPaperTiling();
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         Debug.Log("증강 카드 직사각형 스크롤 프리팹과 선택 창 프리뷰 4종을 생성했습니다.");
@@ -118,7 +124,6 @@ public static class AugmentScrollAssetGenerator
         {
             Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(TexturePath);
             material.mainTexture = texture;
-            material.mainTextureScale = new Vector2(1.10f, .92f);
             if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", texture);
         }
         AssetDatabase.CreateAsset(material, path);
@@ -191,15 +196,134 @@ public static class AugmentScrollAssetGenerator
         importer.SaveAndReimport();
     }
 
+    /// <summary>
+    /// 프리셋 key의 본문 월드 크기. 본문 메시 로컬 크기 × 프리셋 스케일(트레이 슬롯 크기 기준) × 트레이 프리팹 루트 스케일.
+    /// 에셋이 없으면 false를 돌려준다.
+    /// </summary>
+    public static bool TryGetPresetBodyWorldSize(int key, out Vector2 bodyWorldSize)
+    {
+        bodyWorldSize = Vector2.zero;
+        GameObject trayPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(TrayPrefabPath);
+        GameObject presetPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{RootFolder}/AugmentScrollPreset_{key}.prefab");
+        if (trayPrefab == null || presetPrefab == null) return false;
+
+        AugmentCardTray tray = trayPrefab.GetComponentInChildren<AugmentCardTray>(true);
+        Transform body = presetPrefab.transform.Find(BodyObjectName);
+        if (tray == null || body == null || !body.TryGetComponent(out MeshFilter filter) || filter.sharedMesh == null)
+            return false;
+
+        Vector3 presetScale = AugmentScrollModelFactory.PresetLocalScale(tray.CardSlotLocalSize);
+        Vector3 trayScale = trayPrefab.transform.localScale;
+        Vector3 totalScale = Vector3.Scale(Vector3.Scale(presetScale, trayScale), body.localScale);
+        bodyWorldSize = AugmentScrollTexelMapping.BodyWorldSize(filter.sharedMesh.bounds.size, totalScale);
+        return true;
+    }
+
+    /// <summary>프리셋 전체 본문 월드 크기의 평균. 프리셋 간 차이는 0.01 미만이라 텍스처 한 장을 공유한다.</summary>
+    public static bool TryGetMeanBodyWorldSize(out Vector2 mean)
+    {
+        mean = Vector2.zero;
+        for (int key = 0; key < AugmentParchmentVisuals.PresetCount; key++)
+        {
+            if (!TryGetPresetBodyWorldSize(key, out Vector2 size)) return false;
+            mean += size;
+        }
+        mean /= AugmentParchmentVisuals.PresetCount;
+        return true;
+    }
+
+    /// <summary>
+    /// 양피지 텍스처만 텍셀 밀도 해상도로 다시 굽고 종이 머티리얼 타일링을 맞춘다(PIXEL-T9).
+    /// 프리팹·메시는 건드리지 않고, 같은 경로의 PNG를 덮어써 GUID를 유지한다.
+    /// </summary>
+    [MenuItem("Tools/Tessera/Generate Augment Scroll Texture")]
+    public static void GenerateTexture()
+    {
+        if (!TryGetMeanBodyWorldSize(out Vector2 bodyWorldSize))
+        {
+            Debug.LogError("트레이 프리팹 또는 스크롤 프리셋 프리팹을 읽지 못해 양피지 텍스처를 굽지 않았습니다.");
+            return;
+        }
+
+        Vector2Int size = AugmentScrollTexelMapping.TextureSize(bodyWorldSize);
+        var source = new Texture2D(2, 2);
+        source.LoadImage(File.ReadAllBytes(TextureSourcePath));
+        Color32[] reduced = BoxDownscale(source.GetPixels32(), source.width, source.height, size.x, size.y);
+        UnityEngine.Object.DestroyImmediate(source);
+
+        var output = new Texture2D(size.x, size.y, TextureFormat.RGBA32, false);
+        output.SetPixels32(reduced);
+        File.WriteAllBytes(TexturePath, output.EncodeToPNG());
+        UnityEngine.Object.DestroyImmediate(output);
+
+        AssetDatabase.ImportAsset(TexturePath);
+        ConfigureTexture();
+        ApplyPaperTiling();
+        Debug.Log($"증강 스크롤 양피지 텍스처를 {size.x}×{size.y}로 다시 구웠습니다.");
+    }
+
+    // 현재 텍스처 크기와 본문 월드 크기로 종이 머티리얼 두 개의 타일링을 맞춘다.
+    private static void ApplyPaperTiling()
+    {
+        Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(TexturePath);
+        if (texture == null || !TryGetMeanBodyWorldSize(out Vector2 bodyWorldSize)) return;
+
+        Vector2 tiling = AugmentScrollTexelMapping.Tiling(bodyWorldSize, texture.width, texture.height);
+        foreach (string name in new[] { "AugmentScrollPaperFront", "AugmentScrollPaperUnderside" })
+        {
+            Material material = AssetDatabase.LoadAssetAtPath<Material>($"{MaterialFolder}/{name}.mat");
+            if (material == null) continue;
+            if (material.HasProperty("_BaseMap")) material.SetTextureScale("_BaseMap", tiling);
+            if (material.HasProperty("_MainTex")) material.SetTextureScale("_MainTex", tiling);
+            EditorUtility.SetDirty(material);
+        }
+        AssetDatabase.SaveAssets();
+    }
+
+    // 목표 픽셀마다 원본의 대응 사각 영역을 평균한다. 정지 평면 하나만 줄이므로 가장 단순한 박스 필터면 된다.
+    private static Color32[] BoxDownscale(Color32[] source, int sourceWidth, int sourceHeight, int width, int height)
+    {
+        var result = new Color32[width * height];
+        for (int y = 0; y < height; y++)
+        {
+            int y0 = y * sourceHeight / height;
+            int y1 = Mathf.Max(y0 + 1, (y + 1) * sourceHeight / height);
+            for (int x = 0; x < width; x++)
+            {
+                int x0 = x * sourceWidth / width;
+                int x1 = Mathf.Max(x0 + 1, (x + 1) * sourceWidth / width);
+                float r = 0f, g = 0f, b = 0f;
+                for (int sy = y0; sy < y1; sy++)
+                {
+                    for (int sx = x0; sx < x1; sx++)
+                    {
+                        Color32 pixel = source[sy * sourceWidth + sx];
+                        r += pixel.r;
+                        g += pixel.g;
+                        b += pixel.b;
+                    }
+                }
+                float count = (y1 - y0) * (x1 - x0);
+                result[y * width + x] = new Color32(
+                    (byte)Mathf.RoundToInt(r / count),
+                    (byte)Mathf.RoundToInt(g / count),
+                    (byte)Mathf.RoundToInt(b / count),
+                    255);
+            }
+        }
+        return result;
+    }
+
     private static void ConfigureTexture()
     {
         if (AssetImporter.GetAtPath(TexturePath) is not TextureImporter importer) return;
         importer.textureType = TextureImporterType.Default;
         importer.wrapMode = TextureWrapMode.Repeat;
-        importer.filterMode = FilterMode.Bilinear;
-        importer.mipmapEnabled = true;
+        importer.filterMode = FilterMode.Point;
+        importer.mipmapEnabled = false;
         importer.sRGBTexture = true;
-        importer.textureCompression = TextureImporterCompression.CompressedHQ;
+        importer.npotScale = TextureImporterNPOTScale.None;
+        importer.textureCompression = TextureImporterCompression.Uncompressed;
         importer.SaveAndReimport();
     }
 

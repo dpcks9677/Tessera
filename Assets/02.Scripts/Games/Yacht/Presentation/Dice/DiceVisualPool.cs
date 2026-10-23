@@ -43,6 +43,8 @@ namespace Tessera.Games.Yacht.Presentation
         private Transform diceRoot;
         private RenderStyle renderStyle = RenderStyle.Baseline;
 
+        private YachtCameraRig cameraRig;
+
         public Transform DiceRoot => diceRoot;
         public DieType SelectedDieType => selectedDieType;
         public RenderStyle RenderStyle => renderStyle;
@@ -413,12 +415,46 @@ namespace Tessera.Games.Yacht.Presentation
             foreach (Collider c in visual.GetComponentsInChildren<Collider>(true)) Destroy(c);
         }
 
+        /// <summary>정렬 목표를 픽셀 격자에 맞출 때 쓸 카메라 리그를 연결한다.</summary>
+        public void BindCameraRig(YachtCameraRig rig)
+        {
+            cameraRig = rig;
+        }
+
+        /// <summary>
+        /// 정렬 목표를 픽셀 격자에 맞춘다. 정렬 자세는 보이는 면이 카메라 정면이라 직교 투영에서
+        /// 면 중심이 루트와 같은 화면 점에 찍힌다. 홀수 칸 면은 중심을 칸 중심에, 짝수 칸 면은
+        /// 칸 꼭짓점에 둬야 테두리가 칸 경계에 맞는다.
+        /// </summary>
+        private Vector3 SnapArrangedTarget(Transform die, Vector3 localTarget, int faceCells)
+        {
+            if (cameraRig == null || cameraRig.WorldCamera == null) return localTarget;
+
+            Camera cam = cameraRig.WorldCamera;
+            Vector2Int res = cameraRig.InternalResolution;
+            if (res.y < 1) return localTarget;
+
+            Transform parent = die.parent;
+            Vector3 world = parent != null ? parent.TransformPoint(localTarget) : localTarget;
+            Vector3 anchor = world;
+            if (faceCells % 2 == 0)
+            {
+                float screenCell = 2f * cam.orthographicSize / res.y;
+                anchor += (cam.transform.right + cam.transform.up) * (screenCell * 0.5f);
+            }
+
+            Vector3 snapped = PixelGridSnap.ToCellCenter(cam, res, anchor);
+            Vector3 worldTarget = world + (snapped - anchor);
+            return parent != null ? parent.InverseTransformPoint(worldTarget) : worldTarget;
+        }
+
         public void ArrangeInitialPositions(System.Collections.Generic.IReadOnlyList<GameObject> activeDice, System.Collections.Generic.IReadOnlyList<int> diceValues)
         {
             for (int i = 0; i < activeDice.Count; i++)
             {
                 if (activeDice[i] == null) continue;
-                Vector3 targetPos = DiceBoardMetrics.GetActivePosition(i, activeDice.Count);
+                Vector3 targetPos = SnapArrangedTarget(
+                    activeDice[i].transform, DiceBoardMetrics.GetActivePosition(i, activeDice.Count), DiceBoardMetrics.ArrangedTopCells);
                 activeDice[i].transform.localPosition = targetPos;
                 activeDice[i].transform.localScale = Vector3.one * DiceBoardMetrics.ActiveDieSize;
                 // 면 값이 1~6이 아닌 종류가 있어 값을 면 인덱스로 옮겨 넘긴다(M7-T5).
@@ -427,14 +463,14 @@ namespace Tessera.Games.Yacht.Presentation
 
                 if (dieType == DieType.Octahedron)
                 {
-                    activeDice[i].transform.localRotation = DiceFaceOrientation.GetOctaCameraFacingRotation(faceIndex, 75.0f);
+                    activeDice[i].transform.localRotation = DiceFaceOrientation.GetOctaCameraFacingRotation(faceIndex, YachtSceneAssembler.CameraPitchAngle);
                     Transform octaVisual = activeDice[i].transform.Find("Visual");
                     if (octaVisual != null) octaVisual.localRotation = Quaternion.identity;
                     continue;
                 }
 
                 faceIndex = Mathf.Clamp(faceIndex, 1, 6);
-                Quaternion targetRot = DiceFaceOrientation.GetCameraFacingRotation(faceIndex, 75.0f);
+                Quaternion targetRot = DiceFaceOrientation.GetCameraFacingRotation(faceIndex, YachtSceneAssembler.CameraPitchAngle);
                 activeDice[i].transform.localRotation = targetRot;
 
                 Transform visual = activeDice[i].transform.Find("Visual");
@@ -509,13 +545,15 @@ namespace Tessera.Games.Yacht.Presentation
                 // 현재 주사위 루트의 착지 회전으로부터 윗면(Top)을 유지한 채 카메라 렌즈를 정면으로 바라보도록 회전 계산
                 Quaternion currentRot = activeDice[i] != null ? activeDice[i].transform.localRotation : Quaternion.identity;
                 Quaternion cameraFacingRot = DiceFaceValues.TypeOf(diceTransforms[i]) == DieType.Octahedron
-                    ? DiceFaceOrientation.GetOctaCameraFacingRotation(DiceFaceOrientation.GetOctaTopFace(currentRot), 75.0f)
-                    : DiceFaceOrientation.GetCameraFacingUprightRotation(currentRot, 75.0f);
+                    ? DiceFaceOrientation.GetOctaCameraFacingRotation(DiceFaceOrientation.GetOctaTopFace(currentRot), YachtSceneAssembler.CameraPitchAngle)
+                    : DiceFaceOrientation.GetCameraFacingUprightRotation(currentRot, YachtSceneAssembler.CameraPitchAngle);
 
                 if (keptDice[i])
                 {
                     int slot = (keptSlotIndices.Count > i && keptSlotIndices[i] >= 0) ? keptSlotIndices[i] : 0;
-                    targetPositions[i] = DiceBoardMetrics.GetKeepPosition(slot);
+                    targetPositions[i] = diceTransforms[i] != null
+                        ? SnapArrangedTarget(diceTransforms[i], DiceBoardMetrics.GetKeepPosition(slot), DiceBoardMetrics.ArrangedTopCells)
+                        : DiceBoardMetrics.GetKeepPosition(slot);
                     targetScales[i] = Vector3.one * (normalScale * DiceBoardMetrics.KeepDieScale);
                     targetRotations[i] = cameraFacingRot;
                 }
@@ -536,7 +574,10 @@ namespace Tessera.Games.Yacht.Presentation
             for (int slot = 0; slot < unkeptIndices.Count; slot++)
             {
                 int dieIndex = unkeptIndices[slot];
-                targetPositions[dieIndex] = DiceBoardMetrics.GetActivePosition(slot, unkeptIndices.Count);
+                Vector3 activeTarget = DiceBoardMetrics.GetActivePosition(slot, unkeptIndices.Count);
+                targetPositions[dieIndex] = diceTransforms[dieIndex] != null
+                    ? SnapArrangedTarget(diceTransforms[dieIndex], activeTarget, DiceBoardMetrics.ArrangedTopCells)
+                    : activeTarget;
                 targetScales[dieIndex] = Vector3.one * DiceBoardMetrics.ActiveDieSize;
             }
 

@@ -1,4 +1,5 @@
 ﻿using Tessera.Core;
+using Tessera.Rendering;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -17,6 +18,24 @@ namespace Tessera.Games.Yacht.Presentation
     /// </summary>
     public static class TabletopSurfaceBuilder
     {
+        /// <summary>트레이 메시 UV 1이 덮는 메시 로컬 길이. 메시 UV는 로컬 좌표를 이 값으로 나눈다.</summary>
+        public const float TrayUvSourceUnits = 50f;
+
+        /// <summary>펠트 텍스처 가로(U) 텍셀 수.</summary>
+        public const int FeltWidthTexels = 128;
+
+        /// <summary>펠트 텍스처 세로(V) 텍셀 수. <see cref="FeltRibPeriodTexels"/>의 정수 배수여야 타일 이음매에서 골이 끊기지 않는다.</summary>
+        public const int FeltHeightTexels = 96;
+
+        /// <summary>코듀로이 골 하나가 V 방향으로 차지하는 텍셀 수.</summary>
+        public const int FeltRibPeriodTexels = 3;
+
+        /// <summary>판자 가로(X) 월드 길이.</summary>
+        public const float PlankWidth = 38.0f;
+
+        /// <summary>판자 세로(Z) 월드 길이.</summary>
+        public const float PlankDepth = 4.90f;
+
         /// <summary>표면 세 개를 모두 지우고 다시 만든다. 베이킹 전용이다.</summary>
         public static void Regenerate(Transform layoutRoot, Mesh trayMesh, float centerSectionX, float trayVisualY, float trayScale)
         {
@@ -65,7 +84,8 @@ namespace Tessera.Games.Yacht.Presentation
                     if (felt.HasProperty("_MainTex")) felt.SetTexture("_MainTex", corduroyTex);
                     if (felt.HasProperty("_BaseColor")) felt.SetColor("_BaseColor", Color.white);
                     if (felt.HasProperty("_Color")) felt.SetColor("_Color", Color.white);
-                    felt.mainTextureScale = new Vector2(1f, 1f);
+                    felt.mainTextureScale = FeltTiling();
+                    felt.mainTextureOffset = FeltOffset();
                     felt.color = Color.white;
                     felt.SetFloat("_Smoothness", 0.12f);
                 }
@@ -90,9 +110,9 @@ namespace Tessera.Games.Yacht.Presentation
 
             int plankCount = 4;
             float totalHeight = 20.0f;
-            float plankHeight = 4.90f;
+            float plankHeight = PlankDepth;
             float gap = 0.10f;
-            float plankWidth = 38.0f;
+            float plankWidth = PlankWidth;
             float plankThickness = 0.60f;
             float baseY = -0.72f;
 
@@ -185,36 +205,110 @@ namespace Tessera.Games.Yacht.Presentation
             }
         }
 
-        private static Texture2D CreateBurgundyCorduroyTexture()
+        /// <summary>
+        /// 펠트 텍스처의 타일링. 텍셀 하나가 바닥 위에서 필터 한 칸의 월드 크기와 같아지도록
+        /// UV 1의 월드 길이를 (텍셀 수 × 텍셀 월드 크기)로 나눈다.
+        /// </summary>
+        public static Vector2 FeltTiling()
         {
-            int width = 512;
-            int height = 512;
-            Texture2D tex = new(width, height, TextureFormat.RGBA32, true)
+            float uvWorldLength = TrayUvSourceUnits * DiceBoardMetrics.TrayScale;
+            Vector2 texel = PixelTexelDensity.TexelWorldSize(PixelSurfaceFacing.Floor);
+            return new Vector2(
+                uvWorldLength / (FeltWidthTexels * texel.x),
+                uvWorldLength / (FeltHeightTexels * texel.y));
+        }
+
+        /// <summary>펠트 텍스처의 오프셋. 트레이 바닥 중심이 타일 가운데에 오게 한다.</summary>
+        public static Vector2 FeltOffset() => new(0.5f, 0.5f);
+
+        /// <summary>펠트가 트레이 렌더러에서 차지하는 머티리얼 인덱스.</summary>
+        private const int FeltMaterialIndex = 1;
+
+        private static readonly int BaseMapStId = Shader.PropertyToID("_BaseMap_ST");
+
+        /// <summary>
+        /// 펠트 텍셀 경계가 필터 칸 중심 샘플점과 겹치지 않도록 UV 오프셋을 보정한다.
+        /// 트레이 중심에 가장 가까운 칸 중심에서 바닥에 광선을 쏴 그 점의 텍셀 소수부가 0.5가 되게 하는 값이다.
+        /// 텍셀과 칸이 1:1이라 한 칸에서 맞으면 바닥 전체가 맞는다. 카메라나 트레이가 바뀌면 다시 구해야 한다.
+        /// </summary>
+        /// <param name="floorLocalY">트레이 메시 로컬에서 펠트 바닥의 Y.</param>
+        public static Vector2 FeltPhaseOffset(Camera camera, Vector2Int resolution, Transform trayVisual, float floorLocalY)
+        {
+            Vector2 baseOffset = FeltOffset();
+            if (camera == null || trayVisual == null || resolution.x < 1 || resolution.y < 1) return baseOffset;
+
+            Vector3 floorCenter = trayVisual.TransformPoint(new Vector3(0f, floorLocalY, 0f));
+            Vector3 viewport = camera.WorldToViewportPoint(floorCenter);
+            float cellX = Mathf.Round(viewport.x * resolution.x - 0.5f);
+            float cellY = Mathf.Round(viewport.y * resolution.y - 0.5f);
+
+            Ray ray = camera.ViewportPointToRay(new Vector3((cellX + 0.5f) / resolution.x, (cellY + 0.5f) / resolution.y, 0f));
+            Plane floor = new(trayVisual.up, floorCenter);
+            if (!floor.Raycast(ray, out float enter)) return baseOffset;
+
+            Vector3 local = trayVisual.InverseTransformPoint(ray.GetPoint(enter));
+            Vector2 uv = new(local.x / TrayUvSourceUnits, local.z / TrayUvSourceUnits);
+            Vector2 tiling = FeltTiling();
+            Vector2 size = new(FeltWidthTexels, FeltHeightTexels);
+            float tx = (uv.x * tiling.x + baseOffset.x) * size.x;
+            float ty = (uv.y * tiling.y + baseOffset.y) * size.y;
+
+            return new Vector2(
+                baseOffset.x + (0.5f - (tx - Mathf.Floor(tx))) / size.x,
+                baseOffset.y + (0.5f - (ty - Mathf.Floor(ty))) / size.y);
+        }
+
+        /// <summary>
+        /// 보정한 오프셋을 펠트 렌더러의 MaterialPropertyBlock에 넣는다. 공유 머티리얼 에셋은 건드리지 않는다.
+        /// 월드 카메라 위치·각도·크기가 확정된 뒤에 불러야 한다.
+        /// </summary>
+        public static void ApplyFeltPhase(Camera camera, Vector2Int resolution)
+        {
+            GameObject trayObj = GameObject.Find("Yacht Tray Visual");
+            if (trayObj == null) return;
+            MeshRenderer mr = trayObj.GetComponent<MeshRenderer>();
+            if (mr == null || mr.sharedMaterials.Length <= FeltMaterialIndex) return;
+
+            Vector2 tiling = FeltTiling();
+            Vector2 offset = FeltPhaseOffset(camera, resolution, trayObj.transform, DiceBoardMetrics.PlayFloorSourceY);
+            MaterialPropertyBlock block = new();
+            mr.GetPropertyBlock(block, FeltMaterialIndex);
+            block.SetVector(BaseMapStId, new Vector4(tiling.x, tiling.y, offset.x, offset.y));
+            mr.SetPropertyBlock(block, FeltMaterialIndex);
+        }
+
+        /// <summary>
+        /// 128×96 Point 코듀로이. V 방향 3텍셀이 골 하나(밝음·중간·그늘)이다.
+        /// 연속 성분은 타일 안에서 정수 주기라 Repeat 이음매가 없다.
+        /// </summary>
+        public static Texture2D CreateBurgundyCorduroyTexture()
+        {
+            int width = FeltWidthTexels;
+            int height = FeltHeightTexels;
+            Texture2D tex = new(width, height, TextureFormat.RGBA32, false)
             {
                 name = "Runtime Burgundy Corduroy Texture",
                 wrapMode = TextureWrapMode.Repeat,
-                filterMode = FilterMode.Bilinear
+                filterMode = FilterMode.Point
             };
 
-            Color[] pixels = new Color[width * height];
-            int numRibs = 20; // 20개의 선명하고 굵은 가로 코듀로이 골
+            // 골 안 텍셀 순서별 명암(0 그늘 ~ 1 밝음)
+            float[] ribProfile = { 1.0f, 0.55f, 0.08f };
 
+            Color[] pixels = new Color[width * height];
             for (int y = 0; y < height; y++)
             {
-                float v = (float)y / height;
-                float phase = v * numRibs * 2f * Mathf.PI;
-                float sinVal = Mathf.Sin(phase);
-                float ridgeProfile = Mathf.Sign(sinVal) * Mathf.Pow(Mathf.Abs(sinVal), 0.55f);
-                float tRidge = (ridgeProfile + 1f) * 0.5f;
+                float v = (y + 0.5f) / height;
+                float tRidge = ribProfile[y % FeltRibPeriodTexels];
 
                 for (int x = 0; x < width; x++)
                 {
-                    float u = (float)x / width;
-                    float s1 = Mathf.Sin(u * 3.7f * 2f * Mathf.PI + v * 2.1f * 2f * Mathf.PI) * Mathf.Cos(u * 1.9f * 2f * Mathf.PI - v * 3.4f * 2f * Mathf.PI);
-                    float s2 = Mathf.Sin(u * 8.3f * 2f * Mathf.PI - v * 6.5f * 2f * Mathf.PI) * 0.5f;
+                    float u = (x + 0.5f) / width;
+                    float s1 = Mathf.Sin((4f * u + 2f * v) * 2f * Mathf.PI) * Mathf.Cos((2f * u - 3f * v) * 2f * Mathf.PI);
+                    float s2 = Mathf.Sin((8f * u - 6f * v) * 2f * Mathf.PI) * 0.5f;
                     float organicWave = (s1 + s2) / 1.5f;
                     float toneBlend = Mathf.Clamp01(0.5f + 0.5f * organicWave);
-                    float microWeave = ((Mathf.Sin(x * 0.85f) + Mathf.Cos(y * 0.85f)) * 0.5f) * 0.04f;
+                    float microWeave = (TexelHash(x, y) - 0.5f) * 0.04f;
 
                     float r = Mathf.Clamp01((35f + 110f * tRidge + 35f * toneBlend + microWeave * 40f) / 255f);
                     float g = Mathf.Clamp01((4f + 26f * tRidge + 18f * toneBlend + microWeave * 25f) / 255f);
@@ -225,8 +319,21 @@ namespace Tessera.Games.Yacht.Presentation
             }
 
             tex.SetPixels(pixels);
-            tex.Apply(true);
+            tex.Apply(false);
             return tex;
+        }
+
+        /// <summary>텍셀 좌표마다 고정된 0~1 값. 타일링과 무관하게 같은 텍셀은 항상 같은 값이다.</summary>
+        private static float TexelHash(int x, int y)
+        {
+            unchecked
+            {
+                uint h = (uint)(x * 73856093) ^ (uint)(y * 19349663);
+                h ^= h >> 13;
+                h *= 0x5bd1e995u;
+                h ^= h >> 15;
+                return (h & 0xffffu) / 65535f;
+            }
         }
 
         private static void BuildFabricRunner(Transform layoutRoot, float centerSectionX)
@@ -335,7 +442,8 @@ namespace Tessera.Games.Yacht.Presentation
             if (felt.HasProperty("_MainTex")) felt.SetTexture("_MainTex", corduroyTex);
             if (felt.HasProperty("_BaseColor")) felt.SetColor("_BaseColor", Color.white);
             if (felt.HasProperty("_Color")) felt.SetColor("_Color", Color.white);
-            felt.mainTextureScale = new Vector2(1f, 1f);
+            felt.mainTextureScale = FeltTiling();
+            felt.mainTextureOffset = FeltOffset();
             felt.color = Color.white;
             felt.SetFloat("_Smoothness", 0.12f);
 
@@ -354,9 +462,9 @@ namespace Tessera.Games.Yacht.Presentation
                 Vector3 v = verts[i];
                 Vector3 n = (norms != null && i < norms.Length) ? norms[i] : Vector3.up;
                 if (Mathf.Abs(n.y) >= 0.7f)
-                    uvs[i] = new Vector2(v.x * (1f / 50f), v.z * (1f / 50f));
+                    uvs[i] = new Vector2(v.x * (1f / TrayUvSourceUnits), v.z * (1f / TrayUvSourceUnits));
                 else
-                    uvs[i] = new Vector2((Mathf.Abs(n.x) > Mathf.Abs(n.z) ? v.z : v.x) * (1f / 50f), v.y * (1f / 50f));
+                    uvs[i] = new Vector2((Mathf.Abs(n.x) > Mathf.Abs(n.z) ? v.z : v.x) * (1f / TrayUvSourceUnits), v.y * (1f / TrayUvSourceUnits));
             }
             return uvs;
         }

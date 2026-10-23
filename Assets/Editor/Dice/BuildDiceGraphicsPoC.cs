@@ -136,12 +136,12 @@ public static class BuildDiceGraphicsPoC
 
                 if (Mathf.Abs(normal.y) >= 0.7f)
                 {
-                    uvs.Add(new Vector2(transformed.x * (1f / 50f), transformed.z * (1f / 50f)));
+                    uvs.Add(new Vector2(transformed.x * (1f / TabletopSurfaceBuilder.TrayUvSourceUnits), transformed.z * (1f / TabletopSurfaceBuilder.TrayUvSourceUnits)));
                 }
                 else
                 {
-                    float uCoord = (Mathf.Abs(normal.x) > Mathf.Abs(normal.z) ? transformed.z : transformed.x) * (1f / 50f);
-                    float vCoord = transformed.y * (1f / 50f);
+                    float uCoord = (Mathf.Abs(normal.x) > Mathf.Abs(normal.z) ? transformed.z : transformed.x) * (1f / TabletopSurfaceBuilder.TrayUvSourceUnits);
+                    float vCoord = transformed.y * (1f / TabletopSurfaceBuilder.TrayUvSourceUnits);
                     uvs.Add(new Vector2(uCoord, vCoord));
                 }
             }

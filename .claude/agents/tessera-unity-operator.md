@@ -55,7 +55,11 @@ Unity REST를 부르기 전에 `docs/reference/unity-rest.md` 를 읽으십시�
 
 **배열 필드는 크기부터 정합니다.** `component_set_serialized_property` 로 배열을 채울 때 먼저 `"<field>.Array.size"` 를 설정하고, 그다음 `"<field>.Array.data[i]"` 에 `assetPath` 로 원소를 넣습니다. 크기를 건너뛰면 인덱스가 없어 실패합니다.
 
-**`python3` 를 쓰지 마십시오.** 이 환경의 `python3` 는 Windows Store 스텁이라 exit code 49 로 항상 실패합니다. JSON 은 PowerShell `Invoke-RestMethod` / `ConvertFrom-Json` 으로 다룹니다. Python 이 꼭 필요하면 `python` 을 쓰십시오(2026-10-22 확인: Bash 에서 3.12 로 동작. `python3` 만 스텁입니다).
+**`python3` 를 쓰지 마십시오.** 이 환경의 `python3` 는 Windows Store 스텁이라 exit code 49 로 항상 실패합니다. JSON 은 PowerShell `Invoke-RestMethod` / `ConvertFrom-Json` 으로 다룹니다. Python 이 꼭 필요하면 `python` 을 쓰십시오(2026-10-22 확인: Bash 에서 3.12 로 동작. `python3` 만 스텁입니다). 스크린샷 분석용 PIL·numpy 는 `python` 에 있지만 `python -I` 로는 못 찾습니다(2026-10-23 확인).
+
+**`texture_set_settings` 로 못 바꾸는 임포터 값이 있습니다.** `mipMapsPreserveCoverage` 가 그렇습니다. `script eval` 에서 `TextureImporter` 를 직접 잡아 값을 바꾸고 `SaveAndReimport()` 하십시오(2026-10-23 확인).
+
+**MaterialPropertyBlock 조회는 `script eval` 로 됩니다.** `renderer.GetPropertyBlock(mpb, materialIndex)` 로 인덱스를 지정하고, 값은 `ToString("F7")` 로 찍어야 소수 7자리가 나옵니다.
 
 **GUID 대조는 인덱스를 한 번만 만드십시오.** `Library/PackageCache` 재귀 검색은 Windows 에서 수 분 걸립니다. 참조 guid 마다 검색하지 말고 `Assets/**/*.meta`·`Library/PackageCache/**/*.meta`·`Packages/**/*.meta` 의 guid 전체를 한 번 모아 대조하십시오.
 

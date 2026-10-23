@@ -159,6 +159,8 @@ namespace Tessera.Games.Yacht.Presentation
             }
 
             cameraRig?.ApplyRenderSettings();
+            // 월드 카메라 프레이밍은 위 두 분기에서 확정됐다. 펠트 위상은 그 카메라 기준으로 맞춘다.
+            if (cameraRig != null) TabletopSurfaceBuilder.ApplyFeltPhase(sceneRefs.WorldCamera, cameraRig.InternalResolution);
             ConfigureLighting();
             sceneRefs.WorldCamera = YachtSceneAssembler.EnsureSingleAudioListener(sceneRefs.WorldCamera);
             EnsureAudioService();
@@ -387,6 +389,7 @@ namespace Tessera.Games.Yacht.Presentation
 
             dicePool.Bind(diceModel, sceneRefs.LayoutRoot, CenterSectionX, selectedDieType);
             dicePool.BindSpecialModels(octahedronDieModel, sevensDieModel);
+            if (cameraRig != null) dicePool.BindCameraRig(cameraRig);
         }
 
         /// <summary>
@@ -433,6 +436,7 @@ namespace Tessera.Games.Yacht.Presentation
 
             cameraRig.Bind(sceneRefs.WorldCamera, sceneRefs.PresentationCamera, sceneRefs.GameImage,
                 sceneRefs.GameImageRect, sceneRefs.LayoutRoot, upscaleShader);
+            if (dicePool != null) dicePool.BindCameraRig(cameraRig);
         }
 
         private void OnCrispUiCameraReady(Camera eventCamera)

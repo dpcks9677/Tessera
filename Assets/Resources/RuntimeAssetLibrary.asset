@@ -18,6 +18,8 @@ MonoBehaviour:
   parchmentBase: {fileID: 2800000, guid: 932ea0b037ed6b44b8ba573ac3f0973f, type: 3}
   parchmentBurntEdge: {fileID: 2800000, guid: 80a35297937ce304abb25b801ad2137e, type: 3}
   parchmentWarmSand: {fileID: 2800000, guid: f46848ebaf23486489a42a120aa7daf9, type: 3}
+  parchmentBaseLayer3: {fileID: 2800000, guid: 854c7910ab09a5e43a7dac4cce683aaf, type: 3}
+  parchmentBaseLayer4: {fileID: 2800000, guid: c410d7a71086ac4469a53fd0fde1801d, type: 3}
   scoreIcons:
   - {fileID: 21300000, guid: 30e359d6512a87649941121eba0ecb01, type: 3}
   - {fileID: 21300000, guid: c464d3ebcc9d1774d8c4a66c42662dfc, type: 3}

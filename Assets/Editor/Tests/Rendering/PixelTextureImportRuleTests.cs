@@ -32,11 +32,6 @@ namespace Tessera.Editor.Tests
         /// <summary>경로 → 맞출 태스크 ID. 태스크가 끝나면 줄을 지웁니다.</summary>
         private static readonly Dictionary<string, string> PendingExceptions = new()
         {
-            { "Assets/04.Art/Generated/Parchment/parchment_base.png", "PIXEL-T7" },
-            { "Assets/04.Art/Generated/Parchment/parchment_burnt_edge.png", "PIXEL-T7" },
-            { "Assets/04.Art/Generated/Parchment/parchment_warm_sand.png", "PIXEL-T7" },
-            { "Assets/04.Art/Generated/Tabletop/Textures/Yacht_Tray_Visual_Runtime_Burgundy_Corduroy_Texture.png", "PIXEL-T7" },
-
             { "Assets/04.Art/Generated/Games/Yacht/ScoreIcons/4oak.png", "PIXEL-T8" },
             { "Assets/04.Art/Generated/Games/Yacht/ScoreIcons/choice.png", "PIXEL-T8" },
             { "Assets/04.Art/Generated/Games/Yacht/ScoreIcons/dice_1.png", "PIXEL-T8" },
@@ -49,11 +44,6 @@ namespace Tessera.Editor.Tests
             { "Assets/04.Art/Generated/Games/Yacht/ScoreIcons/l_straight.png", "PIXEL-T8" },
             { "Assets/04.Art/Generated/Games/Yacht/ScoreIcons/s_straight.png", "PIXEL-T8" },
             { "Assets/04.Art/Generated/Games/Yacht/ScoreIcons/yacht.png", "PIXEL-T8" },
-
-            { "Assets/04.Art/Generated/Games/Yacht/Resources/AugmentScrolls/parchment_scroll_albedo.png", "PIXEL-T9" },
-            { "Assets/04.Art/Generated/Tabletop/Textures/3D_Roll_Cosmic_Cube_Zodiac_Aries_Aries.png", "PIXEL-T9" },
-            { "Assets/04.Art/Source/Quill/quill_pen_albedo.png", "PIXEL-T9" },
-            { "Assets/Resources/Vfx/DiceSmokeBurstTexture.png", "PIXEL-T9" },
         };
 
         [Test]

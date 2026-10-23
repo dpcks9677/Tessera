@@ -272,20 +272,13 @@ namespace Tessera.EditorTools
 
             importer.textureType = isNormalMap ? TextureImporterType.NormalMap : TextureImporterType.Default;
             importer.wrapMode = TextureWrapMode.Repeat;
-            importer.filterMode = FilterMode.Bilinear;
-            importer.mipmapEnabled = true;
+            // D-050: 게임 텍스처는 Point + 밉맵 끔 + 비압축. 밉이 없으면 알파 클립(깃털 틈)의 커버리지 보존이
+            // 필요 없으므로 mipMapsPreserveCoverage는 쓰지 않는다. 컷오프는 머티리얼 _Cutoff(0.5)가 정한다.
+            importer.filterMode = FilterMode.Point;
+            importer.mipmapEnabled = false;
             importer.sRGBTexture = !isNormalMap;
-            importer.textureCompression = TextureImporterCompression.CompressedHQ;
-
-            // 알파 클립 텍스처(깃털 깃가지 틈)는 밉맵이 알파를 평균 내면 컷오프를 전부 통과해
-            // 구멍이 닫힌다. 커버리지 보존은 각 밉의 알파를 재스케일해 컷오프 통과 비율을 밉 0과 맞춘다.
-            // 알파가 전부 1인 다른 프롭 텍스처에는 무연산이라 전역으로 안전하다.
-            // 이 값은 머티리얼 _Cutoff(InkwellAndQuill.FeatherCutoff)와 반드시 같아야 한다.
-            if (!isNormalMap)
-            {
-                importer.mipMapsPreserveCoverage = true;
-                importer.alphaTestReferenceValue = 0.5f;
-            }
+            importer.npotScale = TextureImporterNPOTScale.None;
+            importer.textureCompression = TextureImporterCompression.Uncompressed;
 
             importer.SaveAndReimport();
         }

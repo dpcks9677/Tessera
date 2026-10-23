@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using Tessera.Rendering;
+using UnityEngine;
 
 namespace Tessera.Core
 {
@@ -15,9 +16,16 @@ namespace Tessera.Core
         public const float DieSize = 0.897f;
         public const float DieHalfSize = DieSize * 0.5f;
 
-        // 정렬 크기는 확대 전과 같게 유지한다. DieSize를 키우면 ActiveDieSize가 함께 커지므로
+        // 정렬(활성·킵) 주사위 한 변의 화면 칸 수. 사용자 결정에 따라 정렬 크기는 이전(활성 1.014,
+        // 킵 약 0.960)보다 줄이지 않고, 킵할 때 크기가 변하지 않도록 둘을 같게 둔다.
+        // 17은 홀수라 주사위 중심이 칸 중심에 오고, FBX 눈 간격(한 변의 약 0.2345 = 3.99칸)도 정수에
+        // 가까워 모든 눈 중심이 칸 중심에 놓인다. 눈 지름 약 3.36칸이 어디서나 3x3으로 찍힌다.
+        // 18칸은 간격이 4.22칸이라 가운데 눈과 모서리 눈의 모양이 달랐다.
+        public const int ArrangedTopCells = 17;
+
+        // 정렬 크기는 정수 칸으로 고정한다. DieSize를 키우면 ActiveDieSize가 함께 커지므로
         // 배율을 고정하지 않고 목표 정렬 크기에서 역산한다.
-        public const float ArrangedDieSize = 1.014f;
+        public const float ArrangedDieSize = ArrangedTopCells * PixelFilterSettings.CellWorldSize;
         public const float ActiveScaleMultiplier = ArrangedDieSize / DieSize;
         public const float ActiveDieSize = ArrangedDieSize;
         public const float ActiveDieHalfSize = ActiveDieSize * 0.5f;        // ~0.507f
@@ -96,9 +104,9 @@ namespace Tessera.Core
         // -52.5/-35.5/-30.5/-13.5/-8.5/8.5/13.5/30.5/35.5/52.5 에 있어 칸 중심이 -44, -22, 0, 22, 44로
         // KeepStartSourceX·KeepSpacingSourceX와 정확히 맞는다. 깊이도 소스 z 49.5~66.5로 같은 17이다.
         //
-        // 주사위를 16 소스 단위로 맞춰 사방에 0.5씩만 남긴다. 이전 값 0.95는 14.2 단위여서
-        // 소켓의 83%만 채워 헐거워 보였다.
-        public const float KeepDieScale = 16f / (DieSize / TrayScale); // ~1.070
+        // 킵 크기는 활성 정렬 크기와 같다. 소켓 폭 17 소스 단위는 1.02라 17칸(1.0625) 주사위는
+        // 소켓보다 양쪽 약 0.02씩 넘치지만, 이웃 주사위 간격(KeepSpacingX 1.32)보다는 작다.
+        public const float KeepDieScale = ArrangedDieSize / DieSize;
 
         public const float KeptDieSize = DieSize * KeepDieScale;
         public const float KeptDieHalfSize = KeptDieSize * 0.5f;

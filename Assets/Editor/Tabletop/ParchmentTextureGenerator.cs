@@ -3,7 +3,9 @@ using System;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
+using Tessera.Core;
 using Tessera.Games.Yacht.Presentation;
+using Tessera.Rendering;
 
 namespace Tessera.EditorTools
 {
@@ -15,23 +17,106 @@ namespace Tessera.EditorTools
         private static readonly Color BonusWashColor = new Color32(218, 207, 187, 255); // #dacbb3 (Bonus Tint Wash Box)
         private static readonly Color Transparent = new Color(0, 0, 0, 0);
 
+        private const string PrefabPath = "Assets/03.Prefabs/Tabletop/3D Layered Parchment Score Sheet.prefab";
+        private const string ParchmentDirectory = "Assets/04.Art/Generated/Parchment";
+        private const string LibraryAssetPath = "Assets/Resources/RuntimeAssetLibrary.asset";
+
+        private enum ParchmentKind { Base, BurntEdge, WarmSand }
+
+        /// <summary>양피지 레이어 한 장의 텍스처 규격. 크기는 프리팹의 레이어 메시 월드 크기에서 구한다.</summary>
+        private readonly struct LayerSpec
+        {
+            public readonly string TransformPath;
+            public readonly string FileName;
+            public readonly ParchmentKind Kind;
+            public readonly string LibraryField;
+
+            public LayerSpec(string transformPath, string fileName, ParchmentKind kind, string libraryField)
+            {
+                TransformPath = transformPath;
+                FileName = fileName;
+                Kind = kind;
+                LibraryField = libraryField;
+            }
+        }
+
+        // L1~L5 순서. L5의 메시는 "Layer 5" 오브젝트가 아니라 그 자식 Visual Mesh다.
+        private static readonly LayerSpec[] Layers =
+        {
+            new("Layer 1 - Bottom Burnt Parchment", "parchment_burnt_edge.png", ParchmentKind.BurntEdge, "parchmentBurntEdge"),
+            new("Layer 2 - Warm Sand Parchment", "parchment_warm_sand.png", ParchmentKind.WarmSand, "parchmentWarmSand"),
+            new("Layer 3 - Aged Parchment", "parchment_base_layer3.png", ParchmentKind.Base, "parchmentBaseLayer3"),
+            new("Layer 4 - Cream Parchment", "parchment_base_layer4.png", ParchmentKind.Base, "parchmentBaseLayer4"),
+            new("Layer 5 - Top Game Score Sheet/Visual Mesh", "parchment_base.png", ParchmentKind.Base, "parchmentBase"),
+        };
+
+        /// <summary>레이어별 텍스처 파일 에셋 경로(L1~L5 순서).</summary>
+        public static string[] LayerTexturePaths()
+        {
+            string[] paths = new string[Layers.Length];
+            for (int i = 0; i < Layers.Length; i++) paths[i] = $"{ParchmentDirectory}/{Layers[i].FileName}";
+            return paths;
+        }
+
+        /// <summary>
+        /// 프리팹 레이어 메시의 lossyScale(x, z)로 바닥 기준 텍셀 수를 구한다(L1~L5 순서).
+        /// 프리팹이나 레이어를 찾지 못하면 LogError를 남기고 null을 돌려준다.
+        /// </summary>
+        public static Vector2Int[] ReadLayerResolutions()
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+            if (prefab == null)
+            {
+                Debug.LogError($"[ParchmentTextureGenerator] 프리팹을 찾지 못했습니다: {PrefabPath}");
+                return null;
+            }
+
+            Vector2Int[] resolutions = new Vector2Int[Layers.Length];
+            for (int i = 0; i < Layers.Length; i++)
+            {
+                Transform layer = prefab.transform.Find(Layers[i].TransformPath);
+                if (layer == null)
+                {
+                    Debug.LogError($"[ParchmentTextureGenerator] 레이어를 찾지 못했습니다: {Layers[i].TransformPath}");
+                    return null;
+                }
+
+                Vector3 lossy = layer.lossyScale;
+                resolutions[i] = PixelTexelDensity.TexelCountFor(new Vector2(lossy.x, lossy.z), PixelSurfaceFacing.Floor);
+            }
+            return resolutions;
+        }
+
+        [MenuItem("Tools/Tessera/Generate Parchment Textures")]
+        public static void GenerateParchmentOnly()
+        {
+            if (!GenerateParchmentTextures()) return;
+
+            AssetDatabase.Refresh();
+            ConfigureParchmentImporters();
+            AssignNewLayerTexturesToLibrary();
+            Debug.Log("[ParchmentTextureGenerator] 양피지 텍스처 5장 생성 완료.");
+        }
+
         [MenuItem("Tools/Tessera/Generate Parchment & Score Sheet Assets")]
         public static void GenerateAllAssets()
         {
-            string baseDir = Path.Combine(Application.dataPath, "04.Art", "Generated", "Parchment");
             string iconsDir = Path.Combine(Application.dataPath, "04.Art", "Generated", "Games", "Yacht", "ScoreIcons");
-
-            if (!Directory.Exists(baseDir)) Directory.CreateDirectory(baseDir);
             if (!Directory.Exists(iconsDir)) Directory.CreateDirectory(iconsDir);
 
             // 1. svgicons.js 기반 원본 벡터 둥근 주사위 및 특수 족보 아이콘 12종 PNG 생성 (128x128)
             GenerateSvgIcons(iconsDir);
 
-            // 2. 양피지 기본 텍스처 팩 생성 (Base, Burnt Edge, Warm Sand)
-            GenerateParchmentTextures(baseDir);
+            // 2. 양피지 레이어별 텍스처 5장 생성 (프리팹 레이어 크기 기준)
+            bool parchmentGenerated = GenerateParchmentTextures();
 
             AssetDatabase.Refresh();
-            ConfigureTextureImporters();
+            ConfigureIconImporters();
+            if (parchmentGenerated)
+            {
+                ConfigureParchmentImporters();
+                AssignNewLayerTexturesToLibrary();
+            }
             Debug.Log("✨ svgicons.js 원본 벡터 아이콘 복원 및 양피지 텍스처 생성 완료!");
         }
 
@@ -292,44 +377,66 @@ namespace Tessera.EditorTools
             }
         }
 
-        private static void GenerateParchmentTextures(string baseDir)
+        private static bool GenerateParchmentTextures()
         {
-            int w = 512;
-            int h = 1024;
+            Vector2Int[] resolutions = ReadLayerResolutions();
+            if (resolutions == null) return false;
 
-            // 1. Parchment Base
-            Texture2D baseTex = new Texture2D(w, h, TextureFormat.RGBA32, true);
-            Color[] basePix = new Color[w * h];
+            string baseDir = Path.Combine(Application.dataPath, "04.Art", "Generated", "Parchment");
+            if (!Directory.Exists(baseDir)) Directory.CreateDirectory(baseDir);
+
+            for (int i = 0; i < Layers.Length; i++)
+            {
+                Vector2Int size = resolutions[i];
+                Texture2D tex = Layers[i].Kind switch
+                {
+                    ParchmentKind.BurntEdge => BuildBurntEdgeTexture(size.x, size.y),
+                    ParchmentKind.WarmSand => BuildWarmSandTexture(size.x, size.y),
+                    _ => BuildBaseTexture(size.x, size.y),
+                };
+                SavePng(tex, Path.Combine(baseDir, Layers[i].FileName));
+                UnityEngine.Object.DestroyImmediate(tex);
+            }
+            return true;
+        }
+
+        // 아래 세 함수는 정규화 좌표(0~1)로 그려 해상도가 달라져도 특징의 상대 크기를 유지한다.
+        private static Texture2D BuildBaseTexture(int w, int h)
+        {
+            Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            Color[] pix = new Color[w * h];
             for (int y = 0; y < h; y++)
             {
-                float ny = (float)y / h;
+                float ny = (y + 0.5f) / h;
                 for (int x = 0; x < w; x++)
                 {
-                    float nx = (float)x / w;
+                    float nx = (x + 0.5f) / w;
                     float n1 = Mathf.PerlinNoise(nx * 4f, ny * 8f) * 0.08f;
                     float n2 = Mathf.PerlinNoise(nx * 16f, ny * 32f) * 0.03f;
-                    float micro = (Mathf.Sin(x * 1.2f) * Mathf.Cos(y * 1.2f)) * 0.015f;
+                    float micro = (TexelHash(x, y) - 0.5f) * 0.03f;
 
                     float r = Mathf.Clamp01(0.94f + n1 + n2 + micro);
                     float g = Mathf.Clamp01(0.88f + n1 * 0.9f + n2 + micro);
                     float b = Mathf.Clamp01(0.77f + n1 * 0.8f + n2 + micro);
-                    basePix[y * w + x] = new Color(r, g, b, 1f);
+                    pix[y * w + x] = new Color(r, g, b, 1f);
                 }
             }
-            baseTex.SetPixels(basePix);
-            baseTex.Apply();
-            SavePng(baseTex, Path.Combine(baseDir, "parchment_base.png"));
+            tex.SetPixels(pix);
+            tex.Apply(false);
+            return tex;
+        }
 
-            // 2. Parchment Burnt Edge
-            Texture2D burntTex = new Texture2D(w, h, TextureFormat.RGBA32, true);
-            Color[] burntPix = new Color[w * h];
+        private static Texture2D BuildBurntEdgeTexture(int w, int h)
+        {
+            Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            Color[] pix = new Color[w * h];
             for (int y = 0; y < h; y++)
             {
-                float ny = (float)y / h;
+                float ny = (y + 0.5f) / h;
                 float edgeY = Mathf.Min(ny, 1f - ny) * 2f;
                 for (int x = 0; x < w; x++)
                 {
-                    float nx = (float)x / w;
+                    float nx = (x + 0.5f) / w;
                     float edgeX = Mathf.Min(nx, 1f - nx) * 2f;
                     float edgeDist = Mathf.Clamp01(Mathf.Min(edgeX, edgeY));
 
@@ -339,33 +446,44 @@ namespace Tessera.EditorTools
                     float r = Mathf.Lerp(0.92f, 0.50f, burnFactor);
                     float g = Mathf.Lerp(0.85f, 0.36f, burnFactor);
                     float b = Mathf.Lerp(0.73f, 0.22f, burnFactor);
-                    burntPix[y * w + x] = new Color(r, g, b, 1f);
+                    pix[y * w + x] = new Color(r, g, b, 1f);
                 }
             }
-            burntTex.SetPixels(burntPix);
-            burntTex.Apply();
-            SavePng(burntTex, Path.Combine(baseDir, "parchment_burnt_edge.png"));
+            tex.SetPixels(pix);
+            tex.Apply(false);
+            return tex;
+        }
 
-            // 3. Parchment Warm Sand
-            Texture2D warmTex = new Texture2D(w, h, TextureFormat.RGBA32, true);
-            Color[] warmPix = new Color[w * h];
+        private static Texture2D BuildWarmSandTexture(int w, int h)
+        {
+            Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            Color[] pix = new Color[w * h];
             for (int y = 0; y < h; y++)
             {
-                float ny = (float)y / h;
+                float ny = (y + 0.5f) / h;
                 for (int x = 0; x < w; x++)
                 {
-                    float nx = (float)x / w;
+                    float nx = (x + 0.5f) / w;
                     float n = Mathf.PerlinNoise(nx * 6f, ny * 12f) * 0.07f;
-                    warmPix[y * w + x] = new Color(0.90f + n, 0.82f + n, 0.68f + n, 1f);
+                    pix[y * w + x] = new Color(0.90f + n, 0.82f + n, 0.68f + n, 1f);
                 }
             }
-            warmTex.SetPixels(warmPix);
-            warmTex.Apply();
-            SavePng(warmTex, Path.Combine(baseDir, "parchment_warm_sand.png"));
+            tex.SetPixels(pix);
+            tex.Apply(false);
+            return tex;
+        }
 
-            UnityEngine.Object.DestroyImmediate(baseTex);
-            UnityEngine.Object.DestroyImmediate(burntTex);
-            UnityEngine.Object.DestroyImmediate(warmTex);
+        /// <summary>텍셀 좌표마다 고정된 0~1 값. 같은 텍셀은 항상 같은 값이다.</summary>
+        private static float TexelHash(int x, int y)
+        {
+            unchecked
+            {
+                uint hash = (uint)(x * 73856093) ^ (uint)(y * 19349663);
+                hash ^= hash >> 13;
+                hash *= 0x5bd1e995u;
+                hash ^= hash >> 15;
+                return (hash & 0xffffu) / 65535f;
+            }
         }
 
         private static void SavePng(Texture2D tex, string path)
@@ -374,7 +492,7 @@ namespace Tessera.EditorTools
             File.WriteAllBytes(path, bytes);
         }
 
-        private static void ConfigureTextureImporters()
+        private static void ConfigureIconImporters()
         {
             string[] iconFiles = Directory.GetFiles("Assets/04.Art/Generated/Games/Yacht/ScoreIcons", "*.png");
             foreach (string file in iconFiles)
@@ -391,21 +509,46 @@ namespace Tessera.EditorTools
                     importer.SaveAndReimport();
                 }
             }
+        }
 
-            string[] parchmentFiles = Directory.GetFiles("Assets/04.Art/Generated/Parchment", "*.png");
-            foreach (string file in parchmentFiles)
+        /// <summary>양피지 5장 임포터. 텍셀 하나가 필터 한 칸이어야 하므로 Point, 밉맵 끔, NPOT 보존(D-050).</summary>
+        private static void ConfigureParchmentImporters()
+        {
+            foreach (string path in LayerTexturePaths())
             {
-                string unityPath = file.Replace("\\", "/");
-                TextureImporter importer = AssetImporter.GetAtPath(unityPath) as TextureImporter;
-                if (importer != null)
-                {
-                    importer.textureType = TextureImporterType.Default;
-                    importer.alphaIsTransparency = false;
-                    importer.mipmapEnabled = true;
-                    importer.filterMode = FilterMode.Bilinear;
-                    importer.SaveAndReimport();
-                }
+                if (AssetImporter.GetAtPath(path) is not TextureImporter importer) continue;
+
+                importer.textureType = TextureImporterType.Default;
+                importer.alphaIsTransparency = false;
+                importer.filterMode = FilterMode.Point;
+                importer.mipmapEnabled = false;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.npotScale = TextureImporterNPOTScale.None;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
             }
+        }
+
+        /// <summary>새로 생긴 L3·L4 텍스처를 RuntimeAssetLibrary 에셋의 해당 필드에 넣는다.</summary>
+        private static void AssignNewLayerTexturesToLibrary()
+        {
+            RuntimeAssetLibrary library = AssetDatabase.LoadAssetAtPath<RuntimeAssetLibrary>(LibraryAssetPath);
+            if (library == null)
+            {
+                Debug.LogWarning($"[ParchmentTextureGenerator] '{LibraryAssetPath}'가 없어 L3·L4 텍스처를 연결하지 못했습니다. Tools/Tessera/Bake Runtime Asset Library를 먼저 실행하십시오.");
+                return;
+            }
+
+            SerializedObject so = new(library);
+            foreach (string field in new[] { "parchmentBaseLayer3", "parchmentBaseLayer4" })
+            {
+                int index = Array.FindIndex(Layers, layer => layer.LibraryField == field);
+                Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>($"{ParchmentDirectory}/{Layers[index].FileName}");
+                so.FindProperty(field).objectReferenceValue = texture;
+            }
+            so.ApplyModifiedProperties();
+            EditorUtility.SetDirty(library);
+            AssetDatabase.SaveAssets();
         }
     }
 }

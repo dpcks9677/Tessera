@@ -24,6 +24,8 @@ namespace Tessera.Core
         [SerializeField] private Texture2D parchmentBase;
         [SerializeField] private Texture2D parchmentBurntEdge;
         [SerializeField] private Texture2D parchmentWarmSand;
+        [SerializeField] private Texture2D parchmentBaseLayer3;
+        [SerializeField] private Texture2D parchmentBaseLayer4;
         [SerializeField] private Sprite[] scoreIcons;
 
         private static RuntimeAssetLibrary instance;
@@ -57,6 +59,8 @@ namespace Tessera.Core
         public static Texture2D ParchmentBase => Instance != null ? Instance.parchmentBase : null;
         public static Texture2D ParchmentBurntEdge => Instance != null ? Instance.parchmentBurntEdge : null;
         public static Texture2D ParchmentWarmSand => Instance != null ? Instance.parchmentWarmSand : null;
+        public static Texture2D ParchmentBaseLayer3 => Instance != null ? Instance.parchmentBaseLayer3 : null;
+        public static Texture2D ParchmentBaseLayer4 => Instance != null ? Instance.parchmentBaseLayer4 : null;
 
         /// <summary>이름으로 족보 아이콘 스프라이트를 찾는다. 카탈로그가 없거나 못 찾으면 null.</summary>
         public static Sprite FindScoreIcon(string iconName)
