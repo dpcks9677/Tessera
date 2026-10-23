@@ -21,6 +21,24 @@ namespace Tessera.Rendering
         /// <inheritdoc cref="ResolutionA"/>
         public static readonly Vector2Int ResolutionB = new(480, 270);  // 4x4 블록
 
+        /// <summary>
+        /// 굵은 프리셋(<see cref="ResolutionB"/>) 격자 한 칸이 덮는 월드 길이.
+        /// 2의 거듭제곱이라 float로 정확하고, 카메라 시야를 이 값에서 계산한다.
+        /// 가는 프리셋(<see cref="ResolutionA"/>, 640x360)은 디버그 비교용이라 카메라를 바꾸지 않으며,
+        /// 그때 한 칸은 3/64 월드다.
+        /// </summary>
+        public const float CellWorldSize = 1f / 16f;
+
+        /// <summary>
+        /// 월드 카메라가 수평에서 내려다보는 각도(도). 면 방향별로 격자 한 칸의 월드 크기를 계산하는 기준이다.
+        /// </summary>
+        public const float WorldCameraPitch = 75f;
+
+        /// <summary>
+        /// 월드 직교 카메라의 orthographicSize. 화면 세로 270칸이 정확히 칸 단위로 떨어지게 한다(= 8.4375).
+        /// </summary>
+        public static float WorldOrthographicSize => ResolutionB.y * CellWorldSize * 0.5f;
+
         /// <summary>게임이 시작할 때의 내부 해상도. 더 굵은 쪽으로 시작한다.</summary>
         public static Vector2Int StartResolution => ResolutionB;
 

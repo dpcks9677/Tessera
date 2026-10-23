@@ -1,5 +1,6 @@
 ﻿using Tessera.Core;
 using Tessera.Games.Yacht;
+using Tessera.Rendering;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -21,9 +22,6 @@ namespace Tessera.Games.Yacht.Presentation
         private const float HoverHeight = 0.16f;
         private const float HoverScale = 1.06f;
         private const float HoverSmoothTime = 0.12f;
-
-        /// <summary>월드 1단위당 캔버스 좌표 단위. 폰트 크기를 픽셀 감각 그대로 쓰기 위한 배율이다.</summary>
-        private const float CanvasUnitsPerWorldUnit = 100f;
 
         /// <summary>양피지 표면과 캔버스 사이 z-fighting을 피하기 위한 최소 간격.</summary>
         private const float OverlayLift = 0.004f;
@@ -116,7 +114,7 @@ namespace Tessera.Games.Yacht.Presentation
             view.overlayRect.anchorMin = view.overlayRect.anchorMax = new Vector2(.5f, .5f);
             view.overlayRect.pivot = new Vector2(.5f, .5f);
             view.overlayRect.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            view.overlayRect.localScale = Vector3.one / CanvasUnitsPerWorldUnit;
+            view.overlayRect.localScale = Vector3.one / PixelTexelDensity.CanvasUnitsPerWorldUnit;
 
             view.overlayCanvas = overlayObject.GetComponent<Canvas>();
             view.overlayCanvas.renderMode = RenderMode.WorldSpace;
@@ -283,11 +281,11 @@ namespace Tessera.Games.Yacht.Presentation
                 (minX + maxX) * .5f - (safe.center.x - .5f) * cardWidth,
                 OverlayLift,
                 (minZ + maxZ) * .5f - (safe.center.y - .5f) * cardHeight);
-            overlayRect.sizeDelta = new Vector2(cardWidth, cardHeight) * CanvasUnitsPerWorldUnit;
+            overlayRect.sizeDelta = new Vector2(cardWidth, cardHeight) * PixelTexelDensity.CanvasUnitsPerWorldUnit;
 
             if (card != null)
             {
-                float scale = cardWidth * CanvasUnitsPerWorldUnit / CardPixelWidth;
+                float scale = cardWidth * PixelTexelDensity.CanvasUnitsPerWorldUnit / CardPixelWidth;
                 card.transform.localScale = new Vector3(scale, scale, 1f);
             }
 

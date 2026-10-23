@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using Tessera.Games.Yacht.Presentation;
+using Tessera.Rendering;
 using UnityEngine;
 
 namespace Tessera.Editor.Tests
@@ -165,6 +166,40 @@ namespace Tessera.Editor.Tests
                 AugmentStickerTexture.DefaultBase, AugmentStickerTexture.DefaultBorder, 1, 1);
 
             Assert.That(pixels.Length, Is.EqualTo(8 * 8));
+        }
+
+        [Test]
+        public void TexelIsAtLeastOneFilterCellAlongX()
+        {
+            // 텍셀이 칸보다 작으면 칸 중심 샘플이 금테를 건너뛴다. 가장 촘촘한 값이어야 하므로 한 칸 더 늘리면 칸보다 작아진다.
+            foreach (float width in new[] { 3.54f, 0.9f, 1.0f, 2.0f, 0.6f })
+            {
+                int count = AugmentStickerTexture.TexelCountFor(new Vector2(width, 1f)).x;
+                Assert.That(count, Is.GreaterThan(8), $"폭 {width}");
+                Assert.That(width / count, Is.GreaterThanOrEqualTo(PixelFilterSettings.CellWorldSize - 1e-6f), $"폭 {width}");
+                Assert.That(width / (count + 1), Is.LessThan(PixelFilterSettings.CellWorldSize), $"폭 {width}");
+            }
+        }
+
+        [Test]
+        public void TexelIsAtLeastOneFilterCellAlongDepth()
+        {
+            // 깊이는 카메라 피치만큼 화면 세로로 줄어든 길이 기준이다.
+            float sin = Mathf.Sin(YachtSceneAssembler.CameraPitchAngle * Mathf.Deg2Rad);
+            foreach (float depth in new[] { 0.9f, 1.5f, 2.0f })
+            {
+                int count = AugmentStickerTexture.TexelCountFor(new Vector2(1f, depth)).y;
+                float onScreen = depth * sin;
+                Assert.That(count, Is.GreaterThan(8), $"깊이 {depth}");
+                Assert.That(onScreen / count, Is.GreaterThanOrEqualTo(PixelFilterSettings.CellWorldSize - 1e-6f), $"깊이 {depth}");
+                Assert.That(onScreen / (count + 1), Is.LessThan(PixelFilterSettings.CellWorldSize), $"깊이 {depth}");
+            }
+        }
+
+        [Test]
+        public void TinyWorldSizeClampsToMinimumTexels()
+        {
+            Assert.That(AugmentStickerTexture.TexelCountFor(new Vector2(0.1f, 0.1f)), Is.EqualTo(new Vector2Int(8, 8)));
         }
 
         private static Color32[] Pixels(Color32 baseColor) =>

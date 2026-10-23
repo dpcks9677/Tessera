@@ -7,6 +7,7 @@ using UnityEngine.Rendering;
 using UnityEngine.UI;
 using Tessera.Core;
 using Tessera.Games.Yacht;
+using Tessera.Rendering;
 
 namespace Tessera.Games.Yacht.Presentation
 {
@@ -16,9 +17,6 @@ namespace Tessera.Games.Yacht.Presentation
         private const int DecorationLayer = 11;
 
         private const string OverlayName = "HighRes Score Sheet Overlay";
-
-        /// <summary>월드 1단위당 캔버스 좌표 단위. 폰트 크기를 픽셀 감각 그대로 쓰기 위한 배율이다.</summary>
-        private const float CanvasUnitsPerWorldUnit = 100f;
 
         /// <summary>버건디 스티커 위에 올리는 글자·아이콘 색이다. 양피지 크림톤이라 대비가 산다.</summary>
         private static readonly Color StickerInk = new(0.97f, 0.94f, 0.87f, 1f);
@@ -86,19 +84,6 @@ namespace Tessera.Games.Yacht.Presentation
         /// <summary>천이 칸 밖으로 삐져나오는 폭이다. 표에 딱 맞으면 인쇄처럼 보여 얹은 느낌이 안 난다.</summary>
         private const float StickerOverhangX = 0.055f;
         private const float StickerOverhangZ = 0.030f;
-
-        /// <summary>
-        /// 천 텍스처를 굽는 밀도다. 한 텍셀이 픽셀 필터 화면의 한 픽셀이 되도록 맞춘다.
-        ///
-        /// 캔버스는 1920 화면 픽셀당 100 캔버스 단위이고(<see cref="CanvasUnitsPerWorldUnit"/>),
-        /// 픽셀 필터의 굵은 프리셋(<c>PixelFilterSettings.ResolutionB</c>, 480×270)이 그 1920을 4로
-        /// 나눈다. 그래서 4로 나눈 밀도로 굽는다.
-        ///
-        /// 이보다 촘촘히 구우면 필터가 축소하면서 금테 한 줄이 텍셀 사이에 끼고, 행마다 서브픽셀
-        /// 위치가 달라 같은 금테가 행마다 다른 자리에 나타난다. 굵은 쪽 프리셋에 맞췄으므로 가는
-        /// 프리셋(640×360)에서는 확대만 일어나 금테가 사라지지 않는다.
-        /// </summary>
-        private const float StickerPixelsPerUnit = CanvasUnitsPerWorldUnit / 4f;
 
         // --- 열 배치 ---
         //
@@ -662,8 +647,8 @@ namespace Tessera.Games.Yacht.Presentation
 
             // 캔버스 좌표를 픽셀 단위로 쓰고 0.01 배로 줄여 월드 단위에 맞춘다.
             // 폰트 크기와 정규화 앵커 레이아웃을 그대로 유지하기 위한 관례다.
-            highResOverlayRect.sizeDelta = new Vector2(sheetWidth, sheetHeight) * CanvasUnitsPerWorldUnit;
-            highResOverlayRect.localScale = Vector3.one / CanvasUnitsPerWorldUnit;
+            highResOverlayRect.sizeDelta = new Vector2(sheetWidth, sheetHeight) * PixelTexelDensity.CanvasUnitsPerWorldUnit;
+            highResOverlayRect.localScale = Vector3.one / PixelTexelDensity.CanvasUnitsPerWorldUnit;
             highResOverlayRect.localRotation = Quaternion.Euler(90f, 0f, 0f);
             highResOverlayRect.localPosition = new Vector3(0f, sheetThickness * 0.5f + OverlayLift, 0f);
 
@@ -717,9 +702,10 @@ namespace Tessera.Games.Yacht.Presentation
             float bodyWidth = 1f - SideMargin * 2f;
             float patchWidth = ((IconSectorRatio + CategoryBudgetRatio) * bodyWidth * sheetWidth) + (StickerOverhangX * 2f);
             float patchHeight = (rowH_norm * sheetHeight) + (StickerOverhangZ * 2f);
-            stickerPatchPixels = new Vector2Int(
-                Mathf.Max(8, Mathf.RoundToInt(patchWidth * StickerPixelsPerUnit)),
-                Mathf.Max(8, Mathf.RoundToInt(patchHeight * StickerPixelsPerUnit)));
+            // 천은 점수표 루트 스케일(프리팹에서 1.5)을 물려받으므로 월드 크기로 바꿔 넘긴다.
+            Vector3 clothScale = topLayerObject.transform.lossyScale;
+            stickerPatchPixels = AugmentStickerTexture.TexelCountFor(
+                new Vector2(patchWidth * clothScale.x, patchHeight * clothScale.z));
 
             // 1. 전체 폭 밴드는 열 경계와 무관하다. 오버레이 직속으로 두고 먼저 그려 바닥에 깐다.
             float bandLeft = SideMargin;

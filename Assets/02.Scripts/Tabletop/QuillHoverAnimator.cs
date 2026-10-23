@@ -1,3 +1,4 @@
+using Tessera.Rendering;
 using UnityEngine;
 
 namespace Tessera.Tabletop
@@ -368,15 +369,7 @@ namespace Tessera.Tabletop
 
         private Vector3 SnapToPixelGrid(Vector3 world)
         {
-            if (pixelCamera == null || pixelResolution.x < 1 || pixelResolution.y < 1) return world;
-
-            Vector3 viewport = pixelCamera.WorldToViewportPoint(world);
-            // 카메라 뒤로 넘어간 지점은 뷰포트 좌표가 뒤집혀 스냅이 엉뚱한 자리를 만든다.
-            if (viewport.z <= 0f) return world;
-
-            viewport.x = (Mathf.Floor(viewport.x * pixelResolution.x) + 0.5f) / pixelResolution.x;
-            viewport.y = (Mathf.Floor(viewport.y * pixelResolution.y) + 0.5f) / pixelResolution.y;
-            return pixelCamera.ViewportToWorldPoint(viewport);
+            return PixelGridSnap.ToCellCenter(pixelCamera, pixelResolution, world);
         }
 
         /// <summary>

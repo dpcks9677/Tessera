@@ -1,3 +1,4 @@
+using Tessera.Rendering;
 using UnityEngine;
 
 namespace Tessera.Games.Yacht.Presentation
@@ -8,8 +9,8 @@ namespace Tessera.Games.Yacht.Presentation
     /// 아이콘과 이름은 이 바탕 위에 원래 칸과 같은 배치로 따로 올립니다.
     /// 시각 사양은 <c>docs/augmented_yacht_m17_vfx_spec.md</c> §3.1.1을 따릅니다.
     ///
-    /// 한 텍셀이 픽셀 필터 화면의 한 픽셀이라는 전제로 그립니다. 그래서 금테와 그림자를 텍셀 단위로
-    /// 고정해도 화면에서 그 두께 그대로 나옵니다. 굽는 크기는 <c>ParchmentScoreSheet</c>가 정합니다.
+    /// 한 텍셀이 픽셀 필터 화면의 한 칸 이상이라는 전제로 그립니다. 그래서 금테와 그림자를 텍셀 단위로
+    /// 고정해도 화면에서 사라지지 않습니다. 굽는 크기는 <see cref="TexelCountFor"/>가 월드 크기에서 정합니다.
     /// </summary>
     public static class AugmentStickerTexture
     {
@@ -40,6 +41,18 @@ namespace Tessera.Games.Yacht.Presentation
 
         /// <summary>몸통 가장자리에서 금테까지의 텍셀 수입니다.</summary>
         public const int BorderInset = 1;
+
+        /// <summary>
+        /// 월드 크기에서 굽을 텍셀 수를 구합니다. <c>worldSize.x</c>는 월드 X 폭, <c>.y</c>는 월드 Z 깊이입니다.
+        ///
+        /// 천은 바닥에 누운 면이라 <see cref="PixelTexelDensity"/>의 바닥 규칙을 씁니다.
+        /// 금테·그림자 자리가 있어야 하므로 최소 8텍셀로 올립니다.
+        /// </summary>
+        public static Vector2Int TexelCountFor(Vector2 worldSize)
+        {
+            Vector2Int count = PixelTexelDensity.TexelCountFor(worldSize, PixelSurfaceFacing.Floor);
+            return new Vector2Int(Mathf.Max(8, count.x), Mathf.Max(8, count.y));
+        }
 
         public static Texture2D Create(int size = DefaultSize) => Create(DefaultBase, DefaultBorder, size, size);
 

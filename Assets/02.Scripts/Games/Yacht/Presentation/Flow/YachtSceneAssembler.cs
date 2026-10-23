@@ -4,6 +4,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
+using Tessera.Rendering;
 using Tessera.Tabletop;
 
 namespace Tessera.Games.Yacht.Presentation
@@ -68,7 +69,7 @@ namespace Tessera.Games.Yacht.Presentation
             "PixelEdgeToggle", "QuantizeToggle", "RenderStyleToggle"
         };
 
-        private const float CameraPitchAngle = 75.0f;
+        public const float CameraPitchAngle = PixelFilterSettings.WorldCameraPitch;
 
         /// <summary>필라이트가 가져가는 밝기 비중. 런타임에는 YachtLightingRig가 프리셋 강도로 다시 나눈다.</summary>
         private const float FillLightShare = 0.25f;
@@ -158,7 +159,7 @@ namespace Tessera.Games.Yacht.Presentation
             worldCamera.transform.position = new Vector3(centerX, 11.5f, -3.1f);
             worldCamera.transform.rotation = Quaternion.Euler(CameraPitchAngle, 0f, 0f);
             worldCamera.orthographic = true;
-            worldCamera.orthographicSize = 8.2f;
+            worldCamera.orthographicSize = PixelFilterSettings.WorldOrthographicSize;
         }
 
         /// <summary>씬이 비어 있을 때의 프레젠테이션 캔버스와 업스케일 경로를 세운다.</summary>

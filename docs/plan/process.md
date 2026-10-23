@@ -25,6 +25,7 @@ docs/
       improvement/       BUILD·TEST·AUG·PERF·ARCH·DOC·LOAD 트랙
       orch/              오케스트레이션 스킬 재구성 트랙
       layout/            스크립트·에셋 디렉터리 재편 (README.md, design.md)
+      pixel/             픽셀 격자 규격과 해상도 대응 (README.md, log.md)
   archive/milestones/    게이트를 통과한 마일스톤 폴더
 ```
 

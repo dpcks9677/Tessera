@@ -149,7 +149,7 @@ public static class BuildDiceGraphicsPoC
             average /= 3f;
             bool floorRegion = Mathf.Abs(average.x) <= 54.01f
                 && average.z >= -68.01f && average.z <= 54.01f && average.y <= 13.01f;
-            List<int> indices = floorRegion && Mathf.Abs(normal.y) >= 0.7f ? floorIndices : rimIndices;
+            List<int> indices = floorRegion && normal.y >= 0.7f ? floorIndices : rimIndices;
             indices.Add(firstIndex);
             indices.Add(firstIndex + 2);
             indices.Add(firstIndex + 1);
