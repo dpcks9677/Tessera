@@ -21,6 +21,8 @@ color: blue
 
 - graphify는 쓰지 않습니다. 문서는 Read/Grep/Glob로 직접 읽습니다.
 - 큰 문서는 먼저 `python .claude/scripts/tessera_query.py sections <파일>` 로 헤딩 줄 번호를, `task <ID>` 로 태스크 행 위치를 찾고, 필요한 구간만 `offset`/`limit`으로 읽습니다.
+- 40KB가 넘는 파일을 `offset`/`limit` 없이 통째로 `Read` 하면 `.claude/hooks/read-guard.py` 가 막습니다. 예전에는 이 에이전트만 면제였지만, 통째 읽기가 쌓여 컨텍스트가 130k를 넘는 사례가 나와 2026-10-25에 면제를 없앴습니다.
+- 위임 프롬프트에 반환 분량 상한이 있으면 그 안에서 끝냅니다. 질문이 여럿 실려 왔으면 첫 질문만 답하고 나머지는 "분리 위임 필요"로 보고합니다.
 - 개수 집계는 Grep의 `count` 모드나 셸 집계를 써서 정확히 셉니다. 눈대중으로 세지 않습니다.
 
 ## 반환 형식

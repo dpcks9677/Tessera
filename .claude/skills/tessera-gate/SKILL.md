@@ -16,7 +16,7 @@ effort: high
 
 - 점검 항목과 판정 기준: `.claude/gates/MILESTONE.md`. 판정 어휘·출력 형식·기록 형식은 `.claude/gates/README.md`
 - 마일스톤 종료·보관 순서: `docs/plan/process.md` §8
-- 커밋 허가 요청 형식과 메시지 규칙: `CLAUDE.md` 「커밋 & 푸시」
+- 커밋 허가 요청 형식과 메시지 규칙: `.claude/orchestrator.md` 「커밋 & 푸시」
 
 ## 인자
 
@@ -61,7 +61,7 @@ effort: high
 
 ### 커밋 허가 요청
 
-`CLAUDE.md` 「커밋 & 푸시」가 요구하는 세 가지를 함께 보입니다.
+`.claude/orchestrator.md` 「커밋 & 푸시」가 요구하는 세 가지를 함께 보입니다.
 
 1. 마일스톤·트랙과 범위
 2. 변경 파일 목록(`git status --short`). 무관한 파일은 커밋 대상에서 빼고, 허가 뒤 1단계에서 고칠 `roadmap.md`·`log.md` 를 더한 목록으로

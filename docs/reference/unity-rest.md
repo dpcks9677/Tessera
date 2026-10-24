@@ -58,6 +58,14 @@ curl -s -m 120 -X POST http://127.0.0.1:<port>/skill/scene_screenshot \
   -d '{"filename":"verify.png","width":960,"height":540}'
 ```
 
+**함정: `scene_screenshot` 은 `width`/`height` 를 무시하고 Game View 크기(이 환경에서 `1920x1080`)로 저장합니다.** 2026-10-22 M17-T25 확인에서 `960x540` 을 지정했는데 저장된 4장이 모두 `1920x1080` 이었습니다. 그래서 **Read 전에 반드시 축소본을 만들어 그것을 읽습니다.** 해상도 자체가 판정 대상일 때만 원본을 읽습니다.
+
+```bash
+python -c "from PIL import Image; im=Image.open('Assets/Screenshots/verify.png'); im.thumbnail((960,540)); im.save('Assets/Screenshots/verify_960.png')"
+```
+
+`python -I` 로는 PIL을 못 찾으니 `-I` 없이 실행합니다. 읽은 이미지는 그 에이전트 컨텍스트에 남아 이후 매 턴 다시 읽히므로, 같은 장면을 여러 번 찍었으면 판정에 필요한 마지막 장만 읽습니다.
+
 **함정: Game View 창이 렌더링되지 않은 상태면 `scene_screenshot` 이 `success: true` 를 돌려주면서 파일을 쓰지 않습니다.** 메뉴로 Game View를 강제로 열면 파일은 생기지만 변경 전의 오래된 캐시 프레임이 찍힐 수 있습니다. 이때는 `camera_screenshot` 으로 `Full Field World Camera` 를 직접 렌더해 대체하십시오. `PixelEdgeCamera` 가 붙은 월드 카메라라 픽셀 필터는 반영되지만 `Crisp UI Camera` 오버레이(HUD)는 빠집니다. 대체했으면 보고에 그 사실을 적으십시오.
 
 ## Play Mode 진입

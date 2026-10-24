@@ -14,7 +14,7 @@ effort: high
 
 ## 이 플로우의 절대 규칙
 
-**Unity 접근 에이전트는 언제나 하나만 돕니다.** `tessera-unity-operator` 가 실행 중일 때 `tessera-verifier` 를 포함한 어떤 에이전트도 함께 띄우지 마십시오(사유: `CLAUDE.md` 「오케스트레이션 › 규칙」).
+**Unity 접근 에이전트는 언제나 하나만 돕니다.** `tessera-unity-operator` 가 실행 중일 때 `tessera-verifier` 를 포함한 어떤 에이전트도 함께 띄우지 마십시오(사유: `.claude/orchestrator.md` 「규칙」).
 
 조사(`tessera-scout`)와 기록(`tessera-scribe`)은 Unity에 접근하지 않으므로 조작 **전후**에 돌릴 수 있습니다. 조작 **중**에는 돌리지 마십시오. 조작 결과에 따라 다음 단계가 달라지기 때문입니다.
 

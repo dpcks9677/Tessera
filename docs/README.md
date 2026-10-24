@@ -91,7 +91,7 @@ AI 에이전트가 작업 중 따르는 규칙·근거 문서(`reference/control
 | [art_style_guide.md](reference/art_style_guide.md) | 아트 톤앤매너, 조명, 팔레트, 외부 에셋 출처 |
 | [unity-cli.md](reference/unity-cli.md) | Unity CLI 사용 요령과 함정. REST와의 역할 분담 근거, 테스트 실행, `script eval` 조회 |
 | [unity-rest.md](reference/unity-rest.md) | unity-skills REST 공통 요령·함정. 서버 탐색, 호출 형태, `job_wait` 금지, 스크린샷, Play Mode 진입 |
-| [orchestration.md](reference/orchestration.md) | `CLAUDE.md` 오케스트레이션·Unity 자동화 규칙의 근거와 사례 |
+| [orchestration.md](reference/orchestration.md) | `.claude/orchestrator.md`·`CLAUDE.md` Unity 자동화 규칙의 근거와 사례 |
 | [agent_rules.md](reference/agent_rules.md) | 에이전트 공통 작업 규칙 5건. 문서 충돌 보고, 2회 실패 중단, 3단 보고, `미확정` 표기, 가정 목록 |
 | [lessons.md](reference/lessons.md) | 사용자 교정을 「실수·원인·예방 규칙」으로 남긴 기록. 세션 시작 때 읽음 |
 | [art/pixel_edge_filter_plan.md](reference/art/pixel_edge_filter_plan.md) | `M12` 엣지 검출 셰이더 기술 레퍼런스 |

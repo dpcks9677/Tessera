@@ -5,8 +5,11 @@
 # the read and returns the heading outline so the caller can Read just the
 # section it needs with offset/limit. Modeled on CCGS validate-read.
 #
-# tessera-reader is exempt: bulk document reading is its job. Any error fails
-# open (the read is allowed).
+# tessera-reader is not exempt. It was until 2026-10-25, when transcript logs
+# showed reader contexts growing past 130k from whole-file reads; its own
+# definition already says to read large docs by section. Ranged reads still
+# pass, so nothing becomes unreadable. Any error fails open (the read is
+# allowed).
 
 import json
 import os
@@ -20,8 +23,6 @@ try:
     import tessera_query
 
     data = json.loads(sys.stdin.buffer.read().decode("utf-8") or "{}")
-    if data.get("agent_type") == "tessera-reader":
-        sys.exit(0)
 
     tool_input = data.get("tool_input") or {}
     path = str(tool_input.get("file_path", ""))

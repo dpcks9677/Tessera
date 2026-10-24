@@ -20,4 +20,4 @@
 - `FAIL`: 상태가 정리되지 않은 태스크가 있음, 완료 게이트 미충족, 하위 게이트 `FAIL`.
 - `CONCERNS`: 사유 없는 `DEFERRED`·`DROPPED`, 하위 게이트 `CONCERNS`, 무관한 변경 파일이 섞임.
 - `NOT ASSESSED`: 해소되지 않은 `NOT ASSESSED` 기록이 남음.
-- `PASS`: 위 항목을 모두 충족. 이어서 `CLAUDE.md` 「커밋 & 푸시」대로 사용자에게 커밋 허가를 요청합니다.
+- `PASS`: 위 항목을 모두 충족. 이어서 `.claude/orchestrator.md` 「커밋 & 푸시」대로 사용자에게 커밋 허가를 요청합니다.
