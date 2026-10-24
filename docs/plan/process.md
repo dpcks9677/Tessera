@@ -27,6 +27,7 @@ docs/
       layout/            스크립트·에셋 디렉터리 재편 (README.md, design.md)
       pixel/             픽셀 격자 규격과 해상도 대응 (README.md, log.md)
       klss/              외부 프롬프트 시리즈 선별 도입 (README.md, log.md)
+      bal/               증강 밸런스 평가 도구 (README.md, log.md)
   archive/milestones/    게이트를 통과한 마일스톤 폴더
 ```
 

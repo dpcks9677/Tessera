@@ -20,7 +20,7 @@ effort: high
 
 ## 인자
 
-- 대상: `Mnn` 또는 트랙명(`orch`, `solid`, `improvement`, `layout`, `klss`). 비어 있으면 `docs/STATUS.md` 의 현재 마일스톤을 대상으로 삼고 그 사실을 알립니다.
+- 대상: `Mnn` 또는 트랙명(`orch`, `solid`, `improvement`, `layout`, `klss`, `bal`). 비어 있으면 `docs/STATUS.md` 의 현재 마일스톤을 대상으로 삼고 그 사실을 알립니다.
 - `--review solo|lean|full`: 이번 호출의 `review_mode`. 없으면 `.claude/gates/README.md` 의 기본값.
 - `--check`: 판정만 읽기 전용으로 냅니다. 파일을 바꾸지 않고, PASS여도 커밋 허가 요청 초안을 보인 뒤 멈춥니다.
 
