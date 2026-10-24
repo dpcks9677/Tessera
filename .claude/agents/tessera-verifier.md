@@ -13,6 +13,8 @@ color: yellow
 
 Unity REST를 부르기 전에 `docs/reference/unity-rest.md` 를 읽으십시오. 서버 탐색, 호출 형태, `job_wait` 금지, 스크린샷, Play Mode 진입 함정의 원본이 거기 있습니다.
 
+공통 작업 규칙은 `docs/reference/agent_rules.md` 입니다. 같은 호출이 2회 실패하면 3번째를 시도하지 말고 멈춰 보고하며, 원인을 모르면 추정하지 말고 `미확정` 으로 적으십시오.
+
 ## 검증 순서
 
 ### 1. 서버 탐색

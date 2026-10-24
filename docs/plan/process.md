@@ -26,6 +26,7 @@ docs/
       orch/              오케스트레이션 스킬 재구성 트랙
       layout/            스크립트·에셋 디렉터리 재편 (README.md, design.md)
       pixel/             픽셀 격자 규격과 해상도 대응 (README.md, log.md)
+      klss/              외부 프롬프트 시리즈 선별 도입 (README.md, log.md)
   archive/milestones/    게이트를 통과한 마일스톤 폴더
 ```
 
@@ -136,7 +137,7 @@ ID 하나의 상태는 정확히 한 곳에만 적습니다. 같은 상태를 �
 > 상태는 [마일스톤 README](README.md) 태스크 표에 있습니다.
 
 ## 수락 기준
-- [ ] 관찰 가능한 기준 한 줄씩
+- [ ] AC-1 관찰 가능한 기준 한 줄씩
 
 ## 배경
 
@@ -154,6 +155,8 @@ ID 하나의 상태는 정확히 한 곳에만 적습니다. 같은 상태를 �
 
 ## 완료 기록
 ```
+
+- 수락 기준마다 `AC-n` 을 붙입니다. 태스크 문서 안에서 1부터 연번이고, 지운 번호는 재사용하지 않습니다. 하위 작업 표와 완료 기록은 충족한 기준을 `AC-n` 으로 가리킵니다. 태스크 표의 수락 기준 칸(한 줄)에는 붙이지 않습니다.
 
 ### 5.3 세션 로그 (`log.md`)
 
@@ -249,7 +252,7 @@ npm run validate:augments
 
 새 작업 세션은 다음 순서를 따른다.
 
-1. [`docs/STATUS.md`](../STATUS.md)를 읽는다.
+1. [`docs/STATUS.md`](../STATUS.md)와 [`docs/reference/lessons.md`](../reference/lessons.md)를 읽는다. 교정을 받았다면 다음 작업 전에 lessons에 적는다.
 2. 현재 마일스톤 `log.md`의 최상단 항목을 읽는다.
 3. `git status --short`로 기존 변경을 확인하고 사용자 변경을 보존한다.
 4. 이번에 다룰 작업 ID의 선행 작업과 완료 조건을 확인한다. `DOING`이 여러 개면 어느 것을 이어갈지 사용자에게 확인한다.

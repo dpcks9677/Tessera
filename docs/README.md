@@ -25,6 +25,7 @@
 
 **AI 에이전트로 작업한다면**
 - [`STATUS.md`](STATUS.md)부터 읽습니다. 지금 무엇을 하는 중이고 다음 행동이 무엇인지 말해 줍니다
+- [`reference/lessons.md`](reference/lessons.md)를 이어서 읽습니다. 과거에 교정받은 실수를 반복하지 않기 위해서입니다
 - [`decisions.md`](decisions.md)와 각 폴더의 `log.md`는 **필요할 때만** 엽니다. 과거 기록이라 컨텍스트를 크게 먹습니다
 - 태스크 ID로 문서를 찾습니다: `Mnn-Tnn` → `plan/mNN/README.md`, `SOLID-Tnn` → `plan/tracks/solid/README.md`, `BUILD-nn`·`TEST-nn`·`AUG-nn`·`PERF-nn`·`ARCH-nn`·`DOC-nn`·`LOAD-nn` → `plan/tracks/improvement/README.md`
 
@@ -91,6 +92,8 @@ AI 에이전트가 작업 중 따르는 규칙·근거 문서(`reference/control
 | [unity-cli.md](reference/unity-cli.md) | Unity CLI 사용 요령과 함정. REST와의 역할 분담 근거, 테스트 실행, `script eval` 조회 |
 | [unity-rest.md](reference/unity-rest.md) | unity-skills REST 공통 요령·함정. 서버 탐색, 호출 형태, `job_wait` 금지, 스크린샷, Play Mode 진입 |
 | [orchestration.md](reference/orchestration.md) | `CLAUDE.md` 오케스트레이션·Unity 자동화 규칙의 근거와 사례 |
+| [agent_rules.md](reference/agent_rules.md) | 에이전트 공통 작업 규칙 5건. 문서 충돌 보고, 2회 실패 중단, 3단 보고, `미확정` 표기, 가정 목록 |
+| [lessons.md](reference/lessons.md) | 사용자 교정을 「실수·원인·예방 규칙」으로 남긴 기록. 세션 시작 때 읽음 |
 | [art/pixel_edge_filter_plan.md](reference/art/pixel_edge_filter_plan.md) | `M12` 엣지 검출 셰이더 기술 레퍼런스 |
 | [art/cel_shading_pixel_plan.md](reference/art/cel_shading_pixel_plan.md) | `M16` 셀 셰이딩 기술 레퍼런스 (채택 보류, 인프라만 유지) |
 | [build_pdf.py](reference/build_pdf.py) | 위 두 가이드를 PDF로 굽는 스크립트. PDF 자체는 git 추적하지 않습니다 |
